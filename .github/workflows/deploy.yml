@@ -48,7 +48,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build app
-        run: pnpm --filter @gonogo/app build
+        run: pnpm turbo build --filter=@gonogo/app...
         env:
           VITE_BASE_PATH: /gonogo/
 

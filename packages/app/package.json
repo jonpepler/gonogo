@@ -1,0 +1,30 @@
+{
+  "name": "@gonogo/app",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@gonogo/core": "workspace:*",
+    "@gonogo/components": "workspace:*",
+    "@tanstack/react-query": "^5.0.0",
+    "peerjs": "^1.5.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-grid-layout": "^1.4.0",
+    "styled-components": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@types/react-grid-layout": "^1.3.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^6.0.0"
+  }
+}

@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,8 +16,12 @@
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^18.0.0",
-    "typescript": "^5.0.0"
+    "jsdom": "^29.0.2",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.4"
   },
   "peerDependencies": {
     "react": "^18.0.0"

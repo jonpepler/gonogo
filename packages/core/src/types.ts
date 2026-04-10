@@ -17,6 +17,7 @@ export interface DataSource {
   status: DataSourceStatus;
   schema(): DataKey[];
   subscribe(key: string, cb: (value: unknown) => void): () => void;
+  onStatusChange(cb: (status: DataSourceStatus) => void): () => void;
 }
 
 export type ComponentBehavior = 'gonogo-participant';

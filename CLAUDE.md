@@ -134,6 +134,17 @@ The built-in `@gonogo/components` package models this pattern exactly — it is 
 
 ---
 
+## Testing Philosophy
+
+Prefer tests that mock as little of the system as possible. Use [Mock Service Worker (MSW)](https://mswjs.io/) to intercept at the network boundary rather than mocking modules.
+
+- **Integration tests** (in `@gonogo/app`) use MSW WebSocket/HTTP handlers to simulate KSP APIs. The real data source, real hook, and real component all run — only the network is intercepted. This is the preferred form for tests involving connection status or data flow.
+- **Unit tests** (in `@gonogo/core`, `@gonogo/components`) use the real registry with simple disconnected fixture data sources. No `vi.mock()` of internal modules. MSW is only needed when a test actually triggers a network call.
+- Avoid mocking `useDataSources` or other core hooks in component tests — render the real component with real registry state instead.
+- **`act()` warnings are always our bug** — never dismiss them. They mean a state update is escaping the `act()` boundary. The fix is usually to make the async function resolve *after* the state update (e.g. `connect()` should resolve inside the `open` handler, not before it fires).
+
+---
+
 ## Key Design Constraints
 
 - **Main screen is the sole KSP data consumer.** Stations never talk to KSP directly; they receive data exclusively from the main screen over PeerJS.

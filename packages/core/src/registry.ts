@@ -35,3 +35,10 @@ export function getThemes(): ThemeDefinition[] {
 export function getTheme(id: string): ThemeDefinition | undefined {
   return themes.get(id);
 }
+
+/** For use in tests only — resets all registries to empty. */
+export function clearRegistry(): void {
+  components.clear();
+  dataSources.clear();
+  themes.clear();
+}

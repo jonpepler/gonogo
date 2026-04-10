@@ -8,8 +8,10 @@
     "lint": "turbo lint"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.4",
     "turbo": "latest",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.4"
   },
   "engines": {
     "node": ">=24"

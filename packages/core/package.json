@@ -1,0 +1,20 @@
+{
+  "name": "@gonogo/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.28",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  }
+}

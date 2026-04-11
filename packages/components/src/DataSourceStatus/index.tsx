@@ -1,9 +1,31 @@
+import { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { registerComponent, useDataSources } from '@gonogo/core';
-import type { DataSourceStatus } from '@gonogo/core';
+import { registerComponent, useDataSources, getDataSource } from '@gonogo/core';
+import type { DataSourceStatus, ConfigField } from '@gonogo/core';
 
 function DataSourceStatusComponent() {
   const sources = useDataSources();
+  const [configuringId, setConfiguringId] = useState<string | null>(null);
+  const [formValues, setFormValues] = useState<Record<string, string>>({});
+
+  const openConfig = (id: string) => {
+    const source = getDataSource(id);
+    if (!source) return;
+    const current = source.getConfig();
+    setFormValues(Object.fromEntries(Object.entries(current).map(([k, v]) => [k, String(v)])));
+    setConfiguringId(id);
+  };
+
+  const saveConfig = (id: string, schema: ConfigField[]) => {
+    const source = getDataSource(id);
+    if (!source) return;
+    const parsed: Record<string, unknown> = {};
+    for (const field of schema) {
+      parsed[field.key] = field.type === 'number' ? Number(formValues[field.key]) : formValues[field.key];
+    }
+    source.configure(parsed);
+    setConfiguringId(null);
+  };
 
   return (
     <Panel>
@@ -12,13 +34,47 @@ function DataSourceStatusComponent() {
         <Empty>No data sources registered</Empty>
       ) : (
         <List>
-          {sources.map((source) => (
-            <Row key={source.id}>
-              <Indicator status={source.status} />
-              <Name>{source.name}</Name>
-              <StatusLabel status={source.status}>{source.status}</StatusLabel>
-            </Row>
-          ))}
+          {sources.map((source) => {
+            const schema = getDataSource(source.id)?.configSchema() ?? [];
+            const isConfiguring = configuringId === source.id;
+            return (
+              <Item key={source.id}>
+                <Row>
+                  <Indicator status={source.status} />
+                  <Name>{source.name}</Name>
+                  <StatusLabel status={source.status}>{source.status}</StatusLabel>
+                  {schema.length > 0 && (
+                    <ConfigButton
+                      onClick={() => isConfiguring ? setConfiguringId(null) : openConfig(source.id)}
+                      aria-label={`Configure ${source.name}`}
+                      $active={isConfiguring}
+                    >
+                      ⚙
+                    </ConfigButton>
+                  )}
+                </Row>
+                {isConfiguring && (
+                  <ConfigForm>
+                    {schema.map((field) => (
+                      <FieldRow key={field.key}>
+                        <FieldLabel>{field.label}</FieldLabel>
+                        <FieldInput
+                          type={field.type === 'number' ? 'number' : 'text'}
+                          placeholder={field.placeholder}
+                          value={formValues[field.key] ?? ''}
+                          onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        />
+                      </FieldRow>
+                    ))}
+                    <FormActions>
+                      <SaveButton onClick={() => saveConfig(source.id, schema)}>Save</SaveButton>
+                      <CancelButton onClick={() => setConfiguringId(null)}>Cancel</CancelButton>
+                    </FormActions>
+                  </ConfigForm>
+                )}
+              </Item>
+            );
+          })}
         </List>
       )}
     </Panel>
@@ -66,7 +122,13 @@ const List = styled.ul`
   gap: 8px;
 `;
 
-const Row = styled.li`
+const Item = styled.li`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const Row = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -103,6 +165,86 @@ const StatusLabel = styled.span<{ status: DataSourceStatus }>`
   color: ${({ status }) => statusColor[status]};
   text-transform: uppercase;
   letter-spacing: 0.05em;
+`;
+
+const ConfigButton = styled.button<{ $active: boolean }>`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: ${({ $active }) => ($active ? '#aaa' : '#444')};
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.1s;
+  &:hover { color: #aaa; }
+`;
+
+const ConfigForm = styled.div`
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 3px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const FieldRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const FieldLabel = styled.label`
+  font-size: 11px;
+  color: #666;
+  width: 50px;
+  flex-shrink: 0;
+`;
+
+const FieldInput = styled.input`
+  background: #0d0d0d;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #ccc;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 3px 6px;
+  width: 120px;
+  &:focus {
+    outline: none;
+    border-color: #555;
+  }
+`;
+
+const FormActions = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+`;
+
+const SaveButton = styled.button`
+  background: #1a2a1a;
+  border: 1px solid #2a4a2a;
+  border-radius: 3px;
+  color: #00ff88;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  &:hover { background: #1f321f; }
+`;
+
+const CancelButton = styled.button`
+  background: none;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #666;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  &:hover { color: #aaa; border-color: #555; }
 `;
 
 const Empty = styled.p`

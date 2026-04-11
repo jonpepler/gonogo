@@ -28,6 +28,10 @@ export function getDataSources(): DataSource[] {
   return Array.from(dataSources.values());
 }
 
+export function getDataSource(id: string): DataSource | undefined {
+  return dataSources.get(id);
+}
+
 export function getThemes(): ThemeDefinition[] {
   return Array.from(themes.values());
 }

@@ -1,5 +1,5 @@
 import { registerDataSource } from '@gonogo/core';
-import type { DataSource, DataSourceStatus, DataKey } from '@gonogo/core';
+import type { DataSource, DataSourceStatus, DataKey, ConfigField } from '@gonogo/core';
 
 class KosDataSource implements DataSource {
   id = 'kos';
@@ -31,6 +31,25 @@ class KosDataSource implements DataSource {
   onStatusChange(cb: (status: DataSourceStatus) => void): () => void {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
+  }
+
+  async execute(_action: string): Promise<void> {
+    // TODO: send action through proxy WebSocket
+  }
+
+  configSchema(): ConfigField[] {
+    return [
+      { key: 'host', label: 'Proxy Host', type: 'text', placeholder: 'localhost' },
+      { key: 'port', label: 'Proxy Port', type: 'number', placeholder: '3001' },
+    ];
+  }
+
+  getConfig(): Record<string, unknown> {
+    return { host: 'localhost', port: 3001 };
+  }
+
+  configure(_config: Record<string, unknown>): void {
+    // TODO: update proxy host/port and reconnect
   }
 
   private setStatus(status: DataSourceStatus): void {

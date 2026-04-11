@@ -9,6 +9,22 @@ export interface DataKey {
   description?: string;
 }
 
+export interface ConfigField {
+  key: string;
+  label: string;
+  type: 'text' | 'number';
+  placeholder?: string;
+}
+
+export interface ActionGroup {
+  name: string;
+  /** Telemachus action key to toggle, or null for read-only groups. */
+  toggle: string | null;
+  /** Telemachus value key to read current state. */
+  value: string;
+  description: string;
+}
+
 export interface DataSource {
   id: string;
   name: string;
@@ -18,6 +34,10 @@ export interface DataSource {
   schema(): DataKey[];
   subscribe(key: string, cb: (value: unknown) => void): () => void;
   onStatusChange(cb: (status: DataSourceStatus) => void): () => void;
+  execute(action: string): Promise<void>;
+  configSchema(): ConfigField[];
+  configure(config: Record<string, unknown>): void;
+  getConfig(): Record<string, unknown>;
 }
 
 export type ComponentBehavior = 'gonogo-participant';

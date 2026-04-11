@@ -17,6 +17,10 @@ function makeFixtureSource(
     disconnect: () => {},
     schema: () => [],
     subscribe: () => () => {},
+    execute: async () => {},
+    configSchema: () => [],
+    getConfig: () => ({}),
+    configure: () => {},
     onStatusChange(cb: (s: DataSourceStatus) => void) {
       listeners.add(cb);
       return () => listeners.delete(cb);

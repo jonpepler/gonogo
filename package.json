@@ -5,10 +5,19 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "test": "turbo test",
+    "coverage": "vitest run --coverage",
     "lint": "turbo lint"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^18.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
     "@vitest/coverage-v8": "^4.1.4",
+    "jsdom": "^29.0.2",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
     "turbo": "latest",
     "typescript": "^5.0.0",
     "vitest": "^4.1.4"

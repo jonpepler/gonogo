@@ -8,10 +8,25 @@ export function useDataValue(dataSourceId: string, key: string): unknown {
     (onStoreChange: () => void) => {
       const source = getDataSource(dataSourceId);
       if (!source) return () => {};
-      return source.subscribe(key, (val) => {
+
+      const unsubData = source.subscribe(key, (val) => {
         valueRef.current = val;
         onStoreChange();
       });
+
+      // Clear the value when the source disconnects or errors so components
+      // show unknown state rather than a stale reading.
+      const unsubStatus = source.onStatusChange((status) => {
+        if (status !== 'connected') {
+          valueRef.current = undefined;
+          onStoreChange();
+        }
+      });
+
+      return () => {
+        unsubData();
+        unsubStatus();
+      };
     },
     [dataSourceId, key],
   );

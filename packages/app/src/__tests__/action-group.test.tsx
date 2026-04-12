@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent, act } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse, ws } from 'msw';
 import { clearRegistry, registerDataSource } from '@gonogo/core';
@@ -23,26 +23,43 @@ beforeEach(() => {
 });
 
 /**
- * Sets up MSW to accept the WebSocket connection and handle HTTP datalink requests.
- * The `state` object is mutated by toggle requests so tests can assert on it.
+ * Sets up MSW to handle a Telemachus WS connection and HTTP execute requests.
+ *
+ * The WS handler responds to {"run": [...keys]} subscription messages by
+ * streaming back current state. The HTTP handler handles action toggles and
+ * pushes the updated state back through the WS connection.
  */
 function setupTelemachus(initialState: Record<string, boolean> = {}) {
   const state = { ...initialState };
+  let wsClient: { send: (data: string) => void } | null = null;
+  let subscribedKeys: string[] = [];
+
+  const pushState = () => {
+    if (!wsClient || subscribedKeys.length === 0) return;
+    const update: Record<string, unknown> = {};
+    for (const key of subscribedKeys) update[key] = state[key] ?? false;
+    wsClient.send(JSON.stringify(update));
+  };
 
   server.use(
-    telemachusWs.addEventListener('connection', () => {}),
+    telemachusWs.addEventListener('connection', ({ client }) => {
+      wsClient = client;
+      client.addEventListener('message', ({ data }) => {
+        const msg = JSON.parse(data as string) as { run?: string[] };
+        if (msg.run) {
+          subscribedKeys = msg.run;
+          pushState();
+        }
+      });
+    }),
     http.get('http://localhost:8085/telemachus/datalink', ({ request }) => {
-      const params = new URL(request.url).searchParams;
-      const valueKey = params.get('v');
-      const actionKey = params.get('a');
-
-      if (valueKey !== null) {
-        return HttpResponse.json({ v: state[valueKey] ?? false });
-      }
+      const actionKey = new URL(request.url).searchParams.get('a');
       if (actionKey !== null) {
-        // Telemachus action keys are like 'f.ag1' — map to the corresponding value key
-        const valueEquiv = actionKey.replace('f.', 'v.') + 'Value';
-        state[valueEquiv] = !state[valueEquiv];
+        // Derive the value key: f.ag1 → v.ag1Value, f.sas → v.sasValue
+        const base = actionKey.replace(/^f\./, '');
+        const valueKey = `v.${base}Value`;
+        state[valueKey] = !state[valueKey];
+        pushState(); // immediately push updated state over WS
         return HttpResponse.json({ a: null });
       }
       return new HttpResponse(null, { status: 404 });
@@ -94,6 +111,28 @@ describe('ActionGroup component', () => {
 
     await waitFor(() => expect(screen.getByText('Precision Control')).toBeInTheDocument());
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('clears state to unknown when the connection drops', async () => {
+    let serverClient: { close: (code?: number) => void } | null = null;
+    server.use(
+      telemachusWs.addEventListener('connection', ({ client }) => {
+        serverClient = client;
+        client.addEventListener('message', ({ data }) => {
+          const msg = JSON.parse(data as string) as { run?: string[] };
+          if (msg.run) client.send(JSON.stringify({ 'v.ag1Value': true }));
+        });
+      }),
+    );
+
+    await telemachusSource.connect();
+    render(<ActionGroupComponent config={{ actionGroupId: 'AG1' }} />);
+
+    await waitFor(() => expect(screen.getByText('ON')).toBeInTheDocument());
+
+    act(() => { serverClient!.close(); });
+
+    await waitFor(() => expect(screen.getByText('—')).toBeInTheDocument());
   });
 
   it('toggles SAS independently from AG1', async () => {

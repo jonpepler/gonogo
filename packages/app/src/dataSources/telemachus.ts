@@ -8,13 +8,6 @@ interface TelemachusConfig {
 
 const DEFAULT_CONFIG: TelemachusConfig = { host: 'localhost', port: 8085 };
 const STORAGE_KEY = 'gonogo.datasource.telemachus';
-const POLL_INTERVAL_MS = 500;
-
-interface Subscription {
-  callbacks: Set<(value: unknown) => void>;
-  intervalId: ReturnType<typeof setInterval> | null;
-  lastValue: unknown;
-}
 
 class TelemachusDataSource implements DataSource {
   id = 'telemachus';
@@ -24,7 +17,8 @@ class TelemachusDataSource implements DataSource {
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private ws: WebSocket | null = null;
   private cfg: TelemachusConfig;
-  private subscriptions = new Map<string, Subscription>();
+  // key → set of subscriber callbacks
+  private subscriptions = new Map<string, Set<(value: unknown) => void>>();
 
   constructor(config?: TelemachusConfig) {
     this.cfg = config ?? this.loadConfig();
@@ -39,15 +33,14 @@ class TelemachusDataSource implements DataSource {
 
       this.ws.addEventListener('open', () => {
         this.setStatus('connected');
-        this.startPolling();
+        this.sendSubscription(); // re-subscribe after reconnect
         resolve();
       });
-      this.ws.addEventListener('close', () => {
-        this.stopPolling();
-        this.setStatus('disconnected');
+      this.ws.addEventListener('message', (event) => {
+        this.handleMessage(event.data as string);
       });
+      this.ws.addEventListener('close', () => this.setStatus('disconnected'));
       this.ws.addEventListener('error', () => {
-        this.stopPolling();
         this.setStatus('error');
         reject(new Error(`Could not connect to Telemachus Reborn at ${url}`));
       });
@@ -55,7 +48,6 @@ class TelemachusDataSource implements DataSource {
   }
 
   disconnect(): void {
-    this.stopPolling();
     this.ws?.close();
     this.ws = null;
   }
@@ -68,34 +60,26 @@ class TelemachusDataSource implements DataSource {
 
   subscribe(key: string, cb: (value: unknown) => void): () => void {
     if (!this.subscriptions.has(key)) {
-      this.subscriptions.set(key, { callbacks: new Set(), intervalId: null, lastValue: undefined });
+      this.subscriptions.set(key, new Set());
     }
-    const sub = this.subscriptions.get(key)!;
-    sub.callbacks.add(cb);
-
-    if (this.status === 'connected') {
-      void this.pollKey(key); // immediate read
-      if (sub.intervalId === null) {
-        sub.intervalId = setInterval(() => { void this.pollKey(key); }, POLL_INTERVAL_MS);
-      }
-    }
+    this.subscriptions.get(key)!.add(cb);
+    this.sendSubscription();
 
     return () => {
-      sub.callbacks.delete(cb);
-      if (sub.callbacks.size === 0) {
-        if (sub.intervalId !== null) {
-          clearInterval(sub.intervalId);
-        }
-        this.subscriptions.delete(key);
+      const cbs = this.subscriptions.get(key);
+      if (cbs) {
+        cbs.delete(cb);
+        if (cbs.size === 0) this.subscriptions.delete(key);
       }
+      this.sendSubscription();
     };
   }
 
   async execute(action: string): Promise<void> {
-    const url = `${this.baseHttpUrl()}?a=${encodeURIComponent(action)}`;
-    await fetch(url);
-    // Re-poll subscribed keys so state reflects the action immediately.
-    await Promise.all([...this.subscriptions.keys()].map((k) => this.pollKey(k)));
+    const url = `http://${this.cfg.host}:${this.cfg.port}/telemachus/datalink?a=${encodeURIComponent(action)}`;
+    // no-cors: we don't need to read the response, so skip CORS checking entirely.
+    // The request still reaches Telemachus and the action is executed.
+    await fetch(url, { mode: 'no-cors' });
   }
 
   onStatusChange(cb: (status: DataSourceStatus) => void): () => void {
@@ -123,48 +107,33 @@ class TelemachusDataSource implements DataSource {
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.cfg));
-    } catch { /* localStorage unavailable (e.g. SSR or private browsing) */ }
-    if (this.status === 'connected') {
-      this.disconnect();
-      void this.connect();
-    }
+    } catch { /* localStorage unavailable */ }
+    // Always reconnect with the new config.
+    this.disconnect();
+    void this.connect();
   }
 
   // --- Private ---
 
-  private baseHttpUrl(): string {
-    return `http://${this.cfg.host}:${this.cfg.port}/telemachus/datalink`;
+  /**
+   * Sends the full current subscription list to Telemachus over the WebSocket.
+   * Telemachus will stream back all subscribed values at the given rate.
+   */
+  private sendSubscription(): void {
+    if (this.ws?.readyState === WebSocket.OPEN && this.subscriptions.size > 0) {
+      this.ws.send(JSON.stringify({ run: [...this.subscriptions.keys()], rate: 250 }));
+    }
   }
 
-  private async pollKey(key: string): Promise<void> {
+  private handleMessage(raw: string): void {
     try {
-      const response = await fetch(`${this.baseHttpUrl()}?v=${encodeURIComponent(key)}`);
-      const data = await response.json() as Record<string, unknown>;
-      const value = data['v'];
-      const sub = this.subscriptions.get(key);
-      if (sub && value !== sub.lastValue) {
-        sub.lastValue = value;
-        sub.callbacks.forEach((cb) => cb(value));
+      const data = JSON.parse(raw) as Record<string, unknown>;
+      for (const [key, callbacks] of this.subscriptions) {
+        if (key in data) {
+          callbacks.forEach((cb) => cb(data[key]));
+        }
       }
-    } catch { /* network error — ignore, WS handles connection state */ }
-  }
-
-  private startPolling(): void {
-    for (const [key, sub] of this.subscriptions) {
-      void this.pollKey(key);
-      if (sub.intervalId === null) {
-        sub.intervalId = setInterval(() => { void this.pollKey(key); }, POLL_INTERVAL_MS);
-      }
-    }
-  }
-
-  private stopPolling(): void {
-    for (const [, sub] of this.subscriptions) {
-      if (sub.intervalId !== null) {
-        clearInterval(sub.intervalId);
-        sub.intervalId = null;
-      }
-    }
+    } catch { /* ignore malformed messages */ }
   }
 
   private loadConfig(): TelemachusConfig {

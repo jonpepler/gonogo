@@ -1,18 +1,18 @@
 import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
+import { registerKosBridge } from './bridge.js';
 
 const fastify = Fastify({ logger: true });
 
 await fastify.register(websocket);
 
-fastify.get('/status', async () => {
-  return { status: 'ok' };
+registerKosBridge(fastify, {
+  kosHost: process.env.KOS_HOST ?? 'localhost',
+  kosPort: Number(process.env.KOS_PORT ?? 5410),
 });
 
-// kOS telnet bridge — to be implemented
-fastify.get('/kos', { websocket: true }, (socket) => {
-  socket.send(JSON.stringify({ type: 'status', connected: false, message: 'kOS bridge not yet implemented' }));
-  socket.close();
+fastify.get('/status', async () => {
+  return { status: 'ok' };
 });
 
 const port = Number(process.env.PORT ?? 3001);

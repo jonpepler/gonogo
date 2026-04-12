@@ -63,17 +63,21 @@ function DataSourceStatusComponent() {
                 </Row>
                 {isConfiguring && (
                   <ConfigForm>
-                    {schema.map((field) => (
-                      <FieldRow key={field.key}>
-                        <FieldLabel>{field.label}</FieldLabel>
-                        <FieldInput
-                          type={field.type === 'number' ? 'number' : 'text'}
-                          placeholder={field.placeholder}
-                          value={formValues[field.key] ?? ''}
-                          onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                        />
-                      </FieldRow>
-                    ))}
+                    {schema.map((field) => {
+                      const inputId = `config-${source.id}-${field.key}`;
+                      return (
+                        <FieldRow key={field.key}>
+                          <FieldLabel htmlFor={inputId}>{field.label}</FieldLabel>
+                          <FieldInput
+                            id={inputId}
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            placeholder={field.placeholder}
+                            value={formValues[field.key] ?? ''}
+                            onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          />
+                        </FieldRow>
+                      );
+                    })}
                     <FormActions>
                       <SaveButton onClick={() => saveConfig(source.id, schema)}>Save</SaveButton>
                       <CancelButton onClick={() => setConfiguringId(null)}>Cancel</CancelButton>

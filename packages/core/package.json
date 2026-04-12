@@ -9,11 +9,13 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.3.28",
+    "@vitest/coverage-v8": "^4.1.4",
     "jsdom": "^29.0.2",
     "typescript": "^5.0.0",
     "vitest": "^4.1.4"

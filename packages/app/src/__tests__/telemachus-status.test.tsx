@@ -84,15 +84,14 @@ describe('Telemachus Reborn data source status', () => {
     });
 
     afterEach(() => {
+      cleanup(); // unmount before disconnect — mirrors outer afterEach pattern
       source.disconnect();
     });
 
     it('reconnects automatically when the server comes back', async () => {
-      let connectionCount = 0;
       let serverClient: { close: () => void } | null = null;
       server.use(
         telemachusWs.addEventListener('connection', ({ client }) => {
-          connectionCount++;
           serverClient = client;
           // All connections stay open; test closes the first one explicitly inside act()
         }),
@@ -100,57 +99,79 @@ describe('Telemachus Reborn data source status', () => {
 
       render(<DataSourceStatusComponent />);
       await act(async () => { await source.connect(); });
-      await waitFor(() => expect(screen.getByText('connected')).toBeInTheDocument());
+      expect(screen.getByText('connected')).toBeInTheDocument();
 
-      // Close inside act() so the resulting state update ('reconnecting') is captured
-      act(() => { serverClient!.close(); });
-      await waitFor(() => expect(screen.getByText('reconnecting')).toBeInTheDocument());
-      // After 50 ms retry the server keeps the second connection open → connected
-      await waitFor(() => expect(screen.getByText('connected')).toBeInTheDocument());
+      // Close inside act() so the resulting 'reconnecting' state update is captured.
+      // Then await a Promise inside act() for 'connected' so the async retry's 'open'
+      // event (which fires after ~50ms) is also captured within the act() scope.
+      await act(async () => {
+        const connected = new Promise<void>(resolve => {
+          const unsub = source.onStatusChange(s => { if (s === 'connected') { unsub(); resolve(); } });
+        });
+        serverClient!.close();
+        await connected;
+      });
+
+      expect(screen.getByText('connected')).toBeInTheDocument();
     });
 
     it('shows disconnected with a retry button after giving up', async () => {
+      // setTimeout(() => client.close(), 0) is required because MSW fires 'connection'
+      // before the client's 'open' event, so we must defer the close to let connect()
+      // resolve. We await a Promise inside act() that resolves only when the source
+      // reaches 'disconnected' — keeping us inside the act() scope for all intermediate
+      // state updates (connected → reconnecting → ... → disconnected), so no warnings.
       server.use(
         telemachusWs.addEventListener('connection', ({ client }) => {
-          // Defer close so the client's 'open' event fires first
           setTimeout(() => client.close(), 0);
         }),
       );
 
       render(<DataSourceStatusComponent />);
-      await act(async () => { await source.connect(); });
-      await waitFor(() => expect(screen.getByText('reconnecting')).toBeInTheDocument());
+      await act(async () => {
+        const disconnected = new Promise<void>(resolve => {
+          const unsub = source.onStatusChange(s => { if (s === 'disconnected') { unsub(); resolve(); } });
+        });
+        source.connect();
+        await disconnected;
+      });
 
-      await waitFor(
-        () => expect(screen.getByText('disconnected')).toBeInTheDocument(),
-        { timeout: 2000 },
-      );
+      expect(screen.getByText('disconnected')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /reconnect telemachus reborn/i })).toBeInTheDocument();
     });
 
     it('reconnect button triggers a fresh connection attempt', async () => {
       server.use(
         telemachusWs.addEventListener('connection', ({ client }) => {
-          // Defer close so the client's 'open' event fires first
-          setTimeout(() => client.close(), 0);
+          setTimeout(() => client.close(), 0); // see note in preceding test
         }),
       );
 
       render(<DataSourceStatusComponent />);
-      await act(async () => { await source.connect(); });
-      await waitFor(
-        () => expect(screen.getByText('disconnected')).toBeInTheDocument(),
-        { timeout: 2000 },
-      );
+      await act(async () => {
+        const disconnected = new Promise<void>(resolve => {
+          const unsub = source.onStatusChange(s => { if (s === 'disconnected') { unsub(); resolve(); } });
+        });
+        source.connect();
+        await disconnected;
+      });
 
       // Now let the next connection succeed
       server.resetHandlers();
       server.use(telemachusWs.addEventListener('connection', () => {}));
 
-      // Click triggers connect() whose 'open' callback fires asynchronously;
-      // waitFor wraps each poll in act(), so the state update is safely captured.
-      fireEvent.click(screen.getByRole('button', { name: /reconnect telemachus reborn/i }));
-      await waitFor(() => expect(screen.getByText('connected')).toBeInTheDocument());
+      // Click triggers connect() whose 'open' callback fires asynchronously.
+      // Await a Promise inside act() that resolves when 'connected' fires, keeping
+      // all state updates within the act() scope — no act() warning.
+      await act(async () => {
+        const connected = new Promise<void>(resolve => {
+          const unsub = source.onStatusChange(s => { if (s === 'connected') { unsub(); resolve(); } });
+        });
+        fireEvent.click(screen.getByRole('button', { name: /reconnect telemachus reborn/i }));
+        await connected;
+      });
+
+      expect(screen.getByText('connected')).toBeInTheDocument();
     });
   });
 });

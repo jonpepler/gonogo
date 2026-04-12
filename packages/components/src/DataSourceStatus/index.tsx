@@ -43,6 +43,14 @@ function DataSourceStatusComponent() {
                   <Indicator status={source.status} />
                   <Name>{source.name}</Name>
                   <StatusLabel status={source.status}>{source.status}</StatusLabel>
+                  {source.status === 'disconnected' && (
+                    <RetryButton
+                      onClick={() => { void getDataSource(source.id)?.connect(); }}
+                      aria-label={`Reconnect ${source.name}`}
+                    >
+                      Reconnect
+                    </RetryButton>
+                  )}
                   {schema.length > 0 && (
                     <ConfigButton
                       onClick={() => isConfiguring ? setConfiguringId(null) : openConfig(source.id)}
@@ -148,6 +156,7 @@ const pulse = keyframes`
 const statusColor: Record<DataSourceStatus, string> = {
   connected: '#00ff88',
   disconnected: '#444',
+  reconnecting: '#ff8c00',
   error: '#ff4444',
 };
 
@@ -157,7 +166,9 @@ const Indicator = styled.span<{ status: DataSourceStatus }>`
   border-radius: 50%;
   flex-shrink: 0;
   background: ${({ status }) => statusColor[status]};
-  animation: ${({ status }) => (status === 'connected' ? pulse : 'none')} 2s ease-in-out infinite;
+  animation: ${({ status }) =>
+    status === 'connected' || status === 'reconnecting' ? pulse : 'none'}
+    ${({ status }) => (status === 'reconnecting' ? '1s' : '2s')} ease-in-out infinite;
 `;
 
 const StatusLabel = styled.span<{ status: DataSourceStatus }>`
@@ -244,6 +255,21 @@ const CancelButton = styled.button`
   font-size: 11px;
   padding: 3px 8px;
   cursor: pointer;
+  &:hover { color: #aaa; border-color: #555; }
+`;
+
+const RetryButton = styled.button`
+  background: none;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #666;
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.1s, border-color 0.1s;
   &:hover { color: #aaa; border-color: #555; }
 `;
 

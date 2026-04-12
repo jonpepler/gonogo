@@ -1,0 +1,12 @@
+services:
+  proxy:
+    build: ./packages/proxy
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      # KOS_HOST: IP or hostname of the machine running KSP.
+      # host.containers.internal reaches the host from inside a Podman container.
+      KOS_HOST: ${KOS_HOST:-host.containers.internal}
+      KOS_PORT: ${KOS_PORT:-5410}
+    restart: unless-stopped

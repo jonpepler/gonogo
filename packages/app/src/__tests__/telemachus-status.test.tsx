@@ -7,6 +7,7 @@ import { DataSourceStatusComponent } from '@gonogo/components';
 import { TelemachusDataSource, telemachusSource } from '../dataSources/telemachus';
 
 const telemachusWs = ws.link('ws://localhost:8085/datalink');
+const telemachusWs9000 = ws.link('ws://localhost:9000/datalink');
 const server = setupServer();
 
 beforeAll(() => server.listen());
@@ -172,6 +173,48 @@ describe('Telemachus Reborn data source status', () => {
       });
 
       expect(screen.getByText('connected')).toBeInTheDocument();
+    });
+  });
+
+  describe('config form integration', () => {
+    let source: TelemachusDataSource;
+
+    beforeEach(() => {
+      clearRegistry();
+      source = new TelemachusDataSource({ host: 'localhost', port: 8085 });
+      registerDataSource(source);
+    });
+
+    afterEach(() => {
+      cleanup();
+      source.disconnect();
+    });
+
+    it('reconnects to the new host/port after saving config', async () => {
+      server.use(telemachusWs.addEventListener('connection', () => {}));
+
+      render(<DataSourceStatusComponent />);
+      await act(async () => { await source.connect(); });
+      expect(screen.getByText('connected')).toBeInTheDocument();
+
+      // Open config form — form should pre-fill with current host/port
+      fireEvent.click(screen.getByRole('button', { name: /configure telemachus reborn/i }));
+      expect(screen.getByLabelText('Host')).toHaveValue('localhost');
+      expect(screen.getByLabelText('Port')).toHaveValue(8085);
+
+      // Change port and save — source should disconnect then reconnect to new port
+      server.use(telemachusWs9000.addEventListener('connection', () => {}));
+      await act(async () => {
+        const connected = new Promise<void>(resolve => {
+          const unsub = source.onStatusChange(s => { if (s === 'connected') { unsub(); resolve(); } });
+        });
+        fireEvent.change(screen.getByLabelText('Port'), { target: { value: '9000' } });
+        fireEvent.click(screen.getByRole('button', { name: /save/i }));
+        await connected;
+      });
+
+      expect(screen.getByText('connected')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
     });
   });
 });

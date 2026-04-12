@@ -8,8 +8,15 @@ interface TelemachusConfig {
 
 const DEFAULT_CONFIG: TelemachusConfig = { host: 'localhost', port: 8085 };
 const STORAGE_KEY = 'gonogo.datasource.telemachus';
+const RETRY_INTERVAL_MS = 5_000;
+const RETRY_TIMEOUT_MS = 5 * 60 * 1000;
 
-class TelemachusDataSource implements DataSource {
+interface RetryOptions {
+  retryIntervalMs?: number;
+  retryTimeoutMs?: number;
+}
+
+export class TelemachusDataSource implements DataSource {
   id = 'telemachus';
   name = 'Telemachus Reborn';
   status: DataSourceStatus = 'disconnected';
@@ -17,37 +24,33 @@ class TelemachusDataSource implements DataSource {
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private ws: WebSocket | null = null;
   private cfg: TelemachusConfig;
-  // key → set of subscriber callbacks
   private subscriptions = new Map<string, Set<(value: unknown) => void>>();
 
-  constructor(config?: TelemachusConfig) {
+  private intentionalDisconnect = false;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private retryStart: number | null = null;
+  private readonly retryIntervalMs: number;
+  private readonly retryTimeoutMs: number;
+
+  constructor(config?: TelemachusConfig, { retryIntervalMs = this.retryIntervalMs, retryTimeoutMs = RETRY_TIMEOUT_MS }: RetryOptions = {}) {
     this.cfg = config ?? this.loadConfig();
+    this.retryIntervalMs = retryIntervalMs;
+    this.retryTimeoutMs = retryTimeoutMs;
   }
 
-  // --- Connection ---
+  // --- Connection (public) ---
 
+  /** Explicitly connect, resetting any ongoing retry loop. */
   connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const url = `ws://${this.cfg.host}:${this.cfg.port}/datalink`;
-      this.ws = new WebSocket(url);
-
-      this.ws.addEventListener('open', () => {
-        this.setStatus('connected');
-        this.sendSubscription(); // re-subscribe after reconnect
-        resolve();
-      });
-      this.ws.addEventListener('message', (event) => {
-        this.handleMessage(event.data as string);
-      });
-      this.ws.addEventListener('close', () => this.setStatus('disconnected'));
-      this.ws.addEventListener('error', () => {
-        this.setStatus('error');
-        reject(new Error(`Could not connect to Telemachus Reborn at ${url}`));
-      });
-    });
+    this.stopRetrying();
+    this.retryStart = null;
+    this.intentionalDisconnect = false;
+    return this.openWebSocket();
   }
 
   disconnect(): void {
+    this.intentionalDisconnect = true;
+    this.stopRetrying();
     this.ws?.close();
     this.ws = null;
   }
@@ -77,8 +80,8 @@ class TelemachusDataSource implements DataSource {
 
   async execute(action: string): Promise<void> {
     const url = `http://${this.cfg.host}:${this.cfg.port}/telemachus/datalink?a=${encodeURIComponent(action)}`;
-    // no-cors: we don't need to read the response, so skip CORS checking entirely.
-    // The request still reaches Telemachus and the action is executed.
+    // no-cors: we don't need to read the response back, so skip CORS checking.
+    // The request still reaches Telemachus and state changes stream back via WS.
     await fetch(url, { mode: 'no-cors' });
   }
 
@@ -108,17 +111,65 @@ class TelemachusDataSource implements DataSource {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.cfg));
     } catch { /* localStorage unavailable */ }
-    // Always reconnect with the new config.
     this.disconnect();
     void this.connect();
   }
 
   // --- Private ---
 
-  /**
-   * Sends the full current subscription list to Telemachus over the WebSocket.
-   * Telemachus will stream back all subscribed values at the given rate.
-   */
+  private openWebSocket(): Promise<void> {
+    this.ws?.close();
+    return new Promise((resolve, reject) => {
+      const url = `ws://${this.cfg.host}:${this.cfg.port}/datalink`;
+      this.ws = new WebSocket(url);
+
+      this.ws.addEventListener('open', () => {
+        this.setStatus('connected');
+        this.sendSubscription();
+        resolve();
+      });
+      this.ws.addEventListener('message', (event) => {
+        this.handleMessage(event.data as string);
+      });
+      this.ws.addEventListener('close', () => {
+        this.onClose();
+      });
+      this.ws.addEventListener('error', () => {
+        reject(new Error(`Could not connect to Telemachus Reborn at ${url}`));
+      });
+    });
+  }
+
+  private onClose(): void {
+    if (this.intentionalDisconnect) {
+      this.intentionalDisconnect = false;
+      this.setStatus('disconnected');
+      return;
+    }
+
+    if (this.retryStart === null) this.retryStart = Date.now();
+
+    if (Date.now() - this.retryStart >= this.retryTimeoutMs) {
+      this.retryStart = null;
+      this.setStatus('disconnected'); // gave up — manual retry needed
+      return;
+    }
+
+    this.setStatus('reconnecting');
+    this.retryTimer = setTimeout(() => {
+      void this.openWebSocket().catch(() => {
+        // error event fires first and rejects; close event will call onClose() again
+      });
+    }, this.retryIntervalMs);
+  }
+
+  private stopRetrying(): void {
+    if (this.retryTimer !== null) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+  }
+
   private sendSubscription(): void {
     if (this.ws?.readyState === WebSocket.OPEN && this.subscriptions.size > 0) {
       this.ws.send(JSON.stringify({ run: [...this.subscriptions.keys()], rate: 250 }));

@@ -2,7 +2,7 @@
 
 import type { ComponentType } from 'react';
 
-export type DataSourceStatus = 'connected' | 'disconnected' | 'error';
+export type DataSourceStatus = 'connected' | 'disconnected' | 'reconnecting' | 'error';
 
 export interface DataKey {
   key: string;

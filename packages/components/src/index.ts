@@ -2,3 +2,4 @@
 // Add new component imports here as they are built.
 export * from './DataSourceStatus';
 export * from './ActionGroup';
+export * from './KosTerminal';

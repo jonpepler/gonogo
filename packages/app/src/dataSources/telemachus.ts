@@ -32,7 +32,7 @@ export class TelemachusDataSource implements DataSource {
   private readonly retryIntervalMs: number;
   private readonly retryTimeoutMs: number;
 
-  constructor(config?: TelemachusConfig, { retryIntervalMs = this.retryIntervalMs, retryTimeoutMs = RETRY_TIMEOUT_MS }: RetryOptions = {}) {
+  constructor(config?: TelemachusConfig, { retryIntervalMs = RETRY_INTERVAL_MS, retryTimeoutMs = RETRY_TIMEOUT_MS }: RetryOptions = {}) {
     this.cfg = config ?? this.loadConfig();
     this.retryIntervalMs = retryIntervalMs;
     this.retryTimeoutMs = retryTimeoutMs;
@@ -53,6 +53,7 @@ export class TelemachusDataSource implements DataSource {
     this.stopRetrying();
     this.ws?.close();
     this.ws = null;
+    this.setStatus('disconnected');
   }
 
   // --- Data ---
@@ -118,35 +119,32 @@ export class TelemachusDataSource implements DataSource {
   // --- Private ---
 
   private openWebSocket(): Promise<void> {
-    this.ws?.close();
+    const old = this.ws;
+    this.ws = null;
+    old?.close();
     return new Promise((resolve, reject) => {
       const url = `ws://${this.cfg.host}:${this.cfg.port}/datalink`;
-      this.ws = new WebSocket(url);
+      const ws = new WebSocket(url);
+      this.ws = ws;
 
-      this.ws.addEventListener('open', () => {
+      ws.addEventListener('open', () => {
         this.setStatus('connected');
         this.sendSubscription();
         resolve();
       });
-      this.ws.addEventListener('message', (event) => {
+      ws.addEventListener('message', (event) => {
         this.handleMessage(event.data as string);
       });
-      this.ws.addEventListener('close', () => {
-        this.onClose();
+      ws.addEventListener('close', () => {
+        if (this.ws === ws) this.onClose();
       });
-      this.ws.addEventListener('error', () => {
+      ws.addEventListener('error', () => {
         reject(new Error(`Could not connect to Telemachus Reborn at ${url}`));
       });
     });
   }
 
   private onClose(): void {
-    if (this.intentionalDisconnect) {
-      this.intentionalDisconnect = false;
-      this.setStatus('disconnected');
-      return;
-    }
-
     if (this.retryStart === null) this.retryStart = Date.now();
 
     if (Date.now() - this.retryStart >= this.retryTimeoutMs) {

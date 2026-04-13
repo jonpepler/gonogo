@@ -61,6 +61,10 @@ function DataSourceStatusComponent() {
                     </ConfigButton>
                   )}
                 </Row>
+                {source.status === 'disconnected' && (() => {
+                  const instructions = getDataSource(source.id)?.setupInstructions?.();
+                  return instructions ? <SetupInstructions>{instructions}</SetupInstructions> : null;
+                })()}
                 {isConfiguring && (
                   <ConfigForm>
                     {schema.map((field) => {
@@ -260,6 +264,19 @@ const CancelButton = styled.button`
   padding: 3px 8px;
   cursor: pointer;
   &:hover { color: #aaa; border-color: #555; }
+`;
+
+const SetupInstructions = styled.pre`
+  margin: 0;
+  padding: 8px 10px;
+  background: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #555;
+  white-space: pre-wrap;
+  line-height: 1.5;
 `;
 
 const RetryButton = styled.button`

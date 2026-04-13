@@ -2,7 +2,7 @@
   "name": "gonogo",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "sh scripts/dev.sh",
     "build": "turbo build",
     "test": "turbo test",
     "coverage": "vitest run --coverage",

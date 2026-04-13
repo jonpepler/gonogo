@@ -70,12 +70,17 @@ The foundation for everything extensible:
     name: string;
     connect(): Promise<void>;
     disconnect(): void;
-    status: DataSourceStatus; // 'connected' | 'disconnected' | 'error'
-    schema(): DataKey[];                                      // available keys
+    status: DataSourceStatus; // 'connected' | 'disconnected' | 'reconnecting' | 'error'
+    schema(): DataKey[];
     subscribe(key: string, cb: (value: unknown) => void): () => void;
+    onStatusChange(cb: (status: DataSourceStatus) => void): () => void;
+    execute(action: string): Promise<void>;
+    configSchema(): ConfigField[];
+    configure(config: Record<string, unknown>): void;
+    getConfig(): Record<string, unknown>;
   }
   ```
-  The orchestrator resolves component `dataRequirements` against registered sources at runtime. Components declare keys using a normalised format (e.g. `'vessel.altitude'`); each `DataSource` implementation maps its own API response shape onto those keys. This means components are data-source-agnostic.
+- **`useDataValue(dataSourceId, key)`** and **`useExecuteAction(dataSourceId)`** are the universal hooks that all components use to read data and fire actions. Components never call `getDataSource()` or any `DataSource` method directly. These hooks are the **PeerJS boundary**: on the main screen they call the DataSource directly; on a station screen (future) they will route through PeerJS instead. The component code doesn't change — only the hook routing does.
 
 ### `@gonogo/components`
 
@@ -141,7 +146,21 @@ Prefer tests that mock as little of the system as possible. Use [Mock Service Wo
 - **Integration tests** (in `@gonogo/app`) use MSW WebSocket/HTTP handlers to simulate KSP APIs. The real data source, real hook, and real component all run — only the network is intercepted. This is the preferred form for tests involving connection status or data flow.
 - **Unit tests** (in `@gonogo/core`, `@gonogo/components`) use the real registry with simple disconnected fixture data sources. No `vi.mock()` of internal modules. MSW is only needed when a test actually triggers a network call.
 - Avoid mocking `useDataSources` or other core hooks in component tests — render the real component with real registry state instead.
-- **`act()` warnings are always our bug** — never dismiss them. They mean a state update is escaping the `act()` boundary. The fix is usually to make the async function resolve *after* the state update (e.g. `connect()` should resolve inside the `open` handler, not before it fires).
+- **`act()` warnings are always our bug** — never dismiss them. Two common fixes:
+  1. `connect()` must resolve from *inside* the `open` event handler (after `setStatus`), not before the event fires.
+  2. In `afterEach`, call `cleanup()` before `source.disconnect()` — disconnecting while a component is still mounted triggers state updates outside `act`.
+  Use `waitFor` rather than `act` for assertions on async external events (WebSocket, PeerJS).
+
+---
+
+## Telemachus Reborn API
+
+Connects via WebSocket to `ws://host:8085/datalink`. Subscribe by sending `{ "run": ["v.sasValue", ...], "rate": 250 }`. Server streams JSON updates: `{ "v.sasValue": true, ... }`. Execute actions via HTTP GET: `GET http://host:8085/telemachus/datalink?a=<actionKey>` with `mode: 'no-cors'` (state change arrives back over the WS). Toggle keys use `f.` prefix; value keys use `v.` prefix (e.g. `f.ag1` toggles, `v.ag1Value` reads).
+
+## CI/CD
+
+- `.github/workflows/ci.yml` — runs `pnpm test` on all PRs and pushes to any branch.
+- `.github/workflows/deploy.yml` — triggers on `workflow_run` (CI passes on `main` only), builds with `pnpm turbo build --filter=@gonogo/app...`, deploys to GitHub Pages at `https://jonpepler.github.io/gonogo/`. Vite base is set to `/gonogo/`. GitHub Pages source must be set to **GitHub Actions** in repo settings.
 
 ---
 

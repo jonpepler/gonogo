@@ -45,10 +45,15 @@ function setupTelemachus(initialState: Record<string, boolean> = {}) {
     telemachusWs.addEventListener('connection', ({ client }) => {
       wsClient = client;
       client.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data as string) as { run?: string[] };
-        if (msg.run) {
-          subscribedKeys = msg.run;
+        const msg = JSON.parse(data as string) as { '+'?: string[]; '-'?: string[] };
+        if (msg['+']) {
+          for (const key of msg['+']) {
+            if (!subscribedKeys.includes(key)) subscribedKeys.push(key);
+          }
           pushState();
+        }
+        if (msg['-']) {
+          subscribedKeys = subscribedKeys.filter((k) => !msg['-']!.includes(k));
         }
       });
     }),
@@ -119,8 +124,8 @@ describe('ActionGroup component', () => {
       telemachusWs.addEventListener('connection', ({ client }) => {
         serverClient = client;
         client.addEventListener('message', ({ data }) => {
-          const msg = JSON.parse(data as string) as { run?: string[] };
-          if (msg.run) client.send(JSON.stringify({ 'v.ag1Value': true }));
+          const msg = JSON.parse(data as string) as { '+'?: string[] };
+          if (msg['+']) client.send(JSON.stringify({ 'v.ag1Value': true }));
         });
       }),
     );

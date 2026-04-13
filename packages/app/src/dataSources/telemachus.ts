@@ -63,19 +63,29 @@ export class TelemachusDataSource implements DataSource {
   }
 
   subscribe(key: string, cb: (value: unknown) => void): () => void {
-    if (!this.subscriptions.has(key)) {
-      this.subscriptions.set(key, new Set());
-    }
+    const isNewKey = !this.subscriptions.has(key);
+    if (isNewKey) this.subscriptions.set(key, new Set());
     this.subscriptions.get(key)!.add(cb);
-    this.sendSubscription();
+
+    if (isNewKey && this.ws?.readyState === WebSocket.OPEN) {
+      // Include rate on the first key to establish the update interval
+      const msg = this.subscriptions.size === 1
+        ? { '+': [key], rate: 250 }
+        : { '+': [key] };
+      this.ws.send(JSON.stringify(msg));
+    }
 
     return () => {
       const cbs = this.subscriptions.get(key);
       if (cbs) {
         cbs.delete(cb);
-        if (cbs.size === 0) this.subscriptions.delete(key);
+        if (cbs.size === 0) {
+          this.subscriptions.delete(key);
+          if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ '-': [key] }));
+          }
+        }
       }
-      this.sendSubscription();
     };
   }
 
@@ -170,7 +180,7 @@ export class TelemachusDataSource implements DataSource {
 
   private sendSubscription(): void {
     if (this.ws?.readyState === WebSocket.OPEN && this.subscriptions.size > 0) {
-      this.ws.send(JSON.stringify({ run: [...this.subscriptions.keys()], rate: 250 }));
+      this.ws.send(JSON.stringify({ '+': [...this.subscriptions.keys()], rate: 250 }));
     }
   }
 

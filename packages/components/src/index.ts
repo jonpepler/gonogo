@@ -3,3 +3,7 @@
 export * from './DataSourceStatus';
 export * from './ActionGroup';
 export * from './KosTerminal';
+export * from './CurrentOrbit';
+export * from './DistanceToTarget';
+export * from './OrbitView';
+export * from './MapView';

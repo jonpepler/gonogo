@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import styled from 'styled-components';
 import { getDataSources } from '@gonogo/core';
-import { DataSourceStatusComponent, ActionGroupComponent } from '@gonogo/components';
+import { DataSourceStatusComponent, ActionGroupComponent, KosTerminalComponent } from '@gonogo/components';
 
 export function MainScreen() {
   useEffect(() => {
@@ -13,6 +13,9 @@ export function MainScreen() {
   return (
     <Layout>
       <DataSourceStatusComponent />
+      <Terminal>
+        <KosTerminalComponent />
+      </Terminal>
       <Row>
         <ActionGroupComponent config={{ actionGroupId: 'SAS' }} />
         <ActionGroupComponent config={{ actionGroupId: 'RCS' }} />
@@ -32,6 +35,10 @@ const Layout = styled.div`
   gap: 16px;
   background: #050505;
   min-height: 100vh;
+`;
+
+const Terminal = styled.div`
+  height: 400px;
 `;
 
 const Row = styled.div`

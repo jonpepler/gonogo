@@ -38,6 +38,7 @@ export interface DataSource {
   configSchema(): ConfigField[];
   configure(config: Record<string, unknown>): void;
   getConfig(): Record<string, unknown>;
+  setupInstructions?(): string | null;
 }
 
 export type ComponentBehavior = 'gonogo-participant';

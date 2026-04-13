@@ -102,8 +102,8 @@ describe('kOS WebSocket bridge (PTY)', () => {
     await new Promise(r => ws.addEventListener('open', r));
 
     ws.send('1\r');
-    // Give the event loop a tick to propagate the message to the route handler
-    await new Promise(r => setTimeout(r, 50));
+    // Wait for the 300ms input-hold to elapse before the message reaches the PTY
+    await new Promise(r => setTimeout(r, 350));
 
     expect(fakePty.write).toHaveBeenCalledWith('1\r');
 

@@ -5,18 +5,18 @@ import { latLonToMap } from '@gonogo/core';
 import type { ComponentProps } from '@gonogo/core';
 
 interface MapViewConfig {
-  /** Body to show the map for. Must match a registered body ID. */
-  targetBody: string;
   /** Number of trajectory history points to keep. Default: 200. */
   trajectoryLength?: number;
 }
 
 function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
-  const targetBodyId = config?.targetBody;
   const trajectoryLength = config?.trajectoryLength ?? 200;
 
-  const lat  = useDataValue<number>('telemachus', 'v.lat');
-  const lon  = useDataValue<number>('telemachus', 'v.long');
+  const lat      = useDataValue<number>('telemachus', 'v.lat');
+  const lon      = useDataValue<number>('telemachus', 'v.long');
+  const bodyName = useDataValue<string>('telemachus', 'v.body');
+
+  const targetBodyId = bodyName;
 
   const baseRef    = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -73,51 +73,68 @@ function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
 
     const body = targetBodyId ? getBody(targetBodyId) : undefined;
 
-    // Background
-    ctx.fillStyle = '#0d0d0d';
-    ctx.fillRect(0, 0, w, h);
+    function drawBase(textureImage?: HTMLImageElement) {
+      if (!ctx) return;
 
-    // Body surface colour as a tinted background
-    if (body?.color) {
-      ctx.fillStyle = body.color + '22'; // very subtle tint
+      // Background
+      ctx.fillStyle = '#0d0d0d';
       ctx.fillRect(0, 0, w, h);
-    }
 
-    // Grid lines
-    ctx.strokeStyle = '#1a1a1a';
-    ctx.lineWidth = 1;
+      if (textureImage) {
+        // Equirectangular texture fills the canvas exactly
+        ctx.drawImage(textureImage, 0, 0, w, h);
+        // Darken slightly so grid lines read against bright textures
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(0, 0, w, h);
+      } else if (body?.color) {
+        // Fallback: subtle colour tint
+        ctx.fillStyle = body.color + '22';
+        ctx.fillRect(0, 0, w, h);
+      }
 
-    // Latitude lines every 30°
-    for (let lat30 = -60; lat30 <= 60; lat30 += 30) {
-      const { y } = latLonToMap(lat30, 0, w, h);
+      // Grid lines
+      ctx.strokeStyle = textureImage ? 'rgba(255,255,255,0.08)' : '#1a1a1a';
+      ctx.lineWidth = 1;
+
+      for (let lat30 = -60; lat30 <= 60; lat30 += 30) {
+        const { y } = latLonToMap(lat30, 0, w, h);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      for (let lon30 = -150; lon30 <= 180; lon30 += 30) {
+        const { x } = latLonToMap(0, lon30, w, h);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+
+      // Equator & prime meridian slightly brighter
+      ctx.strokeStyle = textureImage ? 'rgba(255,255,255,0.18)' : '#2a2a2a';
+      const { y: eqY } = latLonToMap(0, 0, w, h);
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+      ctx.moveTo(0, eqY);
+      ctx.lineTo(w, eqY);
+      ctx.stroke();
+
+      const { x: pmX } = latLonToMap(0, 0, w, h);
+      ctx.beginPath();
+      ctx.moveTo(pmX, 0);
+      ctx.lineTo(pmX, h);
       ctx.stroke();
     }
 
-    // Longitude lines every 30°
-    for (let lon30 = -150; lon30 <= 180; lon30 += 30) {
-      const { x } = latLonToMap(0, lon30, w, h);
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
+    if (body?.texture) {
+      const img = new Image();
+      img.onload = () => drawBase(img);
+      img.onerror = () => drawBase(); // fall back to colour on load failure
+      img.src = body.texture;
+    } else {
+      drawBase();
     }
-
-    // Equator & prime meridian slightly brighter
-    ctx.strokeStyle = '#2a2a2a';
-    const { y: eqY } = latLonToMap(0, 0, w, h);
-    ctx.beginPath();
-    ctx.moveTo(0, eqY);
-    ctx.lineTo(w, eqY);
-    ctx.stroke();
-
-    const { x: pmX } = latLonToMap(0, 0, w, h);
-    ctx.beginPath();
-    ctx.moveTo(pmX, 0);
-    ctx.lineTo(pmX, h);
-    ctx.stroke();
   }, [containerSize, targetBodyId]);
 
   // ── Overlay layer (fog-of-war extension point) ─────────────────────────────
@@ -184,27 +201,25 @@ function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
   }, [containerSize, lat, lon]);
 
   const body = targetBodyId ? getBody(targetBodyId) : undefined;
-  const displayName = body?.name ?? targetBodyId ?? '—';
+  const displayName = body?.name ?? targetBodyId;
 
   return (
     <Panel>
       <Header>
         <Title>MAP VIEW</Title>
-        {targetBodyId && <BodyLabel>{displayName}</BodyLabel>}
+        {displayName && <BodyLabel>{displayName}</BodyLabel>}
       </Header>
 
-      {!targetBodyId ? (
-        <NoBody>No body configured</NoBody>
-      ) : (
-        <CanvasContainer ref={containerRef}>
-          <BaseCanvas ref={baseRef} />
-          <OverlayCanvas ref={overlayRef} />
-          <DataCanvas ref={dataRef} />
-          {lat === undefined && lon === undefined && (
-            <NoSignal>No position data</NoSignal>
-          )}
-        </CanvasContainer>
-      )}
+      <CanvasContainer ref={containerRef}>
+        <BaseCanvas ref={baseRef} />
+        <OverlayCanvas ref={overlayRef} />
+        <DataCanvas ref={dataRef} />
+        {(lat === undefined || lon === undefined) && (
+          <NoSignal>
+            {targetBodyId === undefined ? 'Waiting for telemetry…' : 'No position data'}
+          </NoSignal>
+        )}
+      </CanvasContainer>
     </Panel>
   );
 }
@@ -218,9 +233,9 @@ registerComponent<MapViewConfig>({
   name: 'Map View',
   category: 'telemetry',
   component: MapViewComponent,
-  dataRequirements: ['v.lat', 'v.long'],
+  dataRequirements: ['v.lat', 'v.long', 'v.body'],
   behaviors: [],
-  defaultConfig: { targetBody: 'Kerbin', trajectoryLength: 200 },
+  defaultConfig: { trajectoryLength: 200 },
 });
 
 export { MapViewComponent };

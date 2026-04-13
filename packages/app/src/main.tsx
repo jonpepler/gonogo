@@ -6,7 +6,9 @@ import '@gonogo/components'; // triggers all component self-registration
 import './dataSources'; // triggers all data source self-registration
 import App from './App';
 
-registerStockBodies();
+// Pass the Vite base URL so texture paths resolve correctly under sub-path
+// deployments (e.g. /gonogo/bodies/ on GitHub Pages).
+registerStockBodies(`${import.meta.env.BASE_URL}bodies`);
 
 const queryClient = new QueryClient();
 

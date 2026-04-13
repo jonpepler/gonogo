@@ -51,14 +51,30 @@ export function registerKosBridge(
       try { socket.close(); } catch { /* already closed */ }
     });
 
-    // Browser → PTY
+    // Browser → PTY (with a brief hold after connect to let the telnet NAWS
+    // exchange settle — kOS reports "Garbled input" if user input races with
+    // the window-size negotiation that fires on terminal resize at mount time)
+    const INPUT_HOLD_MS = 300;
+    let inputReady = false;
+    const inputQueue: string[] = [];
+    const holdTimer = setTimeout(() => {
+      inputReady = true;
+      for (const data of inputQueue) term.write(data);
+      inputQueue.length = 0;
+    }, INPUT_HOLD_MS);
+
     socket.on('message', (raw: Buffer | string) => {
       const data = typeof raw === 'string' ? raw : raw.toString('binary');
-      term.write(data);
+      if (inputReady) {
+        term.write(data);
+      } else {
+        inputQueue.push(data);
+      }
     });
 
     // WS close → kill PTY
     socket.on('close', () => {
+      clearTimeout(holdTimer);
       sessions.delete(id);
       request.log.info({ id }, 'WS closed — killing PTY');
       try { term.kill(); } catch { /* already dead */ }

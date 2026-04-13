@@ -6,7 +6,7 @@
  * only the network is intercepted by MSW.
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { ws } from 'msw';
 import { clearRegistry, registerDataSource, registerStockBodies, clearBodies } from '@gonogo/core';
@@ -92,29 +92,51 @@ describe('CurrentOrbitComponent', () => {
 // DistanceToTarget
 // ---------------------------------------------------------------------------
 describe('DistanceToTargetComponent', () => {
-  it('shows "No target body configured" when no config given', () => {
+  afterEach(() => localStorage.clear());
+
+  it('shows prompt to configure when no body is stored', () => {
     render(<DistanceToTargetComponent />);
-    expect(screen.getByText('No target body configured')).toBeInTheDocument();
+    expect(screen.getByText(/use ⚙ to configure/i)).toBeInTheDocument();
   });
 
-  it('shows "No target set in KSP" when tar.name is undefined', () => {
-    render(<DistanceToTargetComponent config={{ targetBody: 'Mun' }} />);
+  it('shows "No target set in KSP" when body is set but no tar.name', () => {
+    localStorage.setItem('gonogo:distance-to-target:body', 'Mun');
+    render(<DistanceToTargetComponent />);
     expect(screen.getByText('No target set in KSP')).toBeInTheDocument();
   });
 
-  it('shows distance when KSP target matches configured body', async () => {
+  it('shows distance when KSP target matches stored body', async () => {
+    localStorage.setItem('gonogo:distance-to-target:body', 'Mun');
     setupTelemetry({ 'tar.name': 'Mun', 'tar.distance': 12_000_000 });
     await telemachusSource.connect();
-    render(<DistanceToTargetComponent config={{ targetBody: 'Mun' }} />);
+    render(<DistanceToTargetComponent />);
     // formatDistance(12_000_000) = '12.00 Mm'
     await waitFor(() => expect(screen.getByText('12.00 Mm')).toBeInTheDocument());
   });
 
   it('shows guidance when a different body is targeted', async () => {
+    localStorage.setItem('gonogo:distance-to-target:body', 'Mun');
     setupTelemetry({ 'tar.name': 'Duna' });
     await telemachusSource.connect();
-    render(<DistanceToTargetComponent config={{ targetBody: 'Mun' }} />);
+    render(<DistanceToTargetComponent />);
     await waitFor(() => expect(screen.getByText(/currently targeting Duna/i)).toBeInTheDocument());
+  });
+
+  it('opens config panel and lists bodies on gear button click', () => {
+    render(<DistanceToTargetComponent />);
+    fireEvent.click(screen.getByRole('button', { name: /configure target body/i }));
+    expect(screen.getByText('Select target body')).toBeInTheDocument();
+    // Stock bodies are registered in beforeEach — at least Kerbin should appear
+    expect(screen.getByText('Kerbin')).toBeInTheDocument();
+  });
+
+  it('selecting a body from the config closes the panel and saves to localStorage', () => {
+    render(<DistanceToTargetComponent />);
+    fireEvent.click(screen.getByRole('button', { name: /configure target body/i }));
+    fireEvent.click(screen.getByText('Mun'));
+    expect(screen.queryByText('Select target body')).not.toBeInTheDocument();
+    expect(localStorage.getItem('gonogo:distance-to-target:body')).toBe('Mun');
+    expect(screen.getByText('Mun')).toBeInTheDocument();
   });
 });
 
@@ -152,29 +174,34 @@ describe('OrbitViewComponent', () => {
 // ---------------------------------------------------------------------------
 describe('MapViewComponent', () => {
   it('renders MAP VIEW heading', () => {
-    render(<MapViewComponent config={{ targetBody: 'Kerbin' }} />);
+    render(<MapViewComponent />);
     expect(screen.getByText('MAP VIEW')).toBeInTheDocument();
   });
 
-  it('shows "No body configured" when no config given', () => {
+  it('shows "Waiting for telemetry" before v.body arrives', () => {
     render(<MapViewComponent />);
-    expect(screen.getByText('No body configured')).toBeInTheDocument();
+    expect(screen.getByText('Waiting for telemetry…')).toBeInTheDocument();
   });
 
-  it('shows body name in header', () => {
-    render(<MapViewComponent config={{ targetBody: 'Kerbin' }} />);
-    expect(screen.getByText('Kerbin')).toBeInTheDocument();
+  it('shows body name in header once v.body arrives', async () => {
+    setupTelemetry({ 'v.body': 'Kerbin' });
+    await telemachusSource.connect();
+    render(<MapViewComponent />);
+    await waitFor(() => expect(screen.getByText('Kerbin')).toBeInTheDocument());
   });
 
-  it('shows "No position data" before lat/lon arrive', () => {
-    render(<MapViewComponent config={{ targetBody: 'Kerbin' }} />);
+  it('shows "No position data" when body is known but lat/lon not yet received', async () => {
+    setupTelemetry({ 'v.body': 'Kerbin' });
+    await telemachusSource.connect();
+    render(<MapViewComponent />);
+    await waitFor(() => expect(screen.getByText('Kerbin')).toBeInTheDocument());
     expect(screen.getByText('No position data')).toBeInTheDocument();
   });
 
   it('hides "No position data" overlay once position arrives', async () => {
-    setupTelemetry({ 'v.lat': -0.1, 'v.long': 285.4 });
+    setupTelemetry({ 'v.body': 'Kerbin', 'v.lat': -0.1, 'v.long': 285.4 });
     await telemachusSource.connect();
-    render(<MapViewComponent config={{ targetBody: 'Kerbin' }} />);
+    render(<MapViewComponent />);
     await waitFor(() =>
       expect(screen.queryByText('No position data')).not.toBeInTheDocument(),
     );

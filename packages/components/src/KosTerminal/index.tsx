@@ -26,6 +26,7 @@ interface KosTerminalConfig {
 const CPU_ROW_RE = /\[(\d+)\]\s+\S+\s+\d+\s+(.+?)\s+\(([^(]+)\(([^)]+)\)\)/;
 const LIST_CHANGED = "--(List of CPU's has Changed)--";
 const MENU_HEADER = 'Vessel Name (CPU tagname)';
+const GARBLED_INPUT = 'Garbled selection. Try again.';
 
 function getKosDefaults() {
   const kos = getDataSource('kos');
@@ -97,18 +98,26 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
       const text = typeof data === 'string' ? data : String(data);
       term.write(text);
 
-      if (inMenuSelection && cpuName !== undefined) {
-        if (text.includes(LIST_CHANGED)) menuBuffer = '';
-        menuBuffer += text;
+      if (cpuName !== undefined) {
+        // Garbled input: reset so we auto-select on the next menu appearance
+        if (text.includes(GARBLED_INPUT)) {
+          inMenuSelection = true;
+          menuBuffer = '';
+        }
 
-        if (menuBuffer.includes(MENU_HEADER)) {
-          for (const line of menuBuffer.split('\n')) {
-            const m = CPU_ROW_RE.exec(line);
-            if (m && m[4] === cpuName) {
-              if (ws.readyState === WebSocket.OPEN) ws.send(`${m[1]}\n`);
-              inMenuSelection = false;
-              menuBuffer = '';
-              break;
+        if (inMenuSelection) {
+          if (text.includes(LIST_CHANGED)) menuBuffer = '';
+          menuBuffer += text;
+
+          if (menuBuffer.includes(MENU_HEADER)) {
+            for (const line of menuBuffer.split('\n')) {
+              const m = CPU_ROW_RE.exec(line);
+              if (m && m[4] === cpuName) {
+                if (ws.readyState === WebSocket.OPEN) ws.send(`${m[1]}\n`);
+                inMenuSelection = false;
+                menuBuffer = '';
+                break;
+              }
             }
           }
         }

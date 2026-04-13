@@ -1,6 +1,6 @@
 import type { ActionGroup } from './types';
 
-export const ACTION_GROUPS: ActionGroup[] = [
+export const ACTION_GROUPS = [
   { name: 'SAS',               toggle: 'f.sas',    value: 'v.sasValue',              description: 'SAS state' },
   { name: 'RCS',               toggle: 'f.rcs',    value: 'v.rcsValue',              description: 'RCS state' },
   { name: 'Light',             toggle: 'f.light',  value: 'v.lightValue',            description: 'Lights state' },
@@ -19,4 +19,7 @@ export const ACTION_GROUPS: ActionGroup[] = [
   { name: 'AG9',               toggle: 'f.ag9',    value: 'v.ag9Value',              description: 'Custom action group 9 state' },
   { name: 'AG10',              toggle: 'f.ag10',   value: 'v.ag10Value',             description: 'Custom action group 10 state' },
   { name: 'Stage',             toggle: 'f.stage',  value: 'v.currentStage',          description: 'Activate next stage' },
-];
+] as const satisfies ActionGroup[];
+
+/** Union of every valid action group name, derived directly from the registry. */
+export type ActionGroupId = typeof ACTION_GROUPS[number]['name'];

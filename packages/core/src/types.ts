@@ -43,18 +43,42 @@ export interface DataSource {
 
 export type ComponentBehavior = 'gonogo-participant';
 
-export interface ComponentDefinition {
+/**
+ * Props passed to every registered dashboard component.
+ *
+ * Components that need a specific config shape should supply TConfig:
+ *
+ *   function MyWidget({ config }: ComponentProps<{ value: number }>) { … }
+ *
+ * The default (`Record<string, unknown>`) is kept for backward compat and for
+ * the registry, which erases the type parameter when storing components.
+ */
+export interface ComponentProps<TConfig = Record<string, unknown>> {
+  config?: TConfig;
+}
+
+/**
+ * Registration descriptor for a dashboard component.
+ *
+ * TConfig ties the component function's expected props to the defaultConfig
+ * shape, so TypeScript catches mismatches at registration time:
+ *
+ *   registerComponent<ActionGroupConfig>({
+ *     component: ActionGroupComponent,       // ComponentType<ComponentProps<ActionGroupConfig>>
+ *     defaultConfig: { actionGroupId: 'AG1' }, // Partial<ActionGroupConfig> — checked ✓
+ *   });
+ *
+ * The registry stores ComponentDefinition<any> so the orchestrator can render
+ * any registered component without knowing its concrete TConfig.
+ */
+export interface ComponentDefinition<TConfig = Record<string, unknown>> {
   id: string;
   name: string;
   category: string;
-  component: ComponentType<ComponentProps>;
+  component: ComponentType<ComponentProps<TConfig>>;
   dataRequirements?: string[];
   behaviors?: ComponentBehavior[];
-  defaultConfig?: Record<string, unknown>;
-}
-
-export interface ComponentProps {
-  config?: Record<string, unknown>;
+  defaultConfig?: Partial<TConfig>;
 }
 
 export interface ThemeDefinition {

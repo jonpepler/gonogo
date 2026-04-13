@@ -1,10 +1,11 @@
 import styled from 'styled-components';
 import { registerComponent, useDataValue, useExecuteAction, ACTION_GROUPS } from '@gonogo/core';
-import type { ComponentProps } from '@gonogo/core';
+import type { ActionGroupId, ComponentProps } from '@gonogo/core';
 
-function ActionGroupComponent({ config }: ComponentProps) {
-  const actionGroupName = config?.actionGroupId as string | undefined;
-  const group = ACTION_GROUPS.find((g) => g.name === actionGroupName);
+type ActionGroupConfig = { actionGroupId: ActionGroupId };
+
+function ActionGroupComponent({ config }: ComponentProps<ActionGroupConfig>) {
+  const group = ACTION_GROUPS.find((g) => g.name === config?.actionGroupId);
 
   const value = useDataValue('telemachus', group?.value ?? '');
   const execute = useExecuteAction('telemachus');
@@ -37,7 +38,7 @@ function ActionGroupComponent({ config }: ComponentProps) {
   );
 }
 
-registerComponent({
+registerComponent<ActionGroupConfig>({
   id: 'action-group',
   name: 'Action Group',
   category: 'controls',

@@ -1,11 +1,16 @@
 import type { ComponentDefinition, DataSource, ThemeDefinition } from './types';
 
-const components = new Map<string, ComponentDefinition>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const components = new Map<string, ComponentDefinition<any>>();
 const dataSources = new Map<string, DataSource>();
 const themes = new Map<string, ThemeDefinition>();
 
-export function registerComponent(def: ComponentDefinition): void {
-  components.set(def.id, def);
+// Generic so that component/defaultConfig pairing is checked at the call site,
+// but erased to <any> in the registry so the orchestrator can render any component.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function registerComponent<TConfig = Record<string, unknown>>(def: ComponentDefinition<TConfig>): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  components.set(def.id, def as ComponentDefinition<any>);
 }
 
 export function registerDataSource(source: DataSource): void {
@@ -16,11 +21,13 @@ export function registerTheme(def: ThemeDefinition): void {
   themes.set(def.id, def);
 }
 
-export function getComponents(): ComponentDefinition[] {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getComponents(): ComponentDefinition<any>[] {
   return Array.from(components.values());
 }
 
-export function getComponent(id: string): ComponentDefinition | undefined {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getComponent(id: string): ComponentDefinition<any> | undefined {
   return components.get(id);
 }
 

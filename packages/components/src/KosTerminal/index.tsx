@@ -25,13 +25,12 @@ function getKosDefaults() {
   };
 }
 
-function KosTerminalComponent({ config }: ComponentProps) {
-  const cfg = config as KosTerminalConfig | undefined;
+function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
   const defaults = getKosDefaults();
-  const proxyHost = cfg?.proxyHost ?? defaults.proxyHost;
-  const proxyPort = cfg?.proxyPort ?? defaults.proxyPort;
-  const kosHost = cfg?.kosHost ?? defaults.kosHost;
-  const kosPort = cfg?.kosPort ?? defaults.kosPort;
+  const proxyHost = config?.proxyHost ?? defaults.proxyHost;
+  const proxyPort = config?.proxyPort ?? defaults.proxyPort;
+  const kosHost = config?.kosHost ?? defaults.kosHost;
+  const kosPort = config?.kosPort ?? defaults.kosPort;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -114,7 +113,7 @@ function KosTerminalComponent({ config }: ComponentProps) {
   return <Container ref={containerRef} />;
 }
 
-registerComponent({
+registerComponent<KosTerminalConfig>({
   id: 'kos-terminal',
   name: 'kOS Terminal',
   category: 'kos',

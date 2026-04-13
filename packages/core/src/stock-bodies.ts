@@ -12,13 +12,21 @@
 
 import { registerBody } from './bodies';
 
-export function registerStockBodies(): void {
+/**
+ * Base URL for body texture images. Textures are served from the app's
+ * public/bodies/ directory. Pass import.meta.env.BASE_URL from the app
+ * entrypoint to handle sub-path deployments (e.g. /gonogo/bodies/).
+ */
+export function registerStockBodies(baseUrl = 'bodies'): void {
+  const tex = (name: string) => `${baseUrl}/${name}_Color.png`;
+
   // ── Star ─────────────────────────────────────────────────────────────────
   registerBody({
     id: 'Sun',
     name: 'Kerbol',
     radius: 261_600_000,
     color: '#FFF44F',
+    // No texture available
   });
 
   // ── Inner planets ────────────────────────────────────────────────────────
@@ -28,6 +36,7 @@ export function registerStockBodies(): void {
     radius: 250_000,
     color: '#8B7355',
     parent: 'Sun',
+    // No texture available
   });
 
   registerBody({
@@ -36,6 +45,7 @@ export function registerStockBodies(): void {
     radius: 700_000,
     color: '#9B59B6',
     parent: 'Sun',
+    texture: tex('Eve'),
   });
 
   registerBody({
@@ -44,6 +54,7 @@ export function registerStockBodies(): void {
     radius: 13_000,
     color: '#A0855B',
     parent: 'Eve',
+    texture: tex('Gilly'),
   });
 
   registerBody({
@@ -52,6 +63,7 @@ export function registerStockBodies(): void {
     radius: 600_000,
     color: '#1A6B8A',
     parent: 'Sun',
+    texture: tex('Kerbin'),
   });
 
   registerBody({
@@ -60,6 +72,7 @@ export function registerStockBodies(): void {
     radius: 200_000,
     color: '#888888',
     parent: 'Kerbin',
+    texture: tex('Mun'),
   });
 
   registerBody({
@@ -68,6 +81,7 @@ export function registerStockBodies(): void {
     radius: 60_000,
     color: '#B8D4B8',
     parent: 'Kerbin',
+    texture: tex('Minmus'),
   });
 
   registerBody({
@@ -76,6 +90,7 @@ export function registerStockBodies(): void {
     radius: 320_000,
     color: '#C1440E',
     parent: 'Sun',
+    texture: tex('Duna'),
   });
 
   registerBody({
@@ -84,6 +99,7 @@ export function registerStockBodies(): void {
     radius: 130_000,
     color: '#9B9B8B',
     parent: 'Duna',
+    texture: tex('Ike'),
   });
 
   registerBody({
@@ -92,6 +108,7 @@ export function registerStockBodies(): void {
     radius: 138_000,
     color: '#7A7A6A',
     parent: 'Sun',
+    texture: tex('Dres'),
   });
 
   // ── Outer system ─────────────────────────────────────────────────────────
@@ -101,6 +118,7 @@ export function registerStockBodies(): void {
     radius: 6_000_000,
     color: '#4A7C3F',
     parent: 'Sun',
+    // No texture available
   });
 
   registerBody({
@@ -109,6 +127,7 @@ export function registerStockBodies(): void {
     radius: 500_000,
     color: '#1E6091',
     parent: 'Jool',
+    texture: tex('Laythe'),
   });
 
   registerBody({
@@ -117,6 +136,7 @@ export function registerStockBodies(): void {
     radius: 300_000,
     color: '#B0C4D8',
     parent: 'Jool',
+    texture: tex('Vall'),
   });
 
   registerBody({
@@ -125,6 +145,7 @@ export function registerStockBodies(): void {
     radius: 600_000,
     color: '#A0A080',
     parent: 'Jool',
+    texture: tex('Tylo'),
   });
 
   registerBody({
@@ -133,6 +154,7 @@ export function registerStockBodies(): void {
     radius: 65_000,
     color: '#6B5B45',
     parent: 'Jool',
+    texture: tex('Bop'),
   });
 
   registerBody({
@@ -141,6 +163,7 @@ export function registerStockBodies(): void {
     radius: 44_000,
     color: '#D4C878',
     parent: 'Jool',
+    texture: tex('Pol'),
   });
 
   registerBody({
@@ -149,5 +172,6 @@ export function registerStockBodies(): void {
     radius: 210_000,
     color: '#E8E8F0',
     parent: 'Sun',
+    texture: tex('Eeloo'),
   });
 }

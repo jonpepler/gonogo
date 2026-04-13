@@ -42,8 +42,8 @@ export function MainScreen() {
       <Row>
         <CurrentOrbitComponent />
         <OrbitViewComponent />
-        <DistanceToTargetComponent config={{ targetBody: 'Mun' }} />
-        <MapViewComponent config={{ targetBody: 'Kerbin' }} />
+        <DistanceToTargetComponent />
+        <MapViewComponent />
       </Row>
     </Layout>
   );

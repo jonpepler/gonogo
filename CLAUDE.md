@@ -20,7 +20,7 @@ packages/
   core/       — Plugin registry, shared TS types, React contexts, GO/NO-GO system
   components/ — Built-in dashboard component library (uses core registry)
   app/        — Vite + React SPA (main screen + station mode)
-  proxy/      — Lightweight Fastify server: kOS telnet → WebSocket bridge
+  telnet-proxy/ — Fastify server: spawns system telnet via node-pty, bridges to WebSocket
 ```
 
 **Tooling:** pnpm workspaces + Turborepo. Package names use the `@gonogo/` scope.
@@ -36,7 +36,7 @@ pnpm build            # build all packages via Turborepo
 pnpm test             # run tests across all packages
 pnpm lint             # lint all packages
 pnpm --filter @gonogo/app dev       # run only the SPA
-pnpm --filter @gonogo/proxy dev     # run only the proxy server
+pnpm --filter @gonogo/telnet-proxy dev     # run only the telnet proxy server
 pnpm --filter @gonogo/core test     # test a single package
 ```
 
@@ -48,7 +48,7 @@ pnpm --filter @gonogo/core test     # test a single package
 
 ```
 KSP (Telemachus Reborn HTTP/WS) ──→ Main screen (direct, React Query)
-KSP (kOS via telnet)            ──→ @gonogo/proxy (Fastify + telnet client)
+KSP (kOS via telnet)            ──→ @gonogo/telnet-proxy (Fastify + node-pty + system telnet)
                                          └──→ Main screen (WebSocket)
 Main screen ←──→ Station screens (PeerJS data channels, via peerjs.com broker)
 ```
@@ -96,13 +96,13 @@ The Vite SPA. Key responsibilities:
 
 - **Dashboard orchestrator** — a layout engine built on [React Grid Layout](https://github.com/react-grid-layout/react-grid-layout) (`ResponsiveGridLayout`) that reads the current layout config and renders registered components by ID. It does not hardcode any component — it only knows about the registry. Positions are stored in **grid units** (column/row spans), not pixels, so layouts are resolution-independent. The serialised layout format stores a per-breakpoint map (`lg`, `md`, `sm`, etc.) so the grid reflows across screen sizes. Per-instance component config is stored alongside the layout.
 - **Telemachus Reborn client** — direct HTTP/WS integration using React Query. Components that need telemetry data declare requirements; the orchestrator resolves and subscribes to the right endpoint.
-- **kOS WebSocket client** — connects to `@gonogo/proxy`. The proxy status is shown persistently in the main screen UI. If the proxy is not reachable, affected components degrade gracefully.
+- **kOS WebSocket client** — connects to `@gonogo/telnet-proxy`. The proxy status is shown persistently in the main screen UI. If the proxy is not reachable, affected components degrade gracefully.
 - **PeerJS integration** — the main screen acts as the peer host. Stations connect as peers. The main screen distributes a serialised snapshot of data to all peers; stations can also send state back (e.g. GO/NO-GO votes).
 - **Station config** — localStorage-first. Stations can request a config from the main screen over PeerJS; the main screen can push saved configs to connecting stations.
 
-### `@gonogo/proxy`
+### `@gonogo/telnet-proxy`
 
-A minimal Fastify server. Its only job is bridging kOS telnet sessions to a WebSocket that the browser can consume. It should be runnable with a single command and have clear setup instructions in its own README. The main screen should show an unambiguous status indicator for this connection.
+A minimal Fastify server. Its only job is bridging kOS telnet sessions to a WebSocket that the browser can consume — by spawning `telnet host port` via `node-pty` so all IAC negotiation is handled by the system telnet binary. It should be runnable with a single command and have clear setup instructions in its own README. The main screen should show an unambiguous status indicator for this connection.
 
 ---
 
@@ -167,7 +167,7 @@ Connects via WebSocket to `ws://host:8085/datalink`. Subscribe by sending `{ "ru
 ## Key Design Constraints
 
 - **Main screen is the sole KSP data consumer.** Stations never talk to KSP directly; they receive data exclusively from the main screen over PeerJS.
-- **Proxy is optional infrastructure, not a core dependency.** The app must function (minus kOS features) without it. Never make the proxy a hard startup requirement.
+- **Telnet proxy is optional infrastructure, not a core dependency.** The app must function (minus kOS features) without it. Never make the proxy a hard startup requirement.
 - **PeerJS broker is configurable.** Default to `0.peerjs.com` but expose a config option (environment variable or settings UI) to point at a self-hosted broker.
 - **Themes are runtime-switchable.** The ThemeProvider must be driven by the active theme from the registry, not hardcoded at build time.
 - **Station identity is localStorage-first.** Never assume a station has a server-side identity. Server-saved configs are a convenience layer on top of a fully local-first station.

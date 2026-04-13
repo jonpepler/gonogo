@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
 import styled from 'styled-components';
 import { getDataSources } from '@gonogo/core';
-import { DataSourceStatusComponent, ActionGroupComponent, KosTerminalComponent } from '@gonogo/components';
+import {
+  DataSourceStatusComponent,
+  ActionGroupComponent,
+  KosTerminalComponent,
+  CurrentOrbitComponent,
+  DistanceToTargetComponent,
+  OrbitViewComponent,
+  MapViewComponent,
+} from '@gonogo/components';
 
 export function MainScreen() {
   useEffect(() => {
@@ -30,6 +38,12 @@ export function MainScreen() {
         <ActionGroupComponent config={{ actionGroupId: 'Brake' }} />
         <ActionGroupComponent config={{ actionGroupId: 'Light' }} />
         <ActionGroupComponent config={{ actionGroupId: 'AG1' }} />
+      </Row>
+      <Row>
+        <CurrentOrbitComponent />
+        <OrbitViewComponent />
+        <DistanceToTargetComponent config={{ targetBody: 'Mun' }} />
+        <MapViewComponent config={{ targetBody: 'Kerbin' }} />
       </Row>
     </Layout>
   );

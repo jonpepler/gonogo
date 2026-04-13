@@ -1,6 +1,6 @@
 services:
-  proxy:
-    build: ./packages/proxy
+  telnet-proxy:
+    build: ./packages/telnet-proxy
     ports:
       - "3001:3001"
     environment:

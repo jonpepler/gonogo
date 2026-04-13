@@ -13,9 +13,16 @@ export function MainScreen() {
   return (
     <Layout>
       <DataSourceStatusComponent />
-      <Terminal>
-        <KosTerminalComponent />
-      </Terminal>
+      <TerminalRow>
+        <TerminalLabel>Interactive</TerminalLabel>
+        <Terminal>
+          <KosTerminalComponent />
+        </Terminal>
+        <TerminalLabel>Read-only (system CPU)</TerminalLabel>
+        <Terminal>
+          <KosTerminalComponent config={{ readOnly: true, cpuName: 'system' }} />
+        </Terminal>
+      </TerminalRow>
       <Row>
         <ActionGroupComponent config={{ actionGroupId: 'SAS' }} />
         <ActionGroupComponent config={{ actionGroupId: 'RCS' }} />
@@ -37,8 +44,22 @@ const Layout = styled.div`
   min-height: 100vh;
 `;
 
+const TerminalRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const TerminalLabel = styled.span`
+  font-family: monospace;
+  font-size: 11px;
+  color: #555;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+`;
+
 const Terminal = styled.div`
-  height: 400px;
+  height: 300px;
 `;
 
 const Row = styled.div`

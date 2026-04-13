@@ -11,7 +11,21 @@ interface KosTerminalConfig {
   proxyPort?: number;
   kosHost?: string;
   kosPort?: number;
+  /** When true, keystrokes are not forwarded to the PTY. */
+  readOnly?: boolean;
+  /**
+   * Tagname of the CPU to auto-select when the kOS connection menu appears
+   * (the inner part of the "(partType(tagname))" entry in the menu).
+   * If omitted, the menu is presented interactively.
+   */
+  cpuName?: string;
 }
+
+// Matches a CPU row: " [1]   no    0     Vessel Name (KAL9000(tagname))"
+// Groups: 1=number, 2=vesselName, 3=partType, 4=tagname
+const CPU_ROW_RE = /\[(\d+)\]\s+\S+\s+\d+\s+(.+?)\s+\(([^(]+)\(([^)]+)\)\)/;
+const LIST_CHANGED = "--(List of CPU's has Changed)--";
+const MENU_HEADER = 'Vessel Name (CPU tagname)';
 
 function getKosDefaults() {
   const kos = getDataSource('kos');
@@ -31,6 +45,8 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
   const proxyPort = config?.proxyPort ?? defaults.proxyPort;
   const kosHost = config?.kosHost ?? defaults.kosHost;
   const kosPort = config?.kosPort ?? defaults.kosPort;
+  const readOnly = config?.readOnly ?? false;
+  const cpuName = config?.cpuName;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -52,13 +68,21 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
       },
       fontFamily: 'monospace',
       fontSize: 13,
-      cursorBlink: true,
+      cursorBlink: !readOnly,
     });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
     fitAddon.fit();
     termRef.current = term;
+
+    if (readOnly) {
+      term.writeln('\x1b[2m[read-only]\x1b[0m');
+    }
+
+    // CPU auto-selection state — reset per effect instance
+    let menuBuffer = '';
+    let inMenuSelection = cpuName !== undefined;
 
     const url = `ws://${proxyHost}:${proxyPort}/kos`
       + `?host=${encodeURIComponent(kosHost)}&port=${kosPort}&id=${sessionId}`;
@@ -72,6 +96,23 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
     ws.addEventListener('message', ({ data }) => {
       const text = typeof data === 'string' ? data : String(data);
       term.write(text);
+
+      if (inMenuSelection && cpuName !== undefined) {
+        if (text.includes(LIST_CHANGED)) menuBuffer = '';
+        menuBuffer += text;
+
+        if (menuBuffer.includes(MENU_HEADER)) {
+          for (const line of menuBuffer.split('\n')) {
+            const m = CPU_ROW_RE.exec(line);
+            if (m && m[4] === cpuName) {
+              if (ws.readyState === WebSocket.OPEN) ws.send(`${m[1]}\n`);
+              inMenuSelection = false;
+              menuBuffer = '';
+              break;
+            }
+          }
+        }
+      }
     });
 
     ws.addEventListener('close', () => {
@@ -83,9 +124,11 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
     });
 
     // Terminal keystrokes → PTY (character-by-character, no buffering)
-    term.onData((data) => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(data);
-    });
+    if (!readOnly) {
+      term.onData((data) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(data);
+      });
+    }
 
     // Resize events → proxy HTTP endpoint (keeps the WS stream clean)
     term.onResize(({ cols, rows }) => {
@@ -108,9 +151,9 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
       termRef.current = null;
     };
   // Config values are primitives — re-run the effect if any change
-  }, [proxyHost, proxyPort, kosHost, kosPort]);
+  }, [proxyHost, proxyPort, kosHost, kosPort, readOnly, cpuName]);
 
-  return <Container ref={containerRef} />;
+  return <Container ref={containerRef} $readOnly={readOnly} />;
 }
 
 registerComponent<KosTerminalConfig>({
@@ -130,12 +173,12 @@ registerComponent<KosTerminalConfig>({
 
 export { KosTerminalComponent };
 
-const Container = styled.div`
+const Container = styled.div<{ $readOnly?: boolean }>`
   width: 100%;
   height: 100%;
   min-height: 300px;
   background: #0d0d0d;
-  border: 1px solid #2a2a2a;
+  border: 1px solid ${({ $readOnly }) => ($readOnly ? '#1a1a2e' : '#2a2a2a')};
   border-radius: 4px;
   overflow: hidden;
 

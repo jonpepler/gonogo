@@ -2,7 +2,8 @@ import type { ComponentDefinition, DataSource, ThemeDefinition } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const components = new Map<string, ComponentDefinition<any>>();
-const dataSources = new Map<string, DataSource>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dataSources = new Map<string, DataSource<any>>();
 const themes = new Map<string, ThemeDefinition>();
 
 // Generic so that component/defaultConfig pairing is checked at the call site,
@@ -13,8 +14,10 @@ export function registerComponent<TConfig = Record<string, unknown>>(def: Compon
   components.set(def.id, def as ComponentDefinition<any>);
 }
 
-export function registerDataSource(source: DataSource): void {
-  dataSources.set(source.id, source);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function registerDataSource<TConfig extends Record<string, unknown> = Record<string, unknown>>(source: DataSource<TConfig>): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dataSources.set(source.id, source as DataSource<any>);
 }
 
 export function registerTheme(def: ThemeDefinition): void {
@@ -31,11 +34,13 @@ export function getComponent(id: string): ComponentDefinition<any> | undefined {
   return components.get(id);
 }
 
-export function getDataSources(): DataSource[] {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getDataSources(): DataSource<any>[] {
   return Array.from(dataSources.values());
 }
 
-export function getDataSource(id: string): DataSource | undefined {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getDataSource(id: string): DataSource<any> | undefined {
   return dataSources.get(id);
 }
 

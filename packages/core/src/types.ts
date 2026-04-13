@@ -25,7 +25,15 @@ export interface ActionGroup {
   description: string;
 }
 
-export interface DataSource {
+/**
+ * Base interface for all data sources. TConfig types the config object so that
+ * concrete sources can return a typed config from getConfig() and accept a typed
+ * config in configure(). The registry erases TConfig to the default so the config
+ * panel can work generically against any source.
+ *
+ * Follows the same generic pattern as ComponentDefinition<TConfig>.
+ */
+export interface DataSource<TConfig extends Record<string, unknown> = Record<string, unknown>> {
   id: string;
   name: string;
   connect(): Promise<void>;
@@ -36,8 +44,9 @@ export interface DataSource {
   onStatusChange(cb: (status: DataSourceStatus) => void): () => void;
   execute(action: string): Promise<void>;
   configSchema(): ConfigField[];
+  /** Always accepts Record<string,unknown> so the generic config form can call it without knowing TConfig. */
   configure(config: Record<string, unknown>): void;
-  getConfig(): Record<string, unknown>;
+  getConfig(): TConfig;
   setupInstructions?(): string | null;
 }
 

@@ -1,7 +1,7 @@
 import { registerDataSource } from '@gonogo/core';
 import type { DataSource, DataSourceStatus, DataKey, ConfigField } from '@gonogo/core';
 
-interface TelemachusConfig {
+export interface TelemachusConfig extends Record<string, unknown> {
   host: string;
   port: number;
 }
@@ -16,7 +16,7 @@ interface RetryOptions {
   retryTimeoutMs?: number;
 }
 
-export class TelemachusDataSource implements DataSource {
+export class TelemachusDataSource implements DataSource<TelemachusConfig> {
   id = 'telemachus';
   name = 'Telemachus Reborn';
   status: DataSourceStatus = 'disconnected';
@@ -110,7 +110,7 @@ export class TelemachusDataSource implements DataSource {
     ];
   }
 
-  getConfig(): Record<string, unknown> {
+  getConfig(): TelemachusConfig {
     return { host: this.cfg.host, port: this.cfg.port };
   }
 

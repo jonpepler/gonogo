@@ -2,7 +2,7 @@ import { registerDataSource } from '@gonogo/core';
 import type { DataSource, DataSourceStatus, DataKey, ConfigField } from '@gonogo/core';
 import { parseKosMenu, parseListChanged } from './kos-menu-parser';
 
-interface KosConfig {
+export interface KosConfig extends Record<string, unknown> {
   host: string;
   port: number;
   kosHost: string;
@@ -20,7 +20,7 @@ interface RetryOptions {
   retryTimeoutMs?: number;
 }
 
-export class KosDataSource implements DataSource {
+export class KosDataSource implements DataSource<KosConfig> {
   id = 'kos';
   name = 'kOS';
   status: DataSourceStatus = 'disconnected';
@@ -110,7 +110,7 @@ export class KosDataSource implements DataSource {
     ];
   }
 
-  getConfig(): Record<string, unknown> {
+  getConfig(): KosConfig {
     return {
       host: this.cfg.host,
       port: this.cfg.port,

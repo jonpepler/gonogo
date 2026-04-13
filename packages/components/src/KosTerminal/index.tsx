@@ -16,7 +16,7 @@ interface KosTerminalConfig {
 function getKosDefaults() {
   const kos = getDataSource('kos');
   if (!kos) return { proxyHost: 'localhost', proxyPort: 3001, kosHost: 'localhost', kosPort: 5410 };
-  const c = kos.getConfig() as Record<string, unknown>;
+  const c = kos.getConfig();
   return {
     proxyHost: typeof c.host === 'string' ? c.host : 'localhost',
     proxyPort: typeof c.port === 'number' ? c.port : 3001,

@@ -7,7 +7,7 @@ type ActionGroupConfig = { actionGroupId: ActionGroupId };
 function ActionGroupComponent({ config }: ComponentProps<ActionGroupConfig>) {
   const group = ACTION_GROUPS.find((g) => g.name === config?.actionGroupId);
 
-  const value = useDataValue('telemachus', group?.value ?? '');
+  const value = useDataValue<boolean>('telemachus', group?.value ?? '');
   const execute = useExecuteAction('telemachus');
 
   if (!group) {
@@ -15,7 +15,7 @@ function ActionGroupComponent({ config }: ComponentProps<ActionGroupConfig>) {
   }
 
   const isOn = value === true;
-  const isUnknown = value === undefined || value === null;
+  const isUnknown = value === undefined;
 
   const handleToggle = () => {
     if (group.toggle) void execute(group.toggle);

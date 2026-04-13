@@ -1,8 +1,8 @@
 import { useSyncExternalStore, useCallback, useRef } from 'react';
 import { getDataSource } from '../registry';
 
-export function useDataValue(dataSourceId: string, key: string): unknown {
-  const valueRef = useRef<unknown>(undefined);
+export function useDataValue<T = unknown>(dataSourceId: string, key: string): T | undefined {
+  const valueRef = useRef<T | undefined>(undefined);
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
@@ -10,7 +10,7 @@ export function useDataValue(dataSourceId: string, key: string): unknown {
       if (!source) return () => {};
 
       const unsubData = source.subscribe(key, (val) => {
-        valueRef.current = val;
+        valueRef.current = val as T;
         onStoreChange();
       });
 

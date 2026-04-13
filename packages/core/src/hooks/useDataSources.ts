@@ -8,22 +8,21 @@ export interface DataSourceState {
 }
 
 export function useDataSources(): DataSourceState[] {
-  const sources = getDataSources();
-
   // subscribe tells React which external events should trigger a re-check.
-  // Stable reference: sources are registered before React mounts.
+  // getDataSources() is called inside the callback so it always sees the
+  // current set of registered sources without needing them as a dependency.
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
-      const unsubscribers = sources.map((s) => s.onStatusChange(onStoreChange));
+      const unsubscribers = getDataSources().map((s) => s.onStatusChange(onStoreChange));
       return () => unsubscribers.forEach((u) => u());
     },
-    [], // eslint-disable-line react-hooks/exhaustive-deps
+    [],
   );
 
   // getSnapshot returns a primitive so React can compare by equality.
   const getSnapshot = useCallback(
-    () => sources.map((s) => s.status).join(','),
-    [], // eslint-disable-line react-hooks/exhaustive-deps
+    () => getDataSources().map((s) => s.status).join(','),
+    [],
   );
 
   // useSyncExternalStore re-reads the snapshot on every onStoreChange call,
@@ -31,5 +30,5 @@ export function useDataSources(): DataSourceState[] {
   // caused by WebSocket/external events updating state outside React's scheduler.
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  return sources.map((s) => ({ id: s.id, name: s.name, status: s.status }));
+  return getDataSources().map((s) => ({ id: s.id, name: s.name, status: s.status }));
 }

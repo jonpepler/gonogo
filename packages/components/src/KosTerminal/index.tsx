@@ -108,7 +108,7 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
       termRef.current = null;
     };
   // Config values are primitives — re-run the effect if any change
-  }, [proxyHost, proxyPort, kosHost, kosPort]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [proxyHost, proxyPort, kosHost, kosPort]);
 
   return <Container ref={containerRef} />;
 }

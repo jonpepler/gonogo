@@ -30,10 +30,18 @@ export interface BodyDefinition {
   /** Fallback display colour (CSS colour string) used when no texture is available. */
   color?: string;
   /**
-   * Rotational offset in degrees applied when mapping longitude 0 to the texture.
-   * Defaults to 0 (prime meridian at left edge of texture).
+   * Longitude correction in degrees added to Telemachus v.long before mapping
+   * to canvas/texture coordinates. Compensates for differences between the
+   * texture's prime meridian and KSP's coordinate system.
+   * Positive values shift the plotted position eastward (right on the map).
+   * Defaults to 0; tune empirically per body.
    */
-  rotationOffset?: number;
+  longitudeOffset?: number;
+  /**
+   * Latitude correction in degrees added to Telemachus v.lat before mapping.
+   * Defaults to 0.
+   */
+  latitudeOffset?: number;
   /** ID of the parent body (e.g. "Kerbin" for "Mun"). Absent for the star. */
   parent?: string;
   /** Texture map metadata, required for accurate lat/lon → pixel mapping. */

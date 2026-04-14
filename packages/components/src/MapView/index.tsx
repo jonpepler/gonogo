@@ -159,6 +159,18 @@ function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
 
     ctx.clearRect(0, 0, w, h);
 
+    // Apply per-body coordinate offsets to align plotted positions with the
+    // texture's prime meridian. Longitude wraps at ±180; latitude clamps.
+    const body = targetBodyId ? getBody(targetBodyId) : undefined;
+    const lonOff = body?.longitudeOffset ?? 0;
+    const latOff = body?.latitudeOffset ?? 0;
+
+    function adjustedMap(rawLat: number, rawLon: number) {
+      const adjLon = ((rawLon + lonOff + 180) % 360 + 360) % 360 - 180;
+      const adjLat = Math.max(-90, Math.min(90, rawLat + latOff));
+      return latLonToMap(adjLat, adjLon, w, h);
+    }
+
     const trajectory = trajectoryRef.current;
 
     // Trajectory trail
@@ -168,12 +180,12 @@ function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
       ctx.lineWidth = 1.5;
 
       const first = trajectory[0];
-      const { x: fx, y: fy } = latLonToMap(first.lat, first.lon, w, h);
+      const { x: fx, y: fy } = adjustedMap(first.lat, first.lon);
       ctx.moveTo(fx, fy);
 
       for (let i = 1; i < trajectory.length; i++) {
         const pt = trajectory[i];
-        const { x, y } = latLonToMap(pt.lat, pt.lon, w, h);
+        const { x, y } = adjustedMap(pt.lat, pt.lon);
         ctx.lineTo(x, y);
       }
       ctx.stroke();
@@ -181,7 +193,7 @@ function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
 
     // Vessel dot
     if (lat !== undefined && lon !== undefined) {
-      const { x, y } = latLonToMap(lat, lon, w, h);
+      const { x, y } = adjustedMap(lat, lon);
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#00ff88';

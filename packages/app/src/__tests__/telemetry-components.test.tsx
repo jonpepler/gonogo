@@ -6,7 +6,7 @@
  * only the network is intercepted by MSW.
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { ws } from 'msw';
 import { clearRegistry, registerDataSource, registerStockBodies, clearBodies } from '@gonogo/core';
@@ -92,51 +92,26 @@ describe('CurrentOrbitComponent', () => {
 // DistanceToTarget
 // ---------------------------------------------------------------------------
 describe('DistanceToTargetComponent', () => {
-  afterEach(() => localStorage.clear());
-
-  it('shows prompt to configure when no body is stored', () => {
-    render(<DistanceToTargetComponent />);
-    expect(screen.getByText(/use ⚙ to configure/i)).toBeInTheDocument();
-  });
-
-  it('shows "No target set in KSP" when body is set but no tar.name', () => {
-    localStorage.setItem('gonogo:distance-to-target:body', 'Mun');
+  it('shows "No target set in KSP" when tar.name is not yet received', () => {
     render(<DistanceToTargetComponent />);
     expect(screen.getByText('No target set in KSP')).toBeInTheDocument();
   });
 
-  it('shows distance when KSP target matches stored body', async () => {
-    localStorage.setItem('gonogo:distance-to-target:body', 'Mun');
+  it('shows target name and distance when telemetry arrives', async () => {
     setupTelemetry({ 'tar.name': 'Mun', 'tar.distance': 12_000_000 });
     await telemachusSource.connect();
     render(<DistanceToTargetComponent />);
+    await waitFor(() => expect(screen.getByText('Mun')).toBeInTheDocument());
     // formatDistance(12_000_000) = '12.00 Mm'
     await waitFor(() => expect(screen.getByText('12.00 Mm')).toBeInTheDocument());
   });
 
-  it('shows guidance when a different body is targeted', async () => {
-    localStorage.setItem('gonogo:distance-to-target:body', 'Mun');
+  it('shows target name with dash when distance is unavailable', async () => {
     setupTelemetry({ 'tar.name': 'Duna' });
     await telemachusSource.connect();
     render(<DistanceToTargetComponent />);
-    await waitFor(() => expect(screen.getByText(/currently targeting Duna/i)).toBeInTheDocument());
-  });
-
-  it('opens config panel and lists bodies on gear button click', () => {
-    render(<DistanceToTargetComponent />);
-    fireEvent.click(screen.getByRole('button', { name: /configure target body/i }));
-    expect(screen.getByText('Select target body')).toBeInTheDocument();
-    // Stock bodies are registered in beforeEach — at least Kerbin should appear
-    expect(screen.getByText('Kerbin')).toBeInTheDocument();
-  });
-
-  it('selecting a body from the config closes the panel and saves to localStorage', () => {
-    render(<DistanceToTargetComponent />);
-    fireEvent.click(screen.getByRole('button', { name: /configure target body/i }));
-    fireEvent.click(screen.getByText('Mun'));
-    expect(screen.queryByText('Select target body')).not.toBeInTheDocument();
-    expect(localStorage.getItem('gonogo:distance-to-target:body')).toBe('Mun');
-    expect(screen.getByText('Mun')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Duna')).toBeInTheDocument());
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 });
 

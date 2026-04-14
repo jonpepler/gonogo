@@ -45,8 +45,10 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
   const baseRef    = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const dataRef    = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Observes MapOuter (the full available area) so we can letterbox correctly
+  const outerRef = useRef<HTMLDivElement>(null);
 
+  // Letterboxed canvas pixel dimensions — cW = min(outerW, outerH * 2), cH = cW / 2
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
 
   // Trajectory history buffer: [{lat, lon}, ...]
@@ -55,16 +57,19 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
   // Track previous lat/lon to avoid duplicate pushes
   const prevPosRef = useRef<{ lat: number; lon: number } | null>(null);
 
-  // ── ResizeObserver ─────────────────────────────────────────────────────────
+  // ── ResizeObserver — watches MapOuter, computes letterboxed canvas size ────
   useEffect(() => {
-    const el = containerRef.current;
+    const el = outerRef.current;
     if (!el) return;
 
     const obs = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
       const { width, height } = entry.contentRect;
-      setContainerSize({ w: Math.floor(width), h: Math.floor(height) });
+      // 2:1 contain: fill width unless that would exceed the available height
+      const cW = Math.floor(Math.min(width, height * 2));
+      const cH = Math.floor(cW / 2);
+      setContainerSize({ w: cW, h: cH });
     });
 
     obs.observe(el);
@@ -246,9 +251,13 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
         {displayName && <BodyLabel>{displayName}</BodyLabel>}
       </Header>
 
-      {/* Letterbox wrapper: centres the 2:1 canvas in available space */}
-      <MapOuter>
-        <CanvasContainer ref={containerRef}>
+      {/* Letterbox wrapper: observes available space, sizes canvas to fit 2:1 */}
+      <MapOuter ref={outerRef}>
+        <CanvasContainer
+          style={containerSize
+            ? { width: containerSize.w, height: containerSize.h }
+            : undefined}
+        >
           <BaseCanvas ref={baseRef} />
           <OverlayCanvas ref={overlayRef} />
           <DataCanvas ref={dataRef} />
@@ -262,9 +271,9 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
 
       {showTelemetry && (
         <TelemetryPanel>
-          {telemetryKeys.map((key) => {
+          {telemetryKeys.map((key, idx) => {
             const opt = TELEMETRY_OPTIONS.find((o) => o.key === key);
-            return <TelemetryRow key={key} dataKey={key} label={opt?.label ?? key} />;
+            return <TelemetryRow key={key} dataKey={key} label={opt?.label ?? key} colorIndex={idx} />;
           })}
         </TelemetryPanel>
       )}
@@ -276,13 +285,31 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
 // Telemetry row — own component so useDataValue can be called per key
 // ---------------------------------------------------------------------------
 
-function TelemetryRow({ dataKey, label }: { dataKey: string; label: string }) {
+const TELEMETRY_COLOURS = [
+  '#00cc66', // green
+  '#4499ff', // blue
+  '#ff8c00', // orange
+  '#cc44cc', // purple
+  '#ff4466', // red-pink
+  '#00cccc', // cyan
+  '#cccc00', // yellow
+  '#ff6633', // orange-red
+];
+
+function formatTelValue(value: unknown): string {
+  if (value === undefined) return '—';
+  const n = Number(value);
+  if (!isNaN(n) && typeof value !== 'boolean') return n.toFixed(2);
+  return String(value);
+}
+
+function TelemetryRow({ dataKey, label, colorIndex }: { dataKey: string; label: string; colorIndex: number }) {
   const value = useDataValue<unknown>('telemachus', dataKey);
-  const display = value === undefined ? '—' : String(value);
+  const colour = TELEMETRY_COLOURS[colorIndex % TELEMETRY_COLOURS.length];
   return (
     <TelRow>
-      <TelKey>{label}</TelKey>
-      <TelValue>{display}</TelValue>
+      <TelKey $colour={colour}>{label}</TelKey>
+      <TelValue $colour={colour}>{formatTelValue(value)}</TelValue>
     </TelRow>
   );
 }
@@ -410,10 +437,13 @@ const BodyLabel = styled.span`
   letter-spacing: 0.05em;
 `;
 
-/** Fills leftover space and centres the 2:1 canvas with letterboxing. */
+/**
+ * Fills leftover space. The ResizeObserver measures this element's actual
+ * content rect and computes letterboxed pixel dimensions for CanvasContainer.
+ */
 const MapOuter = styled.div`
   flex: 1;
-  min-height: 60px;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -421,15 +451,12 @@ const MapOuter = styled.div`
 `;
 
 /**
- * The actual canvas frame. CSS `aspect-ratio` + `max-height` together produce
- * letterboxing: the box is as wide as possible (up to 100%) but never taller
- * than the outer, so black bars appear when the container isn't 2:1.
+ * Sized explicitly via inline style (width/height in px) so the canvas is
+ * always exactly 2:1 regardless of which dimension is the bottleneck.
  */
 const CanvasContainer = styled.div`
   position: relative;
-  width: 100%;
-  max-height: 100%;
-  aspect-ratio: 2 / 1;
+  flex-shrink: 0;
   border-radius: 2px;
   overflow: hidden;
 `;
@@ -470,20 +497,26 @@ const TelemetryPanel = styled.div`
 
 const TelRow = styled.div`
   display: flex;
-  gap: 6px;
-  align-items: baseline;
-  font-family: monospace;
+  flex-direction: column;
+  gap: 1px;
 `;
 
-const TelKey = styled.span`
+const TelKey = styled.span<{ $colour: string }>`
   font-size: 9px;
-  color: #444;
+  color: ${({ $colour }) => $colour};
+  opacity: 0.6;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 `;
 
-const TelValue = styled.span`
-  font-size: 11px;
-  color: #888;
+const TelValue = styled.span<{ $colour: string }>`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${({ $colour }) => $colour};
+  font-variant-numeric: tabular-nums;
+  min-width: 7ch;
+  white-space: nowrap;
 `;
 
 // ---------------------------------------------------------------------------

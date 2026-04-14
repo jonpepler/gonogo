@@ -7,18 +7,34 @@ import type { ComponentProps, ConfigComponentProps } from '@gonogo/core';
 interface MapViewConfig {
   /** Number of trajectory history points to keep. Default: 200. */
   trajectoryLength?: number;
-  /**
-   * Optional list of Telemachus data keys to display in a telemetry panel
-   * below the map (e.g. ['v.altitude', 'v.verticalSpeed']).
-   * Only shown when h >= 7.
-   */
+  /** Telemachus keys selected for display in the telemetry panel. */
   telemetryKeys?: string[];
 }
+
+/** Predefined data points available in the telemetry panel. */
+const TELEMETRY_OPTIONS: { label: string; key: string }[] = [
+  { label: 'Altitude (sea level)', key: 'v.altitude' },
+  { label: 'Altitude (terrain)',   key: 'v.heightFromTerrain' },
+  { label: 'Vertical speed',       key: 'v.verticalSpeed' },
+  { label: 'Surface speed',        key: 'v.surfaceSpeed' },
+  { label: 'Orbital speed',        key: 'v.orbitalSpeed' },
+  { label: 'Mach',                 key: 'v.mach' },
+  { label: 'G-force',              key: 'v.geeForce' },
+  { label: 'Heading',              key: 'v.heading' },
+  { label: 'Pitch',                key: 'v.pitch' },
+  { label: 'Roll',                 key: 'v.roll' },
+  { label: 'Mission time',         key: 'v.missionTime' },
+  { label: 'Apoapsis',             key: 'o.apoapsis' },
+  { label: 'Periapsis',            key: 'o.periapsis' },
+  { label: 'Time to Ap',           key: 'o.timeToAp' },
+  { label: 'Time to Pe',           key: 'o.timeToPe' },
+  { label: 'Inclination',          key: 'o.inclination' },
+];
 
 function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
   const trajectoryLength = config?.trajectoryLength ?? 200;
   const telemetryKeys = config?.telemetryKeys ?? [];
-  const showTelemetry = telemetryKeys.length > 0 && (h === undefined || h >= 7);
+  const showTelemetry = telemetryKeys.length > 0;
 
   const lat      = useDataValue<number>('telemachus', 'v.lat');
   const lon      = useDataValue<number>('telemachus', 'v.long');
@@ -246,9 +262,10 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
 
       {showTelemetry && (
         <TelemetryPanel>
-          {telemetryKeys.map((key) => (
-            <TelemetryRow key={key} dataKey={key} />
-          ))}
+          {telemetryKeys.map((key) => {
+            const opt = TELEMETRY_OPTIONS.find((o) => o.key === key);
+            return <TelemetryRow key={key} dataKey={key} label={opt?.label ?? key} />;
+          })}
         </TelemetryPanel>
       )}
     </Panel>
@@ -259,12 +276,12 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
 // Telemetry row — own component so useDataValue can be called per key
 // ---------------------------------------------------------------------------
 
-function TelemetryRow({ dataKey }: { dataKey: string }) {
+function TelemetryRow({ dataKey, label }: { dataKey: string; label: string }) {
   const value = useDataValue<unknown>('telemachus', dataKey);
   const display = value === undefined ? '—' : String(value);
   return (
     <TelRow>
-      <TelKey>{dataKey}</TelKey>
+      <TelKey>{label}</TelKey>
       <TelValue>{display}</TelValue>
     </TelRow>
   );
@@ -278,15 +295,21 @@ function MapViewConfigComponent({ config, onSave }: ConfigComponentProps<MapView
   const [trajectoryLength, setTrajectoryLength] = useState(
     String(config?.trajectoryLength ?? 200),
   );
-  const [telemetryKeys, setTelemetryKeys] = useState(
-    (config?.telemetryKeys ?? []).join('\n'),
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(config?.telemetryKeys ?? []),
   );
 
+  const toggleKey = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   const handleSave = () => {
-    const keys = telemetryKeys
-      .split(/[\n,]+/)
-      .map((k) => k.trim())
-      .filter(Boolean);
+    // Preserve the order from TELEMETRY_OPTIONS rather than Set insertion order
+    const keys = TELEMETRY_OPTIONS.map((o) => o.key).filter((k) => selected.has(k));
     onSave({
       trajectoryLength: Math.max(1, parseInt(trajectoryLength, 10) || 200),
       telemetryKeys: keys.length > 0 ? keys : undefined,
@@ -307,17 +330,21 @@ function MapViewConfigComponent({ config, onSave }: ConfigComponentProps<MapView
         />
       </Field>
       <Field>
-        <CfgLabel htmlFor="map-keys">Telemetry keys (one per line)</CfgLabel>
-        <CfgTextarea
-          id="map-keys"
-          rows={5}
-          placeholder={'v.altitude\nv.verticalSpeed\nv.surfaceSpeed'}
-          value={telemetryKeys}
-          onChange={(e) => setTelemetryKeys(e.target.value)}
-        />
-        <CfgHint>
-          Shown below the map when the widget is at least 7 rows tall.
-        </CfgHint>
+        <CfgLabel>Telemetry panel</CfgLabel>
+        <CheckList>
+          {TELEMETRY_OPTIONS.map(({ label, key }) => (
+            <CheckRow key={key}>
+              <Checkbox
+                id={`map-key-${key}`}
+                type="checkbox"
+                checked={selected.has(key)}
+                onChange={() => toggleKey(key)}
+              />
+              <CheckLabel htmlFor={`map-key-${key}`}>{label}</CheckLabel>
+            </CheckRow>
+          ))}
+        </CheckList>
+        <CfgHint>Selected values are shown below the map.</CfgHint>
       </Field>
       <CfgSaveButton onClick={handleSave}>Save</CfgSaveButton>
     </ConfigForm>
@@ -496,18 +523,32 @@ const CfgInput = styled.input`
   &:focus { border-color: #555; }
 `;
 
-const CfgTextarea = styled.textarea`
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #ccc;
+const CheckList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const CheckRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const Checkbox = styled.input`
+  accent-color: #00cc66;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+`;
+
+const CheckLabel = styled.label`
   font-family: monospace;
   font-size: 12px;
-  padding: 6px 8px;
-  outline: none;
-  resize: vertical;
-  line-height: 1.5;
-  &:focus { border-color: #555; }
+  color: #bbb;
+  cursor: pointer;
+  user-select: none;
 `;
 
 const CfgHint = styled.span`

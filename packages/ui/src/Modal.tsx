@@ -1,0 +1,201 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
+import type { ReactNode } from 'react';
+import styled from 'styled-components';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface ModalEntry {
+  id: string;
+  title?: string;
+  content: ReactNode;
+}
+
+interface ModalContextValue {
+  open: (content: ReactNode, options?: { title?: string }) => string;
+  close: (id: string) => void;
+}
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+const ModalContext = createContext<ModalContextValue | null>(null);
+
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
+export function ModalProvider({ children }: { children: ReactNode }) {
+  const [modals, setModals] = useState<ModalEntry[]>([]);
+
+  const open = useCallback((content: ReactNode, options?: { title?: string }): string => {
+    const id = crypto.randomUUID();
+    setModals((prev) => [...prev, { id, title: options?.title, content }]);
+    return id;
+  }, []);
+
+  const close = useCallback((id: string) => {
+    setModals((prev) => prev.filter((m) => m.id !== id));
+  }, []);
+
+  return (
+    <ModalContext.Provider value={{ open, close }}>
+      {children}
+      {modals.map((m) => (
+        <ModalDialog key={m.id} entry={m} onClose={() => close(m.id)} />
+      ))}
+    </ModalContext.Provider>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
+export function useModal(): ModalContextValue {
+  const ctx = useContext(ModalContext);
+  if (!ctx) throw new Error('useModal must be used inside <ModalProvider>');
+  return ctx;
+}
+
+// ---------------------------------------------------------------------------
+// Dialog
+// ---------------------------------------------------------------------------
+
+interface ModalDialogProps {
+  entry: ModalEntry;
+  onClose: () => void;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ModalDialog({ entry, onClose }: ModalDialogProps): any {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  // Close on Escape
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  // Trap focus inside dialog
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!el) return;
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    function handleTab(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return;
+      if (focusable.length === 0) { e.preventDefault(); return; }
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    }
+    document.addEventListener('keydown', handleTab);
+    first?.focus();
+    return () => document.removeEventListener('keydown', handleTab);
+  }, []);
+
+  return createPortal(
+    <Backdrop onClick={onClose} role="presentation">
+      <Dialog
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={entry.title ? titleId : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DialogHeader>
+          {entry.title && <DialogTitle id={titleId}>{entry.title}</DialogTitle>}
+          <CloseButton onClick={onClose} aria-label="Close">✕</CloseButton>
+        </DialogHeader>
+        <DialogBody>{entry.content}</DialogBody>
+      </Dialog>
+    </Backdrop>,
+    document.body
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+const Backdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const Dialog = styled.div`
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 6px;
+  min-width: 320px;
+  max-width: 560px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+`;
+
+const DialogHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #222;
+  flex-shrink: 0;
+`;
+
+const DialogTitle = styled.h2`
+  margin: 0;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #999;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+
+  &:hover { color: #aaa; }
+`;
+
+const DialogBody = styled.div`
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+`;

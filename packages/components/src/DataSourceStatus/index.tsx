@@ -100,7 +100,9 @@ function DataSourceStatusComponent() {
 registerComponent({
   id: 'data-source-status',
   name: 'Data Source Status',
-  category: 'system',
+  description: 'Shows connection status for all registered data sources and lets you edit their configuration.',
+  tags: ['system'],
+  defaultSize: { w: 12, h: 1 },
   component: DataSourceStatusComponent,
   dataRequirements: [],
   behaviors: [],

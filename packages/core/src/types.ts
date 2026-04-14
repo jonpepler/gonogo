@@ -61,9 +61,27 @@ export type ComponentBehavior = 'gonogo-participant';
  *
  * The default (`Record<string, unknown>`) is kept for backward compat and for
  * the registry, which erases the type parameter when storing components.
+ *
+ * - `id`             — the DashboardItem instance ID (stable per placement)
+ * - `w` / `h`        — current grid-unit size (column/row spans); use to adapt layout
+ * - `onConfigChange` — call to persist inline config edits (e.g. label rename)
  */
 export interface ComponentProps<TConfig = Record<string, unknown>> {
   config?: TConfig;
+  id: string;
+  w?: number;
+  h?: number;
+  onConfigChange?: (config: TConfig) => void;
+}
+
+/**
+ * Props passed to a component's config UI (rendered inside a modal).
+ *
+ * `onSave` should be called with the full new config to persist and close.
+ */
+export interface ConfigComponentProps<TConfig = Record<string, unknown>> {
+  config: TConfig;
+  onSave: (config: TConfig) => void;
 }
 
 /**
@@ -83,8 +101,16 @@ export interface ComponentProps<TConfig = Record<string, unknown>> {
 export interface ComponentDefinition<TConfig = Record<string, unknown>> {
   id: string;
   name: string;
-  category: string;
+  description: string;
+  /** Free-form tags; UI may style known values (e.g. 'telemetry', 'control', 'kos'). */
+  tags: string[];
   component: ComponentType<ComponentProps<TConfig>>;
+  /** Config UI rendered inside a modal; shown via gear icon in the Dashboard. */
+  configComponent?: ComponentType<ConfigComponentProps<TConfig>>;
+  /** If true, config modal opens immediately when the component is added from the overlay. */
+  openConfigOnAdd?: boolean;
+  /** Default grid size when placed from the overlay. Falls back to { w: 3, h: 3 }. */
+  defaultSize?: { w: number; h: number };
   dataRequirements?: string[];
   behaviors?: ComponentBehavior[];
   defaultConfig?: Partial<TConfig>;

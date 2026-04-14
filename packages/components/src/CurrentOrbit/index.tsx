@@ -169,7 +169,9 @@ function MiniDiagram({
 registerComponent<CurrentOrbitConfig>({
   id: 'current-orbit',
   name: 'Current Orbit',
-  category: 'telemetry',
+  description: 'Displays orbital parameters: apoapsis, periapsis, eccentricity, inclination, period, and time to Ap/Pe.',
+  tags: ['telemetry'],
+  defaultSize: { w: 3, h: 6 },
   component: CurrentOrbitComponent,
   dataRequirements: [
     'o.apoapsis', 'o.periapsis', 'o.eccentricity', 'o.inclination',

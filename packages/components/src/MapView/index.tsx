@@ -262,10 +262,13 @@ const Panel = styled.div`
   border-radius: 4px;
   padding: 12px 16px;
   font-family: monospace;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 240px;
+  overflow: hidden;
 `;
 
 const Header = styled.div`
@@ -292,7 +295,8 @@ const BodyLabel = styled.span`
 const CanvasContainer = styled.div`
   position: relative;
   width: 100%;
-  height: 180px;
+  flex: 1;
+  min-height: 0;
   border-radius: 2px;
   overflow: hidden;
 `;

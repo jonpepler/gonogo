@@ -52,10 +52,13 @@ const Panel = styled.div`
   border-radius: 4px;
   padding: 12px 16px;
   font-family: monospace;
-  min-width: 160px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow: hidden;
 `;
 
 const Title = styled.h3`

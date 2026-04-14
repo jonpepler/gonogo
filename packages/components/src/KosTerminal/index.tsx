@@ -185,7 +185,6 @@ export { KosTerminalComponent };
 const Container = styled.div<{ $readOnly?: boolean }>`
   width: 100%;
   height: 100%;
-  min-height: 300px;
   background: #0d0d0d;
   border: 1px solid ${({ $readOnly }) => ($readOnly ? '#1a1a2e' : '#2a2a2a')};
   border-radius: 4px;

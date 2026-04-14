@@ -64,6 +64,9 @@ export function registerStockBodies(baseUrl = 'bodies'): void {
     color: '#1A6B8A',
     parent: 'Sun',
     texture: tex('Kerbin'),
+    // Texture prime meridian is offset 90° east of KSP/Telemachus coordinates.
+    // Tune this value if the vessel dot appears misaligned on the map.
+    longitudeOffset: 90,
   });
 
   registerBody({

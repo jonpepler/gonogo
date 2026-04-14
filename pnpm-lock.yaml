@@ -53,6 +53,9 @@ importers:
       '@gonogo/core':
         specifier: workspace:*
         version: link:../core
+      '@gonogo/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.97.0(react@18.3.1)
@@ -117,6 +120,9 @@ importers:
       '@gonogo/core':
         specifier: workspace:*
         version: link:../core
+      '@gonogo/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@xterm/addon-fit':
         specifier: ^0.11.0
         version: 0.11.0
@@ -204,6 +210,22 @@ importers:
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@22.19.17)(@vitest/coverage-istanbul@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(msw@2.13.2(@types/node@22.19.17)(typescript@5.9.3))(vite@6.4.2(@types/node@22.19.17)(tsx@4.21.0))
+
+  packages/ui:
+    dependencies:
+      react:
+        specifier: ^18.0.0
+        version: 18.3.1
+      styled-components:
+        specifier: ^6.0.0
+        version: 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.0.0
+        version: 18.3.28
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
 
 packages:
 

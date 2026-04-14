@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { getDataSources } from '@gonogo/core';
 import { Dashboard } from '../components/Dashboard';
-import type { DashboardConfig } from '../components/Dashboard';
+import type { DashboardConfig, DashboardHandle } from '../components/Dashboard';
+import { ComponentOverlay, OverlayProvider } from '../components/ComponentOverlay';
 
 // ---------------------------------------------------------------------------
 // Demo layout
@@ -78,18 +79,35 @@ const DEMO_CONFIG: DashboardConfig = {
 // ---------------------------------------------------------------------------
 
 export function MainScreen() {
+  const dashboardRef = useRef<DashboardHandle>(null);
+
   useEffect(() => {
     const sources = getDataSources();
     sources.forEach((s) => { void s.connect(); });
     return () => { sources.forEach((s) => s.disconnect()); };
   }, []);
 
+  const addItem: OverlayProvider_AddItem = (item, layout) => {
+    dashboardRef.current?.addItem(item, layout);
+  };
+
+  const currentLayouts = dashboardRef.current?.currentLayouts ?? { lg: [] };
+
   return (
-    <Layout>
-      <Dashboard config={DEMO_CONFIG} storageKey="gonogo:dashboard:main" />
-    </Layout>
+    <OverlayProvider addItem={addItem}>
+      <Layout>
+        <Dashboard ref={dashboardRef} config={DEMO_CONFIG} storageKey="gonogo:dashboard:main" />
+        <ComponentOverlay currentLayouts={currentLayouts} />
+      </Layout>
+    </OverlayProvider>
   );
 }
+
+// Inline type alias to avoid importing DashboardItem directly here
+type OverlayProvider_AddItem = (
+  item: import('../components/Dashboard').DashboardItem,
+  layout: { x: number; y: number; w: number; h: number },
+) => void;
 
 const Layout = styled.div`
   padding: 24px;

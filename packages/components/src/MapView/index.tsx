@@ -2,15 +2,23 @@ import styled from 'styled-components';
 import { useEffect, useRef, useState } from 'react';
 import { registerComponent, useDataValue, getBody } from '@gonogo/core';
 import { latLonToMap } from '@gonogo/core';
-import type { ComponentProps } from '@gonogo/core';
+import type { ComponentProps, ConfigComponentProps } from '@gonogo/core';
 
 interface MapViewConfig {
   /** Number of trajectory history points to keep. Default: 200. */
   trajectoryLength?: number;
+  /**
+   * Optional list of Telemachus data keys to display in a telemetry panel
+   * below the map (e.g. ['v.altitude', 'v.verticalSpeed']).
+   * Only shown when h >= 7.
+   */
+  telemetryKeys?: string[];
 }
 
-function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
+function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
   const trajectoryLength = config?.trajectoryLength ?? 200;
+  const telemetryKeys = config?.telemetryKeys ?? [];
+  const showTelemetry = telemetryKeys.length > 0 && (h === undefined || h >= 7);
 
   const lat      = useDataValue<number>('telemachus', 'v.lat');
   const lon      = useDataValue<number>('telemachus', 'v.long');
@@ -222,17 +230,97 @@ function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
         {displayName && <BodyLabel>{displayName}</BodyLabel>}
       </Header>
 
-      <CanvasContainer ref={containerRef}>
-        <BaseCanvas ref={baseRef} />
-        <OverlayCanvas ref={overlayRef} />
-        <DataCanvas ref={dataRef} />
-        {(lat === undefined || lon === undefined) && (
-          <NoSignal>
-            {targetBodyId === undefined ? 'Waiting for telemetry…' : 'No position data'}
-          </NoSignal>
-        )}
-      </CanvasContainer>
+      {/* Letterbox wrapper: centres the 2:1 canvas in available space */}
+      <MapOuter>
+        <CanvasContainer ref={containerRef}>
+          <BaseCanvas ref={baseRef} />
+          <OverlayCanvas ref={overlayRef} />
+          <DataCanvas ref={dataRef} />
+          {(lat === undefined || lon === undefined) && (
+            <NoSignal>
+              {targetBodyId === undefined ? 'Waiting for telemetry…' : 'No position data'}
+            </NoSignal>
+          )}
+        </CanvasContainer>
+      </MapOuter>
+
+      {showTelemetry && (
+        <TelemetryPanel>
+          {telemetryKeys.map((key) => (
+            <TelemetryRow key={key} dataKey={key} />
+          ))}
+        </TelemetryPanel>
+      )}
     </Panel>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Telemetry row — own component so useDataValue can be called per key
+// ---------------------------------------------------------------------------
+
+function TelemetryRow({ dataKey }: { dataKey: string }) {
+  const value = useDataValue<unknown>('telemachus', dataKey);
+  const display = value === undefined ? '—' : String(value);
+  return (
+    <TelRow>
+      <TelKey>{dataKey}</TelKey>
+      <TelValue>{display}</TelValue>
+    </TelRow>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Config component (rendered inside modal)
+// ---------------------------------------------------------------------------
+
+function MapViewConfigComponent({ config, onSave }: ConfigComponentProps<MapViewConfig>) {
+  const [trajectoryLength, setTrajectoryLength] = useState(
+    String(config?.trajectoryLength ?? 200),
+  );
+  const [telemetryKeys, setTelemetryKeys] = useState(
+    (config?.telemetryKeys ?? []).join('\n'),
+  );
+
+  const handleSave = () => {
+    const keys = telemetryKeys
+      .split(/[\n,]+/)
+      .map((k) => k.trim())
+      .filter(Boolean);
+    onSave({
+      trajectoryLength: Math.max(1, parseInt(trajectoryLength, 10) || 200),
+      telemetryKeys: keys.length > 0 ? keys : undefined,
+    });
+  };
+
+  return (
+    <ConfigForm>
+      <Field>
+        <CfgLabel htmlFor="map-traj">Trajectory history (points)</CfgLabel>
+        <CfgInput
+          id="map-traj"
+          type="number"
+          min={1}
+          max={2000}
+          value={trajectoryLength}
+          onChange={(e) => setTrajectoryLength(e.target.value)}
+        />
+      </Field>
+      <Field>
+        <CfgLabel htmlFor="map-keys">Telemetry keys (one per line)</CfgLabel>
+        <CfgTextarea
+          id="map-keys"
+          rows={5}
+          placeholder={'v.altitude\nv.verticalSpeed\nv.surfaceSpeed'}
+          value={telemetryKeys}
+          onChange={(e) => setTelemetryKeys(e.target.value)}
+        />
+        <CfgHint>
+          Shown below the map when the widget is at least 7 rows tall.
+        </CfgHint>
+      </Field>
+      <CfgSaveButton onClick={handleSave}>Save</CfgSaveButton>
+    </ConfigForm>
   );
 }
 
@@ -243,8 +331,11 @@ function MapViewComponent({ config }: ComponentProps<MapViewConfig>) {
 registerComponent<MapViewConfig>({
   id: 'map-view',
   name: 'Map View',
-  category: 'telemetry',
+  description: 'Equirectangular map of the current body with vessel position and trajectory trail.',
+  tags: ['telemetry'],
+  defaultSize: { w: 4, h: 6 },
   component: MapViewComponent,
+  configComponent: MapViewConfigComponent,
   dataRequirements: ['v.lat', 'v.long', 'v.body'],
   behaviors: [],
   defaultConfig: { trajectoryLength: 200 },
@@ -292,11 +383,26 @@ const BodyLabel = styled.span`
   letter-spacing: 0.05em;
 `;
 
+/** Fills leftover space and centres the 2:1 canvas with letterboxing. */
+const MapOuter = styled.div`
+  flex: 1;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+`;
+
+/**
+ * The actual canvas frame. CSS `aspect-ratio` + `max-height` together produce
+ * letterboxing: the box is as wide as possible (up to 100%) but never taller
+ * than the outer, so black bars appear when the container isn't 2:1.
+ */
 const CanvasContainer = styled.div`
   position: relative;
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  max-height: 100%;
+  aspect-ratio: 2 / 1;
   border-radius: 2px;
   overflow: hidden;
 `;
@@ -326,8 +432,101 @@ const NoSignal = styled.div`
   pointer-events: none;
 `;
 
-const NoBody = styled.div`
-  font-size: 11px;
+const TelemetryPanel = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding-top: 4px;
+  border-top: 1px solid #1a1a1a;
+  flex-shrink: 0;
+`;
+
+const TelRow = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-family: monospace;
+`;
+
+const TelKey = styled.span`
+  font-size: 9px;
   color: #444;
-  padding: 8px 0;
+  letter-spacing: 0.06em;
+`;
+
+const TelValue = styled.span`
+  font-size: 11px;
+  color: #888;
+`;
+
+// ---------------------------------------------------------------------------
+// Config form styles
+// ---------------------------------------------------------------------------
+
+const ConfigForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: monospace;
+`;
+
+const Field = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const CfgLabel = styled.label`
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #666;
+`;
+
+const CfgInput = styled.input`
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #ccc;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 6px 8px;
+  outline: none;
+  &:focus { border-color: #555; }
+`;
+
+const CfgTextarea = styled.textarea`
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #ccc;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 6px 8px;
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+  &:focus { border-color: #555; }
+`;
+
+const CfgHint = styled.span`
+  font-size: 10px;
+  color: #444;
+`;
+
+const CfgSaveButton = styled.button`
+  align-self: flex-end;
+  background: #1a3a1a;
+  border: 1px solid #2a5a2a;
+  border-radius: 3px;
+  color: #00cc66;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 6px 16px;
+  cursor: pointer;
+  text-transform: uppercase;
+  &:hover { background: #1f4a1f; border-color: #3a7a3a; }
 `;

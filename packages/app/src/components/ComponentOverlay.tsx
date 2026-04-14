@@ -1,0 +1,290 @@
+import { useState, useCallback, createContext, useContext, useRef } from 'react';
+import type { ReactNode } from 'react';
+import styled from 'styled-components';
+import { getComponents } from '@gonogo/core';
+import type { ComponentDefinition } from '@gonogo/core';
+import { Tag, useModal } from '@gonogo/ui';
+import type { DashboardItem } from './Dashboard';
+
+// ---------------------------------------------------------------------------
+// Context — lets the overlay call addItem without prop-drilling
+// ---------------------------------------------------------------------------
+
+interface OverlayContextValue {
+  addItem: (item: DashboardItem, layout: { x: number; y: number; w: number; h: number }) => void;
+}
+
+const OverlayContext = createContext<OverlayContextValue | null>(null);
+
+export function OverlayProvider({
+  children,
+  addItem,
+}: {
+  children: ReactNode;
+  addItem: (item: DashboardItem, layout: { x: number; y: number; w: number; h: number }) => void;
+}) {
+  return (
+    <OverlayContext.Provider value={{ addItem }}>
+      {children}
+    </OverlayContext.Provider>
+  );
+}
+
+function useOverlay(): OverlayContextValue {
+  const ctx = useContext(OverlayContext);
+  if (!ctx) throw new Error('useOverlay must be used inside <OverlayProvider>');
+  return ctx;
+}
+
+// ---------------------------------------------------------------------------
+// FAB + Overlay
+// ---------------------------------------------------------------------------
+
+interface ComponentOverlayProps {
+  /** Current items so we can compute the next free y position. */
+  currentLayouts: { lg?: Array<{ y: number; h: number }> };
+}
+
+export function ComponentOverlay({ currentLayouts }: ComponentOverlayProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const { addItem } = useOverlay();
+  const { open: openModal, close: closeModal } = useModal();
+
+  const allComponents = getComponents();
+
+  const filtered = query.trim()
+    ? allComponents.filter((def) => {
+        const q = query.toLowerCase();
+        return (
+          def.name.toLowerCase().includes(q) ||
+          def.tags.some((t) => t.toLowerCase().includes(q))
+        );
+      })
+    : allComponents;
+
+  const nextY = useCallback(() => {
+    const items = currentLayouts.lg ?? [];
+    if (items.length === 0) return 0;
+    return Math.max(...items.map((l) => l.y + l.h));
+  }, [currentLayouts]);
+
+  const handleSelect = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (def: ComponentDefinition<any>) => {
+      const item: DashboardItem = {
+        i: crypto.randomUUID(),
+        componentId: def.id,
+        config: def.defaultConfig ? { ...def.defaultConfig } : undefined,
+      };
+      const size = def.defaultSize ?? { w: 3, h: 3 };
+      const layout = { x: 0, y: nextY(), ...size };
+
+      addItem(item, layout);
+      setOpen(false);
+      setQuery('');
+
+      if (def.openConfigOnAdd && def.configComponent) {
+        const ConfigComp = def.configComponent;
+        const modalId = openModal(
+          <ConfigComp
+            config={item.config ?? def.defaultConfig ?? {}}
+            onSave={(newConfig: Record<string, unknown>) => {
+              // Config is in the item — the addItem call already placed it;
+              // a future update could propagate the saved config back.
+              // For now close the modal.
+              closeModal(modalId);
+              void newConfig; // suppress unused warning
+            }}
+          />,
+          { title: def.name },
+        );
+      }
+    },
+    [addItem, nextY, openModal, closeModal],
+  );
+
+  return (
+    <>
+      <FAB onClick={() => setOpen(true)} aria-label="Add component" title="Add component">
+        +
+      </FAB>
+
+      {open && (
+        <Backdrop onClick={() => { setOpen(false); setQuery(''); }}>
+          <Panel onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Add a component">
+            <PanelHeader>
+              <PanelTitle>ADD COMPONENT</PanelTitle>
+              <CloseBtn onClick={() => { setOpen(false); setQuery(''); }} aria-label="Close">✕</CloseBtn>
+            </PanelHeader>
+            <SearchInput
+              autoFocus
+              placeholder="Search by name or tag…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); setQuery(''); } }}
+            />
+            <List>
+              {filtered.length === 0 && <Empty>No components match "{query}"</Empty>}
+              {filtered.map((def) => (
+                <ListItem key={def.id} onClick={() => handleSelect(def)}>
+                  <ItemName>{def.name}</ItemName>
+                  <ItemDesc>{def.description}</ItemDesc>
+                  <TagRow>
+                    {def.tags.map((t) => <Tag key={t} label={t} />)}
+                  </TagRow>
+                </ListItem>
+              ))}
+            </List>
+          </Panel>
+        </Backdrop>
+      )}
+    </>
+  );
+}
+
+export { useOverlay };
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+const FAB = styled.button`
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #00cc66;
+  border: none;
+  color: #000;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 204, 102, 0.3);
+  z-index: 900;
+  transition: background 0.15s, transform 0.1s;
+
+  &:hover { background: #00e673; transform: scale(1.05); }
+  &:active { transform: scale(0.97); }
+`;
+
+const Backdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 950;
+`;
+
+const Panel = styled.div`
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  width: 480px;
+  max-width: 95vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+`;
+
+const PanelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+`;
+
+const PanelTitle = styled.h2`
+  margin: 0;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #555;
+  text-transform: uppercase;
+`;
+
+const CloseBtn = styled.button`
+  background: none;
+  border: none;
+  color: #444;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  &:hover { color: #aaa; }
+`;
+
+const SearchInput = styled.input`
+  background: #0d0d0d;
+  border: none;
+  border-bottom: 1px solid #1a1a1a;
+  color: #ccc;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 10px 16px;
+  outline: none;
+  flex-shrink: 0;
+
+  &::placeholder { color: #333; }
+`;
+
+const List = styled.div`
+  overflow-y: auto;
+  flex: 1;
+`;
+
+const ListItem = styled.button`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #0d0d0d;
+  padding: 12px 16px;
+  cursor: pointer;
+
+  &:hover { background: #161616; }
+  &:last-child { border-bottom: none; }
+`;
+
+const ItemName = styled.span`
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ccc;
+`;
+
+const ItemDesc = styled.span`
+  font-family: monospace;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.4;
+`;
+
+const TagRow = styled.div`
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+`;
+
+const Empty = styled.div`
+  padding: 24px 16px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #444;
+  text-align: center;
+`;

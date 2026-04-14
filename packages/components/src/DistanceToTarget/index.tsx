@@ -33,7 +33,9 @@ function DistanceToTargetComponent(_props: ComponentProps<DistanceToTargetConfig
 registerComponent<DistanceToTargetConfig>({
   id: 'distance-to-target',
   name: 'Distance to Target',
-  category: 'telemetry',
+  description: 'Shows the name and distance to the current KSP target.',
+  tags: ['telemetry'],
+  defaultSize: { w: 2, h: 3 },
   component: DistanceToTargetComponent,
   dataRequirements: ['tar.distance', 'tar.name'],
   behaviors: [],

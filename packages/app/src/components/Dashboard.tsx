@@ -1,7 +1,9 @@
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import styled from 'styled-components';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import type { Layouts, Layout } from 'react-grid-layout';
 import { getComponent } from '@gonogo/core';
+import { useModal } from '@gonogo/ui';
 import 'react-grid-layout/css/styles.css';
 import '../styles/react-resizable.css';
 
@@ -38,6 +40,32 @@ const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
 const ROW_HEIGHT = 80; // px per grid unit
 
 // ---------------------------------------------------------------------------
+// Persistence helpers
+// ---------------------------------------------------------------------------
+
+interface PersistedState {
+  items: DashboardItem[];
+  layouts: Layouts;
+}
+
+function loadState(key: string): PersistedState | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as PersistedState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(key: string, state: PersistedState): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(state));
+  } catch {
+    // Ignore storage errors (private browsing, quota exceeded, etc.)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
 
@@ -47,15 +75,79 @@ interface DashboardProps {
   onLayoutChange?: (layouts: Layouts) => void;
 }
 
-export function Dashboard({ config, storageKey, onLayoutChange }: DashboardProps) {
-  // Load persisted layouts from localStorage (merged over the default config)
-  const savedLayouts = storageKey ? loadLayouts(storageKey) : null;
-  const layouts = savedLayouts ?? config.layouts;
+export interface DashboardHandle {
+  addItem: (item: DashboardItem, layout: Partial<Layout>) => void;
+  currentLayouts: Layouts;
+}
+
+export const Dashboard = forwardRef<DashboardHandle, DashboardProps>(function Dashboard(
+  { config, storageKey, onLayoutChange },
+  ref,
+) {
+  const saved = storageKey ? loadState(storageKey) : null;
+
+  const [items, setItems] = useState<DashboardItem[]>(saved?.items ?? config.items);
+  const [layouts, setLayouts] = useState<Layouts>(saved?.layouts ?? config.layouts);
+  const [breakpoint, setBreakpoint] = useState<string>('lg');
+  const [currentLayouts, setCurrentLayouts] = useState<Layouts>(saved?.layouts ?? config.layouts);
+
+  const persist = useCallback(
+    (nextItems: DashboardItem[], nextLayouts: Layouts) => {
+      if (storageKey) saveState(storageKey, { items: nextItems, layouts: nextLayouts });
+    },
+    [storageKey],
+  );
 
   function handleLayoutChange(_current: Layout[], all: Layouts) {
-    if (storageKey) saveLayouts(storageKey, all);
+    setCurrentLayouts(all);
+    setLayouts(all);
+    persist(items, all);
     onLayoutChange?.(all);
   }
+
+  function handleBreakpointChange(bp: string) {
+    setBreakpoint(bp);
+  }
+
+  const updateItemConfig = useCallback(
+    (itemId: string, newConfig: Record<string, unknown>) => {
+      setItems((prev) => {
+        const next = prev.map((it) =>
+          it.i === itemId ? { ...it, config: newConfig } : it,
+        );
+        persist(next, layouts);
+        return next;
+      });
+    },
+    [layouts, persist],
+  );
+
+  /** Exposed for the component-selection overlay (T41). */
+  const addItem = useCallback(
+    (item: DashboardItem, layout: Partial<Layout>) => {
+      setItems((prev) => {
+        const next = [...prev, item];
+        const entry: Layout = {
+          i: item.i,
+          x: layout.x ?? 0,
+          y: layout.y ?? 9999,
+          w: layout.w ?? 3,
+          h: layout.h ?? 3,
+          ...layout,
+        };
+        const nextLayouts = Object.fromEntries(
+          Object.keys(COLS).map((bp) => [bp, [...(currentLayouts[bp] ?? []), entry]]),
+        );
+        persist(next, nextLayouts);
+        setLayouts(nextLayouts);
+        return next;
+      });
+    },
+    [currentLayouts, persist],
+  );
+
+  // Expose addItem and currentLayouts to parent via ref
+  useImperativeHandle(ref, () => ({ addItem, currentLayouts }), [addItem, currentLayouts]);
 
   return (
     <ResponsiveGridLayout
@@ -68,44 +160,84 @@ export function Dashboard({ config, storageKey, onLayoutChange }: DashboardProps
       containerPadding={[0, 0]}
       draggableHandle=".drag-handle"
       onLayoutChange={handleLayoutChange}
+      onBreakpointChange={handleBreakpointChange}
     >
-      {config.items.map((item) => {
+      {items.map((item) => {
         const def = getComponent(item.componentId);
         if (!def) return null;
         const Comp = def.component;
+
+        // Derive current w/h from the active breakpoint layout
+        const bpLayouts = currentLayouts[breakpoint] ?? currentLayouts['lg'] ?? [];
+        const entry = bpLayouts.find((l) => l.i === item.i);
+        const w = entry?.w;
+        const h = entry?.h;
+
         return (
           <GridCell key={item.i}>
-            <DragHandle className="drag-handle" title="Drag to reposition" />
+            <CellHeader className="drag-handle" title="Drag to reposition">
+              {def.configComponent && (
+                <GearWrapper>
+                  <GearButton
+                    item={item}
+                    def={def}
+                    onSave={(newConfig) => updateItemConfig(item.i, newConfig)}
+                  />
+                </GearWrapper>
+              )}
+            </CellHeader>
             <ComponentWrapper>
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <Comp config={item.config as any} />
+              <Comp
+                id={item.i}
+                config={item.config as any}
+                w={w}
+                h={h}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                onConfigChange={(newConfig: any) =>
+                  updateItemConfig(item.i, newConfig as Record<string, unknown>)
+                }
+              />
             </ComponentWrapper>
           </GridCell>
         );
       })}
     </ResponsiveGridLayout>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
-// localStorage helpers
+// Gear button — separate component so useModal can be called inside the tree
 // ---------------------------------------------------------------------------
 
-function loadLayouts(key: string): Layouts | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as Layouts) : null;
-  } catch {
-    return null;
-  }
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function GearButton({ item, def, onSave }: { item: DashboardItem; def: any; onSave: (c: Record<string, unknown>) => void }) {
+  const { open, close } = useModal();
+  const ConfigComp = def.configComponent;
 
-function saveLayouts(key: string, layouts: Layouts): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(layouts));
-  } catch {
-    // Ignore storage errors (private browsing, quota exceeded, etc.)
+  function handleMouseDown(e: React.MouseEvent) {
+    e.stopPropagation(); // prevent RGL from starting a drag on the handle
   }
+
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    const id = open(
+      <ConfigComp
+        config={item.config ?? def.defaultConfig ?? {}}
+        onSave={(newConfig: Record<string, unknown>) => {
+          onSave(newConfig);
+          close(id);
+        }}
+      />,
+      { title: def.name },
+    );
+  }
+
+  return (
+    <GearBtn onMouseDown={handleMouseDown} onClick={handleClick} aria-label={`Configure ${def.name}`} title="Configure">
+      ⚙
+    </GearBtn>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -119,20 +251,39 @@ const GridCell = styled.div`
   overflow: hidden;
 `;
 
-const DragHandle = styled.div`
-  height: 6px;
-  background: #1a1a1a;
+const CellHeader = styled.div`
+  height: 18px;
+  background: #111;
   cursor: grab;
   flex-shrink: 0;
   border-radius: 2px 2px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 4px;
 
   &:hover {
-    background: #2a2a2a;
+    background: #1a1a1a;
   }
 
   &:active {
     cursor: grabbing;
   }
+`;
+
+const GearWrapper = styled.div``;
+
+const GearBtn = styled.button`
+  pointer-events: all;
+  background: none;
+  border: none;
+  color: #444;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 1px 2px;
+
+  &:hover { color: #888; }
 `;
 
 const ComponentWrapper = styled.div`

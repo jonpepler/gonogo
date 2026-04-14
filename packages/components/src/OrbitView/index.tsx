@@ -165,7 +165,9 @@ function OrbitDiagram({
 registerComponent<OrbitViewConfig>({
   id: 'orbit-view',
   name: 'Orbit View',
-  category: 'telemetry',
+  description: 'SVG diagram of the current orbit ellipse with vessel position, apoapsis, and periapsis markers.',
+  tags: ['telemetry'],
+  defaultSize: { w: 3, h: 6 },
   component: OrbitViewComponent,
   dataRequirements: [
     'o.sma', 'o.eccentricity', 'o.trueAnomaly',

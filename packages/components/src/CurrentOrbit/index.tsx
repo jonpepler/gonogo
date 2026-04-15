@@ -16,15 +16,17 @@ interface CurrentOrbitConfig {
 function CurrentOrbitComponent({ config }: ComponentProps<CurrentOrbitConfig>) {
   const showDiagram = config?.showDiagram ?? true;
 
-  const apoapsis     = useDataValue<number>('telemachus', 'o.apoapsis');
-  const periapsis    = useDataValue<number>('telemachus', 'o.periapsis');
-  const eccentricity = useDataValue<number>('telemachus', 'o.eccentricity');
-  const inclination  = useDataValue<number>('telemachus', 'o.inclination');
-  const period       = useDataValue<number>('telemachus', 'o.period');
-  const timeToAp     = useDataValue<number>('telemachus', 'o.timeToAp');
-  const timeToPe     = useDataValue<number>('telemachus', 'o.timeToPe');
-  const refBody      = useDataValue<string>('telemachus', 'o.referenceBody');
-  const bodyName     = useDataValue<string>('telemachus', 'v.body');
+  const apoapsisA    = useDataValue('telemachus', 'o.ApA');
+  const periapsisA   = useDataValue('telemachus', 'o.PeA');
+  const apoapsisR    = useDataValue('telemachus', 'o.ApR');
+  const periapsisR   = useDataValue('telemachus', 'o.PeR');
+  const eccentricity = useDataValue('telemachus', 'o.eccentricity');
+  const inclination  = useDataValue('telemachus', 'o.inclination');
+  const period       = useDataValue('telemachus', 'o.period');
+  const timeToAp     = useDataValue('telemachus', 'o.timeToAp');
+  const timeToPe     = useDataValue('telemachus', 'o.timeToPe');
+  const refBody      = useDataValue('telemachus', 'o.referenceBody');
+  const bodyName     = useDataValue('telemachus', 'v.body');
 
   const body = (bodyName ?? refBody) !== undefined
     ? getBody(bodyName ?? refBody ?? '')
@@ -40,12 +42,12 @@ function CurrentOrbitComponent({ config }: ComponentProps<CurrentOrbitConfig>) {
       <Grid>
         <Label>Ap</Label>
         <Value $accent="ap">
-          {apoapsis !== undefined ? formatDistance(apoapsis) : '—'}
+          {apoapsisA !== undefined ? formatDistance(apoapsisA) : '—'}
         </Value>
 
         <Label>Pe</Label>
         <Value $accent="pe">
-          {periapsis !== undefined ? formatDistance(periapsis) : '—'}
+          {periapsisA !== undefined ? formatDistance(periapsisA) : '—'}
         </Value>
 
         <Label>Ecc</Label>
@@ -68,10 +70,10 @@ function CurrentOrbitComponent({ config }: ComponentProps<CurrentOrbitConfig>) {
         </Value>
       </Grid>
 
-      {showDiagram && apoapsis !== undefined && periapsis !== undefined && (
+      {showDiagram && apoapsisR !== undefined && periapsisR !== undefined && (
         <MiniDiagram
-          apoapsis={apoapsis}
-          periapsis={periapsis}
+          apoapsis={apoapsisR}
+          periapsis={periapsisR}
           eccentricity={eccentricity ?? 0}
           trueAnomaly={0}
           bodyRadius={body?.radius}
@@ -103,10 +105,8 @@ function MiniDiagram({
   bodyRadius,
   bodyColor,
 }: MiniDiagramProps) {
-  // Derive orbital geometry from apoapsis/periapsis altitudes
-  // These are altitudes above surface — we can compute the shape without body radius
-  // sma (from orbit focus, not centre): a = (rAp + rPe) / 2
-  // where rAp = apoapsis (altitude), rPe = periapsis (altitude) for schematic purposes
+  // Orbital geometry from apoapsis/periapsis radii (distance from body centre)
+  // sma (semi-major axis from focus): a = (rAp + rPe) / 2
   const rAp = apoapsis;
   const rPe = periapsis;
   const sma = (rAp + rPe) / 2;
@@ -174,7 +174,7 @@ registerComponent<CurrentOrbitConfig>({
   defaultSize: { w: 3, h: 6 },
   component: CurrentOrbitComponent,
   dataRequirements: [
-    'o.apoapsis', 'o.periapsis', 'o.eccentricity', 'o.inclination',
+    'o.ApA', 'o.PeA', 'o.ApR', 'o.PeR', 'o.eccentricity', 'o.inclination',
     'o.period', 'o.timeToAp', 'o.timeToPe', 'o.referenceBody', 'v.body',
   ],
   behaviors: [],

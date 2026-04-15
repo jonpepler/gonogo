@@ -2,30 +2,30 @@ import styled from 'styled-components';
 import { useEffect, useRef, useState } from 'react';
 import { registerComponent, useDataValue, getBody } from '@gonogo/core';
 import { latLonToMap } from '@gonogo/core';
-import type { ComponentProps, ConfigComponentProps } from '@gonogo/core';
+import type { ComponentProps, ConfigComponentProps, TelemaachusSchema } from '@gonogo/core';
 
 interface MapViewConfig {
   /** Number of trajectory history points to keep. Default: 200. */
   trajectoryLength?: number;
   /** Telemachus keys selected for display in the telemetry panel. */
-  telemetryKeys?: string[];
+  telemetryKeys?: (keyof TelemaachusSchema)[];
 }
 
 /** Predefined data points available in the telemetry panel. */
-const TELEMETRY_OPTIONS: { label: string; key: string }[] = [
+const TELEMETRY_OPTIONS: { label: string; key: keyof TelemaachusSchema }[] = [
   { label: 'Altitude (sea level)', key: 'v.altitude' },
   { label: 'Altitude (terrain)',   key: 'v.heightFromTerrain' },
   { label: 'Vertical speed',       key: 'v.verticalSpeed' },
   { label: 'Surface speed',        key: 'v.surfaceSpeed' },
-  { label: 'Orbital speed',        key: 'v.orbitalSpeed' },
+  { label: 'Orbital speed',        key: 'v.obtSpeed' },
   { label: 'Mach',                 key: 'v.mach' },
   { label: 'G-force',              key: 'v.geeForce' },
-  { label: 'Heading',              key: 'v.heading' },
-  { label: 'Pitch',                key: 'v.pitch' },
-  { label: 'Roll',                 key: 'v.roll' },
+  { label: 'Heading',              key: 'n.heading' },
+  { label: 'Pitch',                key: 'n.pitch' },
+  { label: 'Roll',                 key: 'n.roll' },
   { label: 'Mission time',         key: 'v.missionTime' },
-  { label: 'Apoapsis',             key: 'o.apoapsis' },
-  { label: 'Periapsis',            key: 'o.periapsis' },
+  { label: 'Apoapsis alt',         key: 'o.ApA' },
+  { label: 'Periapsis alt',        key: 'o.PeA' },
   { label: 'Time to Ap',           key: 'o.timeToAp' },
   { label: 'Time to Pe',           key: 'o.timeToPe' },
   { label: 'Inclination',          key: 'o.inclination' },
@@ -36,9 +36,9 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
   const telemetryKeys = config?.telemetryKeys ?? [];
   const showTelemetry = telemetryKeys.length > 0;
 
-  const lat      = useDataValue<number>('telemachus', 'v.lat');
-  const lon      = useDataValue<number>('telemachus', 'v.long');
-  const bodyName = useDataValue<string>('telemachus', 'v.body');
+  const lat      = useDataValue('telemachus', 'v.lat');
+  const lon      = useDataValue('telemachus', 'v.long');
+  const bodyName = useDataValue('telemachus', 'v.body');
 
   const targetBodyId = bodyName;
 
@@ -303,8 +303,8 @@ function formatTelValue(value: unknown): string {
   return String(value);
 }
 
-function TelemetryRow({ dataKey, label, colorIndex }: { dataKey: string; label: string; colorIndex: number }) {
-  const value = useDataValue<unknown>('telemachus', dataKey);
+function TelemetryRow({ dataKey, label, colorIndex }: { dataKey: keyof TelemaachusSchema; label: string; colorIndex: number }) {
+  const value = useDataValue('telemachus', dataKey);
   const colour = TELEMETRY_COLOURS[colorIndex % TELEMETRY_COLOURS.length];
   return (
     <TelRow>

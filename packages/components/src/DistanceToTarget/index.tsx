@@ -7,8 +7,8 @@ import type { ComponentProps } from '@gonogo/core';
 interface DistanceToTargetConfig {}
 
 function DistanceToTargetComponent(_props: ComponentProps<DistanceToTargetConfig>) {
-  const tarDistance = useDataValue<number>('telemachus', 'tar.distance');
-  const tarName     = useDataValue<string>('telemachus', 'tar.name');
+  const tarDistance = useDataValue('telemachus', 'tar.distance');
+  const tarName     = useDataValue('telemachus', 'tar.name');
 
   return (
     <Panel>

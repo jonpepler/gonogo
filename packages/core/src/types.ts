@@ -1,8 +1,36 @@
 // Core shared types — expand as features are built
 
-import type { ComponentType } from 'react';
+import type { ComponentType } from "react";
+import type { TelemaachusSchema } from "./schemas/telemachus";
 
-export type DataSourceStatus = 'connected' | 'disconnected' | 'reconnecting' | 'error';
+export type DataSourceStatus =
+  | "connected"
+  | "disconnected"
+  | "reconnecting"
+  | "error";
+
+// ---------------------------------------------------------------------------
+// Data source schema registry — extensible via declaration merging
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps data source IDs to their key→value schema.
+ *
+ * Built-in schemas are pre-populated here. Third-party packages can add their
+ * own data sources by augmenting this interface via declaration merging:
+ *
+ *   declare module '@gonogo/core' {
+ *     interface DataSourceRegistry {
+ *       'my-source': MySourceSchema;
+ *     }
+ *   }
+ *
+ * Once registered, `useDataValue("my-source", key)` infers the return type
+ * from the schema automatically — no manual type parameter needed.
+ */
+export interface DataSourceRegistry {
+  telemachus: TelemaachusSchema;
+}
 
 export interface DataKey {
   key: string;
@@ -12,7 +40,7 @@ export interface DataKey {
 export interface ConfigField {
   key: string;
   label: string;
-  type: 'text' | 'number';
+  type: "text" | "number";
   placeholder?: string;
 }
 
@@ -20,8 +48,8 @@ export interface ActionGroup {
   name: string;
   /** Telemachus action key to toggle, or null for read-only groups. */
   toggle: string | null;
-  /** Telemachus value key to read current state. */
-  value: string;
+  /** Telemachus value key to read current state. Must be a key in TelemaachusSchema. */
+  value: keyof TelemaachusSchema;
   description: string;
 }
 
@@ -33,7 +61,9 @@ export interface ActionGroup {
  *
  * Follows the same generic pattern as ComponentDefinition<TConfig>.
  */
-export interface DataSource<TConfig extends Record<string, unknown> = Record<string, unknown>> {
+export interface DataSource<
+  TConfig extends Record<string, unknown> = Record<string, unknown>,
+> {
   id: string;
   name: string;
   connect(): Promise<void>;
@@ -50,7 +80,7 @@ export interface DataSource<TConfig extends Record<string, unknown> = Record<str
   setupInstructions?(): string | null;
 }
 
-export type ComponentBehavior = 'gonogo-participant';
+export type ComponentBehavior = "gonogo-participant";
 
 /**
  * Props passed to every registered dashboard component.

@@ -1,7 +1,7 @@
-import styled from 'styled-components';
-import { registerComponent, useDataValue, getBody } from '@gonogo/core';
-import { trueAnomalyToRadius, orbitalToCartesian } from '@gonogo/core';
-import type { ComponentProps } from '@gonogo/core';
+import styled from "styled-components";
+import { registerComponent, useDataValue, getBody } from "@gonogo/core";
+import { trueAnomalyToRadius, orbitalToCartesian } from "@gonogo/core";
+import type { ComponentProps } from "@gonogo/core";
 
 interface OrbitViewConfig {
   /** Show Ap/Pe markers. Default: true. */
@@ -11,21 +11,21 @@ interface OrbitViewConfig {
 function OrbitViewComponent({ config }: ComponentProps<OrbitViewConfig>) {
   const showMarkers = config?.showMarkers ?? true;
 
-  const sma         = useDataValue<number>('telemachus', 'o.sma');
-  const eccentricity = useDataValue<number>('telemachus', 'o.eccentricity');
-  const trueAnomaly  = useDataValue<number>('telemachus', 'o.trueAnomaly');
-  const apoapsis     = useDataValue<number>('telemachus', 'o.apoapsis');
-  const periapsis    = useDataValue<number>('telemachus', 'o.periapsis');
-  const argPe        = useDataValue<number>('telemachus', 'o.argumentOfPeriapsis');
-  const bodyName     = useDataValue<string>('telemachus', 'v.body');
+  const sma = useDataValue("telemachus", "o.sma");
+  const eccentricity = useDataValue("telemachus", "o.eccentricity");
+  const trueAnomaly = useDataValue("telemachus", "o.trueAnomaly");
+  const apoapsisR = useDataValue("telemachus", "o.ApR");
+  const periapsisR = useDataValue("telemachus", "o.PeR");
+  const argPe = useDataValue("telemachus", "o.argumentOfPeriapsis");
+  const bodyName = useDataValue("telemachus", "v.body");
 
   const body = bodyName !== undefined ? getBody(bodyName) : undefined;
 
   const hasOrbit =
     sma !== undefined &&
     eccentricity !== undefined &&
-    apoapsis !== undefined &&
-    periapsis !== undefined;
+    apoapsisR !== undefined &&
+    periapsisR !== undefined;
 
   return (
     <Panel>
@@ -36,8 +36,8 @@ function OrbitViewComponent({ config }: ComponentProps<OrbitViewConfig>) {
         <OrbitDiagram
           sma={sma!}
           ecc={eccentricity!}
-          apoapsis={apoapsis!}
-          periapsis={periapsis!}
+          apoapsis={apoapsisR!}
+          periapsis={periapsisR!}
           trueAnomaly={trueAnomaly ?? 0}
           argPe={argPe ?? 0}
           showMarkers={showMarkers}
@@ -90,9 +90,7 @@ function OrbitDiagram({
   const vbSize = 2 * vbHalf;
 
   // Scale sizes relative to rMax for resolution-independence
-  const bodyDisc = bodyRadius
-    ? Math.min(bodyRadius, rMax * 0.18)
-    : rMax * 0.04;
+  const bodyDisc = bodyRadius ? Math.min(bodyRadius, rMax * 0.18) : rMax * 0.04;
   const strokeW = rMax * 0.008;
   const dotR = rMax * 0.02;
 
@@ -108,7 +106,7 @@ function OrbitDiagram({
       aria-label="Orbital diagram"
     >
       {/* Body at focus (origin) */}
-      <circle cx={0} cy={0} r={bodyDisc} fill={bodyColor ?? '#4a90d9'} />
+      <circle cx={0} cy={0} r={bodyDisc} fill={bodyColor ?? "#4a90d9"} />
 
       {/* Orbit group, rotated by argument of periapsis */}
       <g transform={`rotate(${-argPe})`}>
@@ -163,15 +161,21 @@ function OrbitDiagram({
 // ---------------------------------------------------------------------------
 
 registerComponent<OrbitViewConfig>({
-  id: 'orbit-view',
-  name: 'Orbit View',
-  description: 'SVG diagram of the current orbit ellipse with vessel position, apoapsis, and periapsis markers.',
-  tags: ['telemetry'],
+  id: "orbit-view",
+  name: "Orbit View",
+  description:
+    "SVG diagram of the current orbit ellipse with vessel position, apoapsis, and periapsis markers.",
+  tags: ["telemetry"],
   defaultSize: { w: 3, h: 6 },
   component: OrbitViewComponent,
   dataRequirements: [
-    'o.sma', 'o.eccentricity', 'o.trueAnomaly',
-    'o.apoapsis', 'o.periapsis', 'o.argumentOfPeriapsis', 'v.body',
+    "o.sma",
+    "o.eccentricity",
+    "o.trueAnomaly",
+    "o.ApR",
+    "o.PeR",
+    "o.argumentOfPeriapsis",
+    "v.body",
   ],
   behaviors: [],
   defaultConfig: { showMarkers: true },

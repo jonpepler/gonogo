@@ -73,7 +73,7 @@ describe('CurrentOrbitComponent', () => {
   });
 
   it('shows apoapsis value when data arrives', async () => {
-    setupTelemetry({ 'o.apoapsis': 250_000, 'o.periapsis': 80_000, 'o.eccentricity': 0.1 });
+    setupTelemetry({ 'o.ApA': 250_000, 'o.PeA': 80_000, 'o.eccentricity': 0.1 });
     await telemachusSource.connect();
     render(<CurrentOrbitComponent />);
     // formatDistance(250_000) = '250.0 km'
@@ -133,8 +133,8 @@ describe('OrbitViewComponent', () => {
     setupTelemetry({
       'o.sma': 700_000,
       'o.eccentricity': 0.1,
-      'o.apoapsis': 770_000,
-      'o.periapsis': 630_000,
+      'o.ApR': 770_000,
+      'o.PeR': 630_000,
       'o.trueAnomaly': 0,
       'o.argumentOfPeriapsis': 0,
     });

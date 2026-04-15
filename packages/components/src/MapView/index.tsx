@@ -91,7 +91,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   useEffect(() => {
     if (lat === undefined || lon === undefined) return;
     const prev = prevPosRef.current;
-    if (prev && prev.lat === lat && prev.lon === lon) return;
+    if (prev?.lat === lat && prev.lon === lon) return;
 
     prevPosRef.current = { lat, lon };
     trajectoryRef.current = [
@@ -351,7 +351,7 @@ function TelemetryRow({
 function MapViewConfigComponent({
   config,
   onSave,
-}: ConfigComponentProps<MapViewConfig>) {
+}: Readonly<ConfigComponentProps<MapViewConfig>>) {
   const [trajectoryLength, setTrajectoryLength] = useState(
     String(config?.trajectoryLength ?? 200),
   );
@@ -374,7 +374,10 @@ function MapViewConfigComponent({
       selected.has(k),
     );
     onSave({
-      trajectoryLength: Math.max(1, parseInt(trajectoryLength, 10) || 200),
+      trajectoryLength: Math.max(
+        1,
+        Number.parseInt(trajectoryLength, 10) || 200,
+      ),
       telemetryKeys: keys.length > 0 ? keys : undefined,
     });
   };
@@ -424,7 +427,7 @@ registerComponent<MapViewConfig>({
   description:
     "Equirectangular map of the current body with vessel position and trajectory trail.",
   tags: ["telemetry"],
-  defaultSize: { w: 4, h: 6 },
+  defaultSize: { w: 12, h: 18 },
   component: MapViewComponent,
   configComponent: MapViewConfigComponent,
   dataRequirements: ["v.lat", "v.long", "v.body"],

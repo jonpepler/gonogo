@@ -180,7 +180,7 @@ registerComponent<KosTerminalConfig>({
   description:
     "Interactive or read-only terminal connected to a kOS CPU via the telnet proxy.",
   tags: ["kos", "control", "telemetry"],
-  defaultSize: { w: 6, h: 5 },
+  defaultSize: { w: 18, h: 15 },
   openConfigOnAdd: true,
   component: KosTerminalComponent,
   dataRequirements: [],

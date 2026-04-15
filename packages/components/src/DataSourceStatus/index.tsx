@@ -134,7 +134,7 @@ registerComponent({
   description:
     "Shows connection status for all registered data sources and lets you edit their configuration.",
   tags: ["system"],
-  defaultSize: { w: 12, h: 1 },
+  defaultSize: { w: 12, h: 10 },
   component: DataSourceStatusComponent,
   dataRequirements: [],
   behaviors: [],
@@ -212,8 +212,9 @@ const Indicator = styled.span<{ status: DataSourceStatus }>`
   flex-shrink: 0;
   background: ${({ status }) => statusColor[status]};
   animation: ${({ status }) =>
-    status === "connected" || status === "reconnecting" ? pulse : "none"}
-    ${({ status }) => (status === "reconnecting" ? "1s" : "2s")} ease-in-out infinite;
+      status === "connected" || status === "reconnecting" ? pulse : "none"}
+    ${({ status }) => (status === "reconnecting" ? "1s" : "2s")} ease-in-out
+    infinite;
 `;
 
 const StatusLabel = styled.span<{ status: DataSourceStatus }>`
@@ -232,7 +233,9 @@ const ConfigButton = styled.button<{ $active: boolean }>`
   padding: 0 2px;
   line-height: 1;
   transition: color 0.1s;
-  &:hover { color: #aaa; }
+  &:hover {
+    color: #aaa;
+  }
 `;
 
 const ConfigForm = styled.div`
@@ -288,7 +291,9 @@ const SaveButton = styled.button`
   font-size: 11px;
   padding: 3px 8px;
   cursor: pointer;
-  &:hover { background: #1f321f; }
+  &:hover {
+    background: #1f321f;
+  }
 `;
 
 const CancelButton = styled.button`
@@ -300,7 +305,10 @@ const CancelButton = styled.button`
   font-size: 11px;
   padding: 3px 8px;
   cursor: pointer;
-  &:hover { color: #aaa; border-color: #555; }
+  &:hover {
+    color: #aaa;
+    border-color: #555;
+  }
 `;
 
 const SetupInstructions = styled.pre`
@@ -327,8 +335,13 @@ const RetryButton = styled.button`
   padding: 2px 6px;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.1s, border-color 0.1s;
-  &:hover { color: #aaa; border-color: #555; }
+  transition:
+    color 0.1s,
+    border-color 0.1s;
+  &:hover {
+    color: #aaa;
+    border-color: #555;
+  }
 `;
 
 const Empty = styled.p`

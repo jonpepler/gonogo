@@ -15,7 +15,9 @@ interface CurrentOrbitConfig {
   showDiagram?: boolean;
 }
 
-function CurrentOrbitComponent({ config }: ComponentProps<CurrentOrbitConfig>) {
+function CurrentOrbitComponent({
+  config,
+}: Readonly<ComponentProps<CurrentOrbitConfig>>) {
   const showDiagram = config?.showDiagram ?? true;
 
   const apoapsisA = useDataValue("telemachus", "o.ApA");
@@ -31,9 +33,9 @@ function CurrentOrbitComponent({ config }: ComponentProps<CurrentOrbitConfig>) {
   const bodyName = useDataValue("telemachus", "v.body");
 
   const body =
-    (bodyName ?? refBody) !== undefined
-      ? getBody(bodyName ?? refBody ?? "")
-      : undefined;
+    (bodyName ?? refBody) === undefined
+      ? undefined
+      : getBody(bodyName ?? refBody ?? "");
 
   return (
     <Panel>
@@ -43,35 +45,35 @@ function CurrentOrbitComponent({ config }: ComponentProps<CurrentOrbitConfig>) {
       <Grid>
         <Label>Ap</Label>
         <Value $accent="ap">
-          {apoapsisA !== undefined ? formatDistance(apoapsisA) : "—"}
+          {apoapsisA === undefined ? "—" : formatDistance(apoapsisA)}
         </Value>
 
         <Label>Pe</Label>
         <Value $accent="pe">
-          {periapsisA !== undefined ? formatDistance(periapsisA) : "—"}
+          {periapsisA === undefined ? "—" : formatDistance(periapsisA)}
         </Value>
 
         <Label>Ecc</Label>
         <Value>
-          {eccentricity !== undefined ? eccentricity.toFixed(4) : "—"}
+          {eccentricity === undefined ? "—" : eccentricity.toFixed(4)}
         </Value>
 
         <Label>Inc</Label>
         <Value>
-          {inclination !== undefined ? `${inclination.toFixed(1)}°` : "—"}
+          {inclination === undefined ? "—" : `${inclination.toFixed(1)}°`}
         </Value>
 
         <Label>T</Label>
-        <Value>{period !== undefined ? formatDuration(period) : "—"}</Value>
+        <Value>{period === undefined ? "—" : formatDuration(period)}</Value>
 
         <Label>t-Ap</Label>
         <Value $accent="ap">
-          {timeToAp !== undefined ? formatDuration(timeToAp) : "—"}
+          {timeToAp === undefined ? "—" : formatDuration(timeToAp)}
         </Value>
 
         <Label>t-Pe</Label>
         <Value $accent="pe">
-          {timeToPe !== undefined ? formatDuration(timeToPe) : "—"}
+          {timeToPe === undefined ? "—" : formatDuration(timeToPe)}
         </Value>
       </Grid>
 
@@ -109,7 +111,7 @@ function MiniDiagram({
   trueAnomaly,
   bodyRadius,
   bodyColor,
-}: MiniDiagramProps) {
+}: Readonly<MiniDiagramProps>) {
   // Orbital geometry from apoapsis/periapsis radii (distance from body centre)
   // sma (semi-major axis from focus): a = (rAp + rPe) / 2
   const rAp = apoapsis;
@@ -175,7 +177,7 @@ registerComponent<CurrentOrbitConfig>({
   description:
     "Displays orbital parameters: apoapsis, periapsis, eccentricity, inclination, period, and time to Ap/Pe.",
   tags: ["telemetry"],
-  defaultSize: { w: 3, h: 6 },
+  defaultSize: { w: 9, h: 18 },
   component: CurrentOrbitComponent,
   dataRequirements: [
     "o.ApA",

@@ -36,9 +36,9 @@ export interface DashboardConfig {
 // Grid constants
 // ---------------------------------------------------------------------------
 
-const COLS = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
+const COLS = { lg: 36, md: 30, sm: 18, xs: 12, xxs: 6, xxxs: 2 };
 const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
-const ROW_HEIGHT = 80; // px per grid unit
+const ROW_HEIGHT = 25; // px per grid unit
 
 // ---------------------------------------------------------------------------
 // Persistence helpers

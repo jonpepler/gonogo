@@ -13,7 +13,9 @@ interface OrbitViewConfig {
   showMarkers?: boolean;
 }
 
-function OrbitViewComponent({ config }: ComponentProps<OrbitViewConfig>) {
+function OrbitViewComponent({
+  config,
+}: Readonly<ComponentProps<OrbitViewConfig>>) {
   const showMarkers = config?.showMarkers ?? true;
 
   const sma = useDataValue("telemachus", "o.sma");
@@ -82,7 +84,7 @@ function OrbitDiagram({
   showMarkers,
   bodyColor,
   bodyRadius,
-}: OrbitDiagramProps) {
+}: Readonly<OrbitDiagramProps>) {
   // Orbital geometry (all distances in the same units as sma/apoapsis/periapsis)
   const b = sma * Math.sqrt(Math.max(0, 1 - ecc * ecc));
   const c = sma * ecc;
@@ -171,7 +173,7 @@ registerComponent<OrbitViewConfig>({
   description:
     "SVG diagram of the current orbit ellipse with vessel position, apoapsis, and periapsis markers.",
   tags: ["telemetry"],
-  defaultSize: { w: 3, h: 6 },
+  defaultSize: { w: 9, h: 18 },
   component: OrbitViewComponent,
   dataRequirements: [
     "o.sma",

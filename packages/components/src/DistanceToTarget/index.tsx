@@ -30,7 +30,7 @@ registerComponent({
   name: "Distance to Target",
   description: "Shows the name and distance to the current KSP target.",
   tags: ["telemetry"],
-  defaultSize: { w: 2, h: 3 },
+  defaultSize: { w: 6, h: 9 },
   component: DistanceToTargetComponent,
   dataRequirements: ["tar.distance", "tar.name"],
   behaviors: [],

@@ -1,10 +1,10 @@
-import { registerDataSource } from "@gonogo/core";
 import type {
+  ConfigField,
+  DataKey,
   DataSource,
   DataSourceStatus,
-  DataKey,
-  ConfigField,
 } from "@gonogo/core";
+import { registerDataSource } from "@gonogo/core";
 
 // TelemaachusSchema lives in @gonogo/core and is pre-registered in DataSourceRegistry.
 // Re-export it here so callers that import from this module path keep working.
@@ -82,7 +82,7 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
   subscribe(key: string, cb: (value: unknown) => void): () => void {
     const isNewKey = !this.subscriptions.has(key);
     if (isNewKey) this.subscriptions.set(key, new Set());
-    this.subscriptions.get(key)!.add(cb);
+    this.subscriptions.get(key)?.add(cb);
 
     if (isNewKey && this.ws?.readyState === WebSocket.OPEN) {
       // Include rate on the first key to establish the update interval
@@ -215,7 +215,9 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
       const data = JSON.parse(raw) as Record<string, unknown>;
       for (const [key, callbacks] of this.subscriptions) {
         if (key in data) {
-          callbacks.forEach((cb) => cb(data[key]));
+          callbacks.forEach((cb) => {
+            cb(data[key]);
+          });
         }
       }
     } catch {
@@ -238,7 +240,9 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
 
   private setStatus(status: DataSourceStatus): void {
     this.status = status;
-    this.statusListeners.forEach((cb) => cb(status));
+    this.statusListeners.forEach((cb) => {
+      cb(status);
+    });
   }
 }
 

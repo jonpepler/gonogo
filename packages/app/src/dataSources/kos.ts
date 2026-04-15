@@ -1,6 +1,11 @@
-import { registerDataSource } from '@gonogo/core';
-import type { DataSource, DataSourceStatus, DataKey, ConfigField } from '@gonogo/core';
-import { parseKosMenu, parseListChanged } from './kos-menu-parser';
+import type {
+  ConfigField,
+  DataKey,
+  DataSource,
+  DataSourceStatus,
+} from "@gonogo/core";
+import { registerDataSource } from "@gonogo/core";
+import { parseKosMenu, parseListChanged } from "./kos-menu-parser";
 
 export interface KosConfig extends Record<string, unknown> {
   host: string;
@@ -10,8 +15,13 @@ export interface KosConfig extends Record<string, unknown> {
   cpuName?: string;
 }
 
-const DEFAULT_CONFIG: KosConfig = { host: 'localhost', port: 3001, kosHost: 'localhost', kosPort: 5410 };
-const STORAGE_KEY = 'gonogo.datasource.kos';
+const DEFAULT_CONFIG: KosConfig = {
+  host: "localhost",
+  port: 3001,
+  kosHost: "localhost",
+  kosPort: 5410,
+};
+const STORAGE_KEY = "gonogo.datasource.kos";
 const RETRY_INTERVAL_MS = 5_000;
 const RETRY_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -21,9 +31,9 @@ interface RetryOptions {
 }
 
 export class KosDataSource implements DataSource<KosConfig> {
-  id = 'kos';
-  name = 'kOS';
-  status: DataSourceStatus = 'disconnected';
+  id = "kos";
+  name = "kOS";
+  status: DataSourceStatus = "disconnected";
 
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private ws: WebSocket | null = null;
@@ -38,11 +48,14 @@ export class KosDataSource implements DataSource<KosConfig> {
 
   // CPU selection state — only used when cpuName is configured
   private inMenuSelection = false;
-  private menuBuffer = '';
+  private menuBuffer = "";
 
   constructor(
     config?: KosConfig,
-    { retryIntervalMs = RETRY_INTERVAL_MS, retryTimeoutMs = RETRY_TIMEOUT_MS }: RetryOptions = {},
+    {
+      retryIntervalMs = RETRY_INTERVAL_MS,
+      retryTimeoutMs = RETRY_TIMEOUT_MS,
+    }: RetryOptions = {},
   ) {
     this.cfg = config ?? this.loadConfig();
     this.retryIntervalMs = retryIntervalMs;
@@ -63,7 +76,7 @@ export class KosDataSource implements DataSource<KosConfig> {
     this.stopRetrying();
     this.ws?.close();
     this.ws = null;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   // --- Data ---
@@ -74,11 +87,12 @@ export class KosDataSource implements DataSource<KosConfig> {
 
   subscribe(key: string, cb: (value: unknown) => void): () => void {
     if (!this.subscriptions.has(key)) this.subscriptions.set(key, new Set());
-    this.subscriptions.get(key)!.add(cb);
+    this.subscriptions.get(key)?.add(cb);
     this.sendSubscription();
     return () => {
       this.subscriptions.get(key)?.delete(cb);
-      if (this.subscriptions.get(key)?.size === 0) this.subscriptions.delete(key);
+      if (this.subscriptions.get(key)?.size === 0)
+        this.subscriptions.delete(key);
       this.sendSubscription();
     };
   }
@@ -95,18 +109,38 @@ export class KosDataSource implements DataSource<KosConfig> {
   }
 
   setupInstructions(): string {
-    return 'The kOS proxy bridges telnet to WebSocket. Run it locally:\n\n  podman compose up -d\n\n(or: docker compose up -d)\n\nfrom the gonogo project root.';
+    return "The kOS proxy bridges telnet to WebSocket. Run it locally:\n\n  podman compose up -d\n\n(or: docker compose up -d)\n\nfrom the gonogo project root.";
   }
 
   // --- Config ---
 
   configSchema(): ConfigField[] {
     return [
-      { key: 'host', label: 'Proxy Host', type: 'text', placeholder: 'localhost' },
-      { key: 'port', label: 'Proxy Port', type: 'number', placeholder: '3001' },
-      { key: 'kosHost', label: 'kOS Host', type: 'text', placeholder: 'localhost' },
-      { key: 'kosPort', label: 'kOS Port', type: 'number', placeholder: '5410' },
-      { key: 'cpuName', label: 'CPU Name', type: 'text', placeholder: 'optional tagname' },
+      {
+        key: "host",
+        label: "Proxy Host",
+        type: "text",
+        placeholder: "localhost",
+      },
+      { key: "port", label: "Proxy Port", type: "number", placeholder: "3001" },
+      {
+        key: "kosHost",
+        label: "kOS Host",
+        type: "text",
+        placeholder: "localhost",
+      },
+      {
+        key: "kosPort",
+        label: "kOS Port",
+        type: "number",
+        placeholder: "5410",
+      },
+      {
+        key: "cpuName",
+        label: "CPU Name",
+        type: "text",
+        placeholder: "optional tagname",
+      },
     ];
   }
 
@@ -116,19 +150,27 @@ export class KosDataSource implements DataSource<KosConfig> {
       port: this.cfg.port,
       kosHost: this.cfg.kosHost,
       kosPort: this.cfg.kosPort,
-      cpuName: this.cfg.cpuName ?? '',
+      cpuName: this.cfg.cpuName ?? "",
     };
   }
 
   configure(config: Record<string, unknown>): void {
-    const cpuName = typeof config.cpuName === 'string' && config.cpuName.trim() !== ''
-      ? config.cpuName.trim()
-      : undefined;
+    const cpuName =
+      typeof config.cpuName === "string" && config.cpuName.trim() !== ""
+        ? config.cpuName.trim()
+        : undefined;
     this.cfg = {
-      host: typeof config.host === 'string' ? config.host : this.cfg.host,
-      port: typeof config.port === 'number' ? config.port : Number(config.port) || this.cfg.port,
-      kosHost: typeof config.kosHost === 'string' ? config.kosHost : this.cfg.kosHost,
-      kosPort: typeof config.kosPort === 'number' ? config.kosPort : Number(config.kosPort) || this.cfg.kosPort,
+      host: typeof config.host === "string" ? config.host : this.cfg.host,
+      port:
+        typeof config.port === "number"
+          ? config.port
+          : Number(config.port) || this.cfg.port,
+      kosHost:
+        typeof config.kosHost === "string" ? config.kosHost : this.cfg.kosHost,
+      kosPort:
+        typeof config.kosPort === "number"
+          ? config.kosPort
+          : Number(config.kosPort) || this.cfg.kosPort,
       cpuName,
     };
     this.saveConfig();
@@ -143,14 +185,18 @@ export class KosDataSource implements DataSource<KosConfig> {
         const parsed = JSON.parse(stored) as Partial<KosConfig>;
         return { ...DEFAULT_CONFIG, ...parsed };
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return DEFAULT_CONFIG;
   }
 
   private saveConfig(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.cfg));
-    } catch { /* localStorage unavailable */ }
+    } catch {
+      /* localStorage unavailable */
+    }
   }
 
   // --- Private ---
@@ -164,20 +210,20 @@ export class KosDataSource implements DataSource<KosConfig> {
       const ws = new WebSocket(url);
       this.ws = ws;
 
-      ws.addEventListener('open', () => {
+      ws.addEventListener("open", () => {
         if (this.cfg.cpuName) {
           this.inMenuSelection = true;
-          this.menuBuffer = '';
-          this.setStatus('reconnecting');
+          this.menuBuffer = "";
+          this.setStatus("reconnecting");
         } else {
-          this.setStatus('connected');
+          this.setStatus("connected");
           this.sendSubscription();
         }
         resolve();
       });
 
-      ws.addEventListener('message', ({ data }) => {
-        const text = typeof data === 'string' ? data : String(data);
+      ws.addEventListener("message", ({ data }) => {
+        const text = typeof data === "string" ? data : String(data);
         if (this.inMenuSelection) {
           this.handleMenuData(text, ws);
         } else {
@@ -185,11 +231,11 @@ export class KosDataSource implements DataSource<KosConfig> {
         }
       });
 
-      ws.addEventListener('close', () => {
+      ws.addEventListener("close", () => {
         if (this.ws === ws) this.onClose();
       });
 
-      ws.addEventListener('error', () => {
+      ws.addEventListener("error", () => {
         reject(new Error(`Could not connect to kOS proxy at ${url}`));
       });
     });
@@ -197,7 +243,7 @@ export class KosDataSource implements DataSource<KosConfig> {
 
   private handleMenuData(text: string, ws: WebSocket): void {
     if (parseListChanged(text)) {
-      this.menuBuffer = '';
+      this.menuBuffer = "";
     }
 
     this.menuBuffer += text;
@@ -209,8 +255,8 @@ export class KosDataSource implements DataSource<KosConfig> {
     if (cpu) {
       ws.send(`${cpu.number}\n`);
       this.inMenuSelection = false;
-      this.menuBuffer = '';
-      this.setStatus('connected');
+      this.menuBuffer = "";
+      this.setStatus("connected");
       this.sendSubscription();
     }
     // No match: leave inMenuSelection = true, wait for list-changed and retry
@@ -222,25 +268,30 @@ export class KosDataSource implements DataSource<KosConfig> {
       if (this.cfg.cpuName) {
         this.inMenuSelection = true;
         this.menuBuffer = text;
-        this.setStatus('reconnecting');
+        this.setStatus("reconnecting");
         // Continue processing in case the new menu is in the same chunk
-        this.handleMenuData('', this.ws!);
+        if (!this.ws) {
+          throw new Error(`Websocket not defined: ${JSON.stringify(this.cfg)}`);
+        }
+        this.handleMenuData("", this.ws);
       }
       return;
     }
 
-    for (const line of text.split('\n')) {
-      const eq = line.indexOf('=');
+    for (const line of text.split("\n")) {
+      const eq = line.indexOf("=");
       if (eq === -1) continue;
       const key = line.slice(0, eq);
       const value = line.slice(eq + 1);
-      this.subscriptions.get(key)?.forEach((cb) => cb(value));
+      this.subscriptions.get(key)?.forEach((cb) => {
+        cb(value);
+      });
     }
   }
 
   private onClose(): void {
     this.inMenuSelection = false;
-    this.menuBuffer = '';
+    this.menuBuffer = "";
 
     if (this.intentionalDisconnect) return;
 
@@ -248,11 +299,11 @@ export class KosDataSource implements DataSource<KosConfig> {
 
     if (Date.now() - this.retryStart >= this.retryTimeoutMs) {
       this.retryStart = null;
-      this.setStatus('disconnected');
+      this.setStatus("disconnected");
       return;
     }
 
-    this.setStatus('reconnecting');
+    this.setStatus("reconnecting");
     this.retryTimer = setTimeout(() => {
       void this.openWebSocket().catch(() => {});
     }, this.retryIntervalMs);
@@ -267,13 +318,20 @@ export class KosDataSource implements DataSource<KosConfig> {
 
   private sendSubscription(): void {
     if (this.ws?.readyState === WebSocket.OPEN && this.subscriptions.size > 0) {
-      this.ws.send(JSON.stringify({ type: 'subscribe', keys: [...this.subscriptions.keys()] }));
+      this.ws.send(
+        JSON.stringify({
+          type: "subscribe",
+          keys: [...this.subscriptions.keys()],
+        }),
+      );
     }
   }
 
   private setStatus(status: DataSourceStatus): void {
     this.status = status;
-    this.statusListeners.forEach((cb) => cb(status));
+    this.statusListeners.forEach((cb) => {
+      cb(status);
+    });
   }
 }
 

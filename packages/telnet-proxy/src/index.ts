@@ -1,5 +1,5 @@
-import Fastify from "fastify";
 import websocket from "@fastify/websocket";
+import Fastify from "fastify";
 import { registerKosBridge } from "./bridge.js";
 
 const fastify = Fastify({ logger: true });

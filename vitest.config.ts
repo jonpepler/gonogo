@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import path from "node:path";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
 
 const root = import.meta.dirname;
 
@@ -19,26 +19,29 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@gonogo/core': path.resolve(root, 'packages/core/src/index.ts'),
-      '@gonogo/components': path.resolve(root, 'packages/components/src/index.ts'),
+      "@gonogo/core": path.resolve(root, "packages/core/src/index.ts"),
+      "@gonogo/components": path.resolve(
+        root,
+        "packages/components/src/index.ts",
+      ),
     },
   },
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    setupFiles: ['./test/setup.ts'],
-    include: ['packages/*/src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['packages/proxy/**', '**/dist/**', '**/node_modules/**'],
+    setupFiles: ["./test/setup.ts"],
+    include: ["packages/*/src/**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["packages/proxy/**", "**/dist/**", "**/node_modules/**"],
     coverage: {
-      provider: 'v8',
-      include: ['packages/*/src/**'],
+      provider: "v8",
+      include: ["packages/*/src/**"],
       exclude: [
-        'packages/*/src/**/*.test.*',
-        'packages/*/src/test/**',
-        'packages/proxy/**',
+        "packages/*/src/**/*.test.*",
+        "packages/*/src/test/**",
+        "packages/proxy/**",
       ],
-      reporter: ['text', 'html'],
-      reportsDirectory: './coverage',
+      reporter: ["text", "html"],
+      reportsDirectory: "./coverage",
     },
   },
 });

@@ -1,7 +1,12 @@
-import styled from "styled-components";
-import { registerComponent, useDataValue, getBody } from "@gonogo/core";
-import { trueAnomalyToRadius, orbitalToCartesian } from "@gonogo/core";
 import type { ComponentProps } from "@gonogo/core";
+import {
+  getBody,
+  orbitalToCartesian,
+  registerComponent,
+  trueAnomalyToRadius,
+  useDataValue,
+} from "@gonogo/core";
+import styled from "styled-components";
 
 interface OrbitViewConfig {
   /** Show Ap/Pe markers. Default: true. */
@@ -19,7 +24,7 @@ function OrbitViewComponent({ config }: ComponentProps<OrbitViewConfig>) {
   const argPe = useDataValue("telemachus", "o.argumentOfPeriapsis");
   const bodyName = useDataValue("telemachus", "v.body");
 
-  const body = bodyName !== undefined ? getBody(bodyName) : undefined;
+  const body = bodyName === undefined ? undefined : getBody(bodyName);
 
   const hasOrbit =
     sma !== undefined &&
@@ -34,10 +39,10 @@ function OrbitViewComponent({ config }: ComponentProps<OrbitViewConfig>) {
 
       {hasOrbit ? (
         <OrbitDiagram
-          sma={sma!}
-          ecc={eccentricity!}
-          apoapsis={apoapsisR!}
-          periapsis={periapsisR!}
+          sma={sma}
+          ecc={eccentricity}
+          apoapsis={apoapsisR}
+          periapsis={periapsisR}
           trueAnomaly={trueAnomaly ?? 0}
           argPe={argPe ?? 0}
           showMarkers={showMarkers}

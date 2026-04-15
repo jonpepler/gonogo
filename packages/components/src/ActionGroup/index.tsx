@@ -1,16 +1,16 @@
-import { useRef, useState } from "react";
-import styled from "styled-components";
-import {
-  registerComponent,
-  useDataValue,
-  useExecuteAction,
-  ACTION_GROUPS,
-} from "@gonogo/core";
 import type {
   ActionGroupId,
   ComponentProps,
   ConfigComponentProps,
 } from "@gonogo/core";
+import {
+  ACTION_GROUPS,
+  registerComponent,
+  useDataValue,
+  useExecuteAction,
+} from "@gonogo/core";
+import { useRef, useState } from "react";
+import styled from "styled-components";
 
 type ActionGroupConfig = {
   actionGroupId: ActionGroupId;

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { parseKosMenu, parseListChanged } from '../dataSources/kos-menu-parser';
+import { describe, expect, it } from "vitest";
+import { parseKosMenu, parseListChanged } from "../dataSources/kos-menu-parser";
 
 const MENU_WITH_CPUS = `Terminal: type = XTERM-256COLOR, size = 123x18
 __________________________________________________________________________________________________________________________
@@ -23,42 +23,57 @@ ________________________________________________________________________________
                                    ---- ---- -------  --------------------------------
                                                                   <NONE>`;
 
-describe('parseKosMenu', () => {
-  it('returns null for non-menu text', () => {
-    expect(parseKosMenu('hello kOS')).toBeNull();
-    expect(parseKosMenu('')).toBeNull();
-    expect(parseKosMenu('altitude=1000')).toBeNull();
+describe("parseKosMenu", () => {
+  it("returns null for non-menu text", () => {
+    expect(parseKosMenu("hello kOS")).toBeNull();
+    expect(parseKosMenu("")).toBeNull();
+    expect(parseKosMenu("altitude=1000")).toBeNull();
   });
 
-  it('parses a menu with CPUs into structured entries', () => {
+  it("parses a menu with CPUs into structured entries", () => {
     const result = parseKosMenu(MENU_WITH_CPUS);
     expect(result).not.toBeNull();
-    expect(result!.cpus).toHaveLength(3);
-    expect(result!.waitingForSelection).toBe(true);
+    expect(result?.cpus).toHaveLength(3);
+    expect(result?.waitingForSelection).toBe(true);
   });
 
-  it('parses CPU number, vesselName, partType, and tagname correctly', () => {
-    const result = parseKosMenu(MENU_WITH_CPUS)!;
-    expect(result.cpus[0]).toEqual({ number: 1, vesselName: 'Untitled Space Craft', partType: 'KAL9000', tagname: 'name 1' });
-    expect(result.cpus[1]).toEqual({ number: 2, vesselName: 'Untitled Space Craft', partType: 'KAL9000', tagname: 'name 2' });
-    expect(result.cpus[2]).toEqual({ number: 3, vesselName: 'Untitled Space Craft', partType: 'CX-4181', tagname: 'name 3' });
+  it("parses CPU number, vesselName, partType, and tagname correctly", () => {
+    const result = parseKosMenu(MENU_WITH_CPUS);
+    expect(result?.cpus[0]).toEqual({
+      number: 1,
+      vesselName: "Untitled Space Craft",
+      partType: "KAL9000",
+      tagname: "name 1",
+    });
+    expect(result?.cpus[1]).toEqual({
+      number: 2,
+      vesselName: "Untitled Space Craft",
+      partType: "KAL9000",
+      tagname: "name 2",
+    });
+    expect(result?.cpus[2]).toEqual({
+      number: 3,
+      vesselName: "Untitled Space Craft",
+      partType: "CX-4181",
+      tagname: "name 3",
+    });
   });
 
-  it('parses a menu with no CPUs as empty list, not waiting for selection', () => {
+  it("parses a menu with no CPUs as empty list, not waiting for selection", () => {
     const result = parseKosMenu(MENU_NO_CPUS);
     expect(result).not.toBeNull();
-    expect(result!.cpus).toHaveLength(0);
-    expect(result!.waitingForSelection).toBe(false);
+    expect(result?.cpus).toHaveLength(0);
+    expect(result?.waitingForSelection).toBe(false);
   });
 });
 
-describe('parseListChanged', () => {
-  it('detects the list-changed marker', () => {
+describe("parseListChanged", () => {
+  it("detects the list-changed marker", () => {
     expect(parseListChanged("--(List of CPU's has Changed)--")).toBe(true);
   });
 
-  it('returns false for unrelated text', () => {
-    expect(parseListChanged('altitude=1000')).toBe(false);
-    expect(parseListChanged('')).toBe(false);
+  it("returns false for unrelated text", () => {
+    expect(parseListChanged("altitude=1000")).toBe(false);
+    expect(parseListChanged("")).toBe(false);
   });
 });

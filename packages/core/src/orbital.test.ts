@@ -1,36 +1,36 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
-  trueAnomalyToRadius,
-  orbitalToCartesian,
+  formatDistance,
+  formatDuration,
   generateOrbitPoints,
   latLonToMap,
-  formatDuration,
-  formatDistance,
-} from './orbital';
+  orbitalToCartesian,
+  trueAnomalyToRadius,
+} from "./orbital";
 
 // ── trueAnomalyToRadius ────────────────────────────────────────────────────
 
-describe('trueAnomalyToRadius', () => {
-  it('returns SMA for a circular orbit at any angle', () => {
+describe("trueAnomalyToRadius", () => {
+  it("returns SMA for a circular orbit at any angle", () => {
     const sma = 700_000;
     expect(trueAnomalyToRadius(sma, 0, 0)).toBeCloseTo(sma);
     expect(trueAnomalyToRadius(sma, 0, 90)).toBeCloseTo(sma);
     expect(trueAnomalyToRadius(sma, 0, 180)).toBeCloseTo(sma);
   });
 
-  it('returns periapsis at θ=0', () => {
+  it("returns periapsis at θ=0", () => {
     const sma = 1_000_000;
     const ecc = 0.3;
     expect(trueAnomalyToRadius(sma, ecc, 0)).toBeCloseTo(sma * (1 - ecc));
   });
 
-  it('returns apoapsis at θ=180', () => {
+  it("returns apoapsis at θ=180", () => {
     const sma = 1_000_000;
     const ecc = 0.3;
     expect(trueAnomalyToRadius(sma, ecc, 180)).toBeCloseTo(sma * (1 + ecc));
   });
 
-  it('is symmetric: θ and -θ give the same radius', () => {
+  it("is symmetric: θ and -θ give the same radius", () => {
     const r1 = trueAnomalyToRadius(1_000_000, 0.5, 60);
     const r2 = trueAnomalyToRadius(1_000_000, 0.5, -60);
     expect(r1).toBeCloseTo(r2);
@@ -39,20 +39,20 @@ describe('trueAnomalyToRadius', () => {
 
 // ── orbitalToCartesian ─────────────────────────────────────────────────────
 
-describe('orbitalToCartesian', () => {
-  it('places periapsis on the +x axis (θ=0)', () => {
+describe("orbitalToCartesian", () => {
+  it("places periapsis on the +x axis (θ=0)", () => {
     const { x, y } = orbitalToCartesian(500_000, 0);
     expect(x).toBeCloseTo(500_000);
     expect(y).toBeCloseTo(0);
   });
 
-  it('places apoapsis on the -x axis (θ=180)', () => {
+  it("places apoapsis on the -x axis (θ=180)", () => {
     const { x, y } = orbitalToCartesian(900_000, 180);
     expect(x).toBeCloseTo(-900_000);
     expect(y).toBeCloseTo(0);
   });
 
-  it('places θ=90 on the +y axis', () => {
+  it("places θ=90 on the +y axis", () => {
     const { x, y } = orbitalToCartesian(600_000, 90);
     expect(x).toBeCloseTo(0);
     expect(y).toBeCloseTo(600_000);
@@ -61,17 +61,17 @@ describe('orbitalToCartesian', () => {
 
 // ── generateOrbitPoints ────────────────────────────────────────────────────
 
-describe('generateOrbitPoints', () => {
-  it('returns the requested number of points', () => {
+describe("generateOrbitPoints", () => {
+  it("returns the requested number of points", () => {
     const pts = generateOrbitPoints({ sma: 700_000, ecc: 0.1 }, 72);
     expect(pts).toHaveLength(72);
   });
 
-  it('defaults to 360 samples', () => {
+  it("defaults to 360 samples", () => {
     expect(generateOrbitPoints({ sma: 700_000, ecc: 0 })).toHaveLength(360);
   });
 
-  it('first point is at periapsis for a non-circular orbit', () => {
+  it("first point is at periapsis for a non-circular orbit", () => {
     const sma = 1_000_000;
     const ecc = 0.4;
     const pts = generateOrbitPoints({ sma, ecc }, 360);
@@ -79,7 +79,7 @@ describe('generateOrbitPoints', () => {
     expect(pts[0].y).toBeCloseTo(0);
   });
 
-  it('orbit points lie on the correct ellipse', () => {
+  it("orbit points lie on the correct ellipse", () => {
     const sma = 1_000_000;
     const ecc = 0.3;
     const b = sma * Math.sqrt(1 - ecc * ecc);
@@ -96,82 +96,82 @@ describe('generateOrbitPoints', () => {
 
 // ── latLonToMap ────────────────────────────────────────────────────────────
 
-describe('latLonToMap', () => {
-  it('maps (0, 0) to the centre of the image', () => {
+describe("latLonToMap", () => {
+  it("maps (0, 0) to the centre of the image", () => {
     const { x, y } = latLonToMap(0, 0, 2048, 1024);
     expect(x).toBeCloseTo(1024);
     expect(y).toBeCloseTo(512);
   });
 
-  it('maps north pole to top edge', () => {
+  it("maps north pole to top edge", () => {
     expect(latLonToMap(90, 0, 2048, 1024).y).toBeCloseTo(0);
   });
 
-  it('maps south pole to bottom edge', () => {
+  it("maps south pole to bottom edge", () => {
     expect(latLonToMap(-90, 0, 2048, 1024).y).toBeCloseTo(1024);
   });
 
-  it('maps west edge (lon=-180) to left edge', () => {
+  it("maps west edge (lon=-180) to left edge", () => {
     expect(latLonToMap(0, -180, 2048, 1024).x).toBeCloseTo(0);
   });
 
-  it('maps east edge (lon=180) to right edge', () => {
+  it("maps east edge (lon=180) to right edge", () => {
     expect(latLonToMap(0, 180, 2048, 1024).x).toBeCloseTo(2048);
   });
 
-  it('maps lon=90 to 3/4 of the width', () => {
+  it("maps lon=90 to 3/4 of the width", () => {
     expect(latLonToMap(0, 90, 1000, 500).x).toBeCloseTo(750);
   });
 });
 
 // ── formatDuration ─────────────────────────────────────────────────────────
 
-describe('formatDuration', () => {
-  it('formats seconds only', () => {
-    expect(formatDuration(45)).toBe('45s');
+describe("formatDuration", () => {
+  it("formats seconds only", () => {
+    expect(formatDuration(45)).toBe("45s");
   });
 
-  it('formats minutes and seconds', () => {
-    expect(formatDuration(125)).toBe('2m 05s');
+  it("formats minutes and seconds", () => {
+    expect(formatDuration(125)).toBe("2m 05s");
   });
 
-  it('formats hours, minutes, and seconds', () => {
-    expect(formatDuration(3 * 3600 + 14 * 60 + 8)).toBe('3h 14m 08s');
+  it("formats hours, minutes, and seconds", () => {
+    expect(formatDuration(3 * 3600 + 14 * 60 + 8)).toBe("3h 14m 08s");
   });
 
-  it('pads single-digit seconds', () => {
-    expect(formatDuration(61)).toBe('1m 01s');
+  it("pads single-digit seconds", () => {
+    expect(formatDuration(61)).toBe("1m 01s");
   });
 
-  it('returns — for negative values', () => {
-    expect(formatDuration(-1)).toBe('—');
+  it("returns — for negative values", () => {
+    expect(formatDuration(-1)).toBe("—");
   });
 
-  it('returns — for Infinity', () => {
-    expect(formatDuration(Infinity)).toBe('—');
+  it("returns — for Infinity", () => {
+    expect(formatDuration(Infinity)).toBe("—");
   });
 });
 
 // ── formatDistance ─────────────────────────────────────────────────────────
 
-describe('formatDistance', () => {
-  it('formats metres', () => {
-    expect(formatDistance(320)).toBe('320 m');
+describe("formatDistance", () => {
+  it("formats metres", () => {
+    expect(formatDistance(320)).toBe("320 m");
   });
 
-  it('formats kilometres', () => {
-    expect(formatDistance(42_350)).toBe('42.4 km');
+  it("formats kilometres", () => {
+    expect(formatDistance(42_350)).toBe("42.4 km");
   });
 
-  it('formats Megametres', () => {
-    expect(formatDistance(1_500_000_000)).toBe('1.50 Gm');
+  it("formats Megametres", () => {
+    expect(formatDistance(1_500_000_000)).toBe("1.50 Gm");
   });
 
-  it('formats Terametres', () => {
-    expect(formatDistance(1.5e12)).toBe('1.50 Tm');
+  it("formats Terametres", () => {
+    expect(formatDistance(1.5e12)).toBe("1.50 Tm");
   });
 
-  it('returns — for Infinity', () => {
-    expect(formatDistance(Infinity)).toBe('—');
+  it("returns — for Infinity", () => {
+    expect(formatDistance(Infinity)).toBe("—");
   });
 });

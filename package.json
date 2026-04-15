@@ -6,9 +6,10 @@
     "build": "turbo build",
     "test": "turbo test",
     "coverage": "vitest run --coverage",
-    "lint": "turbo lint"
+    "lint": "biome check --write ."
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.12",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",

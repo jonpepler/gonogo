@@ -1,43 +1,38 @@
-import styled from 'styled-components';
-import { registerComponent, useDataValue } from '@gonogo/core';
-import { formatDistance } from '@gonogo/core';
-import type { ComponentProps } from '@gonogo/core';
+import { formatDistance, registerComponent, useDataValue } from "@gonogo/core";
+import styled from "styled-components";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface DistanceToTargetConfig {}
-
-function DistanceToTargetComponent(_props: ComponentProps<DistanceToTargetConfig>) {
-  const tarDistance = useDataValue('telemachus', 'tar.distance');
-  const tarName     = useDataValue('telemachus', 'tar.name');
+function DistanceToTargetComponent() {
+  const tarDistance = useDataValue("telemachus", "tar.distance");
+  const tarName = useDataValue("telemachus", "tar.name");
 
   return (
     <Panel>
       <Title>TARGET</Title>
 
-      {tarName !== undefined ? (
+      {tarName === undefined ? (
+        <NoTarget>No target set in KSP</NoTarget>
+      ) : (
         <>
           <TargetName>{tarName}</TargetName>
-          {tarDistance !== undefined ? (
-            <Distance>{formatDistance(tarDistance)}</Distance>
-          ) : (
+          {tarDistance === undefined ? (
             <Dash>—</Dash>
+          ) : (
+            <Distance>{formatDistance(tarDistance)}</Distance>
           )}
         </>
-      ) : (
-        <NoTarget>No target set in KSP</NoTarget>
       )}
     </Panel>
   );
 }
 
-registerComponent<DistanceToTargetConfig>({
-  id: 'distance-to-target',
-  name: 'Distance to Target',
-  description: 'Shows the name and distance to the current KSP target.',
-  tags: ['telemetry'],
+registerComponent({
+  id: "distance-to-target",
+  name: "Distance to Target",
+  description: "Shows the name and distance to the current KSP target.",
+  tags: ["telemetry"],
   defaultSize: { w: 2, h: 3 },
   component: DistanceToTargetComponent,
-  dataRequirements: ['tar.distance', 'tar.name'],
+  dataRequirements: ["tar.distance", "tar.name"],
   behaviors: [],
   defaultConfig: {},
 });

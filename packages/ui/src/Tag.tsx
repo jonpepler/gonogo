@@ -1,17 +1,18 @@
-import styled, { css } from 'styled-components';
+import styled, { css } from "styled-components";
 
 // ---------------------------------------------------------------------------
 // Colour map for known tags
 // ---------------------------------------------------------------------------
 
-const TAG_COLOURS: Record<string, { bg: string; fg: string; border: string }> = {
-  telemetry: { bg: '#0a1a0a', fg: '#00cc66', border: '#1a3a1a' },
-  control:   { bg: '#1a1000', fg: '#cc8800', border: '#3a2800' },
-  system:    { bg: '#0a0a1a', fg: '#4488ff', border: '#1a1a3a' },
-  kos:       { bg: '#1a0a1a', fg: '#cc44cc', border: '#3a1a3a' },
-};
+const TAG_COLOURS: Record<string, { bg: string; fg: string; border: string }> =
+  {
+    telemetry: { bg: "#0a1a0a", fg: "#00cc66", border: "#1a3a1a" },
+    control: { bg: "#1a1000", fg: "#cc8800", border: "#3a2800" },
+    system: { bg: "#0a0a1a", fg: "#4488ff", border: "#1a1a3a" },
+    kos: { bg: "#1a0a1a", fg: "#cc44cc", border: "#3a1a3a" },
+  };
 
-const FALLBACK = { bg: '#111', fg: '#666', border: '#222' };
+const FALLBACK = { bg: "#111", fg: "#666", border: "#222" };
 
 // ---------------------------------------------------------------------------
 // Component

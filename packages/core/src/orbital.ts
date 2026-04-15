@@ -21,7 +21,11 @@
  * @param theta True anomaly in degrees.
  * @returns     Distance from focus (body centre) to vessel, in metres.
  */
-export function trueAnomalyToRadius(sma: number, ecc: number, theta: number): number {
+export function trueAnomalyToRadius(
+  sma: number,
+  ecc: number,
+  theta: number,
+): number {
   const th = (theta * Math.PI) / 180;
   return (sma * (1 - ecc * ecc)) / (1 + ecc * Math.cos(th));
 }
@@ -33,7 +37,10 @@ export function trueAnomalyToRadius(sma: number, ecc: number, theta: number): nu
  * @param radius Distance from focus in metres.
  * @param theta  True anomaly in degrees.
  */
-export function orbitalToCartesian(radius: number, theta: number): { x: number; y: number } {
+export function orbitalToCartesian(
+  radius: number,
+  theta: number,
+): { x: number; y: number } {
   const th = (theta * Math.PI) / 180;
   return { x: radius * Math.cos(th), y: radius * Math.sin(th) };
 }
@@ -98,13 +105,13 @@ export function latLonToMap(
  * Returns "—" for non-finite or negative values.
  */
 export function formatDuration(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return '—';
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
   const s = Math.floor(seconds);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (h > 0) return `${h}h ${m}m ${String(sec).padStart(2, '0')}s`;
-  if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
+  if (h > 0) return `${h}h ${m}m ${String(sec).padStart(2, "0")}s`;
+  if (m > 0) return `${m}m ${String(sec).padStart(2, "0")}s`;
   return `${sec}s`;
 }
 
@@ -114,7 +121,7 @@ export function formatDuration(seconds: number): string {
  * Returns "—" for non-finite values.
  */
 export function formatDistance(metres: number): string {
-  if (!isFinite(metres)) return '—';
+  if (!Number.isFinite(metres)) return "—";
   const abs = Math.abs(metres);
   if (abs >= 1e12) return `${(metres / 1e12).toFixed(2)} Tm`;
   if (abs >= 1e9) return `${(metres / 1e9).toFixed(2)} Gm`;

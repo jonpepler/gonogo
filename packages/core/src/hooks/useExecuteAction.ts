@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { getDataSource } from '../registry';
+import { useCallback } from "react";
+import { getDataSource } from "../registry";
 
 export function useExecuteAction(dataSourceId: string) {
   return useCallback(

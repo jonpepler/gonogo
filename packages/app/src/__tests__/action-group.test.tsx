@@ -1,12 +1,27 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent, act } from '@testing-library/react';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse, ws } from 'msw';
-import { clearRegistry, registerDataSource } from '@gonogo/core';
-import { ActionGroupComponent } from '@gonogo/components';
-import { telemachusSource } from '../dataSources/telemachus';
+import { ActionGroupComponent } from "@gonogo/components";
+import { clearRegistry, registerDataSource } from "@gonogo/core";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { HttpResponse, http, ws } from "msw";
+import { setupServer } from "msw/node";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
+import { telemachusSource } from "../dataSources/telemachus";
 
-const telemachusWs = ws.link('ws://localhost:8085/datalink');
+const telemachusWs = ws.link("ws://localhost:8085/datalink");
 const server = setupServer();
 
 beforeAll(() => server.listen());
@@ -42,26 +57,29 @@ function setupTelemachus(initialState: Record<string, boolean> = {}) {
   };
 
   server.use(
-    telemachusWs.addEventListener('connection', ({ client }) => {
+    telemachusWs.addEventListener("connection", ({ client }) => {
       wsClient = client;
-      client.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data as string) as { '+'?: string[]; '-'?: string[] };
-        if (msg['+']) {
-          for (const key of msg['+']) {
+      client.addEventListener("message", ({ data }) => {
+        const msg = JSON.parse(data as string) as {
+          "+"?: string[];
+          "-"?: string[];
+        };
+        if (msg["+"]) {
+          for (const key of msg["+"]) {
             if (!subscribedKeys.includes(key)) subscribedKeys.push(key);
           }
           pushState();
         }
-        if (msg['-']) {
-          subscribedKeys = subscribedKeys.filter((k) => !msg['-']!.includes(k));
+        if (msg["-"]) {
+          subscribedKeys = subscribedKeys.filter((k) => !msg["-"]?.includes(k));
         }
       });
     }),
-    http.get('http://localhost:8085/telemachus/datalink', ({ request }) => {
-      const actionKey = new URL(request.url).searchParams.get('a');
+    http.get("http://localhost:8085/telemachus/datalink", ({ request }) => {
+      const actionKey = new URL(request.url).searchParams.get("a");
       if (actionKey !== null) {
         // Derive the value key: f.ag1 → v.ag1Value, f.sas → v.sasValue
-        const base = actionKey.replace(/^f\./, '');
+        const base = actionKey.replace(/^f\./, "");
         const valueKey = `v.${base}Value`;
         state[valueKey] = !state[valueKey];
         pushState(); // immediately push updated state over WS
@@ -74,81 +92,87 @@ function setupTelemachus(initialState: Record<string, boolean> = {}) {
   return state;
 }
 
-describe('ActionGroup component', () => {
-  it('shows placeholder when no action group is configured', () => {
+describe("ActionGroup component", () => {
+  it("shows placeholder when no action group is configured", () => {
     render(<ActionGroupComponent />);
-    expect(screen.getByText('No action group configured')).toBeInTheDocument();
+    expect(screen.getByText("No action group configured")).toBeInTheDocument();
   });
 
-  it('shows group name and OFF state on initial connect', async () => {
-    setupTelemachus({ 'v.ag1Value': false });
+  it("shows group name and OFF state on initial connect", async () => {
+    setupTelemachus({ "v.ag1Value": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: 'AG1' }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} />);
 
-    await waitFor(() => expect(screen.getByText('AG1')).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByText('OFF')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("AG1")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
   });
 
-  it('shows ON when the action group is already active', async () => {
-    setupTelemachus({ 'v.ag1Value': true });
+  it("shows ON when the action group is already active", async () => {
+    setupTelemachus({ "v.ag1Value": true });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: 'AG1' }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} />);
 
-    await waitFor(() => expect(screen.getByText('ON')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
   });
 
-  it('sends a toggle request and reflects the updated state', async () => {
-    setupTelemachus({ 'v.ag1Value': false });
+  it("sends a toggle request and reflects the updated state", async () => {
+    setupTelemachus({ "v.ag1Value": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: 'AG1' }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} />);
 
-    await waitFor(() => expect(screen.getByText('OFF')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: /toggle ag1/i }));
+    fireEvent.click(screen.getByRole("button", { name: /toggle ag1/i }));
 
-    await waitFor(() => expect(screen.getByText('ON')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
   });
 
-  it('shows no toggle button for a read-only group (Precision Control)', async () => {
-    setupTelemachus({ 'v.precisionControlValue': false });
+  it("shows no toggle button for a read-only group (Precision Control)", async () => {
+    setupTelemachus({ "v.precisionControlValue": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: 'Precision Control' }} />);
+    render(
+      <ActionGroupComponent config={{ actionGroupId: "Precision Control" }} />,
+    );
 
-    await waitFor(() => expect(screen.getByText('Precision Control')).toBeInTheDocument());
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Precision Control")).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it('clears state to unknown when the connection drops', async () => {
+  it("clears state to unknown when the connection drops", async () => {
     let serverClient: { close: (code?: number) => void } | null = null;
     server.use(
-      telemachusWs.addEventListener('connection', ({ client }) => {
+      telemachusWs.addEventListener("connection", ({ client }) => {
         serverClient = client;
-        client.addEventListener('message', ({ data }) => {
-          const msg = JSON.parse(data as string) as { '+'?: string[] };
-          if (msg['+']) client.send(JSON.stringify({ 'v.ag1Value': true }));
+        client.addEventListener("message", ({ data }) => {
+          const msg = JSON.parse(data as string) as { "+"?: string[] };
+          if (msg["+"]) client.send(JSON.stringify({ "v.ag1Value": true }));
         });
       }),
     );
 
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: 'AG1' }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
 
-    await waitFor(() => expect(screen.getByText('ON')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
 
-    act(() => { serverClient!.close(); });
+    act(() => {
+      serverClient?.close();
+    });
 
-    await waitFor(() => expect(screen.getByText('—')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
   });
 
-  it('toggles SAS independently from AG1', async () => {
-    setupTelemachus({ 'v.sasValue': false });
+  it("toggles SAS independently from AG1", async () => {
+    setupTelemachus({ "v.sasValue": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: 'SAS' }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "SAS" }} />);
 
-    await waitFor(() => expect(screen.getByText('OFF')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: /toggle sas/i }));
+    fireEvent.click(screen.getByRole("button", { name: /toggle sas/i }));
 
-    await waitFor(() => expect(screen.getByText('ON')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
   });
 });

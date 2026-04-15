@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import styled, { keyframes } from 'styled-components';
-import { registerComponent, useDataSources, getDataSource } from '@gonogo/core';
-import type { DataSourceStatus, ConfigField } from '@gonogo/core';
+import type { ConfigField, DataSourceStatus } from "@gonogo/core";
+import { getDataSource, registerComponent, useDataSources } from "@gonogo/core";
+import { useState } from "react";
+import styled, { keyframes } from "styled-components";
 
 function DataSourceStatusComponent() {
   const sources = useDataSources();
@@ -12,7 +12,11 @@ function DataSourceStatusComponent() {
     const source = getDataSource(id);
     if (!source) return;
     const current = source.getConfig();
-    setFormValues(Object.fromEntries(Object.entries(current).map(([k, v]) => [k, String(v)])));
+    setFormValues(
+      Object.fromEntries(
+        Object.entries(current).map(([k, v]) => [k, String(v)]),
+      ),
+    );
     setConfiguringId(id);
   };
 
@@ -21,7 +25,10 @@ function DataSourceStatusComponent() {
     if (!source) return;
     const parsed: Record<string, unknown> = {};
     for (const field of schema) {
-      parsed[field.key] = field.type === 'number' ? Number(formValues[field.key]) : formValues[field.key];
+      parsed[field.key] =
+        field.type === "number"
+          ? Number(formValues[field.key])
+          : formValues[field.key];
     }
     source.configure(parsed);
     setConfiguringId(null);
@@ -42,10 +49,14 @@ function DataSourceStatusComponent() {
                 <Row>
                   <Indicator status={source.status} />
                   <Name>{source.name}</Name>
-                  <StatusLabel status={source.status}>{source.status}</StatusLabel>
-                  {source.status === 'disconnected' && (
+                  <StatusLabel status={source.status}>
+                    {source.status}
+                  </StatusLabel>
+                  {source.status === "disconnected" && (
                     <RetryButton
-                      onClick={() => { void getDataSource(source.id)?.connect(); }}
+                      onClick={() => {
+                        void getDataSource(source.id)?.connect();
+                      }}
                       aria-label={`Reconnect ${source.name}`}
                     >
                       Reconnect
@@ -53,7 +64,11 @@ function DataSourceStatusComponent() {
                   )}
                   {schema.length > 0 && (
                     <ConfigButton
-                      onClick={() => isConfiguring ? setConfiguringId(null) : openConfig(source.id)}
+                      onClick={() =>
+                        isConfiguring
+                          ? setConfiguringId(null)
+                          : openConfig(source.id)
+                      }
                       aria-label={`Configure ${source.name}`}
                       $active={isConfiguring}
                     >
@@ -61,30 +76,46 @@ function DataSourceStatusComponent() {
                     </ConfigButton>
                   )}
                 </Row>
-                {source.status === 'disconnected' && (() => {
-                  const instructions = getDataSource(source.id)?.setupInstructions?.();
-                  return instructions ? <SetupInstructions>{instructions}</SetupInstructions> : null;
-                })()}
+                {source.status === "disconnected" &&
+                  (() => {
+                    const instructions = getDataSource(
+                      source.id,
+                    )?.setupInstructions?.();
+                    return instructions ? (
+                      <SetupInstructions>{instructions}</SetupInstructions>
+                    ) : null;
+                  })()}
                 {isConfiguring && (
                   <ConfigForm>
                     {schema.map((field) => {
                       const inputId = `config-${source.id}-${field.key}`;
                       return (
                         <FieldRow key={field.key}>
-                          <FieldLabel htmlFor={inputId}>{field.label}</FieldLabel>
+                          <FieldLabel htmlFor={inputId}>
+                            {field.label}
+                          </FieldLabel>
                           <FieldInput
                             id={inputId}
-                            type={field.type === 'number' ? 'number' : 'text'}
+                            type={field.type === "number" ? "number" : "text"}
                             placeholder={field.placeholder}
-                            value={formValues[field.key] ?? ''}
-                            onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                            value={formValues[field.key] ?? ""}
+                            onChange={(e) =>
+                              setFormValues((prev) => ({
+                                ...prev,
+                                [field.key]: e.target.value,
+                              }))
+                            }
                           />
                         </FieldRow>
                       );
                     })}
                     <FormActions>
-                      <SaveButton onClick={() => saveConfig(source.id, schema)}>Save</SaveButton>
-                      <CancelButton onClick={() => setConfiguringId(null)}>Cancel</CancelButton>
+                      <SaveButton onClick={() => saveConfig(source.id, schema)}>
+                        Save
+                      </SaveButton>
+                      <CancelButton onClick={() => setConfiguringId(null)}>
+                        Cancel
+                      </CancelButton>
                     </FormActions>
                   </ConfigForm>
                 )}
@@ -98,10 +129,11 @@ function DataSourceStatusComponent() {
 }
 
 registerComponent({
-  id: 'data-source-status',
-  name: 'Data Source Status',
-  description: 'Shows connection status for all registered data sources and lets you edit their configuration.',
-  tags: ['system'],
+  id: "data-source-status",
+  name: "Data Source Status",
+  description:
+    "Shows connection status for all registered data sources and lets you edit their configuration.",
+  tags: ["system"],
   defaultSize: { w: 12, h: 1 },
   component: DataSourceStatusComponent,
   dataRequirements: [],
@@ -167,10 +199,10 @@ const pulse = keyframes`
 `;
 
 const statusColor: Record<DataSourceStatus, string> = {
-  connected: '#00ff88',
-  disconnected: '#444',
-  reconnecting: '#ff8c00',
-  error: '#ff4444',
+  connected: "#00ff88",
+  disconnected: "#444",
+  reconnecting: "#ff8c00",
+  error: "#ff4444",
 };
 
 const Indicator = styled.span<{ status: DataSourceStatus }>`
@@ -180,8 +212,8 @@ const Indicator = styled.span<{ status: DataSourceStatus }>`
   flex-shrink: 0;
   background: ${({ status }) => statusColor[status]};
   animation: ${({ status }) =>
-    status === 'connected' || status === 'reconnecting' ? pulse : 'none'}
-    ${({ status }) => (status === 'reconnecting' ? '1s' : '2s')} ease-in-out infinite;
+    status === "connected" || status === "reconnecting" ? pulse : "none"}
+    ${({ status }) => (status === "reconnecting" ? "1s" : "2s")} ease-in-out infinite;
 `;
 
 const StatusLabel = styled.span<{ status: DataSourceStatus }>`
@@ -195,7 +227,7 @@ const ConfigButton = styled.button<{ $active: boolean }>`
   background: none;
   border: none;
   cursor: pointer;
-  color: ${({ $active }) => ($active ? '#aaa' : '#444')};
+  color: ${({ $active }) => ($active ? "#aaa" : "#444")};
   font-size: 13px;
   padding: 0 2px;
   line-height: 1;

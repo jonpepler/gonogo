@@ -9,6 +9,18 @@ import {
   useDataValue,
   useExecuteAction,
 } from "@gonogo/core";
+import {
+  Button,
+  ConfigForm,
+  Field,
+  FieldHint,
+  FieldLabel,
+  Input,
+  Panel,
+  Placeholder,
+  PrimaryButton,
+  Select,
+} from "@gonogo/ui";
 import { useRef, useState } from "react";
 import styled from "styled-components";
 
@@ -109,12 +121,9 @@ function ActionGroupComponent({
         </StateIndicator>
       </Header>
       {group.toggle && (
-        <ToggleButton
-          onClick={handleToggle}
-          aria-label={`Toggle ${currentLabel}`}
-        >
+        <Button onClick={handleToggle} aria-label={`Toggle ${currentLabel}`}>
           TOGGLE
-        </ToggleButton>
+        </Button>
       )}
     </Panel>
   );
@@ -140,7 +149,7 @@ function ActionGroupConfigComponent({
   return (
     <ConfigForm>
       <Field>
-        <Label htmlFor="ag-select">Action Group</Label>
+        <FieldLabel htmlFor="ag-select">Action Group</FieldLabel>
         <Select
           id="ag-select"
           value={actionGroupId}
@@ -154,7 +163,7 @@ function ActionGroupConfigComponent({
         </Select>
       </Field>
       <Field>
-        <Label htmlFor="ag-label">Custom Label</Label>
+        <FieldLabel htmlFor="ag-label">Custom Label</FieldLabel>
         <Input
           id="ag-label"
           type="text"
@@ -164,7 +173,7 @@ function ActionGroupConfigComponent({
         />
         <FieldHint>Leave blank to use the action group name.</FieldHint>
       </Field>
-      <SaveButton onClick={handleSave}>Save</SaveButton>
+      <PrimaryButton onClick={handleSave}>Save</PrimaryButton>
     </ConfigForm>
   );
 }
@@ -192,21 +201,6 @@ export { ActionGroupComponent };
 // ---------------------------------------------------------------------------
 // Styles — component
 // ---------------------------------------------------------------------------
-
-const Panel = styled.div`
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  padding: 12px 16px;
-  font-family: monospace;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  overflow: hidden;
-`;
 
 const Header = styled.div`
   display: flex;
@@ -266,114 +260,4 @@ const StateIndicator = styled.span<{ $on: boolean; $unknown: boolean }>`
   flex-shrink: 0;
   color: ${({ $on, $unknown }) =>
     $unknown ? "#444" : $on ? "#00ff88" : "#ff4444"};
-`;
-
-const ToggleButton = styled.button`
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #aaa;
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  padding: 5px 10px;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition:
-    border-color 0.1s,
-    color 0.1s;
-
-  &:hover {
-    border-color: #555;
-    color: #ddd;
-  }
-  &:active {
-    background: #222;
-  }
-`;
-
-const Placeholder = styled.span`
-  font-size: 12px;
-  color: #444;
-`;
-
-// ---------------------------------------------------------------------------
-// Styles — config form
-// ---------------------------------------------------------------------------
-
-const ConfigForm = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  font-family: monospace;
-`;
-
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const Label = styled.label`
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #666;
-`;
-
-const Select = styled.select`
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #ccc;
-  font-family: monospace;
-  font-size: 13px;
-  padding: 6px 8px;
-  outline: none;
-
-  &:focus {
-    border-color: #555;
-  }
-`;
-
-const Input = styled.input`
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #ccc;
-  font-family: monospace;
-  font-size: 13px;
-  padding: 6px 8px;
-  outline: none;
-
-  &:focus {
-    border-color: #555;
-  }
-`;
-
-const FieldHint = styled.span`
-  font-size: 10px;
-  color: #444;
-`;
-
-const SaveButton = styled.button`
-  align-self: flex-end;
-  background: #1a3a1a;
-  border: 1px solid #2a5a2a;
-  border-radius: 3px;
-  color: #00cc66;
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 6px 16px;
-  cursor: pointer;
-  text-transform: uppercase;
-
-  &:hover {
-    background: #1f4a1f;
-    border-color: #3a7a3a;
-  }
 `;

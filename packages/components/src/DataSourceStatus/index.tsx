@@ -1,5 +1,17 @@
 import type { ConfigField, DataSourceStatus } from "@gonogo/core";
 import { getDataSource, registerComponent, useDataSources } from "@gonogo/core";
+import {
+  FieldLabel,
+  FieldRow,
+  FormActions,
+  GhostButton,
+  IconButton,
+  Input,
+  PanelScrollable,
+  PanelTitle,
+  Placeholder,
+  PrimaryButton,
+} from "@gonogo/ui";
 import { useState } from "react";
 import styled, { keyframes } from "styled-components";
 
@@ -35,10 +47,10 @@ function DataSourceStatusComponent() {
   };
 
   return (
-    <Panel>
-      <Title>Data Sources</Title>
+    <PanelScrollable>
+      <PanelTitle>Data Sources</PanelTitle>
       {sources.length === 0 ? (
-        <Empty>No data sources registered</Empty>
+        <Placeholder>No data sources registered</Placeholder>
       ) : (
         <List>
           {sources.map((source) => {
@@ -94,7 +106,7 @@ function DataSourceStatusComponent() {
                           <FieldLabel htmlFor={inputId}>
                             {field.label}
                           </FieldLabel>
-                          <FieldInput
+                          <Input
                             id={inputId}
                             type={field.type === "number" ? "number" : "text"}
                             placeholder={field.placeholder}
@@ -110,12 +122,14 @@ function DataSourceStatusComponent() {
                       );
                     })}
                     <FormActions>
-                      <SaveButton onClick={() => saveConfig(source.id, schema)}>
+                      <PrimaryButton
+                        onClick={() => saveConfig(source.id, schema)}
+                      >
                         Save
-                      </SaveButton>
-                      <CancelButton onClick={() => setConfiguringId(null)}>
+                      </PrimaryButton>
+                      <GhostButton onClick={() => setConfiguringId(null)}>
                         Cancel
-                      </CancelButton>
+                      </GhostButton>
                     </FormActions>
                   </ConfigForm>
                 )}
@@ -124,7 +138,7 @@ function DataSourceStatusComponent() {
           })}
         </List>
       )}
-    </Panel>
+    </PanelScrollable>
   );
 }
 
@@ -144,27 +158,6 @@ registerComponent({
 export { DataSourceStatusComponent };
 
 // --- Styles ---
-
-const Panel = styled.div`
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  padding: 12px 16px;
-  font-family: monospace;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  overflow: auto;
-`;
-
-const Title = styled.h3`
-  margin: 0 0 10px 0;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #666;
-`;
 
 const List = styled.ul`
   list-style: none;
@@ -212,7 +205,7 @@ const Indicator = styled.span<{ status: DataSourceStatus }>`
   flex-shrink: 0;
   background: ${({ status }) => statusColor[status]};
   animation: ${({ status }) =>
-      status === "connected" || status === "reconnecting" ? pulse : "none"}
+    status === "connected" || status === "reconnecting" ? pulse : "none"}
     ${({ status }) => (status === "reconnecting" ? "1s" : "2s")} ease-in-out
     infinite;
 `;
@@ -224,18 +217,10 @@ const StatusLabel = styled.span<{ status: DataSourceStatus }>`
   letter-spacing: 0.05em;
 `;
 
-const ConfigButton = styled.button<{ $active: boolean }>`
-  background: none;
-  border: none;
-  cursor: pointer;
+const ConfigButton = styled(IconButton)<{ $active: boolean }>`
   color: ${({ $active }) => ($active ? "#aaa" : "#444")};
   font-size: 13px;
   padding: 0 2px;
-  line-height: 1;
-  transition: color 0.1s;
-  &:hover {
-    color: #aaa;
-  }
 `;
 
 const ConfigForm = styled.div`
@@ -246,69 +231,6 @@ const ConfigForm = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
-`;
-
-const FieldRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const FieldLabel = styled.label`
-  font-size: 11px;
-  color: #666;
-  width: 50px;
-  flex-shrink: 0;
-`;
-
-const FieldInput = styled.input`
-  background: #0d0d0d;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #ccc;
-  font-family: monospace;
-  font-size: 12px;
-  padding: 3px 6px;
-  width: 120px;
-  &:focus {
-    outline: none;
-    border-color: #555;
-  }
-`;
-
-const FormActions = styled.div`
-  display: flex;
-  gap: 6px;
-  margin-top: 2px;
-`;
-
-const SaveButton = styled.button`
-  background: #1a2a1a;
-  border: 1px solid #2a4a2a;
-  border-radius: 3px;
-  color: #00ff88;
-  font-family: monospace;
-  font-size: 11px;
-  padding: 3px 8px;
-  cursor: pointer;
-  &:hover {
-    background: #1f321f;
-  }
-`;
-
-const CancelButton = styled.button`
-  background: none;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #666;
-  font-family: monospace;
-  font-size: 11px;
-  padding: 3px 8px;
-  cursor: pointer;
-  &:hover {
-    color: #aaa;
-    border-color: #555;
-  }
 `;
 
 const SetupInstructions = styled.pre`
@@ -324,28 +246,9 @@ const SetupInstructions = styled.pre`
   line-height: 1.5;
 `;
 
-const RetryButton = styled.button`
-  background: none;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #666;
-  font-family: monospace;
+const RetryButton = styled(GhostButton)`
   font-size: 10px;
   letter-spacing: 0.05em;
-  padding: 2px 6px;
-  cursor: pointer;
   white-space: nowrap;
-  transition:
-    color 0.1s,
-    border-color 0.1s;
-  &:hover {
-    color: #aaa;
-    border-color: #555;
-  }
-`;
-
-const Empty = styled.p`
-  margin: 0;
-  font-size: 12px;
-  color: #444;
+  padding: 2px 6px;
 `;

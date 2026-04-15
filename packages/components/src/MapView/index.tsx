@@ -9,6 +9,16 @@ import {
   registerComponent,
   useDataValue,
 } from "@gonogo/core";
+import {
+  ConfigForm,
+  Field,
+  FieldHint,
+  FieldLabel,
+  Input,
+  Panel,
+  PanelTitle,
+  PrimaryButton,
+} from "@gonogo/ui";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 
@@ -385,8 +395,8 @@ function MapViewConfigComponent({
   return (
     <ConfigForm>
       <Field>
-        <CfgLabel htmlFor="map-traj">Trajectory history (points)</CfgLabel>
-        <CfgInput
+        <FieldLabel htmlFor="map-traj">Trajectory history (points)</FieldLabel>
+        <Input
           id="map-traj"
           type="number"
           min={1}
@@ -396,7 +406,7 @@ function MapViewConfigComponent({
         />
       </Field>
       <Field>
-        <CfgLabel>Telemetry panel</CfgLabel>
+        <FieldLabel>Telemetry panel</FieldLabel>
         <CheckList>
           {TELEMETRY_OPTIONS.map(({ label, key }) => (
             <CheckRow key={key}>
@@ -410,9 +420,9 @@ function MapViewConfigComponent({
             </CheckRow>
           ))}
         </CheckList>
-        <CfgHint>Selected values are shown below the map.</CfgHint>
+        <FieldHint>Selected values are shown below the map.</FieldHint>
       </Field>
-      <CfgSaveButton onClick={handleSave}>Save</CfgSaveButton>
+      <PrimaryButton onClick={handleSave}>Save</PrimaryButton>
     </ConfigForm>
   );
 }
@@ -441,34 +451,15 @@ export { MapViewComponent };
 // Styles
 // ---------------------------------------------------------------------------
 
-const Panel = styled.div`
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  padding: 12px 16px;
-  font-family: monospace;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow: hidden;
-`;
-
 const Header = styled.div`
   display: flex;
   align-items: baseline;
   gap: 8px;
 `;
 
-const Title = styled.h3`
-  margin: 0;
+const Title = styled(PanelTitle)`
   font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.15em;
-  color: #555;
-  text-transform: uppercase;
 `;
 
 const BodyLabel = styled.span`
@@ -559,45 +550,6 @@ const TelValue = styled.span<{ $colour: string }>`
   white-space: nowrap;
 `;
 
-// ---------------------------------------------------------------------------
-// Config form styles
-// ---------------------------------------------------------------------------
-
-const ConfigForm = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  font-family: monospace;
-`;
-
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const CfgLabel = styled.label`
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #666;
-`;
-
-const CfgInput = styled.input`
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 3px;
-  color: #ccc;
-  font-family: monospace;
-  font-size: 13px;
-  padding: 6px 8px;
-  outline: none;
-  &:focus {
-    border-color: #555;
-  }
-`;
-
 const CheckList = styled.div`
   display: flex;
   flex-direction: column;
@@ -624,28 +576,4 @@ const CheckLabel = styled.label`
   color: #bbb;
   cursor: pointer;
   user-select: none;
-`;
-
-const CfgHint = styled.span`
-  font-size: 10px;
-  color: #444;
-`;
-
-const CfgSaveButton = styled.button`
-  align-self: flex-end;
-  background: #1a3a1a;
-  border: 1px solid #2a5a2a;
-  border-radius: 3px;
-  color: #00cc66;
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 6px 16px;
-  cursor: pointer;
-  text-transform: uppercase;
-  &:hover {
-    background: #1f4a1f;
-    border-color: #3a7a3a;
-  }
 `;

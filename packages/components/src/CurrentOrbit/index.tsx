@@ -8,6 +8,7 @@ import {
   trueAnomalyToRadius,
   useDataValue,
 } from "@gonogo/core";
+import { Panel, PanelTitle } from "@gonogo/ui";
 import styled from "styled-components";
 
 interface CurrentOrbitConfig {
@@ -202,28 +203,9 @@ export { CurrentOrbitComponent };
 // Styles
 // ---------------------------------------------------------------------------
 
-const Panel = styled.div`
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  padding: 12px 16px;
-  font-family: monospace;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow: hidden;
-`;
-
-const Title = styled.h3`
-  margin: 0;
+const Title = styled(PanelTitle)`
   font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.15em;
-  color: #555;
-  text-transform: uppercase;
 `;
 
 const RefBody = styled.div`

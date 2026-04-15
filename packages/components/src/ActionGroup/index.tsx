@@ -25,7 +25,7 @@ type ActionGroupConfig = {
 function ActionGroupComponent({
   config,
   onConfigChange,
-}: ComponentProps<ActionGroupConfig>) {
+}: Readonly<ComponentProps<ActionGroupConfig>>) {
   const group = ACTION_GROUPS.find((g) => g.name === config?.actionGroupId);
   const currentLabel = config?.label ?? group?.name ?? "";
 
@@ -83,7 +83,7 @@ function ActionGroupComponent({
     <Panel>
       <Header>
         <LabelArea
-          onClick={!editing ? startEditing : undefined}
+          onClick={editing ? undefined : startEditing}
           title="Click to rename"
         >
           {editing ? (
@@ -127,7 +127,7 @@ function ActionGroupComponent({
 function ActionGroupConfigComponent({
   config,
   onSave,
-}: ConfigComponentProps<ActionGroupConfig>) {
+}: Readonly<ConfigComponentProps<ActionGroupConfig>>) {
   const [actionGroupId, setActionGroupId] = useState<ActionGroupId>(
     config?.actionGroupId ?? "AG1",
   );
@@ -179,7 +179,7 @@ registerComponent<ActionGroupConfig>({
   description:
     "Toggle a KSP action group or system (SAS, RCS, gear, brakes, lights, AG1–AG10).",
   tags: ["control", "telemetry"],
-  defaultSize: { w: 2, h: 2 },
+  defaultSize: { w: 6, h: 6 },
   component: ActionGroupComponent,
   configComponent: ActionGroupConfigComponent,
   dataRequirements: [],

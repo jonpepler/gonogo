@@ -14,10 +14,10 @@ export interface KosMenuState {
 const CPU_ROW_RE = /\[(\d+)\]\s+\S+\s+\d+\s+(.+?)\s+\(([^(]+)\(([^)]+)\)\)/;
 
 export function parseKosMenu(text: string): KosMenuState | null {
-  if (!text.includes('Vessel Name (CPU tagname)')) return null;
+  if (!text.includes("Vessel Name (CPU tagname)")) return null;
 
   const cpus: KosCpu[] = [];
-  for (const line of text.split('\n')) {
+  for (const line of text.split("\n")) {
     const match = CPU_ROW_RE.exec(line);
     if (match) {
       cpus.push({

@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useCallback, useRef } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 import { getDataSource } from "../registry";
 import type { DataSourceRegistry } from "../types";
 

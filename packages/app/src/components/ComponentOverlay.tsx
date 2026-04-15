@@ -1,17 +1,26 @@
-import { useState, useCallback, createContext, useContext, useRef } from 'react';
-import type { ReactNode } from 'react';
-import styled from 'styled-components';
-import { getComponents } from '@gonogo/core';
-import type { ComponentDefinition } from '@gonogo/core';
-import { Tag, useModal } from '@gonogo/ui';
-import type { DashboardItem } from './Dashboard';
+import type { ComponentDefinition } from "@gonogo/core";
+import { getComponents } from "@gonogo/core";
+import { Tag, useModal } from "@gonogo/ui";
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
+import styled from "styled-components";
+import type { DashboardItem } from "./Dashboard";
 
 // ---------------------------------------------------------------------------
 // Context — lets the overlay call addItem without prop-drilling
 // ---------------------------------------------------------------------------
 
 interface OverlayContextValue {
-  addItem: (item: DashboardItem, layout: { x: number; y: number; w: number; h: number }) => void;
+  addItem: (
+    item: DashboardItem,
+    layout: { x: number; y: number; w: number; h: number },
+  ) => void;
 }
 
 const OverlayContext = createContext<OverlayContextValue | null>(null);
@@ -19,20 +28,22 @@ const OverlayContext = createContext<OverlayContextValue | null>(null);
 export function OverlayProvider({
   children,
   addItem,
-}: {
+}: Readonly<{
   children: ReactNode;
-  addItem: (item: DashboardItem, layout: { x: number; y: number; w: number; h: number }) => void;
-}) {
+  addItem: (
+    item: DashboardItem,
+    layout: { x: number; y: number; w: number; h: number },
+  ) => void;
+}>) {
+  const value = useMemo(() => ({ addItem }), [addItem]);
   return (
-    <OverlayContext.Provider value={{ addItem }}>
-      {children}
-    </OverlayContext.Provider>
+    <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>
   );
 }
 
 function useOverlay(): OverlayContextValue {
   const ctx = useContext(OverlayContext);
-  if (!ctx) throw new Error('useOverlay must be used inside <OverlayProvider>');
+  if (!ctx) throw new Error("useOverlay must be used inside <OverlayProvider>");
   return ctx;
 }
 
@@ -45,9 +56,11 @@ interface ComponentOverlayProps {
   currentLayouts: { lg?: Array<{ y: number; h: number }> };
 }
 
-export function ComponentOverlay({ currentLayouts }: ComponentOverlayProps) {
+export function ComponentOverlay({
+  currentLayouts,
+}: Readonly<ComponentOverlayProps>) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
   const { addItem } = useOverlay();
   const { open: openModal, close: closeModal } = useModal();
@@ -71,8 +84,7 @@ export function ComponentOverlay({ currentLayouts }: ComponentOverlayProps) {
   }, [currentLayouts]);
 
   const handleSelect = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (def: ComponentDefinition<any>) => {
+    (def: ComponentDefinition) => {
       const item: DashboardItem = {
         i: crypto.randomUUID(),
         componentId: def.id,
@@ -83,7 +95,7 @@ export function ComponentOverlay({ currentLayouts }: ComponentOverlayProps) {
 
       addItem(item, layout);
       setOpen(false);
-      setQuery('');
+      setQuery("");
 
       if (def.openConfigOnAdd && def.configComponent) {
         const ConfigComp = def.configComponent;
@@ -107,32 +119,62 @@ export function ComponentOverlay({ currentLayouts }: ComponentOverlayProps) {
 
   return (
     <>
-      <FAB onClick={() => setOpen(true)} aria-label="Add component" title="Add component">
+      <FAB
+        onClick={() => setOpen(true)}
+        aria-label="Add component"
+        title="Add component"
+      >
         +
       </FAB>
 
       {open && (
-        <Backdrop onClick={() => { setOpen(false); setQuery(''); }}>
-          <Panel onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Add a component">
+        <Backdrop
+          onClick={() => {
+            setOpen(false);
+            setQuery("");
+          }}
+        >
+          <Panel
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="Add a component"
+          >
             <PanelHeader>
               <PanelTitle>ADD COMPONENT</PanelTitle>
-              <CloseBtn onClick={() => { setOpen(false); setQuery(''); }} aria-label="Close">✕</CloseBtn>
+              <CloseBtn
+                onClick={() => {
+                  setOpen(false);
+                  setQuery("");
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </CloseBtn>
             </PanelHeader>
             <SearchInput
               autoFocus
               placeholder="Search by name or tag…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); setQuery(''); } }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setOpen(false);
+                  setQuery("");
+                }
+              }}
             />
             <List>
-              {filtered.length === 0 && <Empty>No components match "{query}"</Empty>}
+              {filtered.length === 0 && (
+                <Empty>No components match "{query}"</Empty>
+              )}
               {filtered.map((def) => (
                 <ListItem key={def.id} onClick={() => handleSelect(def)}>
                   <ItemName>{def.name}</ItemName>
                   <ItemDesc>{def.description}</ItemDesc>
                   <TagRow>
-                    {def.tags.map((t) => <Tag key={t} label={t} />)}
+                    {def.tags.map((t) => (
+                      <Tag key={t} label={t} />
+                    ))}
                   </TagRow>
                 </ListItem>
               ))}
@@ -168,10 +210,17 @@ const FAB = styled.button`
   justify-content: center;
   box-shadow: 0 4px 16px rgba(0, 204, 102, 0.3);
   z-index: 900;
-  transition: background 0.15s, transform 0.1s;
+  transition:
+    background 0.15s,
+    transform 0.1s;
 
-  &:hover { background: #00e673; transform: scale(1.05); }
-  &:active { transform: scale(0.97); }
+  &:hover {
+    background: #00e673;
+    transform: scale(1.05);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
 `;
 
 const Backdrop = styled.div`
@@ -223,7 +272,9 @@ const CloseBtn = styled.button`
   font-size: 14px;
   cursor: pointer;
   padding: 2px 4px;
-  &:hover { color: #aaa; }
+  &:hover {
+    color: #aaa;
+  }
 `;
 
 const SearchInput = styled.input`
@@ -237,7 +288,9 @@ const SearchInput = styled.input`
   outline: none;
   flex-shrink: 0;
 
-  &::placeholder { color: #333; }
+  &::placeholder {
+    color: #333;
+  }
 `;
 
 const List = styled.div`
@@ -257,8 +310,12 @@ const ListItem = styled.button`
   padding: 12px 16px;
   cursor: pointer;
 
-  &:hover { background: #161616; }
-  &:last-child { border-bottom: none; }
+  &:hover {
+    background: #161616;
+  }
+  &:last-child {
+    border-bottom: none;
+  }
 `;
 
 const ItemName = styled.span`

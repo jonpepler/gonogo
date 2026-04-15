@@ -1,9 +1,9 @@
+import type { ComponentProps } from "@gonogo/core";
+import { getDataSource, registerComponent } from "@gonogo/core";
+import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
 import { useEffect, useRef } from "react";
 import styled from "styled-components";
-import { Terminal } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import { registerComponent, getDataSource } from "@gonogo/core";
-import type { ComponentProps } from "@gonogo/core";
 import "@xterm/xterm/css/xterm.css";
 
 interface KosTerminalConfig {

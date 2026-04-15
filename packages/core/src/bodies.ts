@@ -11,7 +11,7 @@
  */
 
 export interface BodyMapConfig {
-  type: 'equirectangular';
+  type: "equirectangular";
   /** Pixel width of the source texture image. */
   width: number;
   /** Pixel height of the source texture image. */

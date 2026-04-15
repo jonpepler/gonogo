@@ -1,8 +1,16 @@
-import styled from 'styled-components';
-import { useEffect, useRef, useState } from 'react';
-import { registerComponent, useDataValue, getBody } from '@gonogo/core';
-import { latLonToMap } from '@gonogo/core';
-import type { ComponentProps, ConfigComponentProps, TelemaachusSchema } from '@gonogo/core';
+import type {
+  ComponentProps,
+  ConfigComponentProps,
+  TelemaachusSchema,
+} from "@gonogo/core";
+import {
+  getBody,
+  latLonToMap,
+  registerComponent,
+  useDataValue,
+} from "@gonogo/core";
+import { useEffect, useRef, useState } from "react";
+import styled from "styled-components";
 
 interface MapViewConfig {
   /** Number of trajectory history points to keep. Default: 200. */
@@ -13,43 +21,46 @@ interface MapViewConfig {
 
 /** Predefined data points available in the telemetry panel. */
 const TELEMETRY_OPTIONS: { label: string; key: keyof TelemaachusSchema }[] = [
-  { label: 'Altitude (sea level)', key: 'v.altitude' },
-  { label: 'Altitude (terrain)',   key: 'v.heightFromTerrain' },
-  { label: 'Vertical speed',       key: 'v.verticalSpeed' },
-  { label: 'Surface speed',        key: 'v.surfaceSpeed' },
-  { label: 'Orbital speed',        key: 'v.obtSpeed' },
-  { label: 'Mach',                 key: 'v.mach' },
-  { label: 'G-force',              key: 'v.geeForce' },
-  { label: 'Heading',              key: 'n.heading' },
-  { label: 'Pitch',                key: 'n.pitch' },
-  { label: 'Roll',                 key: 'n.roll' },
-  { label: 'Mission time',         key: 'v.missionTime' },
-  { label: 'Apoapsis alt',         key: 'o.ApA' },
-  { label: 'Periapsis alt',        key: 'o.PeA' },
-  { label: 'Time to Ap',           key: 'o.timeToAp' },
-  { label: 'Time to Pe',           key: 'o.timeToPe' },
-  { label: 'Inclination',          key: 'o.inclination' },
+  { label: "Altitude (sea level)", key: "v.altitude" },
+  { label: "Altitude (terrain)", key: "v.heightFromTerrain" },
+  { label: "Vertical speed", key: "v.verticalSpeed" },
+  { label: "Surface speed", key: "v.surfaceSpeed" },
+  { label: "Orbital speed", key: "v.obtSpeed" },
+  { label: "Mach", key: "v.mach" },
+  { label: "G-force", key: "v.geeForce" },
+  { label: "Heading", key: "n.heading" },
+  { label: "Pitch", key: "n.pitch" },
+  { label: "Roll", key: "n.roll" },
+  { label: "Mission time", key: "v.missionTime" },
+  { label: "Apoapsis alt", key: "o.ApA" },
+  { label: "Periapsis alt", key: "o.PeA" },
+  { label: "Time to Ap", key: "o.timeToAp" },
+  { label: "Time to Pe", key: "o.timeToPe" },
+  { label: "Inclination", key: "o.inclination" },
 ];
 
-function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
+function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const trajectoryLength = config?.trajectoryLength ?? 200;
   const telemetryKeys = config?.telemetryKeys ?? [];
   const showTelemetry = telemetryKeys.length > 0;
 
-  const lat      = useDataValue('telemachus', 'v.lat');
-  const lon      = useDataValue('telemachus', 'v.long');
-  const bodyName = useDataValue('telemachus', 'v.body');
+  const lat = useDataValue("telemachus", "v.lat");
+  const lon = useDataValue("telemachus", "v.long");
+  const bodyName = useDataValue("telemachus", "v.body");
 
   const targetBodyId = bodyName;
 
-  const baseRef    = useRef<HTMLCanvasElement>(null);
+  const baseRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
-  const dataRef    = useRef<HTMLCanvasElement>(null);
+  const dataRef = useRef<HTMLCanvasElement>(null);
   // Observes MapOuter (the full available area) so we can letterbox correctly
   const outerRef = useRef<HTMLDivElement>(null);
 
   // Letterboxed canvas pixel dimensions — cW = min(outerW, outerH * 2), cH = cW / 2
-  const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
+  const [containerSize, setContainerSize] = useState<{
+    w: number;
+    h: number;
+  } | null>(null);
 
   // Trajectory history buffer: [{lat, lon}, ...]
   const trajectoryRef = useRef<Array<{ lat: number; lon: number }>>([]);
@@ -97,7 +108,7 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
     canvas.width = w;
     canvas.height = h;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const body = targetBodyId ? getBody(targetBodyId) : undefined;
@@ -106,23 +117,23 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
       if (!ctx) return;
 
       // Background
-      ctx.fillStyle = '#0d0d0d';
+      ctx.fillStyle = "#0d0d0d";
       ctx.fillRect(0, 0, w, h);
 
       if (textureImage) {
         // Equirectangular texture fills the canvas exactly
         ctx.drawImage(textureImage, 0, 0, w, h);
         // Darken slightly so grid lines read against bright textures
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
         ctx.fillRect(0, 0, w, h);
       } else if (body?.color) {
         // Fallback: subtle colour tint
-        ctx.fillStyle = body.color + '22';
+        ctx.fillStyle = `${body.color}22`;
         ctx.fillRect(0, 0, w, h);
       }
 
       // Grid lines
-      ctx.strokeStyle = textureImage ? 'rgba(255,255,255,0.08)' : '#1a1a1a';
+      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.08)" : "#1a1a1a";
       ctx.lineWidth = 1;
 
       for (let lat30 = -60; lat30 <= 60; lat30 += 30) {
@@ -142,7 +153,7 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
       }
 
       // Equator & prime meridian slightly brighter
-      ctx.strokeStyle = textureImage ? 'rgba(255,255,255,0.18)' : '#2a2a2a';
+      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.18)" : "#2a2a2a";
       const { y: eqY } = latLonToMap(0, 0, w, h);
       ctx.beginPath();
       ctx.moveTo(0, eqY);
@@ -183,7 +194,7 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
     canvas.width = w;
     canvas.height = h;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.clearRect(0, 0, w, h);
@@ -195,7 +206,7 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
     const latOff = body?.latitudeOffset ?? 0;
 
     function adjustedMap(rawLat: number, rawLon: number) {
-      const adjLon = ((rawLon + lonOff + 180) % 360 + 360) % 360 - 180;
+      const adjLon = ((((rawLon + lonOff + 180) % 360) + 360) % 360) - 180;
       const adjLat = Math.max(-90, Math.min(90, rawLat + latOff));
       return latLonToMap(adjLat, adjLon, w, h);
     }
@@ -205,7 +216,7 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
     // Trajectory trail
     if (trajectory.length > 1) {
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(0,255,136,0.3)';
+      ctx.strokeStyle = "rgba(0,255,136,0.3)";
       ctx.lineWidth = 1.5;
 
       const first = trajectory[0];
@@ -225,11 +236,11 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
       const { x, y } = adjustedMap(lat, lon);
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#00ff88';
+      ctx.fillStyle = "#00ff88";
       ctx.fill();
 
       // Crosshair
-      ctx.strokeStyle = 'rgba(0,255,136,0.6)';
+      ctx.strokeStyle = "rgba(0,255,136,0.6)";
       ctx.lineWidth = 1;
       const cross = 8;
       ctx.beginPath();
@@ -239,7 +250,7 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
       ctx.lineTo(x, y + cross);
       ctx.stroke();
     }
-  }, [containerSize, lat, lon]);
+  }, [containerSize, lat, lon, targetBodyId]);
 
   const body = targetBodyId ? getBody(targetBodyId) : undefined;
   const displayName = body?.name ?? targetBodyId;
@@ -254,16 +265,20 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
       {/* Letterbox wrapper: observes available space, sizes canvas to fit 2:1 */}
       <MapOuter ref={outerRef}>
         <CanvasContainer
-          style={containerSize
-            ? { width: containerSize.w, height: containerSize.h }
-            : undefined}
+          style={
+            containerSize
+              ? { width: containerSize.w, height: containerSize.h }
+              : undefined
+          }
         >
           <BaseCanvas ref={baseRef} />
           <OverlayCanvas ref={overlayRef} />
           <DataCanvas ref={dataRef} />
           {(lat === undefined || lon === undefined) && (
             <NoSignal>
-              {targetBodyId === undefined ? 'Waiting for telemetry…' : 'No position data'}
+              {targetBodyId === undefined
+                ? "Waiting for telemetry…"
+                : "No position data"}
             </NoSignal>
           )}
         </CanvasContainer>
@@ -273,7 +288,14 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
         <TelemetryPanel>
           {telemetryKeys.map((key, idx) => {
             const opt = TELEMETRY_OPTIONS.find((o) => o.key === key);
-            return <TelemetryRow key={key} dataKey={key} label={opt?.label ?? key} colorIndex={idx} />;
+            return (
+              <TelemetryRow
+                key={key}
+                dataKey={key}
+                label={opt?.label ?? key}
+                colorIndex={idx}
+              />
+            );
           })}
         </TelemetryPanel>
       )}
@@ -286,25 +308,33 @@ function MapViewComponent({ config, h }: ComponentProps<MapViewConfig>) {
 // ---------------------------------------------------------------------------
 
 const TELEMETRY_COLOURS = [
-  '#00cc66', // green
-  '#4499ff', // blue
-  '#ff8c00', // orange
-  '#cc44cc', // purple
-  '#ff4466', // red-pink
-  '#00cccc', // cyan
-  '#cccc00', // yellow
-  '#ff6633', // orange-red
+  "#00cc66", // green
+  "#4499ff", // blue
+  "#ff8c00", // orange
+  "#cc44cc", // purple
+  "#ff4466", // red-pink
+  "#00cccc", // cyan
+  "#cccc00", // yellow
+  "#ff6633", // orange-red
 ];
 
 function formatTelValue(value: unknown): string {
-  if (value === undefined) return '—';
+  if (value === undefined) return "—";
   const n = Number(value);
-  if (!isNaN(n) && typeof value !== 'boolean') return n.toFixed(2);
+  if (!Number.isNaN(n) && typeof value !== "boolean") return n.toFixed(2);
   return String(value);
 }
 
-function TelemetryRow({ dataKey, label, colorIndex }: { dataKey: keyof TelemaachusSchema; label: string; colorIndex: number }) {
-  const value = useDataValue('telemachus', dataKey);
+function TelemetryRow({
+  dataKey,
+  label,
+  colorIndex,
+}: Readonly<{
+  dataKey: keyof TelemaachusSchema;
+  label: string;
+  colorIndex: number;
+}>) {
+  const value = useDataValue("telemachus", dataKey);
   const colour = TELEMETRY_COLOURS[colorIndex % TELEMETRY_COLOURS.length];
   return (
     <TelRow>
@@ -318,7 +348,10 @@ function TelemetryRow({ dataKey, label, colorIndex }: { dataKey: keyof Telemaach
 // Config component (rendered inside modal)
 // ---------------------------------------------------------------------------
 
-function MapViewConfigComponent({ config, onSave }: ConfigComponentProps<MapViewConfig>) {
+function MapViewConfigComponent({
+  config,
+  onSave,
+}: ConfigComponentProps<MapViewConfig>) {
   const [trajectoryLength, setTrajectoryLength] = useState(
     String(config?.trajectoryLength ?? 200),
   );
@@ -329,14 +362,17 @@ function MapViewConfigComponent({ config, onSave }: ConfigComponentProps<MapView
   const toggleKey = (key: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
 
   const handleSave = () => {
     // Preserve the order from TELEMETRY_OPTIONS rather than Set insertion order
-    const keys = TELEMETRY_OPTIONS.map((o) => o.key).filter((k) => selected.has(k));
+    const keys = TELEMETRY_OPTIONS.map((o) => o.key).filter((k) =>
+      selected.has(k),
+    );
     onSave({
       trajectoryLength: Math.max(1, parseInt(trajectoryLength, 10) || 200),
       telemetryKeys: keys.length > 0 ? keys : undefined,
@@ -383,14 +419,15 @@ function MapViewConfigComponent({ config, onSave }: ConfigComponentProps<MapView
 // ---------------------------------------------------------------------------
 
 registerComponent<MapViewConfig>({
-  id: 'map-view',
-  name: 'Map View',
-  description: 'Equirectangular map of the current body with vessel position and trajectory trail.',
-  tags: ['telemetry'],
+  id: "map-view",
+  name: "Map View",
+  description:
+    "Equirectangular map of the current body with vessel position and trajectory trail.",
+  tags: ["telemetry"],
   defaultSize: { w: 4, h: 6 },
   component: MapViewComponent,
   configComponent: MapViewConfigComponent,
-  dataRequirements: ['v.lat', 'v.long', 'v.body'],
+  dataRequirements: ["v.lat", "v.long", "v.body"],
   behaviors: [],
   defaultConfig: { trajectoryLength: 200 },
 });
@@ -553,7 +590,9 @@ const CfgInput = styled.input`
   font-size: 13px;
   padding: 6px 8px;
   outline: none;
-  &:focus { border-color: #555; }
+  &:focus {
+    border-color: #555;
+  }
 `;
 
 const CheckList = styled.div`
@@ -602,5 +641,8 @@ const CfgSaveButton = styled.button`
   padding: 6px 16px;
   cursor: pointer;
   text-transform: uppercase;
-  &:hover { background: #1f4a1f; border-color: #3a7a3a; }
+  &:hover {
+    background: #1f4a1f;
+    border-color: #3a7a3a;
+  }
 `;

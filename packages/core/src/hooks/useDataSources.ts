@@ -1,27 +1,32 @@
-import { useSyncExternalStore, useCallback } from 'react';
-import { getDataSources } from '../registry';
+import { useCallback, useSyncExternalStore } from "react";
+import { getDataSources } from "../registry";
 
 export interface DataSourceState {
   id: string;
   name: string;
-  status: import('../types').DataSourceStatus;
+  status: import("../types").DataSourceStatus;
 }
 
 export function useDataSources(): DataSourceState[] {
   // subscribe tells React which external events should trigger a re-check.
   // getDataSources() is called inside the callback so it always sees the
   // current set of registered sources without needing them as a dependency.
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      const unsubscribers = getDataSources().map((s) => s.onStatusChange(onStoreChange));
-      return () => unsubscribers.forEach((u) => u());
-    },
-    [],
-  );
+  const subscribe = useCallback((onStoreChange: () => void) => {
+    const unsubscribers = getDataSources().map((s) =>
+      s.onStatusChange(onStoreChange),
+    );
+    return () =>
+      unsubscribers.forEach((u) => {
+        u();
+      });
+  }, []);
 
   // getSnapshot returns a primitive so React can compare by equality.
   const getSnapshot = useCallback(
-    () => getDataSources().map((s) => s.status).join(','),
+    () =>
+      getDataSources()
+        .map((s) => s.status)
+        .join(","),
     [],
   );
 
@@ -30,5 +35,9 @@ export function useDataSources(): DataSourceState[] {
   // caused by WebSocket/external events updating state outside React's scheduler.
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  return getDataSources().map((s) => ({ id: s.id, name: s.name, status: s.status }));
+  return getDataSources().map((s) => ({
+    id: s.id,
+    name: s.name,
+    status: s.status,
+  }));
 }

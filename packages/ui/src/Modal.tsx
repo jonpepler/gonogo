@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   createContext,
   useCallback,
@@ -6,10 +7,9 @@ import {
   useId,
   useRef,
   useState,
-} from 'react';
-import { createPortal } from 'react-dom';
-import type { ReactNode } from 'react';
-import styled from 'styled-components';
+} from "react";
+import { createPortal } from "react-dom";
+import styled from "styled-components";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,11 +39,14 @@ const ModalContext = createContext<ModalContextValue | null>(null);
 export function ModalProvider({ children }: { children: ReactNode }) {
   const [modals, setModals] = useState<ModalEntry[]>([]);
 
-  const open = useCallback((content: ReactNode, options?: { title?: string }): string => {
-    const id = crypto.randomUUID();
-    setModals((prev) => [...prev, { id, title: options?.title, content }]);
-    return id;
-  }, []);
+  const open = useCallback(
+    (content: ReactNode, options?: { title?: string }): string => {
+      const id = crypto.randomUUID();
+      setModals((prev) => [...prev, { id, title: options?.title, content }]);
+      return id;
+    },
+    [],
+  );
 
   const close = useCallback((id: string) => {
     setModals((prev) => prev.filter((m) => m.id !== id));
@@ -65,7 +68,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
 
 export function useModal(): ModalContextValue {
   const ctx = useContext(ModalContext);
-  if (!ctx) throw new Error('useModal must be used inside <ModalProvider>');
+  if (!ctx) throw new Error("useModal must be used inside <ModalProvider>");
   return ctx;
 }
 
@@ -78,18 +81,17 @@ interface ModalDialogProps {
   onClose: () => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ModalDialog({ entry, onClose }: ModalDialogProps): any {
+function ModalDialog({ entry, onClose }: ModalDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
   // Close on Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
   // Trap focus inside dialog
@@ -97,23 +99,32 @@ function ModalDialog({ entry, onClose }: ModalDialogProps): any {
     const el = dialogRef.current;
     if (!el) return;
     const focusable = el.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
 
     function handleTab(e: KeyboardEvent) {
-      if (e.key !== 'Tab') return;
-      if (focusable.length === 0) { e.preventDefault(); return; }
+      if (e.key !== "Tab") return;
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
     }
-    document.addEventListener('keydown', handleTab);
+    document.addEventListener("keydown", handleTab);
     first?.focus();
-    return () => document.removeEventListener('keydown', handleTab);
+    return () => document.removeEventListener("keydown", handleTab);
   }, []);
 
   return createPortal(
@@ -127,12 +138,14 @@ function ModalDialog({ entry, onClose }: ModalDialogProps): any {
       >
         <DialogHeader>
           {entry.title && <DialogTitle id={titleId}>{entry.title}</DialogTitle>}
-          <CloseButton onClick={onClose} aria-label="Close">✕</CloseButton>
+          <CloseButton onClick={onClose} aria-label="Close">
+            ✕
+          </CloseButton>
         </DialogHeader>
         <DialogBody>{entry.content}</DialogBody>
       </Dialog>
     </Backdrop>,
-    document.body
+    document.body,
   );
 }
 
@@ -191,7 +204,9 @@ const CloseButton = styled.button`
   line-height: 1;
   padding: 2px 4px;
 
-  &:hover { color: #aaa; }
+  &:hover {
+    color: #aaa;
+  }
 `;
 
 const DialogBody = styled.div`

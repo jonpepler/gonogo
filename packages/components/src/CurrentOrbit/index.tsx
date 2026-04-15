@@ -1,12 +1,14 @@
-import styled from 'styled-components';
-import { registerComponent, useDataValue, getBody } from '@gonogo/core';
+import type { ComponentProps } from "@gonogo/core";
 import {
   formatDistance,
   formatDuration,
-  trueAnomalyToRadius,
+  getBody,
   orbitalToCartesian,
-} from '@gonogo/core';
-import type { ComponentProps } from '@gonogo/core';
+  registerComponent,
+  trueAnomalyToRadius,
+  useDataValue,
+} from "@gonogo/core";
+import styled from "styled-components";
 
 interface CurrentOrbitConfig {
   /** Show the mini SVG orbit diagram. Default: true. */
@@ -16,57 +18,60 @@ interface CurrentOrbitConfig {
 function CurrentOrbitComponent({ config }: ComponentProps<CurrentOrbitConfig>) {
   const showDiagram = config?.showDiagram ?? true;
 
-  const apoapsisA    = useDataValue('telemachus', 'o.ApA');
-  const periapsisA   = useDataValue('telemachus', 'o.PeA');
-  const apoapsisR    = useDataValue('telemachus', 'o.ApR');
-  const periapsisR   = useDataValue('telemachus', 'o.PeR');
-  const eccentricity = useDataValue('telemachus', 'o.eccentricity');
-  const inclination  = useDataValue('telemachus', 'o.inclination');
-  const period       = useDataValue('telemachus', 'o.period');
-  const timeToAp     = useDataValue('telemachus', 'o.timeToAp');
-  const timeToPe     = useDataValue('telemachus', 'o.timeToPe');
-  const refBody      = useDataValue('telemachus', 'o.referenceBody');
-  const bodyName     = useDataValue('telemachus', 'v.body');
+  const apoapsisA = useDataValue("telemachus", "o.ApA");
+  const periapsisA = useDataValue("telemachus", "o.PeA");
+  const apoapsisR = useDataValue("telemachus", "o.ApR");
+  const periapsisR = useDataValue("telemachus", "o.PeR");
+  const eccentricity = useDataValue("telemachus", "o.eccentricity");
+  const inclination = useDataValue("telemachus", "o.inclination");
+  const period = useDataValue("telemachus", "o.period");
+  const timeToAp = useDataValue("telemachus", "o.timeToAp");
+  const timeToPe = useDataValue("telemachus", "o.timeToPe");
+  const refBody = useDataValue("telemachus", "o.referenceBody");
+  const bodyName = useDataValue("telemachus", "v.body");
 
-  const body = (bodyName ?? refBody) !== undefined
-    ? getBody(bodyName ?? refBody ?? '')
-    : undefined;
+  const body =
+    (bodyName ?? refBody) !== undefined
+      ? getBody(bodyName ?? refBody ?? "")
+      : undefined;
 
   return (
     <Panel>
       <Title>ORBIT</Title>
-      {refBody !== undefined && (
-        <RefBody>{refBody}</RefBody>
-      )}
+      {refBody !== undefined && <RefBody>{refBody}</RefBody>}
 
       <Grid>
         <Label>Ap</Label>
         <Value $accent="ap">
-          {apoapsisA !== undefined ? formatDistance(apoapsisA) : '—'}
+          {apoapsisA !== undefined ? formatDistance(apoapsisA) : "—"}
         </Value>
 
         <Label>Pe</Label>
         <Value $accent="pe">
-          {periapsisA !== undefined ? formatDistance(periapsisA) : '—'}
+          {periapsisA !== undefined ? formatDistance(periapsisA) : "—"}
         </Value>
 
         <Label>Ecc</Label>
-        <Value>{eccentricity !== undefined ? eccentricity.toFixed(4) : '—'}</Value>
+        <Value>
+          {eccentricity !== undefined ? eccentricity.toFixed(4) : "—"}
+        </Value>
 
         <Label>Inc</Label>
-        <Value>{inclination !== undefined ? `${inclination.toFixed(1)}°` : '—'}</Value>
+        <Value>
+          {inclination !== undefined ? `${inclination.toFixed(1)}°` : "—"}
+        </Value>
 
         <Label>T</Label>
-        <Value>{period !== undefined ? formatDuration(period) : '—'}</Value>
+        <Value>{period !== undefined ? formatDuration(period) : "—"}</Value>
 
         <Label>t-Ap</Label>
         <Value $accent="ap">
-          {timeToAp !== undefined ? formatDuration(timeToAp) : '—'}
+          {timeToAp !== undefined ? formatDuration(timeToAp) : "—"}
         </Value>
 
         <Label>t-Pe</Label>
         <Value $accent="pe">
-          {timeToPe !== undefined ? formatDuration(timeToPe) : '—'}
+          {timeToPe !== undefined ? formatDuration(timeToPe) : "—"}
         </Value>
       </Grid>
 
@@ -119,9 +124,7 @@ function MiniDiagram({
   const vbW = rAp + rPe + 2 * padding;
   const vbH = 2 * (b + padding);
 
-  const bodyDisc = bodyRadius
-    ? Math.min(bodyRadius, rAp * 0.2)
-    : rAp * 0.06;
+  const bodyDisc = bodyRadius ? Math.min(bodyRadius, rAp * 0.2) : rAp * 0.06;
 
   const strokeW = rAp * 0.012;
   const dotR = rAp * 0.025;
@@ -137,7 +140,7 @@ function MiniDiagram({
       aria-hidden="true"
     >
       {/* Body at focus */}
-      <circle cx={0} cy={0} r={bodyDisc} fill={bodyColor ?? '#444'} />
+      <circle cx={0} cy={0} r={bodyDisc} fill={bodyColor ?? "#444"} />
 
       {/* Orbit ellipse: centre at (-c, 0) from focus */}
       <ellipse
@@ -167,15 +170,25 @@ function MiniDiagram({
 // ---------------------------------------------------------------------------
 
 registerComponent<CurrentOrbitConfig>({
-  id: 'current-orbit',
-  name: 'Current Orbit',
-  description: 'Displays orbital parameters: apoapsis, periapsis, eccentricity, inclination, period, and time to Ap/Pe.',
-  tags: ['telemetry'],
+  id: "current-orbit",
+  name: "Current Orbit",
+  description:
+    "Displays orbital parameters: apoapsis, periapsis, eccentricity, inclination, period, and time to Ap/Pe.",
+  tags: ["telemetry"],
   defaultSize: { w: 3, h: 6 },
   component: CurrentOrbitComponent,
   dataRequirements: [
-    'o.ApA', 'o.PeA', 'o.ApR', 'o.PeR', 'o.eccentricity', 'o.inclination',
-    'o.period', 'o.timeToAp', 'o.timeToPe', 'o.referenceBody', 'v.body',
+    "o.ApA",
+    "o.PeA",
+    "o.ApR",
+    "o.PeR",
+    "o.eccentricity",
+    "o.inclination",
+    "o.period",
+    "o.timeToAp",
+    "o.timeToPe",
+    "o.referenceBody",
+    "v.body",
   ],
   behaviors: [],
   defaultConfig: { showDiagram: true },
@@ -233,13 +246,13 @@ const Label = styled.span`
 `;
 
 const accentColor = {
-  ap: '#ff8c00',
-  pe: '#4499ff',
+  ap: "#ff8c00",
+  pe: "#4499ff",
 };
 
-const Value = styled.span<{ $accent?: 'ap' | 'pe' }>`
+const Value = styled.span<{ $accent?: "ap" | "pe" }>`
   font-size: 13px;
-  color: ${({ $accent }) => ($accent ? accentColor[$accent] : '#ccc')};
+  color: ${({ $accent }) => ($accent ? accentColor[$accent] : "#ccc")};
   letter-spacing: 0.03em;
 `;
 

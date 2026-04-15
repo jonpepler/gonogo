@@ -204,7 +204,7 @@ const Panel = styled.div`
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
   overflow: hidden;
 `;
 

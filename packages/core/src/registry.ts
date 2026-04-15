@@ -1,6 +1,5 @@
 import type { ComponentDefinition, DataSource, ThemeDefinition } from "./types";
 
-// The registry stores heterogeneous generics — any is the correct erasure here.
 // ComponentType is contravariant in props, so neither unknown nor never would work.
 // TConfig is checked at the call site (registerComponent / registerDataSource);
 // the internal Map just needs to hold anything.

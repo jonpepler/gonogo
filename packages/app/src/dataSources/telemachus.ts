@@ -1,13 +1,24 @@
-import { registerDataSource } from '@gonogo/core';
-import type { DataSource, DataSourceStatus, DataKey, ConfigField } from '@gonogo/core';
+import { registerDataSource } from "@gonogo/core";
+import type {
+  DataSource,
+  DataSourceStatus,
+  DataKey,
+  ConfigField,
+} from "@gonogo/core";
+
+// TelemaachusSchema lives in @gonogo/core and is pre-registered in DataSourceRegistry.
+// Re-export it here so callers that import from this module path keep working.
+export type { TelemaachusSchema } from "@gonogo/core";
+
+// ---------------------------------------------------------------------------
 
 export interface TelemachusConfig extends Record<string, unknown> {
   host: string;
   port: number;
 }
 
-const DEFAULT_CONFIG: TelemachusConfig = { host: 'localhost', port: 8085 };
-const STORAGE_KEY = 'gonogo.datasource.telemachus';
+const DEFAULT_CONFIG: TelemachusConfig = { host: "localhost", port: 8085 };
+const STORAGE_KEY = "gonogo.datasource.telemachus";
 const RETRY_INTERVAL_MS = 5_000;
 const RETRY_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -17,9 +28,9 @@ interface RetryOptions {
 }
 
 export class TelemachusDataSource implements DataSource<TelemachusConfig> {
-  id = 'telemachus';
-  name = 'Telemachus Reborn';
-  status: DataSourceStatus = 'disconnected';
+  id = "telemachus";
+  name = "Telemachus Reborn";
+  status: DataSourceStatus = "disconnected";
 
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private ws: WebSocket | null = null;
@@ -32,7 +43,13 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
   private readonly retryIntervalMs: number;
   private readonly retryTimeoutMs: number;
 
-  constructor(config?: TelemachusConfig, { retryIntervalMs = RETRY_INTERVAL_MS, retryTimeoutMs = RETRY_TIMEOUT_MS }: RetryOptions = {}) {
+  constructor(
+    config?: TelemachusConfig,
+    {
+      retryIntervalMs = RETRY_INTERVAL_MS,
+      retryTimeoutMs = RETRY_TIMEOUT_MS,
+    }: RetryOptions = {},
+  ) {
     this.cfg = config ?? this.loadConfig();
     this.retryIntervalMs = retryIntervalMs;
     this.retryTimeoutMs = retryTimeoutMs;
@@ -53,7 +70,7 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
     this.stopRetrying();
     this.ws?.close();
     this.ws = null;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   // --- Data ---
@@ -69,9 +86,10 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
 
     if (isNewKey && this.ws?.readyState === WebSocket.OPEN) {
       // Include rate on the first key to establish the update interval
-      const msg = this.subscriptions.size === 1
-        ? { '+': [key], rate: 250 }
-        : { '+': [key] };
+      const msg =
+        this.subscriptions.size === 1
+          ? { "+": [key], rate: 250 }
+          : { "+": [key] };
       this.ws.send(JSON.stringify(msg));
     }
 
@@ -82,7 +100,7 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
         if (cbs.size === 0) {
           this.subscriptions.delete(key);
           if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ '-': [key] }));
+            this.ws.send(JSON.stringify({ "-": [key] }));
           }
         }
       }
@@ -93,7 +111,7 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
     const url = `http://${this.cfg.host}:${this.cfg.port}/telemachus/datalink?a=${encodeURIComponent(action)}`;
     // no-cors: we don't need to read the response back, so skip CORS checking.
     // The request still reaches Telemachus and state changes stream back via WS.
-    await fetch(url, { mode: 'no-cors' });
+    await fetch(url, { mode: "no-cors" });
   }
 
   onStatusChange(cb: (status: DataSourceStatus) => void): () => void {
@@ -105,8 +123,8 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
 
   configSchema(): ConfigField[] {
     return [
-      { key: 'host', label: 'Host', type: 'text', placeholder: 'localhost' },
-      { key: 'port', label: 'Port', type: 'number', placeholder: '8085' },
+      { key: "host", label: "Host", type: "text", placeholder: "localhost" },
+      { key: "port", label: "Port", type: "number", placeholder: "8085" },
     ];
   }
 
@@ -116,12 +134,17 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
 
   configure(config: Record<string, unknown>): void {
     this.cfg = {
-      host: typeof config.host === 'string' ? config.host : this.cfg.host,
-      port: typeof config.port === 'number' ? config.port : Number(config.port) || this.cfg.port,
+      host: typeof config.host === "string" ? config.host : this.cfg.host,
+      port:
+        typeof config.port === "number"
+          ? config.port
+          : Number(config.port) || this.cfg.port,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.cfg));
-    } catch { /* localStorage unavailable */ }
+    } catch {
+      /* localStorage unavailable */
+    }
     this.disconnect();
     void this.connect();
   }
@@ -137,33 +160,34 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
       const ws = new WebSocket(url);
       this.ws = ws;
 
-      ws.addEventListener('open', () => {
-        this.setStatus('connected');
+      ws.addEventListener("open", () => {
+        this.setStatus("connected");
         this.sendSubscription();
         resolve();
       });
-      ws.addEventListener('message', (event) => {
+      ws.addEventListener("message", (event) => {
         this.handleMessage(event.data as string);
       });
-      ws.addEventListener('close', () => {
+      ws.addEventListener("close", () => {
         if (this.ws === ws) this.onClose();
       });
-      ws.addEventListener('error', () => {
+      ws.addEventListener("error", () => {
         reject(new Error(`Could not connect to Telemachus Reborn at ${url}`));
       });
     });
   }
 
   private onClose(): void {
+    if (this.intentionalDisconnect) return;
     if (this.retryStart === null) this.retryStart = Date.now();
 
     if (Date.now() - this.retryStart >= this.retryTimeoutMs) {
       this.retryStart = null;
-      this.setStatus('disconnected'); // gave up — manual retry needed
+      this.setStatus("disconnected"); // gave up — manual retry needed
       return;
     }
 
-    this.setStatus('reconnecting');
+    this.setStatus("reconnecting");
     this.retryTimer = setTimeout(() => {
       void this.openWebSocket().catch(() => {
         // error event fires first and rejects; close event will call onClose() again
@@ -180,7 +204,9 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
 
   private sendSubscription(): void {
     if (this.ws?.readyState === WebSocket.OPEN && this.subscriptions.size > 0) {
-      this.ws.send(JSON.stringify({ '+': [...this.subscriptions.keys()], rate: 250 }));
+      this.ws.send(
+        JSON.stringify({ "+": [...this.subscriptions.keys()], rate: 250 }),
+      );
     }
   }
 
@@ -192,7 +218,9 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
           callbacks.forEach((cb) => cb(data[key]));
         }
       }
-    } catch { /* ignore malformed messages */ }
+    } catch {
+      /* ignore malformed messages */
+    }
   }
 
   private loadConfig(): TelemachusConfig {
@@ -202,7 +230,9 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
         const parsed = JSON.parse(stored) as Partial<TelemachusConfig>;
         return { ...DEFAULT_CONFIG, ...parsed };
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return DEFAULT_CONFIG;
   }
 

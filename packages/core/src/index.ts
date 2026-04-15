@@ -1,5 +1,6 @@
 export * from './registry';
 export * from './types';
+export * from './schemas/telemachus';
 export * from './actionGroups';
 export * from './bodies';
 export * from './orbital';

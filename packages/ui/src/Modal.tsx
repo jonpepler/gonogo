@@ -147,7 +147,7 @@ function ModalDialog({ entry, onClose }: Readonly<ModalDialogProps>) {
                 ✕
               </CloseButton>
             </DialogHeader>
-            <DialogBody>entry.content;</DialogBody>
+            <DialogBody>{entry.content}</DialogBody>
           </Dialog>
         </Backdrop>,
         document.body,

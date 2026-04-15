@@ -5,7 +5,7 @@ import type { Layout, Layouts } from "react-grid-layout";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import styled from "styled-components";
 import "react-grid-layout/css/styles.css";
-import "../styles/react-resizable.css";
+import "../../styles/react-resizable.css";
 import { handleMouseDown } from "./mouseHandlers";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -208,10 +208,7 @@ export const Dashboard = forwardRef<DashboardHandle, DashboardProps>(
                   w={w}
                   h={h}
                   onConfigChange={(newConfig) =>
-                    updateItemConfig(
-                      item.i,
-                      newConfig as Record<string, unknown>,
-                    )
+                    updateItemConfig(item.i, newConfig)
                   }
                 />
               </ComponentWrapper>

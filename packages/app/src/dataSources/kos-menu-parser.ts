@@ -21,7 +21,7 @@ export function parseKosMenu(text: string): KosMenuState | null {
     const match = CPU_ROW_RE.exec(line);
     if (match) {
       cpus.push({
-        number: parseInt(match[1], 10),
+        number: Number.parseInt(match[1], 10),
         vesselName: match[2].trim(),
         partType: match[3],
         tagname: match[4],

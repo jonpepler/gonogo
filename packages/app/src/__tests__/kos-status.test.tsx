@@ -18,7 +18,7 @@ import {
   expect,
   it,
 } from "vitest";
-import { KosDataSource } from "../dataSources/kos";
+import { type KosConfig, KosDataSource } from "../dataSources/kos";
 
 const kosProxyWs = ws.link("ws://localhost:3001/kos");
 const server = setupServer();
@@ -38,7 +38,10 @@ describe("kOS data source status", () => {
   let source: KosDataSource;
 
   beforeEach(() => {
-    source = new KosDataSource({ host: "localhost", port: 3001 });
+    source = new KosDataSource({
+      host: "localhost",
+      port: 3001,
+    } as unknown as KosConfig);
     registerDataSource(source);
   });
 
@@ -113,7 +116,7 @@ describe("kOS data source status", () => {
     beforeEach(() => {
       clearRegistry();
       fastSource = new KosDataSource(
-        { host: "localhost", port: 3001 },
+        { host: "localhost", port: 3001 } as unknown as KosConfig,
         { retryIntervalMs: 50, retryTimeoutMs: 300 },
       );
       registerDataSource(fastSource);

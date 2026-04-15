@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "lint": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@gonogo/components": "workspace:*",

@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -36,7 +37,7 @@ const ModalContext = createContext<ModalContextValue | null>(null);
 // Provider
 // ---------------------------------------------------------------------------
 
-export function ModalProvider({ children }: { children: ReactNode }) {
+export function ModalProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [modals, setModals] = useState<ModalEntry[]>([]);
 
   const open = useCallback(
@@ -52,8 +53,10 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     setModals((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
+  const value = useMemo(() => ({ open, close }), [open, close]);
+
   return (
-    <ModalContext.Provider value={{ open, close }}>
+    <ModalContext.Provider value={value}>
       {children}
       {modals.map((m) => (
         <ModalDialog key={m.id} entry={m} onClose={() => close(m.id)} />
@@ -81,7 +84,7 @@ interface ModalDialogProps {
   onClose: () => void;
 }
 
-function ModalDialog({ entry, onClose }: ModalDialogProps) {
+function ModalDialog({ entry, onClose }: Readonly<ModalDialogProps>) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -115,11 +118,9 @@ function ModalDialog({ entry, onClose }: ModalDialogProps) {
           e.preventDefault();
           last?.focus();
         }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
       }
     }
     document.addEventListener("keydown", handleTab);
@@ -127,25 +128,31 @@ function ModalDialog({ entry, onClose }: ModalDialogProps) {
     return () => document.removeEventListener("keydown", handleTab);
   }, []);
 
-  return createPortal(
-    <Backdrop onClick={onClose} role="presentation">
-      <Dialog
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={entry.title ? titleId : undefined}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <DialogHeader>
-          {entry.title && <DialogTitle id={titleId}>{entry.title}</DialogTitle>}
-          <CloseButton onClick={onClose} aria-label="Close">
-            ✕
-          </CloseButton>
-        </DialogHeader>
-        <DialogBody>{entry.content}</DialogBody>
-      </Dialog>
-    </Backdrop>,
-    document.body,
+  return (
+    <>
+      {createPortal(
+        <Backdrop onClick={onClose} role="presentation">
+          <Dialog
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={entry.title ? titleId : undefined}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DialogHeader>
+              {entry.title && (
+                <DialogTitle id={titleId}>{entry.title}</DialogTitle>
+              )}
+              <CloseButton onClick={onClose} aria-label="Close">
+                ✕
+              </CloseButton>
+            </DialogHeader>
+            <DialogBody>entry.content;</DialogBody>
+          </Dialog>
+        </Backdrop>,
+        document.body,
+      )}
+    </>
   );
 }
 

@@ -94,14 +94,14 @@ function setupTelemachus(initialState: Record<string, boolean> = {}) {
 
 describe("ActionGroup component", () => {
   it("shows placeholder when no action group is configured", () => {
-    render(<ActionGroupComponent />);
+    render(<ActionGroupComponent id={""} />);
     expect(screen.getByText("No action group configured")).toBeInTheDocument();
   });
 
   it("shows group name and OFF state on initial connect", async () => {
     setupTelemachus({ "v.ag1Value": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
 
     await waitFor(() => expect(screen.getByText("AG1")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
@@ -110,7 +110,7 @@ describe("ActionGroup component", () => {
   it("shows ON when the action group is already active", async () => {
     setupTelemachus({ "v.ag1Value": true });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
 
     await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
   });
@@ -118,7 +118,7 @@ describe("ActionGroup component", () => {
   it("sends a toggle request and reflects the updated state", async () => {
     setupTelemachus({ "v.ag1Value": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
 
     await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
 
@@ -131,7 +131,10 @@ describe("ActionGroup component", () => {
     setupTelemachus({ "v.precisionControlValue": false });
     await telemachusSource.connect();
     render(
-      <ActionGroupComponent config={{ actionGroupId: "Precision Control" }} />,
+      <ActionGroupComponent
+        config={{ actionGroupId: "Precision Control" }}
+        id={""}
+      />,
     );
 
     await waitFor(() =>
@@ -167,7 +170,7 @@ describe("ActionGroup component", () => {
   it("toggles SAS independently from AG1", async () => {
     setupTelemachus({ "v.sasValue": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "SAS" }} />);
+    render(<ActionGroupComponent config={{ actionGroupId: "SAS" }} id={""} />);
 
     await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
 

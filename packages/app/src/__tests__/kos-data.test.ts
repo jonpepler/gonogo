@@ -10,7 +10,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { KosDataSource } from "../dataSources/kos";
+import { type KosConfig, KosDataSource } from "../dataSources/kos";
 
 const kosProxyWs = ws.link("ws://localhost:3001/kos");
 const server = setupServer();
@@ -20,7 +20,10 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 function makeSource() {
-  return new KosDataSource({ host: "localhost", port: 3001 });
+  return new KosDataSource({
+    host: "localhost",
+    port: 3001,
+  } as unknown as KosConfig);
 }
 
 describe("KosDataSource data protocol", () => {

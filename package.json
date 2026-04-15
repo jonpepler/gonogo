@@ -5,6 +5,7 @@
     "dev": "sh scripts/dev.sh",
     "build": "turbo build",
     "test": "turbo test",
+    "typecheck": "turbo typecheck",
     "coverage": "vitest run --coverage",
     "lint": "biome check --write ."
   },

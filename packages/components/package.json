@@ -10,7 +10,7 @@
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "lint": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@gonogo/core": "workspace:*",

@@ -35,10 +35,15 @@ export class KosDataSource implements DataSource<KosConfig> {
   name = "kOS";
   status: DataSourceStatus = "disconnected";
 
-  private statusListeners = new Set<(status: DataSourceStatus) => void>();
+  private readonly statusListeners = new Set<
+    (status: DataSourceStatus) => void
+  >();
   private ws: WebSocket | null = null;
   private cfg: KosConfig;
-  private subscriptions = new Map<string, Set<(value: unknown) => void>>();
+  private readonly subscriptions = new Map<
+    string,
+    Set<(value: unknown) => void>
+  >();
 
   private intentionalDisconnect = false;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -295,7 +300,7 @@ export class KosDataSource implements DataSource<KosConfig> {
 
     if (this.intentionalDisconnect) return;
 
-    if (this.retryStart === null) this.retryStart = Date.now();
+    this.retryStart ??= Date.now();
 
     if (Date.now() - this.retryStart >= this.retryTimeoutMs) {
       this.retryStart = null;

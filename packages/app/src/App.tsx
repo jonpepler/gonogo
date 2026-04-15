@@ -2,7 +2,7 @@ import { MainScreen } from "./screens/MainScreen";
 import "./styles/global.css";
 
 export default function App() {
-  const isStation = window.location.pathname.startsWith("/station");
+  const isStation = globalThis.location.pathname.startsWith("/station");
 
   return isStation ? <StationScreen /> : <MainScreen />;
 }

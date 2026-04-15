@@ -202,6 +202,7 @@ const Container = styled.div<{ $readOnly?: boolean }>`
   border: 1px solid ${({ $readOnly }) => ($readOnly ? "#1a1a2e" : "#2a2a2a")};
   border-radius: 4px;
   overflow: hidden;
+  box-sizing: border-box;
 
   /* xterm.js mounts a child div — make it fill the container */
   .xterm {

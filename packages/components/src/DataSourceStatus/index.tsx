@@ -59,9 +59,9 @@ function DataSourceStatusComponent() {
             return (
               <Item key={source.id}>
                 <Row>
-                  <Indicator status={source.status} />
+                  <Indicator $status={source.status} />
                   <Name>{source.name}</Name>
-                  <StatusLabel status={source.status}>
+                  <StatusLabel $status={source.status}>
                     {source.status}
                   </StatusLabel>
                   {source.status === "disconnected" && (
@@ -198,21 +198,21 @@ const statusColor: Record<DataSourceStatus, string> = {
   error: "#ff4444",
 };
 
-const Indicator = styled.span<{ status: DataSourceStatus }>`
+const Indicator = styled.span<{ $status: DataSourceStatus }>`
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: ${({ status }) => statusColor[status]};
-  animation: ${({ status }) =>
-    status === "connected" || status === "reconnecting" ? pulse : "none"}
-    ${({ status }) => (status === "reconnecting" ? "1s" : "2s")} ease-in-out
+  background: ${({ $status }) => statusColor[$status]};
+  animation: ${({ $status }) =>
+    $status === "connected" || $status === "reconnecting" ? pulse : "none"}
+    ${({ $status }) => ($status === "reconnecting" ? "1s" : "2s")} ease-in-out
     infinite;
 `;
 
-const StatusLabel = styled.span<{ status: DataSourceStatus }>`
+const StatusLabel = styled.span<{ $status: DataSourceStatus }>`
   font-size: 11px;
-  color: ${({ status }) => statusColor[status]};
+  color: ${({ $status }) => statusColor[$status]};
   text-transform: uppercase;
   letter-spacing: 0.05em;
 `;

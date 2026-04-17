@@ -1,57 +1,41 @@
-import type {
-  ComponentProps,
-  ConfigComponentProps,
-  TelemaachusSchema,
-} from "@gonogo/core";
+import type { ComponentProps, TelemaachusSchema } from "@gonogo/core";
 import {
   getBody,
   latLonToMap,
-  mapClamped,
   registerComponent,
   useDataValue,
 } from "@gonogo/core";
-import {
-  ConfigForm,
-  Field,
-  FieldHint,
-  FieldLabel,
-  Input,
-  Panel,
-  PanelTitle,
-  PrimaryButton,
-} from "@gonogo/ui";
+import { Panel, Switch } from "@gonogo/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
-import styled from "styled-components";
-import { getTrajectoryStyle } from "./trajectoryStyle";
-
-interface MapViewConfig {
-  /** Number of trajectory history points to keep. Default: 200. */
-  trajectoryLength?: number;
-  /** Telemachus keys selected for display in the telemetry panel. */
-  telemetryKeys?: (keyof TelemaachusSchema)[];
-}
-
-/** Predefined data points available in the telemetry panel. */
-const TELEMETRY_OPTIONS: { label: string; key: keyof TelemaachusSchema }[] = [
-  { label: "Altitude (sea level)", key: "v.altitude" },
-  { label: "Altitude (terrain)", key: "v.heightFromTerrain" },
-  { label: "Vertical speed", key: "v.verticalSpeed" },
-  { label: "Surface speed", key: "v.surfaceSpeed" },
-  { label: "Orbital speed", key: "v.obtSpeed" },
-  { label: "Mach", key: "v.mach" },
-  { label: "G-force", key: "v.geeForce" },
-  { label: "Heading", key: "n.heading" },
-  { label: "Pitch", key: "n.pitch" },
-  { label: "Roll", key: "n.roll" },
-  { label: "Mission time", key: "v.missionTime" },
-  { label: "Apoapsis alt", key: "o.ApA" },
-  { label: "Periapsis alt", key: "o.PeA" },
-  { label: "Time to Ap", key: "o.timeToAp" },
-  { label: "Time to Pe", key: "o.timeToPe" },
-  { label: "Inclination", key: "o.inclination" },
-  { label: "Latitude", key: "v.lat" },
-  { label: "Longitude", key: "v.long" },
-];
+import {
+  cameraTransform,
+  followZoom,
+  WORLD_H,
+  WORLD_W,
+  worldToScreen,
+} from "./camera";
+import {
+  BaseCanvas,
+  BodyLabel,
+  CanvasContainer,
+  DataCanvas,
+  Header,
+  MapOuter,
+  NoSignal,
+  OverlayCanvas,
+  PersistentDataCanvas,
+  TelemetryPanel,
+  TelKey,
+  TelRow,
+  TelValue,
+  Title,
+} from "./MapView.styles";
+import { MapViewConfigComponent, TELEMETRY_OPTIONS } from "./MapViewConfig";
+import type { MapViewConfig } from "./types";
+import { useCamera } from "./useCamera";
+import { useMapResize } from "./useMapResize";
+import { useTrajectoryBuffer } from "./useTrajectoryBuffer";
+import { useWorldCanvas } from "./useWorldCanvas";
 
 function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const trajectoryLength = config?.trajectoryLength ?? 200;
@@ -69,166 +53,39 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
 
   const targetBodyId = bodyName;
   const body = targetBodyId ? getBody(targetBodyId) : undefined;
-  const hasAtmosphere = body?.hasAtmosphere;
-  const maxAtmosphere = body?.maxAtmosphere;
+
+  const { outerRef, containerSize } = useMapResize();
+  const {
+    camera,
+    setCamera,
+    baseZoom,
+    viewMode,
+    setViewMode,
+    interactionRef,
+    onMouseDown,
+    onMouseMove,
+    onMouseUp,
+  } = useCamera(containerSize);
+
+  const { trajectoryRef, trajectoryCount } = useTrajectoryBuffer({
+    lat,
+    lon,
+    altSea,
+    q,
+    mach,
+    speed,
+    vSpeed,
+    trajectoryLength,
+  });
 
   const baseRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const dataRef = useRef<HTMLCanvasElement>(null);
   const persistentDataRef = useRef<HTMLCanvasElement>(null);
-  // Observes MapOuter (the full available area) so we can letterbox correctly
-  const outerRef = useRef<HTMLDivElement>(null);
 
-  // Letterboxed canvas pixel dimensions — cW = min(outerW, outerH * 2), cH = cW / 2
-  const [containerSize, setContainerSize] = useState<{
-    w: number;
-    h: number;
-  } | null>(null);
-
-  type Trajectory = {
-    lat: number;
-    lon: number;
-    alt: number;
-    q: number;
-    mach: number;
-    speed: number;
-    vSpeed: number;
-  };
-
-  // Trajectory history buffer: [{lat, lon}, ...]
-  const trajectoryRef = useRef<Array<Trajectory>>([]);
-
-  // Track previous lat/lon to avoid duplicate pushes
-  const prevPosRef = useRef<Trajectory | null>(null);
-
-  // ── ResizeObserver — watches MapOuter, computes letterboxed canvas size ────
-  useEffect(() => {
-    const el = outerRef.current;
-    if (!el) return;
-
-    const obs = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const { width, height } = entry.contentRect;
-      // 2:1 contain: fill width unless that would exceed the available height
-      const cW = Math.floor(Math.min(width, height * 2));
-      const cH = Math.floor(cW / 2);
-      setContainerSize({ w: cW, h: cH });
-    });
-
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  // ── Accumulate trajectory ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (lat === undefined || lon === undefined || altSea === undefined) return;
-    const point = {
-      lat,
-      lon,
-      alt: altSea,
-      q: q ?? 0,
-      mach: mach ?? 0,
-      speed: speed ?? 0,
-      vSpeed: vSpeed ?? 0,
-    };
-
-    prevPosRef.current = point;
-
-    trajectoryRef.current = [
-      ...trajectoryRef.current.slice(-(trajectoryLength - 1)),
-      point,
-    ];
-  }, [lat, lon, altSea, trajectoryLength, mach, q, speed, vSpeed]);
-
-  // ── Draw base layer ────────────────────────────────────────────────────────
-  useEffect(() => {
-    const canvas = baseRef.current;
-    if (!canvas || !containerSize) return;
-    const { w, h } = containerSize;
-    canvas.width = w;
-    canvas.height = h;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    function drawBase(textureImage?: HTMLImageElement) {
-      if (!ctx) return;
-
-      // Background
-      ctx.fillStyle = "#0d0d0d";
-      ctx.fillRect(0, 0, w, h);
-
-      if (textureImage) {
-        // Equirectangular texture fills the canvas exactly
-        ctx.drawImage(textureImage, 0, 0, w, h);
-        // Darken slightly so grid lines read against bright textures
-        ctx.fillStyle = "rgba(0,0,0,0.25)";
-        ctx.fillRect(0, 0, w, h);
-      } else if (body?.color) {
-        // Fallback: subtle colour tint
-        ctx.fillStyle = `${body.color}22`;
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      // Grid lines
-      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.05)" : "#1a1a1a";
-      ctx.lineWidth = 1;
-
-      for (let lat30 = -60; lat30 <= 60; lat30 += 30) {
-        const { y } = latLonToMap(lat30, 0, w, h);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-
-      for (let lon30 = -150; lon30 <= 180; lon30 += 30) {
-        const { x } = latLonToMap(0, lon30, w, h);
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-
-      // Equator & prime meridian slightly brighter
-      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.15)" : "#2a2a2a";
-      const { y: eqY } = latLonToMap(0, 0, w, h);
-      ctx.beginPath();
-      ctx.moveTo(0, eqY);
-      ctx.lineTo(w, eqY);
-      ctx.stroke();
-
-      const { x: pmX } = latLonToMap(0, 0, w, h);
-      ctx.beginPath();
-      ctx.moveTo(pmX, 0);
-      ctx.lineTo(pmX, h);
-      ctx.stroke();
-    }
-
-    if (body?.texture) {
-      const img = new Image();
-      img.onload = () => drawBase(img);
-      img.onerror = () => drawBase(); // fall back to colour on load failure
-      img.src = body.texture;
-    } else {
-      drawBase();
-    }
-  }, [containerSize, body?.color, body?.texture]);
-
-  // ── Overlay layer (fog-of-war extension point) ─────────────────────────────
-  useEffect(() => {
-    const canvas = overlayRef.current;
-    if (!canvas || !containerSize) return;
-    canvas.width = containerSize.w;
-    canvas.height = containerSize.h;
-    // Intentionally blank — fog-of-war or other overlays can be drawn here
-  }, [containerSize]);
-
+  // Per-body coordinate offsets — applied in both world canvas and screen space
   const adjustedMap = useCallback(
     (canvasW: number, canvasH: number, rawLat: number, rawLon: number) => {
-      // Apply per-body coordinate offsets to align plotted positions with the
-      // texture's prime meridian. Longitude wraps at ±180; latitude clamps.
       const lonOff = body?.longitudeOffset ?? 0;
       const latOff = body?.latitudeOffset ?? 0;
       const adjLon = ((((rawLon + lonOff + 180) % 360) + 360) % 360) - 180;
@@ -238,28 +95,156 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     [body?.latitudeOffset, body?.longitudeOffset],
   );
 
-  // ── Draw data layer (vessel) ─────────────────────────────────
+  const worldCanvasRef = useWorldCanvas({
+    trajectoryRef,
+    trajectoryCount,
+    adjustedMap,
+    hasAtmosphere: body?.hasAtmosphere,
+    maxAtmosphere: body?.maxAtmosphere,
+    bodyName: targetBodyId,
+  });
+
+  // ── Follow mode: drive camera from vessel position + speed ────────────────
+  useEffect(() => {
+    if (viewMode !== "follow" || lat === undefined || lon === undefined) return;
+    const { x: wx, y: wy } = adjustedMap(WORLD_W, WORLD_H, lat, lon);
+    setCamera({
+      zoom: followZoom(speed ?? 0, baseZoom),
+      panX: wx,
+      panY: wy,
+    });
+  }, [viewMode, lat, lon, speed, adjustedMap, baseZoom, setCamera]);
+
+  // ── Base layer: map texture + grid in world space via camera ──────────────
+  // Texture is cached in a ref so camera changes don't trigger a reload
+  const textureImageRef = useRef<HTMLImageElement | null>(null);
+  const [textureReady, setTextureReady] = useState(false);
+
+  useEffect(() => {
+    textureImageRef.current = null;
+    setTextureReady(false);
+    if (!body?.texture) {
+      setTextureReady(true);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      textureImageRef.current = img;
+      setTextureReady(true);
+    };
+    img.onerror = () => setTextureReady(true);
+    img.src = body.texture;
+  }, [body?.texture]);
+
+  useEffect(() => {
+    const canvas = baseRef.current;
+    if (!canvas || !containerSize || !textureReady) return;
+    const { w, h } = containerSize;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const textureImage = textureImageRef.current;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#0d0d0d";
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.setTransform(...cameraTransform(camera, w, h));
+
+    if (textureImage) {
+      ctx.drawImage(textureImage, 0, 0, WORLD_W, WORLD_H);
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    } else if (body?.color) {
+      ctx.fillStyle = `${body.color}22`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+
+    // lineWidth compensates for zoom so grid lines remain 1 screen pixel
+    ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.05)" : "#1a1a1a";
+    ctx.lineWidth = 1 / camera.zoom;
+    for (let lat30 = -60; lat30 <= 60; lat30 += 30) {
+      const { y } = latLonToMap(lat30, 0, WORLD_W, WORLD_H);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(WORLD_W, y);
+      ctx.stroke();
+    }
+    for (let lon30 = -150; lon30 <= 180; lon30 += 30) {
+      const { x } = latLonToMap(0, lon30, WORLD_W, WORLD_H);
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, WORLD_H);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.15)" : "#2a2a2a";
+    ctx.lineWidth = 1.5 / camera.zoom;
+    const { y: eqY } = latLonToMap(0, 0, WORLD_W, WORLD_H);
+    ctx.beginPath();
+    ctx.moveTo(0, eqY);
+    ctx.lineTo(WORLD_W, eqY);
+    ctx.stroke();
+    const { x: pmX } = latLonToMap(0, 0, WORLD_W, WORLD_H);
+    ctx.beginPath();
+    ctx.moveTo(pmX, 0);
+    ctx.lineTo(pmX, WORLD_H);
+    ctx.stroke();
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }, [containerSize, camera, textureReady, body?.color]);
+
+  // ── Overlay layer (fog-of-war extension point) ────────────────────────────
+  useEffect(() => {
+    const canvas = overlayRef.current;
+    if (!canvas || !containerSize) return;
+    if (canvas.width !== containerSize.w) canvas.width = containerSize.w;
+    if (canvas.height !== containerSize.h) canvas.height = containerSize.h;
+  }, [containerSize]);
+
+  // ── Trajectory layer: blit world canvas through camera ────────────────────
+  // trajectoryCount is needed here even though worldCanvasRef is a ref:
+  // the ref's identity is stable but its canvas content changes on each new point.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: trajectoryCount triggers redraw when world canvas content changes
+  useEffect(() => {
+    const canvas = persistentDataRef.current;
+    const worldCanvas = worldCanvasRef.current;
+    if (!canvas || !containerSize || !worldCanvas) return;
+    const { w, h } = containerSize;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.setTransform(...cameraTransform(camera, w, h));
+    ctx.drawImage(worldCanvas, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }, [containerSize, camera, trajectoryCount]);
+
+  // ── Data layer: vessel dot in world → screen space ────────────────────────
   useEffect(() => {
     const canvas = dataRef.current;
     if (!canvas || !containerSize) return;
     const { w, h } = containerSize;
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.clearRect(0, 0, w, h);
 
-    // Vessel dot
     if (lat !== undefined && lon !== undefined) {
-      const { x, y } = adjustedMap(w, h, lat, lon);
+      const { x: wx, y: wy } = adjustedMap(WORLD_W, WORLD_H, lat, lon);
+      const { x, y } = worldToScreen(wx, wy, camera, w, h);
+
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fillStyle = "#00ff88";
       ctx.fill();
 
-      // Crosshair
       ctx.strokeStyle = "rgba(0,255,136,0.6)";
       ctx.lineWidth = 1;
       const cross = 8;
@@ -270,52 +255,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
       ctx.lineTo(x, y + cross);
       ctx.stroke();
     }
-  }, [containerSize, lat, lon, adjustedMap]);
-
-  // ── Draw persistent data layer (trajectory) ─────────────────────────────────
-  useEffect(() => {
-    const canvas = persistentDataRef.current;
-    if (!canvas || !containerSize) return;
-
-    const { w, h } = containerSize;
-    canvas.width = w;
-    canvas.height = h;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, w, h);
-
-    const trajectory = trajectoryRef.current;
-
-    for (let i = 1; i < trajectory.length; i++) {
-      const p1 = trajectory[i - 1];
-      const p2 = trajectory[i];
-
-      const { x: x1, y: y1 } = adjustedMap(w, h, p1.lat, p1.lon);
-      const { x: x2, y: y2 } = adjustedMap(w, h, p2.lat, p2.lon);
-
-      const style = getTrajectoryStyle({
-        alt: p2.alt,
-        maxAtmosphere: maxAtmosphere ?? 100_000,
-        hasAtmosphere: hasAtmosphere ?? false,
-        q: p2.q,
-        mach: p2.mach,
-        speed: p2.speed,
-        vSpeed: p2.vSpeed,
-      });
-
-      const [r, g, b] = style.color;
-
-      ctx.strokeStyle = `rgba(${r},${g},${b},${style.alpha})`;
-      ctx.lineWidth = style.width;
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    }
-  }, [containerSize, adjustedMap, hasAtmosphere, maxAtmosphere]);
+  }, [containerSize, camera, lat, lon, adjustedMap]);
 
   const displayName = body?.name ?? targetBodyId;
 
@@ -324,21 +264,30 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
       <Header>
         <Title>MAP VIEW</Title>
         {displayName && <BodyLabel>{displayName}</BodyLabel>}
+        <Switch
+          checked={viewMode === "follow"}
+          onChange={(on) => setViewMode(on ? "follow" : "global")}
+          label="Follow"
+        />
       </Header>
 
-      {/* Letterbox wrapper: observes available space, sizes canvas to fit 2:1 */}
       <MapOuter ref={outerRef}>
         <CanvasContainer
+          ref={interactionRef}
           style={
             containerSize
               ? { width: containerSize.w, height: containerSize.h }
               : undefined
           }
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
         >
           <BaseCanvas ref={baseRef} />
           <OverlayCanvas ref={overlayRef} />
-          <DataCanvas ref={dataRef} />
           <PersistentDataCanvas ref={persistentDataRef} />
+          <DataCanvas ref={dataRef} />
           {(lat === undefined || lon === undefined) && (
             <NoSignal>
               {targetBodyId === undefined
@@ -373,14 +322,14 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
 // ---------------------------------------------------------------------------
 
 const TELEMETRY_COLOURS = [
-  "#00cc66", // green
-  "#4499ff", // blue
-  "#ff8c00", // orange
-  "#cc44cc", // purple
-  "#ff4466", // red-pink
-  "#00cccc", // cyan
-  "#cccc00", // yellow
-  "#ff6633", // orange-red
+  "#00cc66",
+  "#4499ff",
+  "#ff8c00",
+  "#cc44cc",
+  "#ff4466",
+  "#00cccc",
+  "#cccc00",
+  "#ff6633",
 ];
 
 function formatTelValue(value: unknown): string {
@@ -410,79 +359,6 @@ function TelemetryRow({
 }
 
 // ---------------------------------------------------------------------------
-// Config component (rendered inside modal)
-// ---------------------------------------------------------------------------
-
-function MapViewConfigComponent({
-  config,
-  onSave,
-}: Readonly<ConfigComponentProps<MapViewConfig>>) {
-  const [trajectoryLength, setTrajectoryLength] = useState(
-    String(config?.trajectoryLength ?? 200),
-  );
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(config?.telemetryKeys ?? []),
-  );
-
-  const toggleKey = (key: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  const handleSave = () => {
-    // Preserve the order from TELEMETRY_OPTIONS rather than Set insertion order
-    const keys = TELEMETRY_OPTIONS.map((o) => o.key).filter((k) =>
-      selected.has(k),
-    );
-    onSave({
-      trajectoryLength: Math.max(
-        1,
-        Number.parseInt(trajectoryLength, 10) || 200,
-      ),
-      telemetryKeys: keys.length > 0 ? keys : undefined,
-    });
-  };
-
-  return (
-    <ConfigForm>
-      <Field>
-        <FieldLabel htmlFor="map-traj">Trajectory history (points)</FieldLabel>
-        <Input
-          id="map-traj"
-          type="number"
-          min={1}
-          max={2000}
-          value={trajectoryLength}
-          onChange={(e) => setTrajectoryLength(e.target.value)}
-        />
-      </Field>
-      <Field>
-        <FieldLabel>Telemetry panel</FieldLabel>
-        <CheckList>
-          {TELEMETRY_OPTIONS.map(({ label, key }) => (
-            <CheckRow key={key}>
-              <Checkbox
-                id={`map-key-${key}`}
-                type="checkbox"
-                checked={selected.has(key)}
-                onChange={() => toggleKey(key)}
-              />
-              <CheckLabel htmlFor={`map-key-${key}`}>{label}</CheckLabel>
-            </CheckRow>
-          ))}
-        </CheckList>
-        <FieldHint>Selected values are shown below the map.</FieldHint>
-      </Field>
-      <PrimaryButton onClick={handleSave}>Save</PrimaryButton>
-    </ConfigForm>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
 
@@ -501,135 +377,3 @@ registerComponent<MapViewConfig>({
 });
 
 export { MapViewComponent };
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const Header = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-`;
-
-const Title = styled(PanelTitle)`
-  font-size: 10px;
-  letter-spacing: 0.15em;
-`;
-
-const BodyLabel = styled.span`
-  font-size: 11px;
-  color: #888;
-  letter-spacing: 0.05em;
-`;
-
-/**
- * Fills leftover space. The ResizeObserver measures this element's actual
- * content rect and computes letterboxed pixel dimensions for CanvasContainer.
- */
-const MapOuter = styled.div`
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-`;
-
-/**
- * Sized explicitly via inline style (width/height in px) so the canvas is
- * always exactly 2:1 regardless of which dimension is the bottleneck.
- */
-const CanvasContainer = styled.div`
-  position: relative;
-  flex-shrink: 0;
-  border-radius: 2px;
-  overflow: hidden;
-`;
-
-const CanvasBase = styled.canvas`
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-`;
-
-const BaseCanvas = CanvasBase;
-const OverlayCanvas = CanvasBase;
-const DataCanvas = CanvasBase;
-const PersistentDataCanvas = CanvasBase;
-
-const NoSignal = styled.div`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  color: #444;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  pointer-events: none;
-`;
-
-const TelemetryPanel = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  padding-top: 4px;
-  border-top: 1px solid #1a1a1a;
-  flex-shrink: 0;
-`;
-
-const TelRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-`;
-
-const TelKey = styled.span<{ $colour: string }>`
-  font-size: 9px;
-  color: ${({ $colour }) => $colour};
-  opacity: 0.6;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-`;
-
-const TelValue = styled.span<{ $colour: string }>`
-  font-size: 12px;
-  font-weight: 600;
-  color: ${({ $colour }) => $colour};
-  font-variant-numeric: tabular-nums;
-  min-width: 7ch;
-  white-space: nowrap;
-`;
-
-const CheckList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const CheckRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const Checkbox = styled.input`
-  accent-color: #00cc66;
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-  flex-shrink: 0;
-`;
-
-const CheckLabel = styled.label`
-  font-family: monospace;
-  font-size: 12px;
-  color: #bbb;
-  cursor: pointer;
-  user-select: none;
-`;

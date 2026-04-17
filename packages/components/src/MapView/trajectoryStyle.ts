@@ -17,7 +17,7 @@ export const getTrajectoryStyle = ({
   q,
   mach,
   speed,
-  vSpeed,
+  vSpeed: _vSpeed,
 }: {
   alt: number;
   maxAtmosphere: number;
@@ -25,7 +25,7 @@ export const getTrajectoryStyle = ({
   q: number;
   mach: number;
   speed: number;
-  vSpeed: number;
+  vSpeed?: number;
 }) => {
   const atmT = norm(alt, 0, maxAtmosphere);
   const orbT = norm(alt, maxAtmosphere, maxAtmosphere * 1.3);

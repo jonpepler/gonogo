@@ -1,0 +1,70 @@
+import styled from "styled-components";
+
+export function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  label?: string;
+}) {
+  return (
+    <SwitchLabel>
+      <SwitchInput
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <SwitchTrack $checked={checked}>
+        <SwitchThumb $checked={checked} />
+      </SwitchTrack>
+      {label && <SwitchText>{label}</SwitchText>}
+    </SwitchLabel>
+  );
+}
+
+const SwitchLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+`;
+
+const SwitchInput = styled.input`
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+`;
+
+const SwitchTrack = styled.div<{ $checked: boolean }>`
+  width: 28px;
+  height: 14px;
+  border-radius: 7px;
+  background: ${({ $checked }) => ($checked ? "#1a3a1a" : "#1a1a1a")};
+  border: 1px solid ${({ $checked }) => ($checked ? "#2a5a2a" : "#333")};
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+`;
+
+const SwitchThumb = styled.div<{ $checked: boolean }>`
+  position: absolute;
+  top: 2px;
+  left: ${({ $checked }) => ($checked ? "14px" : "2px")};
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${({ $checked }) => ($checked ? "#00cc66" : "#555")};
+  transition: left 0.15s, background 0.15s;
+`;
+
+const SwitchText = styled.span`
+  font-family: monospace;
+  font-size: 11px;
+  color: #888;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`;

@@ -164,6 +164,12 @@ Connects via WebSocket to `ws://host:8085/datalink`. Subscribe by sending `{ "ru
 
 ---
 
+## UI Components
+
+Basic, reusable UI elements (toggles, inputs, buttons, tags, etc.) belong in `@gonogo/ui`, not co-located with the feature that first needs them. If a primitive doesn't exist in `@gonogo/ui` yet and you need it, add it there rather than creating a local one-off. Duplication in files you're not actively editing is easy to miss — a consistent home in `@gonogo/ui` prevents that.
+
+---
+
 ## Key Design Constraints
 
 - **Main screen is the sole KSP data consumer.** Stations never talk to KSP directly; they receive data exclusively from the main screen over PeerJS.

@@ -1,9 +1,11 @@
+import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { registerKosBridge } from "./bridge.js";
 
 const fastify = Fastify({ logger: true });
 
+await fastify.register(cors, { origin: true });
 await fastify.register(websocket);
 
 registerKosBridge(fastify, {

@@ -6,6 +6,7 @@ import {
   trueAnomalyToRadius,
   useDataValue,
 } from "@gonogo/core";
+import { useIsOrbiting } from "./useIsOrbiting";
 import { Panel, PanelTitle } from "@gonogo/ui";
 import styled from "styled-components";
 
@@ -28,6 +29,7 @@ function OrbitViewComponent({
   const bodyName = useDataValue("telemachus", "v.body");
 
   const body = bodyName === undefined ? undefined : getBody(bodyName);
+  const { isOrbiting } = useIsOrbiting();
 
   const hasOrbit =
     sma !== undefined &&
@@ -51,6 +53,7 @@ function OrbitViewComponent({
           showMarkers={showMarkers}
           bodyColor={body?.color}
           bodyRadius={body?.radius}
+          isOrbiting={isOrbiting}
         />
       ) : (
         <NoData>No orbital data</NoData>
@@ -73,6 +76,7 @@ interface OrbitDiagramProps {
   showMarkers: boolean;
   bodyColor?: string;
   bodyRadius?: number;
+  isOrbiting: boolean;
 }
 
 function OrbitDiagram({
@@ -85,6 +89,7 @@ function OrbitDiagram({
   showMarkers,
   bodyColor,
   bodyRadius,
+  isOrbiting,
 }: Readonly<OrbitDiagramProps>) {
   // Orbital geometry (all distances in the same units as sma/apoapsis/periapsis)
   const b = sma * Math.sqrt(Math.max(0, 1 - ecc * ecc));
@@ -97,10 +102,14 @@ function OrbitDiagram({
   const vbHalf = rMax + padding;
   const vbSize = 2 * vbHalf;
 
-  // Scale sizes relative to rMax for resolution-independence
-  const bodyDisc = bodyRadius ? Math.min(bodyRadius, rMax * 0.18) : rMax * 0.04;
-  const strokeW = rMax * 0.008;
-  const dotR = rMax * 0.02;
+  // Body disc uses the real radius so low-orbit diagrams show the body at true scale
+  const bodyDisc = bodyRadius ?? rMax * 0.04;
+  const strokeW = rMax * 0.014;
+  const dotR = rMax * 0.028;
+
+  const orbitStroke = isOrbiting
+    ? "rgba(0,255,136,0.55)"
+    : "rgba(255,80,0,0.55)";
 
   // Vessel position
   const r = trueAnomalyToRadius(sma, ecc, trueAnomaly);
@@ -113,22 +122,24 @@ function OrbitDiagram({
       role="img"
       aria-label="Orbital diagram"
     >
-      {/* Body at focus (origin) */}
-      <circle cx={0} cy={0} r={bodyDisc} fill={bodyColor ?? "#4a90d9"} />
-
-      {/* Orbit group, rotated by argument of periapsis */}
+      {/* Trajectory ellipse first so it renders under the body disc */}
       <g transform={`rotate(${-argPe})`}>
-        {/* Orbit ellipse: centre at (-c, 0) from focus */}
         <ellipse
           cx={-c}
           cy={0}
           rx={sma}
           ry={b}
           fill="none"
-          stroke="rgba(0,255,136,0.4)"
+          stroke={orbitStroke}
           strokeWidth={strokeW}
         />
+      </g>
 
+      {/* Body at focus (origin) — drawn over the trajectory line */}
+      <circle cx={0} cy={0} r={bodyDisc} fill={bodyColor ?? "#4a90d9"} />
+
+      {/* Markers and vessel dot — drawn over the body */}
+      <g transform={`rotate(${-argPe})`}>
         {showMarkers && (
           <>
             {/* Apoapsis marker (θ=180° → -x side) */}
@@ -158,7 +169,7 @@ function OrbitDiagram({
         )}
 
         {/* Vessel dot — y-flipped for SVG coordinate system */}
-        <circle cx={vx} cy={-vy} r={dotR * 1.4} fill="#00ff88" />
+        <circle cx={vx} cy={-vy} r={dotR * 1.5} fill="#00ff88" />
       </g>
     </DiagramSvg>
   );
@@ -182,6 +193,8 @@ registerComponent<OrbitViewConfig>({
     "o.trueAnomaly",
     "o.ApR",
     "o.PeR",
+    "o.ApA",
+    "o.PeA",
     "o.argumentOfPeriapsis",
     "v.body",
   ],

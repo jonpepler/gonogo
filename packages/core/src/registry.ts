@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import type { ComponentDefinition, DataSource, ThemeDefinition } from "./types";
 
 // ComponentType is contravariant in props, so neither unknown nor never would work.
@@ -15,7 +16,7 @@ const themes = new Map<string, ThemeDefinition>();
 export function registerComponent<TConfig = Record<string, unknown>>(
   def: ComponentDefinition<TConfig>,
 ): void {
-  console.log("REGISTERED", def.name);
+  logger.info(`REGISTERED ${def.name}`);
   components.set(def.id, def as AnyDef);
 }
 

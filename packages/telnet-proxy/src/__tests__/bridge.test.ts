@@ -103,6 +103,32 @@ describe("kOS WebSocket bridge (PTY)", () => {
     await new Promise((r) => ws.addEventListener("close", r));
   });
 
+  it("spawns PTY with dimensions from query params", async () => {
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${fastifyPort}/kos?id=dims-test&cols=123&rows=18`,
+    );
+    await new Promise((r) => ws.addEventListener("open", r));
+
+    expect(spawnArgs?.options.cols).toBe(123);
+    expect(spawnArgs?.options.rows).toBe(18);
+
+    ws.close();
+    await new Promise((r) => ws.addEventListener("close", r));
+  });
+
+  it("spawns PTY with default 80x24 when no dimensions supplied", async () => {
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${fastifyPort}/kos?id=default-dims`,
+    );
+    await new Promise((r) => ws.addEventListener("open", r));
+
+    expect(spawnArgs?.options.cols).toBe(80);
+    expect(spawnArgs?.options.rows).toBe(24);
+
+    ws.close();
+    await new Promise((r) => ws.addEventListener("close", r));
+  });
+
   it("forwards WebSocket messages to the PTY", async () => {
     const ws = new WebSocket(`ws://127.0.0.1:${fastifyPort}/kos?id=test-2`);
     await new Promise((r) => ws.addEventListener("open", r));

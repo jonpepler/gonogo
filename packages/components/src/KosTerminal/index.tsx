@@ -83,6 +83,12 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
     fitAddon.fit();
     termRef.current = term;
 
+    // Capture fitted dimensions before opening the WS so the proxy spawns the
+    // PTY at the correct size. This prevents a post-connect PTY resize from
+    // sending NAWS bytes that race with the first kOS menu input.
+    const initialCols = term.cols;
+    const initialRows = term.rows;
+
     if (readOnly) {
       term.writeln("\x1b[2m[read-only]\x1b[0m");
     }
@@ -93,7 +99,8 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
 
     const url =
       `ws://${proxyHost}:${proxyPort}/kos` +
-      `?host=${encodeURIComponent(kosHost)}&port=${kosPort}&id=${sessionId}`;
+      `?host=${encodeURIComponent(kosHost)}&port=${kosPort}&id=${sessionId}` +
+      `&cols=${initialCols}&rows=${initialRows}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 

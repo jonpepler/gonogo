@@ -1,0 +1,1 @@
+export { mapClamped } from "./map";

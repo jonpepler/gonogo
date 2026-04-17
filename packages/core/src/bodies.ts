@@ -46,6 +46,10 @@ export interface BodyDefinition {
   parent?: string;
   /** Texture map metadata, required for accurate lat/lon → pixel mapping. */
   map?: BodyMapConfig;
+  /** If the body has an atmosphere */
+  hasAtmosphere: boolean;
+  /** The height above sea level where the atmosphere is stopped */
+  maxAtmosphere: number;
 }
 
 const bodies = new Map<string, BodyDefinition>();

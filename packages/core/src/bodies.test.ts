@@ -13,8 +13,10 @@ describe("body registry", () => {
     registerBody({
       id: "Kerbin",
       name: "Kerbin",
-      radius: 600_000,
+      radius: 600000,
       color: "#1A6B8A",
+      hasAtmosphere: false,
+      maxAtmosphere: 0,
     });
     const body = getBody("Kerbin");
     expect(body?.name).toBe("Kerbin");
@@ -22,8 +24,21 @@ describe("body registry", () => {
   });
 
   it("getAllBodies returns all registered bodies", () => {
-    registerBody({ id: "Kerbin", name: "Kerbin", radius: 600_000 });
-    registerBody({ id: "Mun", name: "Mun", radius: 200_000, parent: "Kerbin" });
+    registerBody({
+      id: "Kerbin",
+      name: "Kerbin",
+      radius: 600000,
+      hasAtmosphere: false,
+      maxAtmosphere: 0,
+    });
+    registerBody({
+      id: "Mun",
+      name: "Mun",
+      radius: 200000,
+      parent: "Kerbin",
+      hasAtmosphere: false,
+      maxAtmosphere: 0,
+    });
     const all = getAllBodies();
     expect(all).toHaveLength(2);
     expect(all.map((b) => b.id)).toContain("Kerbin");
@@ -31,14 +46,32 @@ describe("body registry", () => {
   });
 
   it("allows overwriting a body by re-registering with the same id", () => {
-    registerBody({ id: "Kerbin", name: "Kerbin", radius: 600_000 });
-    registerBody({ id: "Kerbin", name: "Kerbin (modded)", radius: 650_000 });
+    registerBody({
+      id: "Kerbin",
+      name: "Kerbin",
+      radius: 600000,
+      hasAtmosphere: false,
+      maxAtmosphere: 0,
+    });
+    registerBody({
+      id: "Kerbin",
+      name: "Kerbin (modded)",
+      radius: 650000,
+      hasAtmosphere: false,
+      maxAtmosphere: 0,
+    });
     expect(getBody("Kerbin")?.radius).toBe(650_000);
     expect(getAllBodies()).toHaveLength(1);
   });
 
   it("clearBodies empties the registry", () => {
-    registerBody({ id: "Kerbin", name: "Kerbin", radius: 600_000 });
+    registerBody({
+      id: "Kerbin",
+      name: "Kerbin",
+      radius: 600000,
+      hasAtmosphere: false,
+      maxAtmosphere: 0,
+    });
     clearBodies();
     expect(getAllBodies()).toHaveLength(0);
   });

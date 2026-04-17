@@ -6,6 +6,7 @@ import type {
 import {
   getBody,
   latLonToMap,
+  mapClamped,
   registerComponent,
   useDataValue,
 } from "@gonogo/core";
@@ -19,8 +20,9 @@ import {
   PanelTitle,
   PrimaryButton,
 } from "@gonogo/ui";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
+import { getTrajectoryStyle } from "./trajectoryStyle";
 
 interface MapViewConfig {
   /** Number of trajectory history points to keep. Default: 200. */
@@ -47,6 +49,8 @@ const TELEMETRY_OPTIONS: { label: string; key: keyof TelemaachusSchema }[] = [
   { label: "Time to Ap", key: "o.timeToAp" },
   { label: "Time to Pe", key: "o.timeToPe" },
   { label: "Inclination", key: "o.inclination" },
+  { label: "Latitude", key: "v.lat" },
+  { label: "Longitude", key: "v.long" },
 ];
 
 function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
@@ -56,13 +60,22 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
 
   const lat = useDataValue("telemachus", "v.lat");
   const lon = useDataValue("telemachus", "v.long");
+  const altSea = useDataValue("telemachus", "v.altitude");
   const bodyName = useDataValue("telemachus", "v.body");
+  const q = useDataValue("telemachus", "v.dynamicPressure");
+  const mach = useDataValue("telemachus", "v.mach");
+  const speed = useDataValue("telemachus", "v.surfaceSpeed");
+  const vSpeed = useDataValue("telemachus", "v.verticalSpeed");
 
   const targetBodyId = bodyName;
+  const body = targetBodyId ? getBody(targetBodyId) : undefined;
+  const hasAtmosphere = body?.hasAtmosphere;
+  const maxAtmosphere = body?.maxAtmosphere;
 
   const baseRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const dataRef = useRef<HTMLCanvasElement>(null);
+  const persistentDataRef = useRef<HTMLCanvasElement>(null);
   // Observes MapOuter (the full available area) so we can letterbox correctly
   const outerRef = useRef<HTMLDivElement>(null);
 
@@ -72,11 +85,21 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     h: number;
   } | null>(null);
 
+  type Trajectory = {
+    lat: number;
+    lon: number;
+    alt: number;
+    q: number;
+    mach: number;
+    speed: number;
+    vSpeed: number;
+  };
+
   // Trajectory history buffer: [{lat, lon}, ...]
-  const trajectoryRef = useRef<Array<{ lat: number; lon: number }>>([]);
+  const trajectoryRef = useRef<Array<Trajectory>>([]);
 
   // Track previous lat/lon to avoid duplicate pushes
-  const prevPosRef = useRef<{ lat: number; lon: number } | null>(null);
+  const prevPosRef = useRef<Trajectory | null>(null);
 
   // ── ResizeObserver — watches MapOuter, computes letterboxed canvas size ────
   useEffect(() => {
@@ -99,16 +122,24 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
 
   // ── Accumulate trajectory ─────────────────────────────────────────────────
   useEffect(() => {
-    if (lat === undefined || lon === undefined) return;
-    const prev = prevPosRef.current;
-    if (prev?.lat === lat && prev.lon === lon) return;
+    if (lat === undefined || lon === undefined || altSea === undefined) return;
+    const point = {
+      lat,
+      lon,
+      alt: altSea,
+      q: q ?? 0,
+      mach: mach ?? 0,
+      speed: speed ?? 0,
+      vSpeed: vSpeed ?? 0,
+    };
 
-    prevPosRef.current = { lat, lon };
+    prevPosRef.current = point;
+
     trajectoryRef.current = [
       ...trajectoryRef.current.slice(-(trajectoryLength - 1)),
-      { lat, lon },
+      point,
     ];
-  }, [lat, lon, trajectoryLength]);
+  }, [lat, lon, altSea, trajectoryLength, mach, q, speed, vSpeed]);
 
   // ── Draw base layer ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -120,8 +151,6 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    const body = targetBodyId ? getBody(targetBodyId) : undefined;
 
     function drawBase(textureImage?: HTMLImageElement) {
       if (!ctx) return;
@@ -143,7 +172,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
       }
 
       // Grid lines
-      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.08)" : "#1a1a1a";
+      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.05)" : "#1a1a1a";
       ctx.lineWidth = 1;
 
       for (let lat30 = -60; lat30 <= 60; lat30 += 30) {
@@ -163,7 +192,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
       }
 
       // Equator & prime meridian slightly brighter
-      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.18)" : "#2a2a2a";
+      ctx.strokeStyle = textureImage ? "rgba(255,255,255,0.15)" : "#2a2a2a";
       const { y: eqY } = latLonToMap(0, 0, w, h);
       ctx.beginPath();
       ctx.moveTo(0, eqY);
@@ -185,7 +214,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     } else {
       drawBase();
     }
-  }, [containerSize, targetBodyId]);
+  }, [containerSize, body?.color, body?.texture]);
 
   // ── Overlay layer (fog-of-war extension point) ─────────────────────────────
   useEffect(() => {
@@ -196,54 +225,35 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     // Intentionally blank — fog-of-war or other overlays can be drawn here
   }, [containerSize]);
 
-  // ── Draw data layer (vessel + trajectory) ─────────────────────────────────
+  const adjustedMap = useCallback(
+    (canvasW: number, canvasH: number, rawLat: number, rawLon: number) => {
+      // Apply per-body coordinate offsets to align plotted positions with the
+      // texture's prime meridian. Longitude wraps at ±180; latitude clamps.
+      const lonOff = body?.longitudeOffset ?? 0;
+      const latOff = body?.latitudeOffset ?? 0;
+      const adjLon = ((((rawLon + lonOff + 180) % 360) + 360) % 360) - 180;
+      const adjLat = Math.max(-90, Math.min(90, rawLat + latOff));
+      return latLonToMap(adjLat, adjLon, canvasW, canvasH);
+    },
+    [body?.latitudeOffset, body?.longitudeOffset],
+  );
+
+  // ── Draw data layer (vessel) ─────────────────────────────────
   useEffect(() => {
     const canvas = dataRef.current;
     if (!canvas || !containerSize) return;
     const { w, h } = containerSize;
-    canvas.width = w;
-    canvas.height = h;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.clearRect(0, 0, w, h);
 
-    // Apply per-body coordinate offsets to align plotted positions with the
-    // texture's prime meridian. Longitude wraps at ±180; latitude clamps.
-    const body = targetBodyId ? getBody(targetBodyId) : undefined;
-    const lonOff = body?.longitudeOffset ?? 0;
-    const latOff = body?.latitudeOffset ?? 0;
-
-    function adjustedMap(rawLat: number, rawLon: number) {
-      const adjLon = ((((rawLon + lonOff + 180) % 360) + 360) % 360) - 180;
-      const adjLat = Math.max(-90, Math.min(90, rawLat + latOff));
-      return latLonToMap(adjLat, adjLon, w, h);
-    }
-
-    const trajectory = trajectoryRef.current;
-
-    // Trajectory trail
-    if (trajectory.length > 1) {
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(0,255,136,0.3)";
-      ctx.lineWidth = 1.5;
-
-      const first = trajectory[0];
-      const { x: fx, y: fy } = adjustedMap(first.lat, first.lon);
-      ctx.moveTo(fx, fy);
-
-      for (let i = 1; i < trajectory.length; i++) {
-        const pt = trajectory[i];
-        const { x, y } = adjustedMap(pt.lat, pt.lon);
-        ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-
     // Vessel dot
     if (lat !== undefined && lon !== undefined) {
-      const { x, y } = adjustedMap(lat, lon);
+      const { x, y } = adjustedMap(w, h, lat, lon);
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fillStyle = "#00ff88";
@@ -260,9 +270,53 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
       ctx.lineTo(x, y + cross);
       ctx.stroke();
     }
-  }, [containerSize, lat, lon, targetBodyId]);
+  }, [containerSize, lat, lon, adjustedMap]);
 
-  const body = targetBodyId ? getBody(targetBodyId) : undefined;
+  // ── Draw persistent data layer (trajectory) ─────────────────────────────────
+  useEffect(() => {
+    const canvas = persistentDataRef.current;
+    if (!canvas || !containerSize) return;
+
+    const { w, h } = containerSize;
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const trajectory = trajectoryRef.current;
+
+    for (let i = 1; i < trajectory.length; i++) {
+      const p1 = trajectory[i - 1];
+      const p2 = trajectory[i];
+
+      const { x: x1, y: y1 } = adjustedMap(w, h, p1.lat, p1.lon);
+      const { x: x2, y: y2 } = adjustedMap(w, h, p2.lat, p2.lon);
+
+      const style = getTrajectoryStyle({
+        alt: p2.alt,
+        maxAtmosphere: maxAtmosphere ?? 100_000,
+        hasAtmosphere: hasAtmosphere ?? false,
+        q: p2.q,
+        mach: p2.mach,
+        speed: p2.speed,
+        vSpeed: p2.vSpeed,
+      });
+
+      const [r, g, b] = style.color;
+
+      ctx.strokeStyle = `rgba(${r},${g},${b},${style.alpha})`;
+      ctx.lineWidth = style.width;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+  }, [containerSize, adjustedMap, hasAtmosphere, maxAtmosphere]);
+
   const displayName = body?.name ?? targetBodyId;
 
   return (
@@ -284,6 +338,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
           <BaseCanvas ref={baseRef} />
           <OverlayCanvas ref={overlayRef} />
           <DataCanvas ref={dataRef} />
+          <PersistentDataCanvas ref={persistentDataRef} />
           {(lat === undefined || lon === undefined) && (
             <NoSignal>
               {targetBodyId === undefined
@@ -442,7 +497,7 @@ registerComponent<MapViewConfig>({
   configComponent: MapViewConfigComponent,
   dataRequirements: ["v.lat", "v.long", "v.body"],
   behaviors: [],
-  defaultConfig: { trajectoryLength: 200 },
+  defaultConfig: { trajectoryLength: 2000 },
 });
 
 export { MapViewComponent };
@@ -503,6 +558,7 @@ const CanvasBase = styled.canvas`
 const BaseCanvas = CanvasBase;
 const OverlayCanvas = CanvasBase;
 const DataCanvas = CanvasBase;
+const PersistentDataCanvas = CanvasBase;
 
 const NoSignal = styled.div`
   position: absolute;

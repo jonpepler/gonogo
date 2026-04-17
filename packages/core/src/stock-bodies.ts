@@ -24,157 +24,188 @@ export function registerStockBodies(baseUrl = "bodies"): void {
   registerBody({
     id: "Sun",
     name: "Kerbol",
-    radius: 261_600_000,
+    radius: 261600000,
     color: "#FFF44F",
-    // No texture available
+    hasAtmosphere: true,
+    maxAtmosphere: 600000,
   });
 
   // ── Inner planets ────────────────────────────────────────────────────────
   registerBody({
     id: "Moho",
     name: "Moho",
-    radius: 250_000,
+    radius: 250000,
     color: "#8B7355",
     parent: "Sun",
-    // No texture available
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Eve",
     name: "Eve",
-    radius: 700_000,
+    radius: 700000,
     color: "#9B59B6",
     parent: "Sun",
     texture: tex("Eve"),
+    hasAtmosphere: true,
+    maxAtmosphere: 90000,
   });
 
   registerBody({
     id: "Gilly",
     name: "Gilly",
-    radius: 13_000,
+    radius: 13000,
     color: "#A0855B",
     parent: "Eve",
     texture: tex("Gilly"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Kerbin",
     name: "Kerbin",
-    radius: 600_000,
+    radius: 600000,
     color: "#1A6B8A",
     parent: "Sun",
     texture: tex("Kerbin"),
     // Texture prime meridian is offset 90° east of KSP/Telemachus coordinates.
     // Tune this value if the vessel dot appears misaligned on the map.
     longitudeOffset: 90,
+    hasAtmosphere: true,
+    maxAtmosphere: 70000,
   });
 
   registerBody({
     id: "Mun",
     name: "Mun",
-    radius: 200_000,
+    radius: 200000,
     color: "#888888",
     parent: "Kerbin",
     texture: tex("Mun"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Minmus",
     name: "Minmus",
-    radius: 60_000,
+    radius: 60000,
     color: "#B8D4B8",
     parent: "Kerbin",
     texture: tex("Minmus"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Duna",
     name: "Duna",
-    radius: 320_000,
+    radius: 320000,
     color: "#C1440E",
     parent: "Sun",
     texture: tex("Duna"),
+    hasAtmosphere: true,
+    maxAtmosphere: 50000,
   });
 
   registerBody({
     id: "Ike",
     name: "Ike",
-    radius: 130_000,
+    radius: 130000,
     color: "#9B9B8B",
     parent: "Duna",
     texture: tex("Ike"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Dres",
     name: "Dres",
-    radius: 138_000,
+    radius: 138000,
     color: "#7A7A6A",
     parent: "Sun",
     texture: tex("Dres"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   // ── Outer system ─────────────────────────────────────────────────────────
   registerBody({
     id: "Jool",
     name: "Jool",
-    radius: 6_000_000,
+    radius: 6000000,
     color: "#4A7C3F",
     parent: "Sun",
-    // No texture available
+    hasAtmosphere: true,
+    maxAtmosphere: 200000,
   });
 
   registerBody({
     id: "Laythe",
     name: "Laythe",
-    radius: 500_000,
+    radius: 500000,
     color: "#1E6091",
     parent: "Jool",
     texture: tex("Laythe"),
+    hasAtmosphere: true,
+    maxAtmosphere: 50000,
   });
 
   registerBody({
     id: "Vall",
     name: "Vall",
-    radius: 300_000,
+    radius: 300000,
     color: "#B0C4D8",
     parent: "Jool",
     texture: tex("Vall"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Tylo",
     name: "Tylo",
-    radius: 600_000,
+    radius: 600000,
     color: "#A0A080",
     parent: "Jool",
     texture: tex("Tylo"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Bop",
     name: "Bop",
-    radius: 65_000,
+    radius: 65000,
     color: "#6B5B45",
     parent: "Jool",
     texture: tex("Bop"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Pol",
     name: "Pol",
-    radius: 44_000,
+    radius: 44000,
     color: "#D4C878",
     parent: "Jool",
     texture: tex("Pol"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 
   registerBody({
     id: "Eeloo",
     name: "Eeloo",
-    radius: 210_000,
+    radius: 210000,
     color: "#E8E8F0",
     parent: "Sun",
     texture: tex("Eeloo"),
+    hasAtmosphere: false,
+    maxAtmosphere: 0,
   });
 }

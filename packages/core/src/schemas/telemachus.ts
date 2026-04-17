@@ -13,6 +13,9 @@
  *     }
  *   }
  */
+
+type IndexedKey<K extends string> = `${K}[${number}]`;
+
 export interface TelemaachusSchema {
   // --- v.* — Vessel ---
 
@@ -99,6 +102,12 @@ export interface TelemaachusSchema {
   "o.PeR": number;
   "o.timeToAp": number;
   "o.timeToPe": number;
+
+  // --- b.* — Celestial bodies ---
+  "b.number": number;
+  [key: IndexedKey<"b.name">]: string;
+  [key: IndexedKey<"b.atmosphere">]: boolean;
+  [key: IndexedKey<"b.maxAtmosphere">]: number;
 
   // Keplerian elements
   "o.sma": number;

@@ -10,6 +10,125 @@ import { registerDataSource } from "@gonogo/core";
 // Re-export it here so callers that import from this module path keep working.
 export type { TelemaachusSchema } from "@gonogo/core";
 
+// All static (non-indexed) keys from TelemaachusSchema, used to populate
+// schema() so PeerBroadcastingDataSource can subscribe to everything upfront.
+const TELEMACHUS_KEYS: DataKey[] = [
+  // Position & altitude
+  { key: "v.altitude" },
+  { key: "v.heightFromTerrain" },
+  { key: "v.heightFromSurface" },
+  { key: "v.terrainHeight" },
+  { key: "v.lat" },
+  { key: "v.long" },
+  // Velocity
+  { key: "v.surfaceSpeed" },
+  { key: "v.verticalSpeed" },
+  { key: "v.obtSpeed" },
+  { key: "v.orbitalVelocity" },
+  { key: "v.surfaceVelocity" },
+  { key: "v.speed" },
+  { key: "v.srfSpeed" },
+  // Forces & environment
+  { key: "v.geeForce" },
+  { key: "v.geeForceImmediate" },
+  { key: "v.mass" },
+  { key: "v.mach" },
+  { key: "v.dynamicPressure" },
+  { key: "v.dynamicPressurekPa" },
+  { key: "v.staticPressure" },
+  { key: "v.atmosphericPressure" },
+  // Situation & state
+  { key: "v.name" },
+  { key: "v.body" },
+  { key: "v.situation" },
+  { key: "v.situationString" },
+  { key: "v.missionTime" },
+  { key: "v.missionTimeString" },
+  { key: "v.currentStage" },
+  { key: "v.landed" },
+  { key: "v.splashed" },
+  { key: "v.landedAt" },
+  { key: "v.isEVA" },
+  { key: "v.angleToPrograde" },
+  // Action group state
+  { key: "v.sasValue" },
+  { key: "v.rcsValue" },
+  { key: "v.lightValue" },
+  { key: "v.brakeValue" },
+  { key: "v.gearValue" },
+  { key: "v.abortValue" },
+  { key: "v.precisionControlValue" },
+  { key: "v.ag1Value" },
+  { key: "v.ag2Value" },
+  { key: "v.ag3Value" },
+  { key: "v.ag4Value" },
+  { key: "v.ag5Value" },
+  { key: "v.ag6Value" },
+  { key: "v.ag7Value" },
+  { key: "v.ag8Value" },
+  { key: "v.ag9Value" },
+  { key: "v.ag10Value" },
+  // Navigation
+  { key: "n.heading" },
+  { key: "n.pitch" },
+  { key: "n.roll" },
+  { key: "n.rawheading" },
+  { key: "n.rawpitch" },
+  { key: "n.rawroll" },
+  { key: "n.heading2" },
+  { key: "n.pitch2" },
+  { key: "n.roll2" },
+  // Flight control
+  { key: "f.throttle" },
+  // Orbit — apsides
+  { key: "o.ApA" },
+  { key: "o.PeA" },
+  { key: "o.ApR" },
+  { key: "o.PeR" },
+  { key: "o.timeToAp" },
+  { key: "o.timeToPe" },
+  // Celestial bodies (static count key only; indexed b.name[n] etc. are runtime)
+  { key: "b.number" },
+  // Keplerian elements
+  { key: "o.sma" },
+  { key: "o.semiMinorAxis" },
+  { key: "o.semiLatusRectum" },
+  { key: "o.eccentricity" },
+  { key: "o.inclination" },
+  { key: "o.lan" },
+  { key: "o.argumentOfPeriapsis" },
+  { key: "o.period" },
+  { key: "o.epoch" },
+  { key: "o.referenceBody" },
+  // Anomalies
+  { key: "o.trueAnomaly" },
+  { key: "o.meanAnomaly" },
+  { key: "o.eccentricAnomaly" },
+  { key: "o.orbitPercent" },
+  // Velocity & energy
+  { key: "o.orbitalSpeed" },
+  { key: "o.radius" },
+  { key: "o.orbitalEnergy" },
+  // Patch transitions
+  { key: "o.timeToTransition1" },
+  { key: "o.timeToTransition2" },
+  // Time
+  { key: "t.universalTime" },
+  { key: "t.currentRate" },
+  { key: "t.isPaused" },
+  // Target
+  { key: "tar.name" },
+  { key: "tar.type" },
+  { key: "tar.distance" },
+  { key: "tar.o.PeA" },
+  { key: "tar.o.ApA" },
+  { key: "tar.o.inclination" },
+  { key: "tar.o.eccentricity" },
+  { key: "tar.o.period" },
+  { key: "tar.o.relativeVelocity" },
+  { key: "tar.o.orbitingBody" },
+];
+
 // ---------------------------------------------------------------------------
 
 export interface TelemachusConfig extends Record<string, unknown> {
@@ -76,7 +195,7 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
   // --- Data ---
 
   schema(): DataKey[] {
-    return [];
+    return TELEMACHUS_KEYS;
   }
 
   subscribe(key: string, cb: (value: unknown) => void): () => void {

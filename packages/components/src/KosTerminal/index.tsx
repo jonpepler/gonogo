@@ -1,5 +1,5 @@
 import type { ComponentProps } from "@gonogo/core";
-import { getDataSource, registerComponent } from "@gonogo/core";
+import { getDataSource, registerComponent, useKosProxy } from "@gonogo/core";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import { useEffect, useRef } from "react";
@@ -30,26 +30,17 @@ const GARBLED_INPUT = "Garbled selection. Try again.";
 
 function getKosDefaults() {
   const kos = getDataSource("kos");
-  if (!kos)
-    return {
-      proxyHost: "localhost",
-      proxyPort: 3001,
-      kosHost: "localhost",
-      kosPort: 5410,
-    };
+  if (!kos) return { kosHost: "localhost", kosPort: 5410 };
   const c = kos.getConfig();
   return {
-    proxyHost: typeof c.host === "string" ? c.host : "localhost",
-    proxyPort: typeof c.port === "number" ? c.port : 3001,
     kosHost: typeof c.kosHost === "string" ? c.kosHost : "localhost",
     kosPort: typeof c.kosPort === "number" ? c.kosPort : 5410,
   };
 }
 
 function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
+  const { createConnection, resize } = useKosProxy();
   const defaults = getKosDefaults();
-  const proxyHost = config?.proxyHost ?? defaults.proxyHost;
-  const proxyPort = config?.proxyPort ?? defaults.proxyPort;
   const kosHost = config?.kosHost ?? defaults.kosHost;
   const kosPort = config?.kosPort ?? defaults.kosPort;
   const readOnly = config?.readOnly ?? false;
@@ -97,12 +88,14 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
     let menuBuffer = "";
     let inMenuSelection = cpuName !== undefined;
 
-    const url =
-      `ws://${proxyHost}:${proxyPort}/kos` +
-      `?host=${encodeURIComponent(kosHost)}&port=${kosPort}&id=${sessionId}` +
-      `&cols=${initialCols}&rows=${initialRows}`;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
+    const ws = createConnection({
+      sessionId,
+      kosHost,
+      kosPort,
+      cols: initialCols,
+      rows: initialRows,
+    });
+    wsRef.current = ws as unknown as WebSocket;
 
     ws.addEventListener("open", () => {
       term.writeln("\x1b[32mConnected to kOS proxy\x1b[0m");
@@ -153,16 +146,10 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
       });
     }
 
-    // Resize events → proxy HTTP endpoint (keeps the WS stream clean)
+    // Resize events → proxy (or PeerJS tunnel on stations)
     term.onResize(({ cols, rows }) => {
       if (ws.readyState !== WebSocket.OPEN) return;
-      fetch(`http://${proxyHost}:${proxyPort}/kos/resize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: sessionId, cols, rows }),
-      }).catch(() => {
-        /* non-critical: ignore resize errors */
-      });
+      resize(sessionId, cols, rows);
     });
 
     const observer = new ResizeObserver(() => fitAddon.fit());
@@ -176,7 +163,7 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
       termRef.current = null;
     };
     // Config values are primitives — re-run the effect if any change
-  }, [proxyHost, proxyPort, kosHost, kosPort, readOnly, cpuName]);
+  }, [createConnection, resize, kosHost, kosPort, readOnly, cpuName]);
 
   return <Container ref={containerRef} $readOnly={readOnly} />;
 }

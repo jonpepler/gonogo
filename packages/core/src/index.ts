@@ -4,6 +4,7 @@ export * from "./calc";
 export * from "./hooks/useDataSources";
 export * from "./hooks/useDataValue";
 export * from "./hooks/useExecuteAction";
+export * from "./kos/KosProxyContext";
 export * from "./logger";
 export * from "./orbital";
 export * from "./registry";

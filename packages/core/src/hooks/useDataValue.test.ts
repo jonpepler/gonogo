@@ -54,7 +54,9 @@ describe("useDataValue", () => {
   it("returns undefined before any value is emitted", () => {
     const source = makeSource();
     registerDataSource(source);
-    const { result } = renderHook(() => useDataValue("test-source", "v.altitude"));
+    const { result } = renderHook(() =>
+      useDataValue("test-source", "v.altitude"),
+    );
     expect(result.current).toBeUndefined();
   });
 
@@ -62,7 +64,9 @@ describe("useDataValue", () => {
     const source = makeSource();
     registerDataSource(source);
 
-    const { result } = renderHook(() => useDataValue("test-source", "v.altitude"));
+    const { result } = renderHook(() =>
+      useDataValue("test-source", "v.altitude"),
+    );
 
     act(() => source.emit("v.altitude", 80_000));
 
@@ -73,7 +77,9 @@ describe("useDataValue", () => {
     const source = makeSource();
     registerDataSource(source);
 
-    const { result } = renderHook(() => useDataValue("test-source", "v.altitude"));
+    const { result } = renderHook(() =>
+      useDataValue("test-source", "v.altitude"),
+    );
 
     act(() => source.emit("v.altitude", 100_000));
     expect(result.current).toBe(100_000);
@@ -86,7 +92,9 @@ describe("useDataValue", () => {
     const source = makeSource();
     registerDataSource(source);
 
-    const { result } = renderHook(() => useDataValue("test-source", "v.altitude"));
+    const { result } = renderHook(() =>
+      useDataValue("test-source", "v.altitude"),
+    );
 
     act(() => source.emit("v.altitude", 80_000));
     expect(result.current).toBe(80_000);
@@ -99,7 +107,9 @@ describe("useDataValue", () => {
     const source = makeSource();
     registerDataSource(source);
 
-    const { result } = renderHook(() => useDataValue("test-source", "v.altitude"));
+    const { result } = renderHook(() =>
+      useDataValue("test-source", "v.altitude"),
+    );
 
     act(() => source.emit("v.altitude", 80_000));
     act(() => source.setStatus("error"));
@@ -111,7 +121,9 @@ describe("useDataValue", () => {
     const source = makeSource();
     registerDataSource(source);
 
-    const { result } = renderHook(() => useDataValue("test-source", "v.altitude"));
+    const { result } = renderHook(() =>
+      useDataValue("test-source", "v.altitude"),
+    );
 
     act(() => source.emit("v.altitude", 80_000));
     act(() => source.setStatus("connected"));

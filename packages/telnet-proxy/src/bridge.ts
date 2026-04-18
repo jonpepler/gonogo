@@ -19,10 +19,13 @@ export function registerKosBridge(
   fastify.get("/kos", { websocket: true }, (socket, request) => {
     const params = request.query as Record<string, string>;
     const host = params.host ?? kosHost;
-    const port = params.port === undefined ? kosPort : Number.parseInt(params.port, 10);
+    const port =
+      params.port === undefined ? kosPort : Number.parseInt(params.port, 10);
     const id = params.id ?? crypto.randomUUID();
-    const cols = params.cols === undefined ? 80 : Number.parseInt(params.cols, 10);
-    const rows = params.rows === undefined ? 24 : Number.parseInt(params.rows, 10);
+    const cols =
+      params.cols === undefined ? 80 : Number.parseInt(params.cols, 10);
+    const rows =
+      params.rows === undefined ? 24 : Number.parseInt(params.rows, 10);
 
     request.log.info({ host, port, id, cols, rows }, "spawning telnet session");
 

@@ -6,9 +6,9 @@ import {
   trueAnomalyToRadius,
   useDataValue,
 } from "@gonogo/core";
-import { useIsOrbiting } from "./useIsOrbiting";
 import { Panel, PanelTitle } from "@gonogo/ui";
 import styled from "styled-components";
+import { useIsOrbiting } from "./useIsOrbiting";
 
 interface OrbitViewConfig {
   /** Show Ap/Pe markers. Default: true. */

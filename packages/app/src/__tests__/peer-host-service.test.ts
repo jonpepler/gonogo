@@ -1,0 +1,218 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+type Listener = (...args: unknown[]) => void;
+
+// ---------------------------------------------------------------------------
+// Fake Peer / DataConnection
+// ---------------------------------------------------------------------------
+
+class FakePeer {
+  private listeners = new Map<string, Listener[]>();
+  static last: FakePeer | null = null;
+
+  constructor(_id?: string) {
+    FakePeer.last = this;
+    // Simulate "open" firing asynchronously after construction
+    queueMicrotask(() => this.emit("open", "FAKE-PEER-ID"));
+  }
+
+  on(event: string, cb: Listener) {
+    const bucket = this.listeners.get(event) ?? [];
+    bucket.push(cb);
+    this.listeners.set(event, bucket);
+  }
+
+  emit(event: string, ...args: unknown[]) {
+    this.listeners.get(event)?.forEach((cb) => {
+      cb(...args);
+    });
+  }
+
+  destroy() {}
+}
+
+class FakeDataConnection {
+  private listeners = new Map<string, Listener[]>();
+  peer = "remote-peer";
+  sent: unknown[] = [];
+
+  on(event: string, cb: Listener) {
+    const bucket = this.listeners.get(event) ?? [];
+    bucket.push(cb);
+    this.listeners.set(event, bucket);
+  }
+
+  emit(event: string, ...args: unknown[]) {
+    this.listeners.get(event)?.forEach((cb) => {
+      cb(...args);
+    });
+  }
+
+  send(msg: unknown) {
+    this.sent.push(msg);
+  }
+}
+
+vi.mock("peerjs", () => ({
+  default: FakePeer,
+}));
+
+// ---------------------------------------------------------------------------
+// Fake WebSocket with manual event control
+// ---------------------------------------------------------------------------
+
+class FakeWebSocket {
+  static instances: FakeWebSocket[] = [];
+  static OPEN = 1;
+  static CLOSED = 3;
+
+  readyState = 0;
+  url: string;
+  private listeners = new Map<string, Listener[]>();
+
+  constructor(url: string) {
+    this.url = url;
+    FakeWebSocket.instances.push(this);
+  }
+
+  addEventListener(event: string, cb: Listener) {
+    const bucket = this.listeners.get(event) ?? [];
+    bucket.push(cb);
+    this.listeners.set(event, bucket);
+  }
+
+  fire(event: string, payload?: unknown) {
+    this.listeners.get(event)?.forEach((cb) => {
+      cb(payload);
+    });
+  }
+
+  close() {
+    this.readyState = FakeWebSocket.CLOSED;
+    // Real close event is async — consumer explicitly calls fire("close")
+  }
+
+  send(_data: string) {}
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("PeerHostService — kOS session handling", () => {
+  beforeEach(() => {
+    FakeWebSocket.instances = [];
+    FakePeer.last = null;
+    vi.stubGlobal("WebSocket", FakeWebSocket);
+    // Register a minimal kos data source so handleKosOpen can read config
+    // without hitting localStorage or defaults
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("does not fire kos-close when a replaced ws later emits close", async () => {
+    const { PeerHostService } = await import("../peer/PeerHostService");
+    const service = new PeerHostService();
+    service.start();
+
+    // Wait for FakePeer "open" microtask
+    await Promise.resolve();
+
+    const conn = new FakeDataConnection();
+    if (!FakePeer.last) throw new Error("FakePeer not instantiated");
+    FakePeer.last.emit("connection", conn);
+    conn.emit("open");
+    // Flush the dynamic import in sendSchema
+    await new Promise((r) => setTimeout(r, 0));
+
+    const sessionId = "session-A";
+
+    // First kos-open for sessionId
+    conn.emit("data", {
+      type: "kos-open",
+      sessionId,
+      kosHost: "localhost",
+      kosPort: 5410,
+      cols: 80,
+      rows: 24,
+    });
+    // Wait for the dynamic import in handleKosOpen
+    await new Promise((r) => setTimeout(r, 0));
+    const wsA = FakeWebSocket.instances.at(-1);
+    if (!wsA) throw new Error("ws A not created");
+
+    // Second kos-open for the SAME sessionId — triggers replacement
+    conn.emit("data", {
+      type: "kos-open",
+      sessionId,
+      kosHost: "localhost",
+      kosPort: 5410,
+      cols: 80,
+      rows: 24,
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    const wsB = FakeWebSocket.instances.at(-1);
+    if (!wsB) throw new Error("ws B not created");
+    expect(wsB).not.toBe(wsA);
+
+    // Simulate the old ws's close event firing AFTER the replacement
+    const sentBefore = conn.sent.length;
+    wsA.fire("close");
+
+    // The kos-close for the replaced session should NOT be forwarded to the
+    // station — otherwise the station sees [connection closed] for its live
+    // session.
+    const kosCloseMessages = conn.sent
+      .slice(sentBefore)
+      .filter(
+        (m): m is { type: string } =>
+          typeof m === "object" &&
+          m !== null &&
+          "type" in m &&
+          (m as { type: string }).type === "kos-close",
+      );
+    expect(kosCloseMessages).toHaveLength(0);
+  });
+
+  it("does fire kos-close when the current (non-replaced) ws emits close", async () => {
+    const { PeerHostService } = await import("../peer/PeerHostService");
+    const service = new PeerHostService();
+    service.start();
+
+    await Promise.resolve();
+
+    const conn = new FakeDataConnection();
+    if (!FakePeer.last) throw new Error("FakePeer not instantiated");
+    FakePeer.last.emit("connection", conn);
+    conn.emit("open");
+    await new Promise((r) => setTimeout(r, 0));
+
+    const sessionId = "session-B";
+    conn.emit("data", {
+      type: "kos-open",
+      sessionId,
+      kosHost: "localhost",
+      kosPort: 5410,
+      cols: 80,
+      rows: 24,
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    const ws = FakeWebSocket.instances.at(-1);
+    if (!ws) throw new Error("ws not created");
+
+    // Proxy-side close — should propagate kos-close to the station
+    ws.fire("close");
+
+    const kosCloseMessages = conn.sent.filter(
+      (m): m is { type: string; sessionId: string } =>
+        typeof m === "object" &&
+        m !== null &&
+        "type" in m &&
+        (m as { type: string }).type === "kos-close",
+    );
+    expect(kosCloseMessages).toHaveLength(1);
+    expect(kosCloseMessages[0].sessionId).toBe(sessionId);
+  });
+});

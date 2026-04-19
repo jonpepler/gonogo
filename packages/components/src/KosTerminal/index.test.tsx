@@ -26,7 +26,9 @@ const termSpies = vi.hoisted(() => ({
   writeln: vi.fn(),
   onData: vi.fn(),
   onResize: vi.fn(),
+  resize: vi.fn(),
   dispose: vi.fn(),
+  rows: 40,
 }));
 
 vi.mock("@xterm/xterm", () => ({
@@ -36,18 +38,40 @@ vi.mock("@xterm/xterm", () => ({
 }));
 
 vi.mock("@xterm/addon-fit", () => ({
-  FitAddon: vi.fn(function (this: { fit: ReturnType<typeof vi.fn> }) {
+  FitAddon: vi.fn(function (this: {
+    fit: ReturnType<typeof vi.fn>;
+    proposeDimensions: ReturnType<typeof vi.fn>;
+  }) {
     this.fit = vi.fn();
+    this.proposeDimensions = vi.fn(() => ({ cols: 120, rows: 40 }));
   }),
 }));
 
 // CSS import — no-op in test
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
 
-// ResizeObserver is not implemented in jsdom
+// ResizeObserver is not implemented in jsdom. The KosTerminal waits for a
+// sized container before connecting, so simulate a layout-complete entry on
+// observe() — otherwise the component would sit in its waiting state until
+// the 500 ms fallback fires.
 class MockResizeObserver {
-  observe = vi.fn();
-  disconnect = vi.fn();
+  private cb: ResizeObserverCallback;
+  constructor(cb: ResizeObserverCallback) {
+    this.cb = cb;
+  }
+  observe(target: Element) {
+    this.cb(
+      [
+        {
+          target,
+          contentRect: { width: 800, height: 400 } as DOMRectReadOnly,
+        } as ResizeObserverEntry,
+      ],
+      this as unknown as ResizeObserver,
+    );
+  }
+  unobserve() {}
+  disconnect() {}
 }
 global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 

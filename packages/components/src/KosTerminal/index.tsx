@@ -28,6 +28,19 @@ const LIST_CHANGED = "--(List of CPU's has Changed)--";
 const MENU_HEADER = "Vessel Name (CPU tagname)";
 const GARBLED_INPUT = "Garbled selection. Try again.";
 
+/**
+ * Fixed PTY width. We never send a width change to the proxy — width
+ * changes during the kOS CPU menu (the most fragile moment in the
+ * terminal's lifecycle) re-paint the menu and garble it, breaking both
+ * the auto-select parser and manual readability. A comfortably wide
+ * value dodges every line-wrap problem kOS can throw at us; the
+ * in-widget xterm viewport is a window onto this wider PTY and clips
+ * content that doesn't fit. Users break long commands with newlines
+ * naturally, so it's rarely noticed in practice.
+ */
+const PTY_COLS = 80;
+const MIN_REASONABLE_ROWS = 3;
+
 function getKosDefaults() {
   const kos = getDataSource("kos");
   if (!kos) return { kosHost: "localhost", kosPort: 5410 };
@@ -53,121 +66,180 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
   const sessionIdRef = useRef<string>(crypto.randomUUID());
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     const sessionId = sessionIdRef.current;
+    let teardown: (() => void) | null = null;
+    let cancelled = false;
+    let sizeWaiter: ResizeObserver | null = null;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const term = new Terminal({
-      theme: {
-        background: "#0d0d0d",
-        foreground: "#cccccc",
-        cursor: "#00ff88",
-        selectionBackground: "#2a4a2a",
-      },
-      fontFamily: "monospace",
-      fontSize: 13,
-      cursorBlink: !readOnly,
-    });
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(containerRef.current);
-    fitAddon.fit();
-    termRef.current = term;
+    function runSetup() {
+      if (cancelled || teardown || !container) return;
+      sizeWaiter?.disconnect();
+      sizeWaiter = null;
+      if (fallbackTimer !== null) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
 
-    // Capture fitted dimensions before opening the WS so the proxy spawns the
-    // PTY at the correct size. If react-grid-layout mounts the cell at 0×0
-    // and sizes it asynchronously, fit() returns xterm's 2-column minimum
-    // and the PTY would spawn at 2 cols — wrapping after every keystroke.
-    // Fall back to a sensible default in that case; the ResizeObserver below
-    // will send an accurate size once the layout settles.
-    const MIN_REASONABLE_COLS = 10;
-    const MIN_REASONABLE_ROWS = 3;
-    const initialCols =
-      term.cols && term.cols >= MIN_REASONABLE_COLS ? term.cols : 80;
-    const initialRows =
-      term.rows && term.rows >= MIN_REASONABLE_ROWS ? term.rows : 24;
+      const term = new Terminal({
+        theme: {
+          background: "#0d0d0d",
+          foreground: "#cccccc",
+          cursor: "#00ff88",
+          selectionBackground: "#2a4a2a",
+        },
+        fontFamily: "monospace",
+        fontSize: 13,
+        cursorBlink: !readOnly,
+      });
+      const fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(container);
 
-    if (readOnly) {
-      term.writeln("\x1b[2m[read-only]\x1b[0m");
-    }
+      // Fix the PTY width at PTY_COLS; only the row count tracks the
+      // container. We use proposeDimensions() rather than fit() so the
+      // first resize() call lands directly at (PTY_COLS, rows) — otherwise
+      // fit() would resize to (proposedCols, rows) first, then we'd have
+      // to correct to (PTY_COLS, rows), firing onResize twice.
+      const proposed = fitAddon.proposeDimensions();
+      const initialRows =
+        proposed && proposed.rows >= MIN_REASONABLE_ROWS ? proposed.rows : 24;
+      term.resize(PTY_COLS, initialRows);
+      termRef.current = term;
 
-    // CPU auto-selection state — reset per effect instance
-    let menuBuffer = "";
-    let inMenuSelection = cpuName !== undefined;
+      if (readOnly) {
+        term.writeln("\x1b[2m[read-only]\x1b[0m");
+      }
 
-    const ws = createConnection({
-      sessionId,
-      kosHost,
-      kosPort,
-      cols: initialCols,
-      rows: initialRows,
-    });
-    wsRef.current = ws as unknown as WebSocket;
+      // CPU auto-selection state — reset per effect instance
+      let menuBuffer = "";
+      let inMenuSelection = cpuName !== undefined;
 
-    ws.addEventListener("open", () => {
-      term.writeln("\x1b[32mConnected to kOS proxy\x1b[0m");
-    });
+      const ws = createConnection({
+        sessionId,
+        kosHost,
+        kosPort,
+        cols: PTY_COLS,
+        rows: initialRows,
+      });
+      wsRef.current = ws as unknown as WebSocket;
 
-    ws.addEventListener("message", ({ data }) => {
-      const text = typeof data === "string" ? data : String(data);
-      term.write(text);
+      ws.addEventListener("open", () => {
+        term.writeln("\x1b[32mConnected to kOS proxy\x1b[0m");
+      });
 
-      if (cpuName !== undefined) {
-        // Garbled input: reset so we auto-select on the next menu appearance
-        if (text.includes(GARBLED_INPUT)) {
-          inMenuSelection = true;
-          menuBuffer = "";
-        }
+      ws.addEventListener("message", ({ data }) => {
+        const text = typeof data === "string" ? data : String(data);
+        term.write(text);
 
-        if (inMenuSelection) {
-          if (text.includes(LIST_CHANGED)) menuBuffer = "";
-          menuBuffer += text;
+        if (cpuName !== undefined) {
+          // Garbled input: reset so we auto-select on the next menu appearance
+          if (text.includes(GARBLED_INPUT)) {
+            inMenuSelection = true;
+            menuBuffer = "";
+          }
 
-          if (menuBuffer.includes(MENU_HEADER)) {
-            for (const line of menuBuffer.split("\n")) {
-              const m = CPU_ROW_RE.exec(line);
-              if (m && m[4] === cpuName) {
-                if (ws.readyState === WebSocket.OPEN) ws.send(`${m[1]}\n`);
-                inMenuSelection = false;
-                menuBuffer = "";
-                break;
+          if (inMenuSelection) {
+            if (text.includes(LIST_CHANGED)) menuBuffer = "";
+            menuBuffer += text;
+
+            if (menuBuffer.includes(MENU_HEADER)) {
+              for (const line of menuBuffer.split("\n")) {
+                const m = CPU_ROW_RE.exec(line);
+                if (m && m[4] === cpuName) {
+                  if (ws.readyState === WebSocket.OPEN) ws.send(`${m[1]}\n`);
+                  inMenuSelection = false;
+                  menuBuffer = "";
+                  break;
+                }
               }
             }
           }
         }
-      }
-    });
-
-    ws.addEventListener("close", () => {
-      term.writeln("\r\n\x1b[33m[connection closed]\x1b[0m");
-    });
-
-    ws.addEventListener("error", () => {
-      term.writeln("\r\n\x1b[31m[connection error]\x1b[0m");
-    });
-
-    // Terminal keystrokes → PTY (character-by-character, no buffering)
-    if (!readOnly) {
-      term.onData((data) => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(data);
       });
+
+      ws.addEventListener("close", () => {
+        term.writeln("\r\n\x1b[33m[connection closed]\x1b[0m");
+      });
+
+      ws.addEventListener("error", () => {
+        term.writeln("\r\n\x1b[31m[connection error]\x1b[0m");
+      });
+
+      // Terminal keystrokes → PTY (character-by-character, no buffering)
+      if (!readOnly) {
+        term.onData((data) => {
+          if (ws.readyState === WebSocket.OPEN) ws.send(data);
+        });
+      }
+
+      // Resize events → proxy (or PeerJS tunnel on stations). We always
+      // send PTY_COLS for the width — the PTY width is immutable.
+      term.onResize(({ rows }) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        resize(sessionId, PTY_COLS, rows);
+      });
+
+      // Only the container's HEIGHT drives rows. Width stays pinned at
+      // PTY_COLS, so horizontal container changes never trigger a NAWS
+      // exchange that could interrupt menu rendering.
+      const observer = new ResizeObserver(() => {
+        const next = fitAddon.proposeDimensions();
+        if (
+          next &&
+          next.rows >= MIN_REASONABLE_ROWS &&
+          next.rows !== term.rows
+        ) {
+          term.resize(PTY_COLS, next.rows);
+        }
+      });
+      observer.observe(container);
+
+      teardown = () => {
+        observer.disconnect();
+        ws.close();
+        term.dispose();
+        wsRef.current = null;
+        termRef.current = null;
+      };
     }
 
-    // Resize events → proxy (or PeerJS tunnel on stations)
-    term.onResize(({ cols, rows }) => {
-      if (ws.readyState !== WebSocket.OPEN) return;
-      resize(sessionId, cols, rows);
-    });
+    // Defer setup until the container has real layout dimensions. If we ran
+    // immediately under react-grid-layout's 0×0 first paint, fit() would
+    // return xterm's 2-column minimum; later when RGL sizes the cell we'd
+    // fire an onResize that re-paints kOS and garbles the menu. Waiting
+    // here means the PTY spawns at the correct size and the very next
+    // onResize we send matches — kOS never sees a size change during the
+    // initial menu exchange.
+    const ready = () =>
+      container.clientWidth >= 10 && container.clientHeight >= 10;
 
-    const observer = new ResizeObserver(() => fitAddon.fit());
-    observer.observe(containerRef.current);
+    if (ready()) {
+      runSetup();
+    } else {
+      sizeWaiter = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        const haveContentRect =
+          entry &&
+          entry.contentRect.width >= 10 &&
+          entry.contentRect.height >= 10;
+        if (haveContentRect || ready()) runSetup();
+      });
+      sizeWaiter.observe(container);
+      // Safety net: if we somehow never observe a real size (mocked RO in
+      // tests, container genuinely stays invisible), proceed anyway with
+      // the default fallback dimensions baked into runSetup.
+      fallbackTimer = setTimeout(runSetup, 500);
+    }
 
     return () => {
-      observer.disconnect();
-      ws.close();
-      term.dispose();
-      wsRef.current = null;
-      termRef.current = null;
+      cancelled = true;
+      sizeWaiter?.disconnect();
+      if (fallbackTimer !== null) clearTimeout(fallbackTimer);
+      teardown?.();
     };
     // Config values are primitives — re-run the effect if any change
   }, [createConnection, resize, kosHost, kosPort, readOnly, cpuName]);

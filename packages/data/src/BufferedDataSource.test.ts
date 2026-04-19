@@ -206,6 +206,23 @@ describe("BufferedDataSource", () => {
     expect(await buffered.listFlights()).toEqual([]);
   });
 
+  it("mints a new flight after the current flight is deleted", async () => {
+    source.emit("v.name", "KX");
+    source.emit("v.missionTime", 0);
+    const firstId = buffered.getCurrentFlight()?.id;
+    expect(firstId).toBeDefined();
+
+    await buffered.deleteFlight(firstId ?? "");
+    expect(buffered.getCurrentFlight()).toBeNull();
+
+    clock = 2000;
+    source.emit("v.name", "KX");
+    source.emit("v.missionTime", 1);
+    const second = buffered.getCurrentFlight();
+    expect(second?.id).toBeDefined();
+    expect(second?.id).not.toBe(firstId);
+  });
+
   it("clearAllFlights wipes storage and in-memory buffer", async () => {
     source.emit("v.name", "KX");
     source.emit("v.missionTime", 0);

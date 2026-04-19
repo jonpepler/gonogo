@@ -3,9 +3,9 @@ import fs from "node:fs";
 
 const BASE_URL = "http://192.168.86.33:8085/telemachus/datalink";
 
-async function fetchGroup(query: string): Promise<any> {
+async function fetchGroup(query: string): Promise<Record<string, unknown>> {
   const res = await fetch(`${BASE_URL}?${query}`);
-  return res.json();
+  return res.json() as Promise<Record<string, unknown>>;
 }
 
 async function main() {

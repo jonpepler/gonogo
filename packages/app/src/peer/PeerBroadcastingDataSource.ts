@@ -12,7 +12,7 @@ export class PeerBroadcastingDataSource implements DataSource {
 
   constructor(
     private real: DataSource,
-    private host: PeerHostService,
+    host: PeerHostService,
   ) {
     const schemaKeys = real.schema();
     debugPeer("PBDS wrap", {

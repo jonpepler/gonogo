@@ -25,7 +25,7 @@ function makeSource(id = "test-source") {
     getConfig: () => ({}),
     subscribe(key, cb) {
       if (!dataListeners.has(key)) dataListeners.set(key, new Set());
-      dataListeners.get(key)!.add(cb);
+      dataListeners.get(key)?.add(cb);
       return () => dataListeners.get(key)?.delete(cb);
     },
     onStatusChange(cb) {
@@ -33,11 +33,15 @@ function makeSource(id = "test-source") {
       return () => statusListeners.delete(cb);
     },
     emit(key, value) {
-      dataListeners.get(key)?.forEach((cb) => cb(value));
+      dataListeners.get(key)?.forEach((cb) => {
+        cb(value);
+      });
     },
     setStatus(s) {
       source.status = s;
-      statusListeners.forEach((cb) => cb(s));
+      statusListeners.forEach((cb) => {
+        cb(s);
+      });
     },
   };
   return source;

@@ -1,9 +1,10 @@
-import type { ComponentProps } from "@gonogo/core";
+import type { ActionDefinition, ComponentProps } from "@gonogo/core";
 import {
   formatDistance,
   formatDuration,
   getBody,
   registerComponent,
+  useActionInput,
   useDataValue,
 } from "@gonogo/core";
 import { Panel, PanelSubtitle, PanelTitle } from "@gonogo/ui";
@@ -16,10 +17,31 @@ interface CurrentOrbitConfig {
   showDiagram?: boolean;
 }
 
+const currentOrbitActions = [
+  {
+    id: "toggleDiagram",
+    label: "Toggle Diagram",
+    accepts: ["button"],
+    description: "Show or hide the mini orbit diagram.",
+  },
+] as const satisfies readonly ActionDefinition[];
+
+export type CurrentOrbitActions = typeof currentOrbitActions;
+
 function CurrentOrbitComponent({
   config,
+  onConfigChange,
 }: Readonly<ComponentProps<CurrentOrbitConfig>>) {
   const showDiagram = config?.showDiagram ?? true;
+
+  useActionInput<CurrentOrbitActions>({
+    toggleDiagram: (payload) => {
+      if (payload.kind === "button" && payload.value !== true) return undefined;
+      const next = !showDiagram;
+      onConfigChange?.({ ...config, showDiagram: next });
+      return { diagramVisible: next };
+    },
+  });
 
   const apoapsisA = useDataValue("telemachus", "o.ApA");
   const periapsisA = useDataValue("telemachus", "o.PeA");
@@ -134,6 +156,7 @@ registerComponent<CurrentOrbitConfig>({
   ],
   behaviors: [],
   defaultConfig: { showDiagram: true },
+  actions: currentOrbitActions,
 });
 
 export { CurrentOrbitComponent };

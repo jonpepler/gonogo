@@ -31,7 +31,7 @@ function makeRealSource(
     setupInstructions: vi.fn().mockReturnValue(null),
     subscribe(key, cb) {
       if (!subscribers.has(key)) subscribers.set(key, new Set());
-      subscribers.get(key)!.add(cb);
+      subscribers.get(key)?.add(cb);
       return () => subscribers.get(key)?.delete(cb);
     },
     onStatusChange(cb) {
@@ -40,10 +40,14 @@ function makeRealSource(
     },
     execute: vi.fn().mockResolvedValue(undefined),
     _emit(key, value) {
-      subscribers.get(key)?.forEach((cb) => cb(value));
+      subscribers.get(key)?.forEach((cb) => {
+        cb(value);
+      });
     },
     _emitStatus(status) {
-      statusListeners.forEach((cb) => cb(status));
+      statusListeners.forEach((cb) => {
+        cb(status);
+      });
     },
   };
 }
@@ -88,10 +92,14 @@ function makeFakeClient() {
     connect: vi.fn(),
     disconnect: vi.fn(),
     _emitData(sourceId: string, key: string, value: unknown) {
-      dataListeners.forEach((cb) => cb(sourceId, key, value));
+      dataListeners.forEach((cb) => {
+        cb(sourceId, key, value);
+      });
     },
     _emitStatus(sourceId: string, status: string) {
-      statusListeners.forEach((cb) => cb(sourceId, status));
+      statusListeners.forEach((cb) => {
+        cb(sourceId, status);
+      });
     },
     executes,
   };

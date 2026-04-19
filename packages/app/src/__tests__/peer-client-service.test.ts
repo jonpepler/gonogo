@@ -4,10 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // must be declared via vi.hoisted to be available when the factory runs.
 const { FakePeer } = vi.hoisted(() => {
   class FakeDataConnection {
-    private listeners = new Map<
-      string,
-      Array<(...args: unknown[]) => void>
-    >();
+    private listeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
     on(event: string, cb: (...args: unknown[]) => void) {
       const bucket = this.listeners.get(event) ?? [];
@@ -27,10 +24,7 @@ const { FakePeer } = vi.hoisted(() => {
 
   class FakePeer {
     static instances: FakePeer[] = [];
-    private listeners = new Map<
-      string,
-      Array<(...args: unknown[]) => void>
-    >();
+    private listeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
     _lastConn: FakeDataConnection | null = null;
 

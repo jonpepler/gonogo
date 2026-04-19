@@ -41,7 +41,9 @@ export class PeerHostService {
       localStorage.setItem(PEER_ID_KEY, id);
       this.peerId = id;
       logger.info(`[PeerHost] open — id=${id}`);
-      this.idListeners.forEach((cb) => cb(id));
+      this.idListeners.forEach((cb) => {
+        cb(id);
+      });
     });
 
     this.peer.on("connection", (conn) => {
@@ -263,7 +265,9 @@ export class PeerHostService {
     this.peer?.destroy();
     this.peer = null;
     this.peerId = null;
-    this.idListeners.forEach((cb) => cb(null));
+    this.idListeners.forEach((cb) => {
+      cb(null);
+    });
     logger.info("[PeerHost] stopped");
   }
 }

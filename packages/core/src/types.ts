@@ -82,6 +82,40 @@ export interface DataSource<
 
 export type ComponentBehavior = "gonogo-participant";
 
+// ---------------------------------------------------------------------------
+// Action inputs — wiring for physical/virtual controls to trigger component
+// functionality. Components declare their available actions at registration;
+// users later map device inputs to them via the input mapping UI.
+// ---------------------------------------------------------------------------
+
+export type ActionInputKind = "button" | "analog";
+
+export interface ActionInputPayload {
+  kind: ActionInputKind;
+  /** Button: true=pressed, false=released. Analog: normalised to -1..1. */
+  value: boolean | number;
+  /** Device-specific raw value before normalisation, if the handler wants it. */
+  raw?: unknown;
+}
+
+export interface ActionDefinition {
+  /** Stable ID used when persisting an input→action mapping. Unique per component. */
+  id: string;
+  label: string;
+  /** Which input kinds may drive this action. */
+  accepts: readonly ActionInputKind[];
+  description?: string;
+}
+
+/**
+ * Typed handler map for `useActionInput`. Given a readonly array of
+ * ActionDefinitions, the keys of the map are inferred from each definition's
+ * `id`, so mismatched handler names fail typecheck at the call site.
+ */
+export type ActionHandlers<TActions extends readonly ActionDefinition[]> = {
+  [K in TActions[number]["id"]]: (payload: ActionInputPayload) => unknown;
+};
+
 /**
  * Props passed to every registered dashboard component.
  *
@@ -144,6 +178,12 @@ export interface ComponentDefinition<TConfig = Record<string, unknown>> {
   dataRequirements?: string[];
   behaviors?: ComponentBehavior[];
   defaultConfig?: Partial<TConfig>;
+  /**
+   * Actions this component exposes to the serial input platform. Each entry
+   * becomes a selectable target in the input-mapping UI and is resolved at
+   * runtime by the component calling `useActionInput`.
+   */
+  actions?: readonly ActionDefinition[];
 }
 
 export interface ThemeDefinition {

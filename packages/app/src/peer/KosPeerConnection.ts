@@ -2,8 +2,7 @@ import type { KosConnection, KosConnectionParams } from "@gonogo/core";
 import type { PeerClientService } from "./PeerClientService";
 
 type EventType = "open" | "message" | "close" | "error";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyListener = (...args: any[]) => void;
+type AnyListener = (...args: unknown[]) => void;
 
 export class KosPeerConnection implements KosConnection {
   readyState: number = WebSocket.CONNECTING;
@@ -70,7 +69,7 @@ export class KosPeerConnection implements KosConnection {
   addEventListener(type: "error", listener: () => void): void;
   addEventListener(type: EventType, listener: AnyListener): void {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-    this.listeners.get(type)!.add(listener);
+    this.listeners.get(type)?.add(listener);
   }
 
   send(data: string) {

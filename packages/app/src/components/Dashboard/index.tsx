@@ -1,4 +1,10 @@
-import { type AnyDef, AppError, getComponent, handleError } from "@gonogo/core";
+import {
+  type AnyDef,
+  AppError,
+  DashboardItemContext,
+  getComponent,
+  handleError,
+} from "@gonogo/core";
 import { useModal } from "@gonogo/ui";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import type { Layout, Layouts } from "react-grid-layout";
@@ -202,15 +208,17 @@ export const Dashboard = forwardRef<DashboardHandle, DashboardProps>(
                 )}
               </CellHeader>
               <ComponentWrapper>
-                <Comp
-                  id={item.i}
-                  config={item.config}
-                  w={w}
-                  h={h}
-                  onConfigChange={(newConfig) =>
-                    updateItemConfig(item.i, newConfig)
-                  }
-                />
+                <DashboardItemContext.Provider value={{ instanceId: item.i }}>
+                  <Comp
+                    id={item.i}
+                    config={item.config}
+                    w={w}
+                    h={h}
+                    onConfigChange={(newConfig) =>
+                      updateItemConfig(item.i, newConfig)
+                    }
+                  />
+                </DashboardItemContext.Provider>
               </ComponentWrapper>
             </GridCell>
           );

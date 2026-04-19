@@ -228,20 +228,32 @@ export class PeerClientService {
         key: msg.key,
         dataListenerCount: this.dataListeners.size,
       });
-      this.dataListeners.forEach((cb) => cb(msg.sourceId, msg.key, msg.value));
+      this.dataListeners.forEach((cb) => {
+        cb(msg.sourceId, msg.key, msg.value);
+      });
     } else if (msg.type === "status") {
-      this.sourceStatusListeners.forEach((cb) => cb(msg.sourceId, msg.status));
+      this.sourceStatusListeners.forEach((cb) => {
+        cb(msg.sourceId, msg.status);
+      });
     } else if (msg.type === "schema") {
       logger.info(
         `[PeerClient] schema received — ${msg.sources.length} sources`,
       );
-      this.schemaListeners.forEach((cb) => cb(msg.sources));
+      this.schemaListeners.forEach((cb) => {
+        cb(msg.sources);
+      });
     } else if (msg.type === "kos-opened") {
-      this.kosOpenedListeners.forEach((cb) => cb(msg.sessionId));
+      this.kosOpenedListeners.forEach((cb) => {
+        cb(msg.sessionId);
+      });
     } else if (msg.type === "kos-data") {
-      this.kosDataListeners.forEach((cb) => cb(msg.sessionId, msg.data));
+      this.kosDataListeners.forEach((cb) => {
+        cb(msg.sessionId, msg.data);
+      });
     } else if (msg.type === "kos-close") {
-      this.kosCloseListeners.forEach((cb) => cb(msg.sessionId));
+      this.kosCloseListeners.forEach((cb) => {
+        cb(msg.sessionId);
+      });
     }
   }
 

@@ -1,4 +1,5 @@
 import type {
+  ActionDefinition,
   ActionGroupId,
   ComponentProps,
   ConfigComponentProps,
@@ -6,6 +7,7 @@ import type {
 import {
   ACTION_GROUPS,
   registerComponent,
+  useActionInput,
   useDataValue,
   useExecuteAction,
 } from "@gonogo/core";
@@ -30,6 +32,17 @@ type ActionGroupConfig = {
   label?: string;
 };
 
+const actionGroupActions = [
+  {
+    id: "toggle",
+    label: "Toggle",
+    accepts: ["button"],
+    description: "Toggles this action group on/off.",
+  },
+] as const satisfies readonly ActionDefinition[];
+
+export type ActionGroupActions = typeof actionGroupActions;
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -49,6 +62,20 @@ function ActionGroupComponent({
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const handleToggle = () => {
+    if (group?.toggle) void execute(group.toggle);
+  };
+
+  useActionInput<ActionGroupActions>({
+    toggle: (payload) => {
+      if (!group) return undefined;
+      // Fire on button-press edge only; releases are ignored so one tap = one toggle.
+      if (payload.kind === "button" && payload.value !== true) return undefined;
+      handleToggle();
+      return { [group.name]: value !== true };
+    },
+  });
+
   if (!group) {
     return (
       <Panel>
@@ -59,10 +86,6 @@ function ActionGroupComponent({
 
   const isOn = value === true;
   const isUnknown = value === undefined;
-
-  const handleToggle = () => {
-    if (group.toggle) void execute(group.toggle);
-  };
 
   const startEditing = () => {
     setDraft(currentLabel);
@@ -194,6 +217,7 @@ registerComponent<ActionGroupConfig>({
   dataRequirements: [],
   behaviors: [],
   defaultConfig: { actionGroupId: "AG1" },
+  actions: actionGroupActions,
 });
 
 export { ActionGroupComponent };

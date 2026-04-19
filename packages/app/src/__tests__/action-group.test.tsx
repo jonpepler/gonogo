@@ -1,5 +1,9 @@
 import { ActionGroupComponent } from "@gonogo/components";
-import { clearRegistry, registerDataSource } from "@gonogo/core";
+import {
+  clearRegistry,
+  DashboardItemContext,
+  registerDataSource,
+} from "@gonogo/core";
 import {
   act,
   cleanup,
@@ -10,6 +14,7 @@ import {
 } from "@testing-library/react";
 import { HttpResponse, http, ws } from "msw";
 import { setupServer } from "msw/node";
+import type { ReactNode } from "react";
 import {
   afterAll,
   afterEach,
@@ -20,6 +25,14 @@ import {
   it,
 } from "vitest";
 import { telemachusSource } from "../dataSources/telemachus";
+
+function withItemContext(instanceId: string, children: ReactNode) {
+  return (
+    <DashboardItemContext.Provider value={{ instanceId }}>
+      {children}
+    </DashboardItemContext.Provider>
+  );
+}
 
 const telemachusWs = ws.link("ws://localhost:8085/datalink");
 const server = setupServer();
@@ -94,14 +107,19 @@ function setupTelemachus(initialState: Record<string, boolean> = {}) {
 
 describe("ActionGroup component", () => {
   it("shows placeholder when no action group is configured", () => {
-    render(<ActionGroupComponent id={""} />);
+    render(withItemContext("t", <ActionGroupComponent id="t" />));
     expect(screen.getByText("No action group configured")).toBeInTheDocument();
   });
 
   it("shows group name and OFF state on initial connect", async () => {
     setupTelemachus({ "v.ag1Value": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
+    render(
+      withItemContext(
+        "t",
+        <ActionGroupComponent config={{ actionGroupId: "AG1" }} id="t" />,
+      ),
+    );
 
     await waitFor(() => expect(screen.getByText("AG1")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
@@ -110,7 +128,12 @@ describe("ActionGroup component", () => {
   it("shows ON when the action group is already active", async () => {
     setupTelemachus({ "v.ag1Value": true });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
+    render(
+      withItemContext(
+        "t",
+        <ActionGroupComponent config={{ actionGroupId: "AG1" }} id="t" />,
+      ),
+    );
 
     await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
   });
@@ -118,7 +141,12 @@ describe("ActionGroup component", () => {
   it("sends a toggle request and reflects the updated state", async () => {
     setupTelemachus({ "v.ag1Value": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
+    render(
+      withItemContext(
+        "t",
+        <ActionGroupComponent config={{ actionGroupId: "AG1" }} id="t" />,
+      ),
+    );
 
     await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
 
@@ -131,10 +159,13 @@ describe("ActionGroup component", () => {
     setupTelemachus({ "v.precisionControlValue": false });
     await telemachusSource.connect();
     render(
-      <ActionGroupComponent
-        config={{ actionGroupId: "Precision Control" }}
-        id={""}
-      />,
+      withItemContext(
+        "t",
+        <ActionGroupComponent
+          config={{ actionGroupId: "Precision Control" }}
+          id="t"
+        />,
+      ),
     );
 
     await waitFor(() =>
@@ -156,7 +187,12 @@ describe("ActionGroup component", () => {
     );
 
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "AG1" }} id={""} />);
+    render(
+      withItemContext(
+        "t",
+        <ActionGroupComponent config={{ actionGroupId: "AG1" }} id="t" />,
+      ),
+    );
 
     await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
 
@@ -170,7 +206,12 @@ describe("ActionGroup component", () => {
   it("toggles SAS independently from AG1", async () => {
     setupTelemachus({ "v.sasValue": false });
     await telemachusSource.connect();
-    render(<ActionGroupComponent config={{ actionGroupId: "SAS" }} id={""} />);
+    render(
+      withItemContext(
+        "t",
+        <ActionGroupComponent config={{ actionGroupId: "SAS" }} id="t" />,
+      ),
+    );
 
     await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
 

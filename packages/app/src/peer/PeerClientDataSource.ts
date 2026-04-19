@@ -28,18 +28,24 @@ export class PeerClientDataSource implements DataSource {
           subscriberCount: this.subscribers.get(key)?.size ?? 0,
         });
       }
-      this.subscribers.get(key)?.forEach((cb) => cb(value));
+      this.subscribers.get(key)?.forEach((cb) => {
+        cb(value);
+      });
     });
     client.onSourceStatus((sourceId, status) => {
       if (sourceId !== this.id) return;
       this.status = status as DataSourceStatus;
-      this.statusListeners.forEach((cb) => cb(this.status));
+      this.statusListeners.forEach((cb) => {
+        cb(this.status);
+      });
     });
   }
 
   connect() {
     this.status = "connected";
-    this.statusListeners.forEach((cb) => cb("connected"));
+    this.statusListeners.forEach((cb) => {
+      cb("connected");
+    });
     return Promise.resolve();
   }
 
@@ -61,7 +67,7 @@ export class PeerClientDataSource implements DataSource {
 
   subscribe(key: string, cb: (value: unknown) => void) {
     if (!this.subscribers.has(key)) this.subscribers.set(key, new Set());
-    this.subscribers.get(key)!.add(cb);
+    this.subscribers.get(key)?.add(cb);
     return () => this.subscribers.get(key)?.delete(cb);
   }
 

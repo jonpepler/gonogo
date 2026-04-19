@@ -1,18 +1,25 @@
-import type { ComponentProps, TelemaachusSchema } from "@gonogo/core";
+import type {
+  ActionDefinition,
+  ComponentProps,
+  TelemaachusSchema,
+} from "@gonogo/core";
 import {
   getBody,
   latLonToMap,
   registerComponent,
+  useActionInput,
   useDataValue,
 } from "@gonogo/core";
 import { Panel, PanelTitle, Switch } from "@gonogo/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   cameraTransform,
+  fitCamera,
   followZoom,
   WORLD_H,
   WORLD_W,
   worldToScreen,
+  zoomBounds,
 } from "./camera";
 import {
   BaseCanvas,
@@ -35,6 +42,35 @@ import { useCamera } from "./useCamera";
 import { useMapResize } from "./useMapResize";
 import { useTrajectoryBuffer } from "./useTrajectoryBuffer";
 import { useWorldCanvas } from "./useWorldCanvas";
+
+const mapViewActions = [
+  {
+    id: "toggleFollow",
+    label: "Toggle Follow",
+    accepts: ["button"],
+    description: "Switch between global and follow view.",
+  },
+  {
+    id: "zoomIn",
+    label: "Zoom In",
+    accepts: ["button"],
+  },
+  {
+    id: "zoomOut",
+    label: "Zoom Out",
+    accepts: ["button"],
+  },
+  {
+    id: "resetView",
+    label: "Reset View",
+    accepts: ["button"],
+    description: "Fit the whole map and exit follow mode.",
+  },
+] as const satisfies readonly ActionDefinition[];
+
+export type MapViewActions = typeof mapViewActions;
+
+const ZOOM_STEP = 1.3;
 
 function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const trajectoryLength = config?.trajectoryLength ?? 200;
@@ -65,6 +101,45 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     onMouseMove,
     onMouseUp,
   } = useCamera(containerSize);
+
+  useActionInput<MapViewActions>({
+    toggleFollow: (payload) => {
+      if (payload.kind === "button" && payload.value !== true) return undefined;
+      const next = viewMode === "follow" ? "global" : "follow";
+      setViewMode(next);
+      return { follow: next === "follow" };
+    },
+    zoomIn: (payload) => {
+      if (payload.kind === "button" && payload.value !== true) return undefined;
+      setCamera((prev) => {
+        const { min, max } = zoomBounds(baseZoom);
+        return {
+          ...prev,
+          zoom: Math.max(min, Math.min(max, prev.zoom * ZOOM_STEP)),
+        };
+      });
+      return undefined;
+    },
+    zoomOut: (payload) => {
+      if (payload.kind === "button" && payload.value !== true) return undefined;
+      setCamera((prev) => {
+        const { min, max } = zoomBounds(baseZoom);
+        return {
+          ...prev,
+          zoom: Math.max(min, Math.min(max, prev.zoom / ZOOM_STEP)),
+        };
+      });
+      return undefined;
+    },
+    resetView: (payload) => {
+      if (payload.kind === "button" && payload.value !== true) return undefined;
+      const w = containerSize?.w ?? WORLD_W;
+      const h = containerSize?.h ?? WORLD_H;
+      setCamera(fitCamera(w, h));
+      setViewMode("global");
+      return undefined;
+    },
+  });
 
   const { trajectoryRef, trajectoryCount } = useTrajectoryBuffer({
     lat,
@@ -373,6 +448,7 @@ registerComponent<MapViewConfig>({
   dataRequirements: ["v.lat", "v.long", "v.body"],
   behaviors: [],
   defaultConfig: { trajectoryLength: 2000 },
+  actions: mapViewActions,
 });
 
 export { MapViewComponent };

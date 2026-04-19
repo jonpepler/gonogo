@@ -48,7 +48,9 @@ export function StationScreen() {
 
     // Drain any prior listeners before (re)registering — otherwise listener
     // Sets on the client grow on every retry / StrictMode cycle.
-    unsubsRef.current.forEach((u) => u());
+    unsubsRef.current.forEach((u) => {
+      u();
+    });
     unsubsRef.current = [];
     schemaHandledRef.current = false;
 
@@ -68,11 +70,14 @@ export function StationScreen() {
     client.connect(trimmed);
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only — attemptConnect and client are captured once at mount; re-running would cause reconnect loops
   useEffect(() => {
     const savedHost = localStorage.getItem(HOST_ID_KEY);
     if (savedHost) attemptConnect(savedHost);
     return () => {
-      unsubsRef.current.forEach((u) => u());
+      unsubsRef.current.forEach((u) => {
+        u();
+      });
       unsubsRef.current = [];
       client.disconnect();
     };

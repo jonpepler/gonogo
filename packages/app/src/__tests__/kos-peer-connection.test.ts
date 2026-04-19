@@ -3,9 +3,7 @@ import { KosPeerConnection } from "../peer/KosPeerConnection";
 
 function makeFakeClient() {
   const kosOpenedListeners = new Set<(sessionId: string) => void>();
-  const kosDataListeners = new Set<
-    (sessionId: string, data: string) => void
-  >();
+  const kosDataListeners = new Set<(sessionId: string, data: string) => void>();
   const kosCloseListeners = new Set<(sessionId: string) => void>();
   const connStatusListeners = new Set<(status: string) => void>();
 

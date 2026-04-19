@@ -15,12 +15,14 @@ import {
 import {
   clearBodies,
   clearRegistry,
+  DashboardItemContext,
   registerDataSource,
   registerStockBodies,
 } from "@gonogo/core";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { ws } from "msw";
 import { setupServer } from "msw/node";
+import type { ReactElement } from "react";
 import {
   afterAll,
   afterEach,
@@ -34,6 +36,14 @@ import { telemachusSource } from "../dataSources/telemachus";
 
 const telemachusWs = ws.link("ws://localhost:8085/datalink");
 const server = setupServer();
+
+function renderWidget(tree: ReactElement, instanceId = "t") {
+  return render(
+    <DashboardItemContext.Provider value={{ instanceId }}>
+      {tree}
+    </DashboardItemContext.Provider>,
+  );
+}
 
 beforeAll(() => server.listen());
 afterEach(() => {
@@ -77,12 +87,12 @@ function setupTelemetry(snapshot: Record<string, unknown>) {
 // ---------------------------------------------------------------------------
 describe("CurrentOrbitComponent", () => {
   it("renders ORBIT heading", () => {
-    render(<CurrentOrbitComponent id={""} />);
+    renderWidget(<CurrentOrbitComponent id="t" />);
     expect(screen.getByText("ORBIT")).toBeInTheDocument();
   });
 
   it("shows dashes before data arrives", () => {
-    render(<CurrentOrbitComponent id={""} />);
+    renderWidget(<CurrentOrbitComponent id="t" />);
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBeGreaterThan(0);
   });
@@ -94,7 +104,7 @@ describe("CurrentOrbitComponent", () => {
       "o.eccentricity": 0.1,
     });
     await telemachusSource.connect();
-    render(<CurrentOrbitComponent id={""} />);
+    renderWidget(<CurrentOrbitComponent id="t" />);
     // formatDistance(250_000) = '250.0 km'
     await waitFor(() =>
       expect(screen.getByText("250.0 km")).toBeInTheDocument(),
@@ -104,7 +114,7 @@ describe("CurrentOrbitComponent", () => {
   it("shows reference body when provided", async () => {
     setupTelemetry({ "o.referenceBody": "Kerbin" });
     await telemachusSource.connect();
-    render(<CurrentOrbitComponent id={""} />);
+    renderWidget(<CurrentOrbitComponent id="t" />);
     await waitFor(() => expect(screen.getByText("Kerbin")).toBeInTheDocument());
   });
 });
@@ -143,12 +153,12 @@ describe("DistanceToTargetComponent", () => {
 // ---------------------------------------------------------------------------
 describe("OrbitViewComponent", () => {
   it("renders ORBIT VIEW heading", () => {
-    render(<OrbitViewComponent id={""} />);
+    renderWidget(<OrbitViewComponent id="t" />);
     expect(screen.getByText("ORBIT VIEW")).toBeInTheDocument();
   });
 
   it('shows "No orbital data" before any values arrive', () => {
-    render(<OrbitViewComponent id={""} />);
+    renderWidget(<OrbitViewComponent id="t" />);
     expect(screen.getByText("No orbital data")).toBeInTheDocument();
   });
 
@@ -162,7 +172,7 @@ describe("OrbitViewComponent", () => {
       "o.argumentOfPeriapsis": 0,
     });
     await telemachusSource.connect();
-    render(<OrbitViewComponent id={""} />);
+    renderWidget(<OrbitViewComponent id="t" />);
     await waitFor(() =>
       expect(
         screen.getByRole("img", { name: /orbital diagram/i }),
@@ -176,26 +186,26 @@ describe("OrbitViewComponent", () => {
 // ---------------------------------------------------------------------------
 describe("MapViewComponent", () => {
   it("renders MAP VIEW heading", () => {
-    render(<MapViewComponent id={""} />);
+    renderWidget(<MapViewComponent id="t" />);
     expect(screen.getByText("MAP VIEW")).toBeInTheDocument();
   });
 
   it('shows "Waiting for telemetry" before v.body arrives', () => {
-    render(<MapViewComponent id={""} />);
+    renderWidget(<MapViewComponent id="t" />);
     expect(screen.getByText("Waiting for telemetry…")).toBeInTheDocument();
   });
 
   it("shows body name in header once v.body arrives", async () => {
     setupTelemetry({ "v.body": "Kerbin" });
     await telemachusSource.connect();
-    render(<MapViewComponent id={""} />);
+    renderWidget(<MapViewComponent id="t" />);
     await waitFor(() => expect(screen.getByText("Kerbin")).toBeInTheDocument());
   });
 
   it('shows "No position data" when body is known but lat/lon not yet received', async () => {
     setupTelemetry({ "v.body": "Kerbin" });
     await telemachusSource.connect();
-    render(<MapViewComponent id={""} />);
+    renderWidget(<MapViewComponent id="t" />);
     await waitFor(() => expect(screen.getByText("Kerbin")).toBeInTheDocument());
     expect(screen.getByText("No position data")).toBeInTheDocument();
   });
@@ -203,7 +213,7 @@ describe("MapViewComponent", () => {
   it('hides "No position data" overlay once position arrives', async () => {
     setupTelemetry({ "v.body": "Kerbin", "v.lat": -0.1, "v.long": 285.4 });
     await telemachusSource.connect();
-    render(<MapViewComponent id={""} />);
+    renderWidget(<MapViewComponent id="t" />);
     await waitFor(() =>
       expect(screen.queryByText("No position data")).not.toBeInTheDocument(),
     );

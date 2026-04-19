@@ -1,5 +1,10 @@
-import type { ComponentProps } from "@gonogo/core";
-import { getBody, registerComponent, useDataValue } from "@gonogo/core";
+import type { ActionDefinition, ComponentProps } from "@gonogo/core";
+import {
+  getBody,
+  registerComponent,
+  useActionInput,
+  useDataValue,
+} from "@gonogo/core";
 import { Panel, PanelSubtitle, PanelTitle } from "@gonogo/ui";
 import styled from "styled-components";
 import { OrbitDiagram } from "../shared/OrbitDiagram";
@@ -10,10 +15,31 @@ interface OrbitViewConfig {
   showMarkers?: boolean;
 }
 
+const orbitViewActions = [
+  {
+    id: "toggleMarkers",
+    label: "Toggle Markers",
+    accepts: ["button"],
+    description: "Show or hide the Ap/Pe markers.",
+  },
+] as const satisfies readonly ActionDefinition[];
+
+export type OrbitViewActions = typeof orbitViewActions;
+
 function OrbitViewComponent({
   config,
+  onConfigChange,
 }: Readonly<ComponentProps<OrbitViewConfig>>) {
   const showMarkers = config?.showMarkers ?? true;
+
+  useActionInput<OrbitViewActions>({
+    toggleMarkers: (payload) => {
+      if (payload.kind === "button" && payload.value !== true) return undefined;
+      const next = !showMarkers;
+      onConfigChange?.({ ...config, showMarkers: next });
+      return { markersVisible: next };
+    },
+  });
 
   const sma = useDataValue("telemachus", "o.sma");
   const eccentricity = useDataValue("telemachus", "o.eccentricity");
@@ -79,6 +105,7 @@ registerComponent<OrbitViewConfig>({
   ],
   behaviors: [],
   defaultConfig: { showMarkers: true },
+  actions: orbitViewActions,
 });
 
 export { OrbitViewComponent };

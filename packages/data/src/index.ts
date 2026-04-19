@@ -1,4 +1,6 @@
 export * from "./BufferedDataSource";
+export * from "./FlightsManager";
+export * from "./FlightsFab";
 export * from "./derive";
 export * from "./flightDetector";
 export * from "./hooks/useDataSchema";

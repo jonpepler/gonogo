@@ -1,4 +1,5 @@
 import { debugPeer, KosProxyContext, registerDataSource } from "@gonogo/core";
+import { FlightsFab } from "@gonogo/data";
 import {
   InputDispatcher,
   SerialDeviceProvider,
@@ -165,6 +166,7 @@ export function StationScreen() {
               updateItemMappings={dashboard.updateItemMappings}
             />
             <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
+            <FlightsFab />
             <SerialFab />
           </Layout>
         </OverlayProvider>

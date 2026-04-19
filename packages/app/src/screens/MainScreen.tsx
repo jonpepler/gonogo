@@ -1,4 +1,5 @@
 import { getDataSources } from "@gonogo/core";
+import { FlightsFab } from "@gonogo/data";
 import {
   InputDispatcher,
   SerialDeviceProvider,
@@ -722,6 +723,7 @@ export function MainScreen() {
             updateItemMappings={dashboard.updateItemMappings}
           />
           <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
+          <FlightsFab />
           <SerialFab />
         </Layout>
       </OverlayProvider>

@@ -5,13 +5,14 @@ import {
   getComponent,
   handleError,
 } from "@gonogo/core";
-import { useModal } from "@gonogo/ui";
+import { Tabs, useModal } from "@gonogo/ui";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import type { Layout, Layouts } from "react-grid-layout";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import styled from "styled-components";
 import "react-grid-layout/css/styles.css";
 import "../../styles/react-resizable.css";
+import { type InputMappings, InputMappingTab } from "../InputMappingTab";
 import { handleMouseDown } from "./mouseHandlers";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -27,6 +28,11 @@ export interface DashboardItem {
   componentId: string;
   /** Per-instance component config passed as the `config` prop. */
   config?: Record<string, unknown>;
+  /**
+   * Action-id → device input binding. Drives the serial input dispatcher
+   * in Phase 4. Missing = unbound; persisted alongside `config`.
+   */
+  inputMappings?: InputMappings;
 }
 
 export interface DashboardConfig {
@@ -134,6 +140,19 @@ export const Dashboard = forwardRef<DashboardHandle, DashboardProps>(
       [layouts, persist],
     );
 
+    const updateItemMappings = useCallback(
+      (itemId: string, next: InputMappings) => {
+        setItems((prev) => {
+          const updated = prev.map((it) =>
+            it.i === itemId ? { ...it, inputMappings: next } : it,
+          );
+          persist(updated, layouts);
+          return updated;
+        });
+      },
+      [layouts, persist],
+    );
+
     /** Exposed for the component-selection overlay (T41). */
     const addItem = useCallback(
       (item: DashboardItem, layout: Partial<Layout>) => {
@@ -192,16 +211,22 @@ export const Dashboard = forwardRef<DashboardHandle, DashboardProps>(
           const w = entry?.w;
           const h = entry?.h;
 
+          const hasConfig = Boolean(def.configComponent);
+          const hasActions = Boolean(def.actions?.length);
+
           return (
             <GridCell key={item.i}>
               <CellHeader className="drag-handle" title="Drag to reposition">
-                {def.configComponent && (
+                {(hasConfig || hasActions) && (
                   <GearWrapper>
                     <GearButton
                       item={item}
                       def={def}
-                      onSave={(newConfig) =>
+                      onSaveConfig={(newConfig) =>
                         updateItemConfig(item.i, newConfig)
+                      }
+                      onSaveMappings={(next) =>
+                        updateItemMappings(item.i, next)
                       }
                     />
                   </GearWrapper>
@@ -235,24 +260,38 @@ export const Dashboard = forwardRef<DashboardHandle, DashboardProps>(
 type GearButtonProps = Readonly<{
   item: DashboardItem;
   def: AnyDef;
-  onSave: (c: Record<string, unknown>) => void;
+  onSaveConfig: (c: Record<string, unknown>) => void;
+  onSaveMappings: (m: InputMappings) => void;
 }>;
 
-function GearButton({ item, def, onSave }: GearButtonProps) {
+function GearButton({
+  item,
+  def,
+  onSaveConfig,
+  onSaveMappings,
+}: GearButtonProps) {
   const { open, close } = useModal();
   const ConfigComp = def.configComponent;
+  const actions = def.actions ?? [];
+  const hasConfig = Boolean(ConfigComp);
+  const hasActions = actions.length > 0;
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!ConfigComp) {
-      handleError(new AppError("Config component not found"));
+    if (!hasConfig && !hasActions) {
+      handleError(new AppError("Nothing to configure"));
       return;
     }
     const id = open(
-      <ConfigComp
-        config={item.config ?? def.defaultConfig ?? {}}
-        onSave={(newConfig: Record<string, unknown>) => {
-          onSave(newConfig);
+      <GearModalContent
+        item={item}
+        def={def}
+        onSaveConfig={(c) => {
+          onSaveConfig(c);
+          close(id);
+        }}
+        onSaveMappings={(m) => {
+          onSaveMappings(m);
           close(id);
         }}
       />,
@@ -269,6 +308,78 @@ function GearButton({ item, def, onSave }: GearButtonProps) {
     >
       ⚙
     </GearBtn>
+  );
+}
+
+// Content rendered inside the modal. Split out so `useState` can live here
+// (the outer `GearButton` only needs to open a modal, not track tab state).
+function GearModalContent({
+  item,
+  def,
+  onSaveConfig,
+  onSaveMappings,
+}: Readonly<{
+  item: DashboardItem;
+  def: AnyDef;
+  onSaveConfig: (c: Record<string, unknown>) => void;
+  onSaveMappings: (m: InputMappings) => void;
+}>) {
+  const ConfigComp = def.configComponent;
+  const actions = def.actions ?? [];
+  const hasConfig = Boolean(ConfigComp);
+  const hasActions = actions.length > 0;
+
+  const [activeTab, setActiveTab] = useState<"config" | "inputs">(
+    hasConfig ? "config" : "inputs",
+  );
+
+  if (hasConfig && hasActions && ConfigComp) {
+    return (
+      <Tabs
+        activeId={activeTab}
+        onChange={(id) => setActiveTab(id as "config" | "inputs")}
+        tabs={[
+          {
+            id: "config",
+            label: "Settings",
+            content: (
+              <ConfigComp
+                config={item.config ?? def.defaultConfig ?? {}}
+                onSave={onSaveConfig}
+              />
+            ),
+          },
+          {
+            id: "inputs",
+            label: "Inputs",
+            content: (
+              <InputMappingTab
+                actions={actions}
+                mappings={item.inputMappings ?? {}}
+                onSave={onSaveMappings}
+              />
+            ),
+          },
+        ]}
+      />
+    );
+  }
+
+  if (hasConfig && ConfigComp) {
+    return (
+      <ConfigComp
+        config={item.config ?? def.defaultConfig ?? {}}
+        onSave={onSaveConfig}
+      />
+    );
+  }
+
+  return (
+    <InputMappingTab
+      actions={actions}
+      mappings={item.inputMappings ?? {}}
+      onSave={onSaveMappings}
+    />
   );
 }
 

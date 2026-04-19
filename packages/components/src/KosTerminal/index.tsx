@@ -75,10 +75,17 @@ function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
     termRef.current = term;
 
     // Capture fitted dimensions before opening the WS so the proxy spawns the
-    // PTY at the correct size. This prevents a post-connect PTY resize from
-    // sending NAWS bytes that race with the first kOS menu input.
-    const initialCols = term.cols;
-    const initialRows = term.rows;
+    // PTY at the correct size. If react-grid-layout mounts the cell at 0×0
+    // and sizes it asynchronously, fit() returns xterm's 2-column minimum
+    // and the PTY would spawn at 2 cols — wrapping after every keystroke.
+    // Fall back to a sensible default in that case; the ResizeObserver below
+    // will send an accurate size once the layout settles.
+    const MIN_REASONABLE_COLS = 10;
+    const MIN_REASONABLE_ROWS = 3;
+    const initialCols =
+      term.cols && term.cols >= MIN_REASONABLE_COLS ? term.cols : 80;
+    const initialRows =
+      term.rows && term.rows >= MIN_REASONABLE_ROWS ? term.rows : 24;
 
     if (readOnly) {
       term.writeln("\x1b[2m[read-only]\x1b[0m");

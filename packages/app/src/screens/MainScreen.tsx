@@ -722,6 +722,7 @@ export function MainScreen() {
             onBreakpointChange={dashboard.handleBreakpointChange}
             updateItemConfig={dashboard.updateItemConfig}
             updateItemMappings={dashboard.updateItemMappings}
+            removeItem={dashboard.removeItem}
           />
           <FabClusterProvider>
             <ComponentOverlay currentLayouts={dashboard.currentLayouts} />

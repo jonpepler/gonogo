@@ -42,6 +42,7 @@ export interface DashboardState {
   handleLayoutChange: (current: Layout[], all: Layouts) => void;
   handleBreakpointChange: (bp: string) => void;
   addItem: (item: DashboardItem, layout: Partial<Layout>) => void;
+  removeItem: (id: string) => void;
   updateItemConfig: (id: string, config: Record<string, unknown>) => void;
   updateItemMappings: (id: string, mappings: InputMappings) => void;
   /** Subscribe to item changes — fires after every add / update. */
@@ -121,6 +122,22 @@ export function useDashboardState(
     [currentLayouts],
   );
 
+  const removeItem = useCallback((id: string) => {
+    setItemsInner((prev) => prev.filter((it) => it.i !== id));
+    const stripped = (ls: Layout[] | undefined): Layout[] =>
+      (ls ?? []).filter((l) => l.i !== id);
+    setLayouts((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([bp, ls]) => [bp, stripped(ls)]),
+      ),
+    );
+    setCurrentLayouts((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([bp, ls]) => [bp, stripped(ls)]),
+      ),
+    );
+  }, []);
+
   const updateItemConfig = useCallback(
     (id: string, newConfig: Record<string, unknown>) => {
       setItemsInner((prev) =>
@@ -158,6 +175,7 @@ export function useDashboardState(
     handleLayoutChange,
     handleBreakpointChange,
     addItem,
+    removeItem,
     updateItemConfig,
     updateItemMappings,
     subscribeItems,

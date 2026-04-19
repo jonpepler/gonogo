@@ -7,7 +7,7 @@ import {
 } from "@gonogo/core";
 import { type InputMappings, InputMappingTab } from "@gonogo/serial";
 import { Tabs, useModal } from "@gonogo/ui";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Layout, Layouts } from "react-grid-layout";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import styled from "styled-components";
@@ -67,6 +67,7 @@ export interface DashboardProps {
   onBreakpointChange: (bp: string) => void;
   updateItemConfig: (id: string, config: Record<string, unknown>) => void;
   updateItemMappings: (id: string, mappings: InputMappings) => void;
+  removeItem: (id: string) => void;
 }
 
 export function Dashboard({
@@ -78,6 +79,7 @@ export function Dashboard({
   onBreakpointChange,
   updateItemConfig,
   updateItemMappings,
+  removeItem,
 }: Readonly<DashboardProps>) {
   return (
     <ResponsiveGridLayout
@@ -120,6 +122,7 @@ export function Dashboard({
                   />
                 </GearWrapper>
               )}
+              <RemoveButton onRemove={() => removeItem(item.i)} />
             </CellHeader>
             <ComponentWrapper>
               <DashboardItemContext.Provider value={{ instanceId: item.i }}>
@@ -138,6 +141,52 @@ export function Dashboard({
         );
       })}
     </ResponsiveGridLayout>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Remove button — two-click confirm pattern so a stray click in the drag
+// header doesn't vaporise the widget.
+// ---------------------------------------------------------------------------
+
+const CONFIRM_WINDOW_MS = 3_000;
+
+function RemoveButton({ onRemove }: Readonly<{ onRemove: () => void }>) {
+  const [confirming, setConfirming] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (confirming) {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      timerRef.current = null;
+      onRemove();
+      return;
+    }
+    setConfirming(true);
+    timerRef.current = setTimeout(() => {
+      setConfirming(false);
+      timerRef.current = null;
+    }, CONFIRM_WINDOW_MS);
+  }
+
+  return (
+    <RemoveBtn
+      onMouseDown={handleMouseDown}
+      onClick={handleClick}
+      aria-label={confirming ? "Confirm remove" : "Remove widget"}
+      title={confirming ? "Click again to confirm" : "Remove widget"}
+      $confirming={confirming}
+    >
+      {confirming ? "✕?" : "✕"}
+    </RemoveBtn>
   );
 }
 
@@ -314,6 +363,22 @@ const GearBtn = styled.button`
 
   &:hover {
     color: #888;
+  }
+`;
+
+const RemoveBtn = styled.button<{ $confirming: boolean }>`
+  pointer-events: all;
+  background: none;
+  border: none;
+  color: ${({ $confirming }) => ($confirming ? "#f88" : "#444")};
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 1px 4px;
+  margin-left: 2px;
+
+  &:hover {
+    color: #f66;
   }
 `;
 

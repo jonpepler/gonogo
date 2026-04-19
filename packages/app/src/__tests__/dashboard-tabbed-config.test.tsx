@@ -37,6 +37,7 @@ function DashboardHarness({
       onBreakpointChange={s.handleBreakpointChange}
       updateItemConfig={s.updateItemConfig}
       updateItemMappings={s.updateItemMappings}
+      removeItem={s.removeItem}
     />
   );
 }

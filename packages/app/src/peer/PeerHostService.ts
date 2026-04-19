@@ -121,6 +121,11 @@ export class PeerHostService {
       return;
     }
 
+    if (msg.type === "query-range-request") {
+      void this.handleQueryRangeRequest(msg, conn);
+      return;
+    }
+
     if (msg.type === "kos-open") {
       void this.handleKosOpen(msg, conn);
       return;
@@ -147,6 +152,53 @@ export class PeerHostService {
         session.ws.close();
       }
       return;
+    }
+  }
+
+  private async handleQueryRangeRequest(
+    msg: Extract<PeerMessage, { type: "query-range-request" }>,
+    conn: DataConnection,
+  ) {
+    const { getDataSource } = await import("@gonogo/core");
+    const source = getDataSource(msg.sourceId) as
+      | (ReturnType<typeof getDataSource> & {
+          queryRange?: (
+            key: string,
+            tStart: number,
+            tEnd: number,
+            flightId?: string,
+          ) => Promise<{ t: number[]; v: unknown[] }>;
+        })
+      | undefined;
+    const respond = (
+      t: number[],
+      v: unknown[],
+      error?: string,
+    ) => {
+      conn.send({
+        type: "query-range-response",
+        requestId: msg.requestId,
+        t,
+        v,
+        error,
+      } satisfies PeerMessage);
+    };
+    if (!source || typeof source.queryRange !== "function") {
+      respond([], [], `source ${msg.sourceId} has no queryRange`);
+      return;
+    }
+    try {
+      const range = await source.queryRange(
+        msg.key,
+        msg.tStart,
+        msg.tEnd,
+        msg.flightId,
+      );
+      respond(range.t, range.v);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      logger.error("[PeerHost] queryRange failed", error);
+      respond([], [], error.message);
     }
   }
 

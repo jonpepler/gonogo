@@ -118,12 +118,14 @@ describe("PeerBroadcastingDataSource", () => {
     // No UI component has subscribed — broadcast still fires
     real._emit("v.altitude", 12345);
 
-    expect(host.broadcasts).toContainEqual({
-      type: "data",
-      sourceId: "test-source",
-      key: "v.altitude",
-      value: 12345,
-    });
+    expect(host.broadcasts).toContainEqual(
+      expect.objectContaining({
+        type: "data",
+        sourceId: "test-source",
+        key: "v.altitude",
+        value: 12345,
+      }),
+    );
   });
 
   it("broadcasts all schema keys, not just subscribed ones", () => {
@@ -210,12 +212,14 @@ describe("PeerBroadcastingDataSource", () => {
       (m) => m.type === "data" && m.key === "v.altitude",
     );
     expect(altBroadcasts).toHaveLength(1);
-    expect(altBroadcasts[0]).toEqual({
-      type: "data",
-      sourceId: "test-source",
-      key: "v.altitude",
-      value: 1234,
-    });
+    expect(altBroadcasts[0]).toEqual(
+      expect.objectContaining({
+        type: "data",
+        sourceId: "test-source",
+        key: "v.altitude",
+        value: 1234,
+      }),
+    );
   });
 
   it("delegates id, name, status, schema, execute to the real source", async () => {

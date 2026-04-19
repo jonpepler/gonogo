@@ -23,6 +23,11 @@ export function PeerHostProvider({ children }: { children: ReactNode }) {
   // phase sets up useSyncExternalStore subscriptions in child components.
   // A useState initializer runs once on mount during the render phase —
   // earlier than useEffect, which is too late.
+  //
+  // TODO (post-Phase-8): every source is wrapped, so `telemachus` and `data`
+  // (which itself wraps `telemachus`) both broadcast every sample. Once
+  // widgets all read from `data`, stop wrapping `telemachus` to halve the
+  // wire traffic on the broadcast path.
   useState(() => {
     for (const source of getDataSources()) {
       if (source instanceof PeerBroadcastingDataSource) {

@@ -8,9 +8,27 @@ export type PeerMessage =
       sources: Array<{ id: string; name: string; keys: string[] }>;
     }
   | { type: "status"; sourceId: string; status: DataSourceStatus }
-  | { type: "data"; sourceId: string; key: string; value: unknown }
+  // `t` is the host's sample timestamp, optional so partial deploys stay
+  // wire-compatible — the client falls back to Date.now() when absent.
+  | { type: "data"; sourceId: string; key: string; value: unknown; t?: number }
   | { type: "execute"; sourceId: string; action: string }
   | { type: "execute-result"; sourceId: string; action: string; error?: string }
+  | {
+      type: "query-range-request";
+      requestId: string;
+      sourceId: string;
+      key: string;
+      tStart: number;
+      tEnd: number;
+      flightId?: string;
+    }
+  | {
+      type: "query-range-response";
+      requestId: string;
+      t: number[];
+      v: unknown[];
+      error?: string;
+    }
   | {
       type: "kos-open";
       sessionId: string;

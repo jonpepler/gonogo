@@ -7,6 +7,17 @@ import type {
 import { debugPeer } from "@gonogo/core";
 import type { PeerHostService } from "./PeerHostService";
 
+type SampleAware = {
+  subscribeSamples: (
+    key: string,
+    cb: (sample: { t: number; v: unknown }) => void,
+  ) => () => void;
+};
+
+function hasSubscribeSamples(source: DataSource): source is DataSource & SampleAware {
+  return typeof (source as Partial<SampleAware>).subscribeSamples === "function";
+}
+
 export class PeerBroadcastingDataSource implements DataSource {
   private seenKeys = new Set<string>();
 
@@ -18,6 +29,7 @@ export class PeerBroadcastingDataSource implements DataSource {
     debugPeer("PBDS wrap", {
       id: real.id,
       schemaKeyCount: schemaKeys.length,
+      sampleAware: hasSubscribeSamples(real),
     });
     // Subscribe to every schema key for the lifetime of the wrapper — we do
     // NOT unsubscribe in disconnect(). Reason: MainScreen's StrictMode
@@ -28,13 +40,29 @@ export class PeerBroadcastingDataSource implements DataSource {
     // the registry for the lifetime of the app, so lifetime-of-wrapper is the
     // correct scope for broadcasting.
     for (const { key } of schemaKeys) {
-      real.subscribe(key, (value) => {
-        if (!this.seenKeys.has(key)) {
-          this.seenKeys.add(key);
-          debugPeer("PBDS first value", { id: this.id, key });
-        }
-        host.broadcast({ type: "data", sourceId: this.id, key, value });
-      });
+      if (hasSubscribeSamples(real)) {
+        real.subscribeSamples(key, ({ t, v: value }) => {
+          if (!this.seenKeys.has(key)) {
+            this.seenKeys.add(key);
+            debugPeer("PBDS first value", { id: this.id, key });
+          }
+          host.broadcast({ type: "data", sourceId: this.id, key, value, t });
+        });
+      } else {
+        real.subscribe(key, (value) => {
+          if (!this.seenKeys.has(key)) {
+            this.seenKeys.add(key);
+            debugPeer("PBDS first value", { id: this.id, key });
+          }
+          host.broadcast({
+            type: "data",
+            sourceId: this.id,
+            key,
+            value,
+            t: Date.now(),
+          });
+        });
+      }
     }
 
     this.real.onStatusChange((status) => {

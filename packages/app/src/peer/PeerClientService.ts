@@ -28,7 +28,7 @@ export class PeerClientService {
   private readonly retryTimeoutMs: number;
 
   private dataListeners = new Set<
-    (sourceId: string, key: string, value: unknown) => void
+    (sourceId: string, key: string, value: unknown, t: number) => void
   >();
   private sourceStatusListeners = new Set<
     (sourceId: string, status: string) => void
@@ -42,6 +42,15 @@ export class PeerClientService {
   >();
   private kosOpenedListeners = new Set<(sessionId: string) => void>();
   private kosCloseListeners = new Set<(sessionId: string) => void>();
+
+  private pendingQueries = new Map<
+    string,
+    {
+      resolve: (range: { t: number[]; v: unknown[] }) => void;
+      reject: (err: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
 
   constructor({
     retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS,
@@ -93,6 +102,7 @@ export class PeerClientService {
     if (this.retryTimer !== null) return; // already scheduled
 
     this.tearDownPeer();
+    this.rejectPendingQueries("peer connection closed");
 
     if (this.retryStart === null) this.retryStart = Date.now();
     if (Date.now() - this.retryStart >= this.retryTimeoutMs) {
@@ -171,7 +181,53 @@ export class PeerClientService {
     this.conn?.send({ type: "kos-close", sessionId } satisfies PeerMessage);
   }
 
-  onData(cb: (sourceId: string, key: string, value: unknown) => void) {
+  /**
+   * Query a range of historical samples from the host's buffered store.
+   * Resolves with columnar `{ t, v }` arrays; rejects with a short error
+   * string if the host reports one or the connection drops first.
+   */
+  sendQueryRange(
+    sourceId: string,
+    key: string,
+    tStart: number,
+    tEnd: number,
+    flightId?: string,
+    timeoutMs = 10_000,
+  ): Promise<{ t: number[]; v: unknown[] }> {
+    if (!this.conn) {
+      return Promise.reject(new Error("not connected"));
+    }
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        if (this.pendingQueries.delete(requestId)) {
+          reject(new Error("queryRange timeout"));
+        }
+      }, timeoutMs);
+      this.pendingQueries.set(requestId, { resolve, reject, timer });
+      this.conn?.send({
+        type: "query-range-request",
+        requestId,
+        sourceId,
+        key,
+        tStart,
+        tEnd,
+        flightId,
+      } satisfies PeerMessage);
+    });
+  }
+
+  private rejectPendingQueries(reason: string) {
+    for (const [id, pending] of this.pendingQueries) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(reason));
+      this.pendingQueries.delete(id);
+    }
+  }
+
+  onData(
+    cb: (sourceId: string, key: string, value: unknown, t: number) => void,
+  ) {
     this.dataListeners.add(cb);
     return () => this.dataListeners.delete(cb);
   }
@@ -228,9 +284,20 @@ export class PeerClientService {
         key: msg.key,
         dataListenerCount: this.dataListeners.size,
       });
+      const t = msg.t ?? Date.now();
       this.dataListeners.forEach((cb) => {
-        cb(msg.sourceId, msg.key, msg.value);
+        cb(msg.sourceId, msg.key, msg.value, t);
       });
+    } else if (msg.type === "query-range-response") {
+      const pending = this.pendingQueries.get(msg.requestId);
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      this.pendingQueries.delete(msg.requestId);
+      if (msg.error) {
+        pending.reject(new Error(msg.error));
+      } else {
+        pending.resolve({ t: msg.t, v: msg.v });
+      }
     } else if (msg.type === "status") {
       this.sourceStatusListeners.forEach((cb) => {
         cb(msg.sourceId, msg.status);
@@ -264,6 +331,7 @@ export class PeerClientService {
       this.retryTimer = null;
     }
     this.tearDownPeer();
+    this.rejectPendingQueries("peer client disconnected");
     this.hostPeerId = null;
     logger.info("[PeerClient] disconnected");
   }

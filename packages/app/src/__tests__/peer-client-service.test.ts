@@ -251,3 +251,100 @@ describe("PeerClientService reconnect loop", () => {
     expect(FakePeer.instances).toHaveLength(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// queryRange — request/response round-trip + lifetime cleanup
+// ---------------------------------------------------------------------------
+
+describe("PeerClientService.sendQueryRange", () => {
+  beforeEach(() => {
+    FakePeer.instances = [];
+  });
+
+  function connectedSvc() {
+    const svc = new PeerClientService();
+    svc.connect("HOST");
+    const peer = FakePeer.instances[0];
+    peer.emit("open");
+    peer._lastConn?.emit("open");
+    return { svc, peer };
+  }
+
+  it("rejects if called before the conn is open", async () => {
+    const svc = new PeerClientService();
+    await expect(
+      svc.sendQueryRange("data", "v.altitude", 0, 1_000),
+    ).rejects.toThrow(/not connected/);
+  });
+
+  it("resolves when a matching query-range-response arrives", async () => {
+    const { svc, peer } = connectedSvc();
+    const conn = peer._lastConn!;
+    const sent: PeerMessage[] = [];
+    conn.send = (msg: PeerMessage) => {
+      sent.push(msg);
+    };
+
+    const pending = svc.sendQueryRange("data", "v.altitude", 0, 1_000);
+    const first = sent[0];
+    if (!first || first.type !== "query-range-request") {
+      throw new Error("expected query-range-request");
+    }
+
+    (svc as unknown as PeerClientServiceInternal).handleMessage({
+      type: "query-range-response",
+      requestId: first.requestId,
+      t: [100, 200],
+      v: [1, 2],
+    });
+
+    await expect(pending).resolves.toEqual({ t: [100, 200], v: [1, 2] });
+  });
+
+  it("rejects when the host responds with an error", async () => {
+    const { svc, peer } = connectedSvc();
+    const conn = peer._lastConn!;
+    const sent: PeerMessage[] = [];
+    conn.send = (msg: PeerMessage) => {
+      sent.push(msg);
+    };
+
+    const pending = svc.sendQueryRange("data", "v.altitude", 0, 1_000);
+    const first = sent[0];
+    if (!first || first.type !== "query-range-request") {
+      throw new Error("expected query-range-request");
+    }
+
+    (svc as unknown as PeerClientServiceInternal).handleMessage({
+      type: "query-range-response",
+      requestId: first.requestId,
+      t: [],
+      v: [],
+      error: "source data has no queryRange",
+    });
+
+    await expect(pending).rejects.toThrow(/no queryRange/);
+  });
+
+  it("rejects pending queries when the connection drops", async () => {
+    const { svc, peer } = connectedSvc();
+    const conn = peer._lastConn!;
+    conn.send = () => {};
+
+    const pending = svc.sendQueryRange("data", "v.altitude", 0, 1_000);
+    conn.emit("close");
+
+    await expect(pending).rejects.toThrow(/closed|disconnected/);
+  });
+
+  it("rejects pending queries on explicit disconnect()", async () => {
+    const { svc, peer } = connectedSvc();
+    const conn = peer._lastConn!;
+    conn.send = () => {};
+
+    const pending = svc.sendQueryRange("data", "v.altitude", 0, 1_000);
+    svc.disconnect();
+
+    await expect(pending).rejects.toThrow(/disconnected/);
+  });
+});

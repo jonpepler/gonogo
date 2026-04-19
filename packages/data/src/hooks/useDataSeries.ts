@@ -42,17 +42,24 @@ export function useDataSeries(
 
       let cancelled = false;
 
-      // Backfill from the store.
+      // Backfill from the store. Errors (e.g. peer closed mid-query, host
+      // has no queryRange) are swallowed — the hook stays in its empty state
+      // until a live sample arrives, rather than crashing the graph.
       const now = Date.now();
-      void source.queryRange(key, now - windowMs, now).then((range) => {
-        if (cancelled) return;
-        dataRef.current = { t: [...range.t], v: [...range.v] };
-        snapshotRef.current = {
-          t: dataRef.current.t,
-          v: dataRef.current.v,
-        };
-        onStoreChange();
-      });
+      void source
+        .queryRange(key, now - windowMs, now)
+        .then((range) => {
+          if (cancelled) return;
+          dataRef.current = { t: [...range.t], v: [...range.v] };
+          snapshotRef.current = {
+            t: dataRef.current.t,
+            v: dataRef.current.v,
+          };
+          onStoreChange();
+        })
+        .catch(() => {
+          // Intentionally silent — treat as "no backfill available".
+        });
 
       // Live updates via the timestamped API so our appended points share
       // the buffered source's clock.

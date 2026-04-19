@@ -1,0 +1,141 @@
+import { describe, expect, it, vi } from "vitest";
+import { PeerClientDataSource } from "../peer/PeerClientDataSource";
+import type { PeerClientService } from "../peer/PeerClientService";
+
+interface FakeClient {
+  emitData: (sourceId: string, key: string, value: unknown, t: number) => void;
+  emitStatus: (sourceId: string, status: string) => void;
+  lastQuery: {
+    sourceId: string;
+    key: string;
+    tStart: number;
+    tEnd: number;
+    flightId?: string;
+  } | null;
+  service: PeerClientService;
+}
+
+function makeFakeClient(
+  queryImpl?: () => Promise<{ t: number[]; v: unknown[] }>,
+): FakeClient {
+  let dataCb:
+    | ((sourceId: string, key: string, value: unknown, t: number) => void)
+    | null = null;
+  let statusCb: ((sourceId: string, status: string) => void) | null = null;
+  const fake: Partial<PeerClientService> & {
+    lastQuery: FakeClient["lastQuery"];
+  } = {
+    onData: (cb) => {
+      dataCb = cb;
+      return () => {
+        dataCb = null;
+        return true;
+      };
+    },
+    onSourceStatus: (cb) => {
+      statusCb = cb;
+      return () => {
+        statusCb = null;
+        return true;
+      };
+    },
+    sendExecute: vi.fn(),
+    sendQueryRange: vi.fn(
+      async (sourceId, key, tStart, tEnd, flightId) => {
+        fake.lastQuery = { sourceId, key, tStart, tEnd, flightId };
+        return queryImpl
+          ? queryImpl()
+          : ({ t: [], v: [] } as { t: number[]; v: unknown[] });
+      },
+    ),
+    lastQuery: null,
+  };
+  return {
+    service: fake as unknown as PeerClientService,
+    emitData: (sourceId, key, value, t) => dataCb?.(sourceId, key, value, t),
+    emitStatus: (sourceId, status) => statusCb?.(sourceId, status),
+    get lastQuery() {
+      return fake.lastQuery;
+    },
+  } as FakeClient;
+}
+
+describe("PeerClientDataSource", () => {
+  it("fires subscribe callbacks with the raw value", () => {
+    const fake = makeFakeClient();
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+    const received: unknown[] = [];
+    source.subscribe("v.altitude", (v) => received.push(v));
+
+    fake.emitData("data", "v.altitude", 1234, 5000);
+    expect(received).toEqual([1234]);
+  });
+
+  it("ignores samples from other sources", () => {
+    const fake = makeFakeClient();
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+    const received: unknown[] = [];
+    source.subscribe("v.altitude", (v) => received.push(v));
+
+    fake.emitData("telemachus", "v.altitude", 99, 5000);
+    expect(received).toEqual([]);
+  });
+
+  it("subscribeSamples fires with host timestamp from the broadcast", () => {
+    const fake = makeFakeClient();
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+    const samples: Array<{ t: number; v: unknown }> = [];
+    source.subscribeSamples("v.altitude", (s) => samples.push(s));
+
+    fake.emitData("data", "v.altitude", 100, 5000);
+    fake.emitData("data", "v.altitude", 200, 5500);
+    expect(samples).toEqual([
+      { t: 5000, v: 100 },
+      { t: 5500, v: 200 },
+    ]);
+  });
+
+  it("subscribeSamples unsubscribe stops further deliveries", () => {
+    const fake = makeFakeClient();
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+    const samples: Array<{ t: number; v: unknown }> = [];
+    const unsub = source.subscribeSamples("v.altitude", (s) =>
+      samples.push(s),
+    );
+
+    fake.emitData("data", "v.altitude", 1, 1000);
+    unsub();
+    fake.emitData("data", "v.altitude", 2, 2000);
+    expect(samples).toEqual([{ t: 1000, v: 1 }]);
+  });
+
+  it("queryRange delegates to client.sendQueryRange and passes all args through", async () => {
+    const fake = makeFakeClient(async () => ({
+      t: [100, 200],
+      v: [1, 2],
+    }));
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+
+    const range = await source.queryRange("v.altitude", 0, 999, "flight-7");
+
+    expect(range).toEqual({ t: [100, 200], v: [1, 2] });
+    expect(fake.lastQuery).toEqual({
+      sourceId: "data",
+      key: "v.altitude",
+      tStart: 0,
+      tEnd: 999,
+      flightId: "flight-7",
+    });
+  });
+
+  it("queryRange propagates the client's rejection", async () => {
+    const fake = makeFakeClient(async () => {
+      throw new Error("queryRange timeout");
+    });
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+
+    await expect(source.queryRange("v.altitude", 0, 1)).rejects.toThrow(
+      /queryRange timeout/,
+    );
+  });
+});

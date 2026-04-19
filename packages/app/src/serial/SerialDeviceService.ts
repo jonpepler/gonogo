@@ -1,0 +1,428 @@
+import type {
+  DeviceInstance,
+  DeviceRenderStyle,
+  DeviceType,
+} from "@gonogo/core";
+import { getSerialRenderStyle, logger } from "@gonogo/core";
+import { defaultVirtualDevice, VIRTUAL_CONTROLLER_TYPE } from "./seeds";
+import type {
+  DeviceTransport,
+  InputEvent,
+  TransportStatus,
+} from "./transports/DeviceTransport";
+import { VirtualTransport } from "./transports/VirtualTransport";
+import { WebSerialTransport } from "./transports/WebSerialTransport";
+
+const DEVICE_TYPES_KEY = "gonogo.serial.device-types";
+const DEFAULT_RENDER_DEBOUNCE_MS = 100;
+
+export type TransportFactory = (
+  instance: DeviceInstance,
+  deviceType: DeviceType,
+) => DeviceTransport;
+
+const defaultTransportFactory: TransportFactory = (instance, deviceType) => {
+  if (instance.transport === "virtual")
+    return new VirtualTransport(instance.id);
+  return new WebSerialTransport({
+    id: instance.id,
+    deviceType,
+    baudRate: instance.baudRate,
+    filters: instance.filters,
+  });
+};
+
+interface ManagedDevice {
+  instance: DeviceInstance;
+  deviceType: DeviceType;
+  transport: DeviceTransport;
+  unsubInput: () => void;
+  unsubStatus: () => void;
+  frameState: Record<string, unknown>;
+  renderTimer: ReturnType<typeof setTimeout> | null;
+}
+
+interface ServiceOptions {
+  screenKey: string;
+  transportFactory?: TransportFactory;
+  renderDebounceMs?: number;
+  storage?: Storage;
+}
+
+export class SerialDeviceService {
+  private screenKey: string;
+  private transportFactory: TransportFactory;
+  private renderDebounceMs: number;
+  private storage: Storage;
+
+  private deviceTypes = new Map<string, DeviceType>();
+  private managed = new Map<string, ManagedDevice>();
+
+  private deviceTypeListeners = new Set<() => void>();
+  private devicesListeners = new Set<() => void>();
+  private inputListeners = new Set<
+    (deviceId: string, event: InputEvent) => void
+  >();
+  private statusListeners = new Set<
+    (deviceId: string, status: TransportStatus, err?: unknown) => void
+  >();
+
+  constructor(opts: ServiceOptions) {
+    this.screenKey = opts.screenKey;
+    this.transportFactory = opts.transportFactory ?? defaultTransportFactory;
+    this.renderDebounceMs = opts.renderDebounceMs ?? DEFAULT_RENDER_DEBOUNCE_MS;
+    this.storage = opts.storage ?? globalThis.localStorage;
+
+    this.loadDeviceTypes();
+    this.loadDevices();
+    this.seedDefaultsIfEmpty();
+  }
+
+  // -------------------------------------------------------------------------
+  // Seeding
+  // -------------------------------------------------------------------------
+
+  private seedDefaultsIfEmpty(): void {
+    if (this.deviceTypes.size === 0) {
+      this.deviceTypes.set(VIRTUAL_CONTROLLER_TYPE.id, VIRTUAL_CONTROLLER_TYPE);
+      this.saveDeviceTypes();
+    }
+    if (this.managed.size === 0) {
+      const instance = defaultVirtualDevice();
+      const type = this.deviceTypes.get(instance.typeId);
+      if (type) {
+        this.register(instance, type);
+        this.saveDevices();
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Device types (shared across screens on the same browser)
+  // -------------------------------------------------------------------------
+
+  getDeviceTypes(): DeviceType[] {
+    return Array.from(this.deviceTypes.values());
+  }
+
+  getDeviceType(id: string): DeviceType | undefined {
+    return this.deviceTypes.get(id);
+  }
+
+  upsertDeviceType(type: DeviceType): void {
+    this.deviceTypes.set(type.id, type);
+    this.saveDeviceTypes();
+    this.emitDeviceTypesChange();
+  }
+
+  async removeDeviceType(id: string): Promise<void> {
+    if (!this.deviceTypes.has(id)) return;
+    // Remove instances that reference this type first so they don't dangle.
+    for (const device of Array.from(this.managed.values())) {
+      if (device.instance.typeId === id) {
+        await this.removeDevice(device.instance.id);
+      }
+    }
+    this.deviceTypes.delete(id);
+    this.saveDeviceTypes();
+    this.emitDeviceTypesChange();
+  }
+
+  onDeviceTypesChange(cb: () => void): () => void {
+    this.deviceTypeListeners.add(cb);
+    return () => {
+      this.deviceTypeListeners.delete(cb);
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Device instances (per-screen)
+  // -------------------------------------------------------------------------
+
+  getDevices(): DeviceInstance[] {
+    return Array.from(this.managed.values()).map((m) => m.instance);
+  }
+
+  getDevice(id: string): DeviceInstance | undefined {
+    return this.managed.get(id)?.instance;
+  }
+
+  addDevice(instance: DeviceInstance): void {
+    if (this.managed.has(instance.id)) return;
+    const deviceType = this.deviceTypes.get(instance.typeId);
+    if (!deviceType) {
+      throw new Error(`Unknown device type: ${instance.typeId}`);
+    }
+    this.register(instance, deviceType);
+    this.saveDevices();
+    this.emitDevicesChange();
+  }
+
+  updateDevice(id: string, updates: Partial<DeviceInstance>): void {
+    const managed = this.managed.get(id);
+    if (!managed) return;
+    const nextInstance = { ...managed.instance, ...updates, id };
+    const nextType =
+      updates.typeId !== undefined
+        ? this.deviceTypes.get(updates.typeId)
+        : managed.deviceType;
+    if (!nextType) throw new Error(`Unknown device type: ${updates.typeId}`);
+
+    // If transport or type changed we must rebuild the transport.
+    const rebuild =
+      updates.transport !== undefined ||
+      updates.typeId !== undefined ||
+      updates.baudRate !== undefined ||
+      updates.filters !== undefined;
+
+    if (rebuild) {
+      void this.teardown(managed);
+      this.register(nextInstance, nextType);
+    } else {
+      managed.instance = nextInstance;
+    }
+    this.saveDevices();
+    this.emitDevicesChange();
+  }
+
+  async removeDevice(id: string): Promise<void> {
+    const managed = this.managed.get(id);
+    if (!managed) return;
+    await this.teardown(managed);
+    this.managed.delete(id);
+    this.saveDevices();
+    this.emitDevicesChange();
+  }
+
+  onDevicesChange(cb: () => void): () => void {
+    this.devicesListeners.add(cb);
+    return () => {
+      this.devicesListeners.delete(cb);
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Transport control
+  // -------------------------------------------------------------------------
+
+  async connect(deviceId: string): Promise<void> {
+    const managed = this.managed.get(deviceId);
+    if (!managed) return;
+    await managed.transport.connect();
+  }
+
+  async disconnect(deviceId: string): Promise<void> {
+    const managed = this.managed.get(deviceId);
+    if (!managed) return;
+    await managed.transport.disconnect();
+  }
+
+  getStatus(deviceId: string): TransportStatus {
+    return this.managed.get(deviceId)?.transport.status ?? "disconnected";
+  }
+
+  getTransport(deviceId: string): DeviceTransport | undefined {
+    return this.managed.get(deviceId)?.transport;
+  }
+
+  onInput(cb: (deviceId: string, event: InputEvent) => void): () => void {
+    this.inputListeners.add(cb);
+    return () => {
+      this.inputListeners.delete(cb);
+    };
+  }
+
+  onStatusChange(
+    cb: (deviceId: string, status: TransportStatus, err?: unknown) => void,
+  ): () => void {
+    this.statusListeners.add(cb);
+    return () => {
+      this.statusListeners.delete(cb);
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Action return values → debounced render → transport.write()
+  // -------------------------------------------------------------------------
+
+  /**
+   * Called by the InputDispatcher whenever an action handler returns a value
+   * for a given device. The latest value per-key is merged into the device's
+   * frame state and a render is scheduled.
+   */
+  recordActionReturn(deviceId: string, returned: unknown): void {
+    if (returned === null || returned === undefined) return;
+    if (typeof returned !== "object") return;
+    const managed = this.managed.get(deviceId);
+    if (!managed) return;
+    Object.assign(managed.frameState, returned as Record<string, unknown>);
+    this.scheduleRender(managed);
+  }
+
+  /** Force-flush any pending renders (used by destroy + tests). */
+  flushRender(deviceId: string): void {
+    const managed = this.managed.get(deviceId);
+    if (!managed) return;
+    if (managed.renderTimer !== null) {
+      clearTimeout(managed.renderTimer);
+      managed.renderTimer = null;
+    }
+    this.renderNow(managed);
+  }
+
+  // -------------------------------------------------------------------------
+  // Teardown
+  // -------------------------------------------------------------------------
+
+  async destroy(): Promise<void> {
+    for (const managed of Array.from(this.managed.values())) {
+      await this.teardown(managed);
+    }
+    this.managed.clear();
+  }
+
+  // -------------------------------------------------------------------------
+  // Internal
+  // -------------------------------------------------------------------------
+
+  private register(instance: DeviceInstance, deviceType: DeviceType): void {
+    const transport = this.transportFactory(instance, deviceType);
+    const unsubInput = transport.onInput((event) => {
+      this.inputListeners.forEach((cb) => {
+        cb(instance.id, event);
+      });
+    });
+    const unsubStatus = transport.onStatus((status, err) => {
+      this.statusListeners.forEach((cb) => {
+        cb(instance.id, status, err);
+      });
+    });
+    this.managed.set(instance.id, {
+      instance,
+      deviceType,
+      transport,
+      unsubInput,
+      unsubStatus,
+      frameState: {},
+      renderTimer: null,
+    });
+  }
+
+  private async teardown(managed: ManagedDevice): Promise<void> {
+    managed.unsubInput();
+    managed.unsubStatus();
+    if (managed.renderTimer !== null) {
+      clearTimeout(managed.renderTimer);
+      managed.renderTimer = null;
+    }
+    try {
+      await managed.transport.disconnect();
+    } catch (err) {
+      logger.warn(
+        `[SerialDeviceService] transport.disconnect failed for ${managed.instance.id}`,
+        { err: String(err) },
+      );
+    }
+  }
+
+  private scheduleRender(managed: ManagedDevice): void {
+    if (managed.renderTimer !== null) clearTimeout(managed.renderTimer);
+    managed.renderTimer = setTimeout(() => {
+      managed.renderTimer = null;
+      this.renderNow(managed);
+    }, this.renderDebounceMs);
+  }
+
+  private renderNow(managed: ManagedDevice): void {
+    const styleId = managed.deviceType.renderStyleId;
+    if (!styleId) return;
+    const style: DeviceRenderStyle | undefined = getSerialRenderStyle(styleId);
+    if (!style) return;
+    try {
+      const frame = style.render(managed.frameState);
+      void managed.transport.write(frame);
+    } catch (err) {
+      logger.error(
+        `[SerialDeviceService] render failed for ${managed.instance.id}`,
+        err instanceof Error ? err : new Error(String(err)),
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Persistence
+  // -------------------------------------------------------------------------
+
+  private devicesKey(): string {
+    return `gonogo.serial.devices.${this.screenKey}`;
+  }
+
+  private loadDeviceTypes(): void {
+    try {
+      const raw = this.storage.getItem(DEVICE_TYPES_KEY);
+      if (!raw) return;
+      const list = JSON.parse(raw) as DeviceType[];
+      for (const t of list) this.deviceTypes.set(t.id, t);
+    } catch (err) {
+      logger.warn("[SerialDeviceService] failed to load device types", {
+        err: String(err),
+      });
+    }
+  }
+
+  private saveDeviceTypes(): void {
+    try {
+      this.storage.setItem(
+        DEVICE_TYPES_KEY,
+        JSON.stringify(Array.from(this.deviceTypes.values())),
+      );
+    } catch {
+      // ignore quota/permission errors — in-memory state is authoritative
+    }
+  }
+
+  private loadDevices(): void {
+    try {
+      const raw = this.storage.getItem(this.devicesKey());
+      if (!raw) return;
+      const list = JSON.parse(raw) as DeviceInstance[];
+      for (const inst of list) {
+        const type = this.deviceTypes.get(inst.typeId);
+        if (!type) {
+          logger.warn(
+            `[SerialDeviceService] dropping device ${inst.id} — unknown type ${inst.typeId}`,
+          );
+          continue;
+        }
+        this.register(inst, type);
+      }
+    } catch (err) {
+      logger.warn("[SerialDeviceService] failed to load devices", {
+        err: String(err),
+      });
+    }
+  }
+
+  private saveDevices(): void {
+    try {
+      this.storage.setItem(
+        this.devicesKey(),
+        JSON.stringify(this.getDevices()),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  private emitDeviceTypesChange(): void {
+    this.deviceTypeListeners.forEach((cb) => {
+      cb();
+    });
+  }
+
+  private emitDevicesChange(): void {
+    this.devicesListeners.forEach((cb) => {
+      cb();
+    });
+  }
+}

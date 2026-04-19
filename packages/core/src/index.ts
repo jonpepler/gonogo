@@ -12,5 +12,8 @@ export * from "./logger";
 export * from "./orbital";
 export * from "./registry";
 export * from "./schemas/telemachus";
+export * from "./serial/registry";
+export * from "./serial/renderStyles/textBuffer168";
+export * from "./serial/types";
 export * from "./stock-bodies";
 export * from "./types";

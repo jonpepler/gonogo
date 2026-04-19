@@ -2,7 +2,8 @@ import type { KosConnection, KosConnectionParams } from "@gonogo/core";
 import type { PeerClientService } from "./PeerClientService";
 
 type EventType = "open" | "message" | "close" | "error";
-type AnyListener = (...args: unknown[]) => void;
+// biome-ignore lint/suspicious/noExplicitAny: impl signature must accept all overload shapes (typed per-event)
+type AnyListener = (...args: any[]) => void;
 
 export class KosPeerConnection implements KosConnection {
   readyState: number = WebSocket.CONNECTING;

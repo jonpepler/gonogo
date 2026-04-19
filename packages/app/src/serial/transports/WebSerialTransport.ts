@@ -1,0 +1,167 @@
+import type { DeviceType } from "@gonogo/core";
+import { logger } from "@gonogo/core";
+import { parseCharPosition } from "../parsers/charPosition";
+import type {
+  DeviceTransport,
+  InputEvent,
+  TransportStatus,
+} from "./DeviceTransport";
+
+interface WebSerialTransportOptions {
+  id: string;
+  deviceType: DeviceType;
+  baudRate?: number;
+  filters?: SerialPortFilter[];
+}
+
+/**
+ * Opens a `navigator.serial` port for a single device instance, reads
+ * newline-delimited lines, runs the configured parser against each one,
+ * and emits `InputEvent`s upstream. Frames written via `write()` are
+ * pushed straight to the port (no padding — padding is the render
+ * style's job).
+ */
+export class WebSerialTransport implements DeviceTransport {
+  readonly id: string;
+  status: TransportStatus = "disconnected";
+
+  private deviceType: DeviceType;
+  private baudRate: number;
+  private filters?: SerialPortFilter[];
+
+  private port: SerialPort | null = null;
+  private reader: ReadableStreamDefaultReader<string> | null = null;
+  private writer: WritableStreamDefaultWriter<string> | null = null;
+  private readableClosed: Promise<void> | null = null;
+  private writableClosed: Promise<void> | null = null;
+  private buffer = "";
+
+  private inputListeners = new Set<(event: InputEvent) => void>();
+  private statusListeners = new Set<
+    (status: TransportStatus, err?: unknown) => void
+  >();
+
+  constructor(opts: WebSerialTransportOptions) {
+    this.id = opts.id;
+    this.deviceType = opts.deviceType;
+    this.baudRate = opts.baudRate ?? 9600;
+    this.filters = opts.filters;
+  }
+
+  async connect(): Promise<void> {
+    try {
+      const port = await navigator.serial.requestPort({
+        filters: this.filters,
+      });
+      await port.open({
+        baudRate: this.baudRate,
+        dataBits: 8,
+        stopBits: 1,
+        parity: "none",
+        flowControl: "none",
+      });
+      this.port = port;
+
+      const decoder = new TextDecoderStream();
+      if (!port.readable || !port.writable) {
+        throw new Error("Serial port missing readable/writable streams");
+      }
+      this.readableClosed = port.readable.pipeTo(decoder.writable);
+      this.reader = decoder.readable.getReader();
+
+      const encoder = new TextEncoderStream();
+      this.writableClosed = encoder.readable.pipeTo(port.writable);
+      this.writer = encoder.writable.getWriter();
+
+      this.setStatus("connected");
+      void this.readLoop();
+    } catch (err) {
+      logger.error(
+        `[WebSerialTransport ${this.id}] connect failed`,
+        err instanceof Error ? err : new Error(String(err)),
+      );
+      this.setStatus("error", err);
+      throw err;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    try {
+      await this.reader?.cancel();
+      this.reader?.releaseLock();
+      this.reader = null;
+      await this.readableClosed?.catch(() => {});
+      this.readableClosed = null;
+
+      this.writer?.releaseLock();
+      this.writer = null;
+      await this.writableClosed?.catch(() => {});
+      this.writableClosed = null;
+
+      await this.port?.close();
+      this.port = null;
+    } finally {
+      this.setStatus("disconnected");
+    }
+  }
+
+  async write(data: string | Uint8Array): Promise<void> {
+    if (!this.writer) return;
+    const text =
+      typeof data === "string" ? data : new TextDecoder().decode(data);
+    await this.writer.write(text);
+  }
+
+  onInput(cb: (event: InputEvent) => void): () => void {
+    this.inputListeners.add(cb);
+    return () => {
+      this.inputListeners.delete(cb);
+    };
+  }
+
+  onStatus(cb: (status: TransportStatus, err?: unknown) => void): () => void {
+    this.statusListeners.add(cb);
+    return () => {
+      this.statusListeners.delete(cb);
+    };
+  }
+
+  private async readLoop(): Promise<void> {
+    const reader = this.reader;
+    if (!reader) return;
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        this.buffer += value;
+        const lines = this.buffer.split("\n");
+        this.buffer = lines.pop() ?? "";
+        for (const line of lines) this.handleLine(line);
+      }
+    } catch (err) {
+      logger.error(
+        `[WebSerialTransport ${this.id}] read loop error`,
+        err instanceof Error ? err : new Error(String(err)),
+      );
+      this.setStatus("error", err);
+    }
+  }
+
+  private handleLine(line: string): void {
+    if (this.deviceType.parser !== "char-position") return;
+    const events = parseCharPosition(line, this.deviceType.inputs);
+    for (const event of events) {
+      this.inputListeners.forEach((cb) => {
+        cb(event);
+      });
+    }
+  }
+
+  private setStatus(status: TransportStatus, err?: unknown): void {
+    this.status = status;
+    this.statusListeners.forEach((cb) => {
+      cb(status, err);
+    });
+  }
+}

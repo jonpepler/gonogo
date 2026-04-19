@@ -1,6 +1,6 @@
 import type { ComponentDefinition } from "@gonogo/core";
 import { getComponents } from "@gonogo/core";
-import { Tag, useModal } from "@gonogo/ui";
+import { Tag, useFabCluster, useModal } from "@gonogo/ui";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -117,10 +117,16 @@ export function ComponentOverlay({
     [addItem, nextY, openModal, closeModal],
   );
 
+  const cluster = useFabCluster();
+
   return (
     <>
       <FAB
         onClick={() => setOpen(true)}
+        onMouseEnter={cluster?.onMouseEnter}
+        onMouseLeave={cluster?.onMouseLeave}
+        onFocus={cluster?.onFocus}
+        onBlur={cluster?.onBlur}
         aria-label="Add component"
         title="Add component"
       >

@@ -6,6 +6,7 @@ import {
   SerialDeviceService,
   SerialFab,
 } from "@gonogo/serial";
+import { FabClusterProvider } from "@gonogo/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import {
@@ -165,9 +166,11 @@ export function StationScreen() {
               updateItemConfig={dashboard.updateItemConfig}
               updateItemMappings={dashboard.updateItemMappings}
             />
-            <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
-            <FlightsFab />
-            <SerialFab />
+            <FabClusterProvider>
+              <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
+              <FlightsFab />
+              <SerialFab />
+            </FabClusterProvider>
           </Layout>
         </OverlayProvider>
       </SerialDeviceProvider>

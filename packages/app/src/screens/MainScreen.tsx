@@ -9,6 +9,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { FabClusterProvider } from "@gonogo/ui";
 import {
   ComponentOverlay,
   OverlayProvider,
@@ -722,9 +723,11 @@ export function MainScreen() {
             updateItemConfig={dashboard.updateItemConfig}
             updateItemMappings={dashboard.updateItemMappings}
           />
-          <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
-          <FlightsFab />
-          <SerialFab />
+          <FabClusterProvider>
+            <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
+            <FlightsFab />
+            <SerialFab />
+          </FabClusterProvider>
         </Layout>
       </OverlayProvider>
     </SerialDeviceProvider>

@@ -4,10 +4,12 @@ import type {
   DataSource,
   DataSourceStatus,
 } from "@gonogo/core";
+import { getDerivedKeys } from "./derive";
 import { FlightDetector } from "./flightDetector";
 import { debugFlight } from "./logger";
+import { enrichKey } from "./schema/telemachusMeta";
 import type { Store } from "./storage/Store";
-import type { FlightRecord, Sample, SeriesRange } from "./types";
+import type { DataKeyMeta, FlightRecord, Sample, SeriesRange } from "./types";
 
 type Clock = () => number;
 
@@ -60,6 +62,11 @@ export class BufferedDataSource implements DataSource {
   private readonly now: Clock;
 
   private latestName: string | null = null;
+
+  /** Latest known sample (t + v) per raw key, used by the derivation engine. */
+  private readonly lastRawSample = new Map<string, Sample>();
+  /** Last inputs array passed to each derived fn, for the `previous` argument. */
+  private readonly derivedPrevious = new Map<string, Sample[] | null>();
 
   private readonly buffers = new Map<string, SampleRow[]>();
   private readonly keySubscribers = new Map<
@@ -137,8 +144,16 @@ export class BufferedDataSource implements DataSource {
     this.upstreamStatusUnsub = null;
   }
 
-  schema(): DataKey[] {
-    return this.source.schema();
+  schema(): DataKeyMeta[] {
+    const raw: DataKeyMeta[] = this.source.schema().map((dk) => ({
+      ...dk,
+      ...enrichKey(dk.key),
+    }));
+    const derived: DataKeyMeta[] = getDerivedKeys().map((def) => ({
+      key: def.id,
+      ...def.meta,
+    }));
+    return [...raw, ...derived];
   }
 
   subscribe(key: string, cb: (value: unknown) => void): () => void {
@@ -263,6 +278,8 @@ export class BufferedDataSource implements DataSource {
     this.detector.forgetAll();
     await this.store.clearAllFlights();
     this.buffers.clear();
+    this.lastRawSample.clear();
+    this.derivedPrevious.clear();
     this.emitFlightChange();
   }
 
@@ -277,6 +294,9 @@ export class BufferedDataSource implements DataSource {
     }
 
     const t = this.now();
+
+    // Track latest raw sample for the derivation engine.
+    this.lastRawSample.set(key, { t, v: value });
 
     // Run the detector off v.missionTime as the driver — it ticks every
     // frame with a numeric value, and by the time it arrives in a given
@@ -325,6 +345,57 @@ export class BufferedDataSource implements DataSource {
         });
       }
     }
+
+    // Run derived keys that depend on this raw key.
+    this.runDerivedKeys(key, current?.id ?? null);
+  }
+
+  private runDerivedKeys(changedKey: string, flightId: string | null): void {
+    for (const def of getDerivedKeys()) {
+      if (!def.inputs.includes(changedKey)) continue;
+
+      // All inputs must have been seen at least once before we fire.
+      const inputSamples: Sample[] = [];
+      let allSeen = true;
+      for (const inputKey of def.inputs) {
+        const s = this.lastRawSample.get(inputKey);
+        if (!s) {
+          allSeen = false;
+          break;
+        }
+        inputSamples.push(s);
+      }
+      if (!allSeen) continue;
+
+      const previous = this.derivedPrevious.get(def.id) ?? null;
+      const result = def.fn(inputSamples, previous);
+      this.derivedPrevious.set(def.id, inputSamples);
+
+      if (result === undefined) continue;
+
+      const derivedT = this.now();
+
+      if (flightId) {
+        void this.store.appendSample(flightId, def.id, derivedT, result);
+        this.pushToBuffer(def.id, derivedT, result);
+      }
+
+      const subs = this.keySubscribers.get(def.id);
+      if (subs) {
+        subs.forEach((cb) => {
+          cb(result);
+        });
+      }
+
+      if (flightId) {
+        const sampleSubs = this.sampleSubscribers.get(def.id);
+        if (sampleSubs) {
+          sampleSubs.forEach((cb) => {
+            cb({ t: derivedT, v: result });
+          });
+        }
+      }
+    }
   }
 
   private pushToBuffer(key: string, t: number, v: unknown): void {
@@ -345,6 +416,9 @@ export class BufferedDataSource implements DataSource {
     const next = this.detector.getCurrent();
     if (next === this.lastEmittedCurrent) return;
     this.lastEmittedCurrent = next;
+    // Reset derivation state across flight boundaries so rates don't
+    // straddle two flights.
+    this.derivedPrevious.clear();
     this.flightSubscribers.forEach((cb) => {
       cb(next);
     });

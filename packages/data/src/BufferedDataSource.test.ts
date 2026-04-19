@@ -6,6 +6,7 @@ import type {
 } from "@gonogo/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BufferedDataSource } from "./BufferedDataSource";
+import { clearDerivedKeys, registerDerivedKey } from "./derive";
 import { MemoryStore } from "./storage/MemoryStore";
 
 /**
@@ -250,5 +251,207 @@ describe("BufferedDataSource", () => {
     buffered.onStatusChange(spy);
     source.disconnect();
     expect(spy).toHaveBeenCalledWith("disconnected");
+  });
+
+  it("schema() enriches raw keys with metadata", () => {
+    const schema = buffered.schema();
+    const alt = schema.find((k) => k.key === "v.altitude");
+    expect(alt?.label).toBe("Altitude");
+    expect(alt?.unit).toBe("m");
+    expect(alt?.group).toBe("Position");
+  });
+
+  it("schema() falls back to key-as-label for keys absent from telemachusMeta", () => {
+    // Use a mock source that includes a key with no metadata entry.
+    const unknownSource = new MockSource([
+      { key: "v.name" },
+      { key: "v.missionTime" },
+      { key: "totally.unknown.key" },
+    ]);
+    const buf = new BufferedDataSource({ source: unknownSource, store: new MemoryStore(), now: () => clock });
+    // connect() is not needed — schema() is synchronous
+    const schema = buf.schema();
+    const unknown = schema.find((k) => k.key === "totally.unknown.key");
+    expect(unknown?.label).toBe("totally.unknown.key");
+    expect(unknown?.group).toBe("Other");
+  });
+});
+
+describe("BufferedDataSource — derived keys", () => {
+  let source: MockSource;
+  let store: MemoryStore;
+  let buffered: BufferedDataSource;
+  let clock = 1000;
+
+  const KEYS_WITH_ALTITUDE: DataKey[] = [
+    { key: "v.name" },
+    { key: "v.missionTime" },
+    { key: "v.altitude" },
+  ];
+
+  beforeEach(async () => {
+    clearDerivedKeys();
+    source = new MockSource(KEYS_WITH_ALTITUDE);
+    store = new MemoryStore();
+    clock = 1000;
+    buffered = new BufferedDataSource({
+      source,
+      store,
+      now: () => clock,
+      inMemoryLimit: 50,
+    });
+    await buffered.connect();
+    // Establish a flight
+    source.emit("v.name", "KX");
+    source.emit("v.missionTime", 0);
+  });
+
+  afterEach(() => {
+    buffered.disconnect();
+    clearDerivedKeys();
+  });
+
+  it("emits derived value to subscribe() subscribers", () => {
+    registerDerivedKey({
+      id: "test.double",
+      inputs: ["v.altitude"],
+      meta: { label: "Doubled altitude", group: "Test" },
+      fn: ([alt]) => (alt.v as number) * 2,
+    });
+
+    const spy = vi.fn();
+    buffered.subscribe("test.double", spy);
+
+    source.emit("v.altitude", 500);
+    expect(spy).toHaveBeenCalledWith(1000);
+  });
+
+  it("emits derived value to subscribeSamples() subscribers", () => {
+    registerDerivedKey({
+      id: "test.double",
+      inputs: ["v.altitude"],
+      meta: { label: "Doubled altitude", group: "Test" },
+      fn: ([alt]) => (alt.v as number) * 2,
+    });
+
+    const spy = vi.fn();
+    buffered.subscribeSamples("test.double", spy);
+
+    clock = 2000;
+    source.emit("v.altitude", 500);
+    expect(spy).toHaveBeenCalledWith({ t: 2000, v: 1000 });
+  });
+
+  it("does not emit derived value until all inputs have been seen", () => {
+    registerDerivedKey({
+      id: "test.sum",
+      inputs: ["v.altitude", "v.missionTime"],
+      meta: { label: "Sum", group: "Test" },
+      fn: ([alt, mt]) => (alt.v as number) + (mt.v as number),
+    });
+
+    const spy = vi.fn();
+    buffered.subscribe("test.sum", spy);
+
+    // missionTime arrived in beforeEach, but altitude has not yet
+    source.emit("v.altitude", 100);
+    expect(spy).toHaveBeenCalledTimes(1); // fires now — both inputs seen
+  });
+
+  it("does not emit derived value when fn returns undefined", () => {
+    registerDerivedKey({
+      id: "test.noFirst",
+      inputs: ["v.altitude"],
+      meta: { label: "No first", group: "Test" },
+      fn: (_inputs, previous) => (previous === null ? undefined : 42),
+    });
+
+    const spy = vi.fn();
+    buffered.subscribe("test.noFirst", spy);
+
+    source.emit("v.altitude", 100); // first — fn returns undefined
+    expect(spy).not.toHaveBeenCalled();
+
+    source.emit("v.altitude", 200); // second — fn returns 42
+    expect(spy).toHaveBeenCalledWith(42);
+  });
+
+  it("persists derived samples to the store", async () => {
+    registerDerivedKey({
+      id: "test.double",
+      inputs: ["v.altitude"],
+      meta: { label: "Doubled altitude", group: "Test" },
+      fn: ([alt]) => (alt.v as number) * 2,
+    });
+
+    clock = 3000;
+    source.emit("v.altitude", 100);
+
+    const range = await buffered.queryRange("test.double", 0, 99_999);
+    expect(range.v).toEqual([200]);
+  });
+
+  it("schema() includes registered derived keys", () => {
+    registerDerivedKey({
+      id: "test.double",
+      inputs: ["v.altitude"],
+      meta: { label: "Doubled altitude", unit: "m", group: "Test" },
+      fn: ([alt]) => (alt.v as number) * 2,
+    });
+
+    const schema = buffered.schema();
+    const derived = schema.find((k) => k.key === "test.double");
+    expect(derived?.label).toBe("Doubled altitude");
+    expect(derived?.unit).toBe("m");
+    expect(derived?.group).toBe("Test");
+  });
+
+  it("resets derivedPrevious on flight transition so rate does not straddle flights", () => {
+    registerDerivedKey({
+      id: "test.rate",
+      inputs: ["v.altitude"],
+      meta: { label: "Rate", group: "Test" },
+      fn: ([alt], previous) => {
+        if (previous === null) return undefined;
+        const dt = (alt.t - previous[0].t) / 1000;
+        return ((alt.v as number) - (previous[0].v as number)) / dt;
+      },
+    });
+
+    const spy = vi.fn();
+    buffered.subscribe("test.rate", spy);
+
+    clock = 1000;
+    source.emit("v.altitude", 100); // first — no previous, no emit
+    clock = 2000;
+    source.emit("v.altitude", 200); // 100 m/s
+    expect(spy).toHaveBeenCalledWith(100);
+
+    spy.mockClear();
+
+    // Trigger a new flight via missionTime revert
+    source.emit("v.missionTime", -10);
+    // First altitude after flight change — previous is cleared, so no rate
+    clock = 3000;
+    source.emit("v.altitude", 50);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("clearAllFlights resets derivation state", async () => {
+    registerDerivedKey({
+      id: "test.rate",
+      inputs: ["v.altitude"],
+      meta: { label: "Rate", group: "Test" },
+      fn: ([alt], previous) => (previous === null ? undefined : (alt.v as number) - (previous[0].v as number)),
+    });
+
+    source.emit("v.altitude", 100); // seeds lastRawSample + derivedPrevious
+
+    await buffered.clearAllFlights(); // clears derivedPrevious synchronously before returns
+
+    const spy = vi.fn();
+    buffered.subscribe("test.rate", spy);
+    source.emit("v.altitude", 50); // after clear — previous is null, no emit
+    expect(spy).not.toHaveBeenCalled();
   });
 });

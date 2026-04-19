@@ -1,6 +1,8 @@
 import { registerDataSource } from "@gonogo/core";
-import { BufferedDataSource, IndexedDbStore } from "@gonogo/data";
+import { BufferedDataSource, IndexedDbStore, registerBuiltinDerivedKeys } from "@gonogo/data";
 import { telemachusSource } from "./telemachus";
+
+registerBuiltinDerivedKeys();
 
 /**
  * Wraps the raw telemachus source in a flight-aware, IndexedDB-backed

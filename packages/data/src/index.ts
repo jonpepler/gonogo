@@ -1,8 +1,11 @@
 export * from "./BufferedDataSource";
+export * from "./derive";
 export * from "./flightDetector";
 export * from "./hooks/useDataSeries";
 export * from "./hooks/useFlight";
 export { debugFlight } from "./logger";
+export { registerBuiltinDerivedKeys } from "./schema/builtinDerivedKeys";
+export { enrichKey, TELEMACHUS_META } from "./schema/telemachusMeta";
 export { IndexedDbStore } from "./storage/IndexedDbStore";
 export { MemoryStore } from "./storage/MemoryStore";
 export type { Store } from "./storage/Store";

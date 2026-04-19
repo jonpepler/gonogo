@@ -3,13 +3,13 @@ import {
   formatDistance,
   formatDuration,
   getBody,
-  orbitalToCartesian,
   registerComponent,
-  trueAnomalyToRadius,
   useDataValue,
 } from "@gonogo/core";
-import { Panel, PanelTitle } from "@gonogo/ui";
+import { Panel, PanelSubtitle, PanelTitle } from "@gonogo/ui";
 import styled from "styled-components";
+import { OrbitDiagram } from "../shared/OrbitDiagram";
+import { useIsOrbiting } from "../shared/useIsOrbiting";
 
 interface CurrentOrbitConfig {
   /** Show the mini SVG orbit diagram. Default: true. */
@@ -25,7 +25,10 @@ function CurrentOrbitComponent({
   const periapsisA = useDataValue("telemachus", "o.PeA");
   const apoapsisR = useDataValue("telemachus", "o.ApR");
   const periapsisR = useDataValue("telemachus", "o.PeR");
+  const sma = useDataValue("telemachus", "o.sma");
   const eccentricity = useDataValue("telemachus", "o.eccentricity");
+  const trueAnomaly = useDataValue("telemachus", "o.trueAnomaly");
+  const argPe = useDataValue("telemachus", "o.argumentOfPeriapsis");
   const inclination = useDataValue("telemachus", "o.inclination");
   const period = useDataValue("telemachus", "o.period");
   const timeToAp = useDataValue("telemachus", "o.timeToAp");
@@ -37,11 +40,18 @@ function CurrentOrbitComponent({
     (bodyName ?? refBody) === undefined
       ? undefined
       : getBody(bodyName ?? refBody ?? "");
+  const { isOrbiting } = useIsOrbiting();
+
+  const hasOrbit =
+    sma !== undefined &&
+    eccentricity !== undefined &&
+    apoapsisR !== undefined &&
+    periapsisR !== undefined;
 
   return (
     <Panel>
-      <Title>ORBIT</Title>
-      {refBody !== undefined && <RefBody>{refBody}</RefBody>}
+      <PanelTitle>ORBIT</PanelTitle>
+      {refBody !== undefined && <PanelSubtitle>{refBody}</PanelSubtitle>}
 
       <Grid>
         <Label>Ap</Label>
@@ -78,99 +88,25 @@ function CurrentOrbitComponent({
         </Value>
       </Grid>
 
-      {showDiagram && apoapsisR !== undefined && periapsisR !== undefined && (
-        <MiniDiagram
-          apoapsis={apoapsisR}
-          periapsis={periapsisR}
-          eccentricity={eccentricity ?? 0}
-          trueAnomaly={0}
-          bodyRadius={body?.radius}
-          bodyColor={body?.color}
-        />
+      {showDiagram && hasOrbit && (
+        <MiniDiagramWrap>
+          <OrbitDiagram
+            variant="mini"
+            sma={sma}
+            ecc={eccentricity}
+            apoapsis={apoapsisR}
+            periapsis={periapsisR}
+            trueAnomaly={trueAnomaly ?? 0}
+            argPe={argPe ?? 0}
+            bodyColor={body?.color}
+            bodyRadius={body?.radius}
+            isOrbiting={isOrbiting}
+          />
+        </MiniDiagramWrap>
       )}
     </Panel>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Mini SVG orbit diagram
-// ---------------------------------------------------------------------------
-
-interface MiniDiagramProps {
-  apoapsis: number;
-  periapsis: number;
-  eccentricity: number;
-  trueAnomaly: number;
-  bodyRadius?: number;
-  bodyColor?: string;
-}
-
-function MiniDiagram({
-  apoapsis,
-  periapsis,
-  eccentricity: ecc,
-  trueAnomaly,
-  bodyRadius,
-  bodyColor,
-}: Readonly<MiniDiagramProps>) {
-  // Orbital geometry from apoapsis/periapsis radii (distance from body centre)
-  // sma (semi-major axis from focus): a = (rAp + rPe) / 2
-  const rAp = apoapsis;
-  const rPe = periapsis;
-  const sma = (rAp + rPe) / 2;
-  const b = sma * Math.sqrt(Math.max(0, 1 - ecc * ecc));
-  const c = sma * ecc;
-  const padding = rAp * 0.18;
-
-  const vbX = -(rAp + padding);
-  const vbY = -(b + padding);
-  const vbW = rAp + rPe + 2 * padding;
-  const vbH = 2 * (b + padding);
-
-  const bodyDisc = bodyRadius ? Math.min(bodyRadius, rAp * 0.2) : rAp * 0.06;
-
-  const strokeW = rAp * 0.012;
-  const dotR = rAp * 0.025;
-
-  // Vessel position using true anomaly
-  const r = trueAnomalyToRadius(sma, ecc, trueAnomaly);
-  const { x: vx, y: vy } = orbitalToCartesian(r, trueAnomaly);
-
-  return (
-    <DiagramSvg
-      viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
-      preserveAspectRatio="xMidYMid meet"
-      aria-hidden="true"
-    >
-      {/* Body at focus */}
-      <circle cx={0} cy={0} r={bodyDisc} fill={bodyColor ?? "#444"} />
-
-      {/* Orbit ellipse: centre at (-c, 0) from focus */}
-      <ellipse
-        cx={-c}
-        cy={0}
-        rx={sma}
-        ry={b}
-        fill="none"
-        stroke="rgba(0,255,136,0.35)"
-        strokeWidth={strokeW}
-      />
-
-      {/* Apoapsis marker */}
-      <circle cx={-rAp} cy={0} r={dotR} fill="#ff8c00" />
-
-      {/* Periapsis marker */}
-      <circle cx={rPe} cy={0} r={dotR} fill="#4499ff" />
-
-      {/* Vessel */}
-      <circle cx={vx} cy={-vy} r={dotR * 1.3} fill="#00ff88" />
-    </DiagramSvg>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
 
 registerComponent<CurrentOrbitConfig>({
   id: "current-orbit",
@@ -185,7 +121,10 @@ registerComponent<CurrentOrbitConfig>({
     "o.PeA",
     "o.ApR",
     "o.PeR",
+    "o.sma",
     "o.eccentricity",
+    "o.trueAnomaly",
+    "o.argumentOfPeriapsis",
     "o.inclination",
     "o.period",
     "o.timeToAp",
@@ -198,22 +137,6 @@ registerComponent<CurrentOrbitConfig>({
 });
 
 export { CurrentOrbitComponent };
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const Title = styled(PanelTitle)`
-  font-size: 10px;
-  letter-spacing: 0.15em;
-`;
-
-const RefBody = styled.div`
-  font-size: 12px;
-  color: #888;
-  letter-spacing: 0.05em;
-  margin-top: -4px;
-`;
 
 const Grid = styled.div`
   display: grid;
@@ -240,9 +163,9 @@ const Value = styled.span<{ $accent?: "ap" | "pe" }>`
   letter-spacing: 0.03em;
 `;
 
-const DiagramSvg = styled.svg`
-  width: 100%;
+const MiniDiagramWrap = styled.div`
   height: 80px;
-  display: block;
+  flex-shrink: 0;
   margin-top: 4px;
+  display: flex;
 `;

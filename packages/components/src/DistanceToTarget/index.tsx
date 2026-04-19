@@ -8,7 +8,7 @@ function DistanceToTargetComponent() {
 
   return (
     <Panel>
-      <Title>TARGET</Title>
+      <PanelTitle>TARGET</PanelTitle>
 
       {tarName === undefined ? (
         <NoTarget>No target set in KSP</NoTarget>
@@ -43,11 +43,6 @@ export { DistanceToTargetComponent };
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
-
-const Title = styled(PanelTitle)`
-  font-size: 10px;
-  letter-spacing: 0.15em;
-`;
 
 const TargetName = styled.div`
   font-size: 13px;

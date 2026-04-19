@@ -1,15 +1,9 @@
-import { PanelTitle } from "@gonogo/ui";
 import styled from "styled-components";
 
 export const Header = styled.div`
   display: flex;
   align-items: baseline;
   gap: 8px;
-`;
-
-export const Title = styled(PanelTitle)`
-  font-size: 10px;
-  letter-spacing: 0.15em;
 `;
 
 export const BodyLabel = styled.span`

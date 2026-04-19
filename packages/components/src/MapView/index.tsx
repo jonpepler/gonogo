@@ -5,7 +5,7 @@ import {
   registerComponent,
   useDataValue,
 } from "@gonogo/core";
-import { Panel, Switch } from "@gonogo/ui";
+import { Panel, PanelTitle, Switch } from "@gonogo/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   cameraTransform,
@@ -28,7 +28,6 @@ import {
   TelKey,
   TelRow,
   TelValue,
-  Title,
 } from "./MapView.styles";
 import { MapViewConfigComponent, TELEMETRY_OPTIONS } from "./MapViewConfig";
 import type { MapViewConfig } from "./types";
@@ -262,7 +261,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   return (
     <Panel>
       <Header>
-        <Title>MAP VIEW</Title>
+        <PanelTitle>MAP VIEW</PanelTitle>
         {displayName && <BodyLabel>{displayName}</BodyLabel>}
         <Switch
           checked={viewMode === "follow"}

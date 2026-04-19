@@ -17,11 +17,18 @@ export const Panel = styled.div`
 
 export const PanelTitle = styled.h3`
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #666;
+`;
+
+export const PanelSubtitle = styled.div`
+  font-size: 12px;
+  color: #888;
+  letter-spacing: 0.05em;
+  margin-top: -4px;
 `;
 
 export const PanelScrollable = styled(Panel)`

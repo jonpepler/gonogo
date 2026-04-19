@@ -1,5 +1,7 @@
 export * from "./Button";
 export * from "./DataKeyPicker";
+export * from "./LineChart";
+export * from "./lineChartMath";
 export * from "./Form";
 export * from "./Icons";
 export * from "./Modal";

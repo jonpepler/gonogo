@@ -1,7 +1,8 @@
 import { BroadcastIcon, Fab, useModal } from "@gonogo/ui";
 import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
-import { usePeerHost } from "../peer/PeerHostProvider";
+import { peerHostService } from "../peer/PeerHostService";
 
 /**
  * Station-link FAB — shows the host's peer ID + a QR code so a station
@@ -28,7 +29,17 @@ export function StationLinkFab() {
 }
 
 function StationLinkPanel() {
-  const { peerId } = usePeerHost();
+  // The modal portal renders outside the PeerHostProvider subtree, so the
+  // usePeerHost() context hook would always return null in here. Subscribe
+  // to the service singleton directly — it already drives the provider's
+  // state, so this sees the same value without relying on React context.
+  const [peerId, setPeerId] = useState<string | null>(peerHostService.peerId);
+  useEffect(() => {
+    const unsub = peerHostService.onPeerIdChange(setPeerId);
+    return () => {
+      unsub();
+    };
+  }, []);
 
   if (!peerId) {
     return <Empty>Connecting to peer network…</Empty>;

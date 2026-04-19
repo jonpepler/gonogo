@@ -62,17 +62,23 @@ export { ErrorBoundary } from "./ErrorBoundary";
  * Flag-gated debug logger for tracing peer / data-source plumbing without
  * flooding normal console output. Activate by running
  * `localStorage.setItem('DEBUG_PEER', '1')` in the browser devtools, then
- * reloading. Safe to call from any module — in non-browser contexts (tests,
- * node scripts) it silently does nothing.
+ * reloading. The flag is resolved once on first call and cached — this runs
+ * in the per-message hot path (hundreds of times per second), so each call
+ * past the first is a single boolean check.
  */
+let debugPeerEnabled: boolean | null = null;
 export function debugPeer(tag: string, context?: LogContext) {
-  try {
-    if (typeof localStorage === "undefined") return;
-    if (localStorage.getItem("DEBUG_PEER") !== "1") return;
-    logger.debug(`[peer] ${tag}`, context);
-  } catch {
-    /* localStorage unavailable */
+  if (debugPeerEnabled === null) {
+    try {
+      debugPeerEnabled =
+        typeof localStorage !== "undefined" &&
+        localStorage.getItem("DEBUG_PEER") === "1";
+    } catch {
+      debugPeerEnabled = false;
+    }
   }
+  if (!debugPeerEnabled) return;
+  logger.debug(`[peer] ${tag}`, context);
 }
 
 import { handleError as genericHandleError } from "./error-handler";

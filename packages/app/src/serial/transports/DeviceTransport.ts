@@ -28,4 +28,13 @@ export interface DeviceTransport {
   onInput(cb: (event: InputEvent) => void): () => void;
   onStatus(cb: (status: TransportStatus, err?: unknown) => void): () => void;
   readonly status: TransportStatus;
+  /**
+   * Only implemented by virtual transports — drives an input event as if it
+   * came from the device. Real transports (Web Serial) omit this.
+   */
+  inject?(inputId: string, value: boolean | number): void;
+  /** Latest rendered frame written by the service. Virtual-only. */
+  readonly lastFrame?: string | Uint8Array | null;
+  /** Subscribe to frames written via `write()`. Virtual-only. */
+  onFrame?(cb: (frame: string | Uint8Array) => void): () => void;
 }

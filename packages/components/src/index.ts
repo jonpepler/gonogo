@@ -8,3 +8,4 @@ export * from "./DistanceToTarget";
 export * from "./KosTerminal";
 export * from "./MapView";
 export * from "./OrbitView";
+export * from "./VirtualDevice";

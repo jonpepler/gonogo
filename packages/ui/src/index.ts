@@ -1,5 +1,6 @@
 export * from "./Button";
 export * from "./Form";
+export * from "./Icons";
 export * from "./Modal";
 export * from "./Panel";
 export * from "./Switch";

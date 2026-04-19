@@ -1,7 +1,7 @@
 import type {
   ActionDefinition,
   ComponentProps,
-  TelemaachusSchema,
+  DataSourceRegistry,
 } from "@gonogo/core";
 import {
   getBody,
@@ -10,6 +10,7 @@ import {
   useActionInput,
   useDataValue,
 } from "@gonogo/core";
+import { useDataSchema } from "@gonogo/data";
 import { Panel, PanelTitle, Switch } from "@gonogo/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -36,7 +37,7 @@ import {
   TelRow,
   TelValue,
 } from "./MapView.styles";
-import { MapViewConfigComponent, TELEMETRY_OPTIONS } from "./MapViewConfig";
+import { MapViewConfigComponent } from "./MapViewConfig";
 import type { MapViewConfig } from "./types";
 import { useCamera } from "./useCamera";
 import { useMapResize } from "./useMapResize";
@@ -76,6 +77,9 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const trajectoryLength = config?.trajectoryLength ?? 200;
   const telemetryKeys = config?.telemetryKeys ?? [];
   const showTelemetry = telemetryKeys.length > 0;
+
+  const schema = useDataSchema("data");
+  const labelMap = new Map(schema.map((k) => [k.key, k.label]));
 
   const lat = useDataValue("telemachus", "v.lat");
   const lon = useDataValue("telemachus", "v.long");
@@ -374,17 +378,14 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
 
       {showTelemetry && (
         <TelemetryPanel>
-          {telemetryKeys.map((key, idx) => {
-            const opt = TELEMETRY_OPTIONS.find((o) => o.key === key);
-            return (
-              <TelemetryRow
-                key={key}
-                dataKey={key}
-                label={opt?.label ?? key}
-                colorIndex={idx}
-              />
-            );
-          })}
+          {telemetryKeys.map((key, idx) => (
+            <TelemetryRow
+              key={key}
+              dataKey={key}
+              label={labelMap.get(key) ?? key}
+              colorIndex={idx}
+            />
+          ))}
         </TelemetryPanel>
       )}
     </Panel>
@@ -418,11 +419,14 @@ function TelemetryRow({
   label,
   colorIndex,
 }: Readonly<{
-  dataKey: keyof TelemaachusSchema;
+  dataKey: string;
   label: string;
   colorIndex: number;
 }>) {
-  const value = useDataValue("telemachus", dataKey);
+  const value = useDataValue(
+    "data",
+    dataKey as keyof DataSourceRegistry["data"] & string,
+  );
   const colour = TELEMETRY_COLOURS[colorIndex % TELEMETRY_COLOURS.length];
   return (
     <TelRow>

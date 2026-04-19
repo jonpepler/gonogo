@@ -132,6 +132,9 @@ importers:
       '@gonogo/core':
         specifier: workspace:*
         version: link:../core
+      '@gonogo/data':
+        specifier: workspace:*
+        version: link:../data
       '@gonogo/ui':
         specifier: workspace:*
         version: link:../ui

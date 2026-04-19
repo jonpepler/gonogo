@@ -1,4 +1,5 @@
-import type { ConfigComponentProps, TelemaachusSchema } from "@gonogo/core";
+import type { ConfigComponentProps } from "@gonogo/core";
+import { useDataSchema } from "@gonogo/data";
 import {
   ConfigForm,
   Field,
@@ -7,33 +8,26 @@ import {
   Input,
   PrimaryButton,
 } from "@gonogo/ui";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import styled from "styled-components";
 import { Checkbox, CheckLabel, CheckList, CheckRow } from "./MapView.styles";
 import type { MapViewConfig } from "./types";
 
-export const TELEMETRY_OPTIONS: {
-  label: string;
-  key: keyof TelemaachusSchema;
-}[] = [
-  { label: "Altitude (sea level)", key: "v.altitude" },
-  { label: "Altitude (terrain)", key: "v.heightFromTerrain" },
-  { label: "Vertical speed", key: "v.verticalSpeed" },
-  { label: "Surface speed", key: "v.surfaceSpeed" },
-  { label: "Orbital speed", key: "v.obtSpeed" },
-  { label: "Mach", key: "v.mach" },
-  { label: "G-force", key: "v.geeForce" },
-  { label: "Heading", key: "n.heading" },
-  { label: "Pitch", key: "n.pitch" },
-  { label: "Roll", key: "n.roll" },
-  { label: "Mission time", key: "v.missionTime" },
-  { label: "Apoapsis alt", key: "o.ApA" },
-  { label: "Periapsis alt", key: "o.PeA" },
-  { label: "Time to Ap", key: "o.timeToAp" },
-  { label: "Time to Pe", key: "o.timeToPe" },
-  { label: "Inclination", key: "o.inclination" },
-  { label: "Latitude", key: "v.lat" },
-  { label: "Longitude", key: "v.long" },
-];
+const GroupLabel = styled.div`
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #555;
+  margin-top: 10px;
+  margin-bottom: 4px;
+`;
+
+const EmptyHint = styled.div`
+  font-size: 11px;
+  color: #555;
+  padding: 4px 0;
+`;
 
 export function MapViewConfigComponent({
   config,
@@ -46,6 +40,37 @@ export function MapViewConfigComponent({
     new Set(config?.telemetryKeys ?? []),
   );
 
+  const allKeys = useDataSchema("data");
+
+  // Show numeric keys only — exclude booleans, enums and raw values that
+  // aren't meaningful in a small telemetry panel.
+  const numericKeys = useMemo(
+    () =>
+      allKeys.filter(
+        (k) =>
+          k.unit !== "bool" &&
+          k.unit !== "enum" &&
+          k.unit !== "raw" &&
+          k.group !== "Actions",
+      ),
+    [allKeys],
+  );
+
+  // Group for display, alphabetical within each group.
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof numericKeys>();
+    for (const k of numericKeys) {
+      const g = k.group ?? "Other";
+      let bucket = map.get(g);
+      if (!bucket) {
+        bucket = [];
+        map.set(g, bucket);
+      }
+      bucket.push(k);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [numericKeys]);
+
   const toggleKey = (key: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -56,9 +81,7 @@ export function MapViewConfigComponent({
   };
 
   const handleSave = () => {
-    const keys = TELEMETRY_OPTIONS.map((o) => o.key).filter((k) =>
-      selected.has(k),
-    );
+    const keys = numericKeys.map((k) => k.key).filter((k) => selected.has(k));
     onSave({
       trajectoryLength: Math.max(
         1,
@@ -84,17 +107,25 @@ export function MapViewConfigComponent({
       <Field>
         <FieldLabel>Telemetry panel</FieldLabel>
         <CheckList>
-          {TELEMETRY_OPTIONS.map(({ label, key }) => (
-            <CheckRow key={key}>
-              <Checkbox
-                id={`map-key-${key}`}
-                type="checkbox"
-                checked={selected.has(key)}
-                onChange={() => toggleKey(key)}
-              />
-              <CheckLabel htmlFor={`map-key-${key}`}>{label}</CheckLabel>
-            </CheckRow>
+          {groups.map(([group, items]) => (
+            <div key={group}>
+              <GroupLabel>{group}</GroupLabel>
+              {items.map(({ label, key }) => (
+                <CheckRow key={key}>
+                  <Checkbox
+                    id={`map-key-${key}`}
+                    type="checkbox"
+                    checked={selected.has(key)}
+                    onChange={() => toggleKey(key)}
+                  />
+                  <CheckLabel htmlFor={`map-key-${key}`}>{label}</CheckLabel>
+                </CheckRow>
+              ))}
+            </div>
           ))}
+          {numericKeys.length === 0 && (
+            <EmptyHint>Connect a data source to see available keys.</EmptyHint>
+          )}
         </CheckList>
         <FieldHint>Selected values are shown below the map.</FieldHint>
       </Field>

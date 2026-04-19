@@ -1,6 +1,7 @@
 export * from "./BufferedDataSource";
 export * from "./derive";
 export * from "./flightDetector";
+export * from "./hooks/useDataSchema";
 export * from "./hooks/useDataSeries";
 export * from "./hooks/useFlight";
 export { debugFlight } from "./logger";

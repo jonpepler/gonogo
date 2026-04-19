@@ -19,6 +19,9 @@ The defining feature is a **context-aware, extensible dashboard component system
 packages/
   core/       — Plugin registry, shared TS types, React contexts, GO/NO-GO system
   components/ — Built-in dashboard component library (uses core registry)
+  serial/     — Serial input platform: device types, transports, render styles,
+                InputDispatcher, VirtualDevice widget + UI (see Serial section below)
+  ui/         — Reusable UI primitives (buttons, inputs, tabs, modal, icons, etc.)
   app/        — Vite + React SPA (main screen + station mode)
   telnet-proxy/ — Fastify server: spawns system telnet via node-pty, bridges to WebSocket
 ```
@@ -167,6 +170,21 @@ Connects via WebSocket to `ws://host:8085/datalink`. Subscribe by sending `{ "ru
 ## UI Components
 
 Basic, reusable UI elements (toggles, inputs, buttons, tags, etc.) belong in `@gonogo/ui`, not co-located with the feature that first needs them. If a primitive doesn't exist in `@gonogo/ui` yet and you need it, add it there rather than creating a local one-off. Duplication in files you're not actively editing is easy to miss — a consistent home in `@gonogo/ui` prevents that.
+
+---
+
+## Serial Input Platform
+
+`@gonogo/serial` is the per-screen serial input layer. It lets a user plug a physical (or virtual) device into a screen, declare its button/analog inputs, and map those inputs onto dashboard-component **actions**.
+
+- **Device types** are user-defined at runtime via the **Serial Devices** menu (joystick FAB, bottom-right of any screen). A type names its inputs, selects a parser (`char-position` is the only one for now), and optionally picks a render style that pipes values back out to the hardware.
+- **Device instances** are per-screen (localStorage key `gonogo.serial.devices.<screenKey>`) and come in two transports: `web-serial` (real USB via `navigator.serial`) and `virtual` (in-memory, driven from the **Virtual Device** widget or from tests via `VirtualTransport.inject`). A default `Virtual Controller` type + instance is seeded on first run.
+- **Component actions** — every component declares its actions in `registerComponent({ actions: [...] })` and handles them with `useActionInput<typeof actions>({ ... })` inside the component body. Consider actions a core part of any new component, alongside `dataRequirements`.
+- **Input mapping** — the dashboard config modal shows an **Inputs** tab whenever a component has actions. Saved mappings live on `DashboardItem.inputMappings` and are consumed by `InputDispatcher`, which routes `{ deviceId, inputId }` events to `dispatchAction(instanceId, actionId, payload)`. Handler return values feed the device's render style and are written back via `transport.write()` on a debounce.
+- **Render styles** are code-registered via `registerSerialRenderStyle()`; the built-in `text-buffer-168` (21×8 ASCII) self-registers when `SerialDeviceService` loads. Add new styles alongside it under `packages/serial/src/renderStyles/`.
+- **Testing serial flows** — prefer `VirtualTransport` (no Web Serial needed) for most integration tests, and the `MockWebSerial` helper when you specifically need to exercise the `WebSerialTransport` read/write path. Both live in `@gonogo/serial`.
+
+Serial events stay on the screen where the device is plugged in — they are **not** broadcast over PeerJS. A station that wants physical inputs has its own local devices and mappings.
 
 ---
 

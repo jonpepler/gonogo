@@ -3,8 +3,8 @@ import { Panel, PanelTitle } from "@gonogo/ui";
 import styled from "styled-components";
 
 function DistanceToTargetComponent() {
-  const tarDistance = useDataValue("telemachus", "tar.distance");
-  const tarName = useDataValue("telemachus", "tar.name");
+  const tarDistance = useDataValue("data", "tar.distance");
+  const tarName = useDataValue("data", "tar.name");
 
   return (
     <Panel>

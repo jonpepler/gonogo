@@ -13,6 +13,7 @@ import {
   DashboardItemContext,
   registerDataSource,
 } from "@gonogo/core";
+import { BufferedDataSource, MemoryStore } from "@gonogo/data";
 import {
   type DeviceInstance,
   InputDispatcher,
@@ -39,18 +40,28 @@ import { telemachusSource } from "../dataSources/telemachus";
 const telemachusWs = ws.link("ws://localhost:8085/datalink");
 const server = setupServer();
 
+let buffered: BufferedDataSource | null = null;
+
 beforeAll(() => server.listen());
 afterEach(() => {
   cleanup();
   server.resetHandlers();
   telemachusSource.disconnect();
+  buffered?.disconnect();
+  buffered = null;
   clearActionHandlers();
 });
 afterAll(() => server.close());
 
-beforeEach(() => {
+beforeEach(async () => {
   clearRegistry();
   registerDataSource(telemachusSource);
+  buffered = new BufferedDataSource({
+    source: telemachusSource,
+    store: new MemoryStore(),
+  });
+  registerDataSource(buffered);
+  await buffered.connect();
 });
 
 // Identical to the handler in action-group.test.tsx but duplicated so this

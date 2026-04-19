@@ -19,6 +19,7 @@ import {
   registerDataSource,
   registerStockBodies,
 } from "@gonogo/core";
+import { BufferedDataSource, MemoryStore } from "@gonogo/data";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { ws } from "msw";
 import { setupServer } from "msw/node";
@@ -45,18 +46,28 @@ function renderWidget(tree: ReactElement, instanceId = "t") {
   );
 }
 
+let buffered: BufferedDataSource | null = null;
+
 beforeAll(() => server.listen());
 afterEach(() => {
   cleanup();
   server.resetHandlers();
   telemachusSource.disconnect();
+  buffered?.disconnect();
+  buffered = null;
   clearBodies();
 });
 afterAll(() => server.close());
 
-beforeEach(() => {
+beforeEach(async () => {
   clearRegistry();
   registerDataSource(telemachusSource);
+  buffered = new BufferedDataSource({
+    source: telemachusSource,
+    store: new MemoryStore(),
+  });
+  registerDataSource(buffered);
+  await buffered.connect();
   registerStockBodies();
 });
 

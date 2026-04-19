@@ -67,6 +67,13 @@ export class BufferedDataSource implements DataSource {
   private readonly lastRawSample = new Map<string, Sample>();
   /** Last inputs array passed to each derived fn, for the `previous` argument. */
   private readonly derivedPrevious = new Map<string, Sample[] | null>();
+  /**
+   * Last emitted value per key (raw + derived). Replayed synchronously on
+   * `subscribe()` so late subscribers (e.g. widgets that mount after the
+   * upstream WS push has already landed) see the current reading instead of
+   * waiting for the next sample.
+   */
+  private readonly lastEmittedValue = new Map<string, unknown>();
 
   private readonly buffers = new Map<string, SampleRow[]>();
   private readonly keySubscribers = new Map<
@@ -163,6 +170,11 @@ export class BufferedDataSource implements DataSource {
       this.keySubscribers.set(key, bucket);
     }
     bucket.add(cb);
+    // Replay the last-known value so late subscribers aren't stuck on
+    // `undefined` until the next sample arrives.
+    if (this.lastEmittedValue.has(key)) {
+      cb(this.lastEmittedValue.get(key));
+    }
     return () => {
       const b = this.keySubscribers.get(key);
       if (!b) return;
@@ -280,6 +292,7 @@ export class BufferedDataSource implements DataSource {
     this.buffers.clear();
     this.lastRawSample.clear();
     this.derivedPrevious.clear();
+    this.lastEmittedValue.clear();
     this.emitFlightChange();
   }
 
@@ -328,6 +341,7 @@ export class BufferedDataSource implements DataSource {
 
     // Fan out to live subscribers regardless of whether we have a flight;
     // useDataValue callers get live values during warmup.
+    this.lastEmittedValue.set(key, value);
     const subs = this.keySubscribers.get(key);
     if (subs) {
       subs.forEach((cb) => {
@@ -380,6 +394,7 @@ export class BufferedDataSource implements DataSource {
         this.pushToBuffer(def.id, derivedT, result);
       }
 
+      this.lastEmittedValue.set(def.id, result);
       const subs = this.keySubscribers.get(def.id);
       if (subs) {
         subs.forEach((cb) => {

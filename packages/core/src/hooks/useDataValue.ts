@@ -9,14 +9,14 @@ import type { DataSourceRegistry } from "../types";
  * the key is constrained to valid keys for that source and the return type is
  * inferred automatically:
  *
- *   // DataSourceRegistry has { telemachus: { 'v.altitude': number; ... } }
- *   const alt = useDataValue('telemachus', 'v.altitude');
+ *   // DataSourceRegistry has { data: { 'v.altitude': number; ... } }
+ *   const alt = useDataValue('data', 'v.altitude');
  *   //    ^ number | undefined  ✓  — no <T> annotation needed
  *
  * **Fallback overload** — for sources not yet in the registry, or when an
  * explicit type annotation is preferred (backward-compatible with existing code):
  *
- *   const val = useDataValue<boolean>('telemachus', dynamicKey);
+ *   const val = useDataValue<boolean>('data', dynamicKey);
  *   //    ^ boolean | undefined
  */
 // Typed overload: source is in DataSourceRegistry → key and return type are inferred

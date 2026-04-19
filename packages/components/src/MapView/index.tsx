@@ -81,14 +81,14 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const schema = useDataSchema("data");
   const labelMap = new Map(schema.map((k) => [k.key, k.label]));
 
-  const lat = useDataValue("telemachus", "v.lat");
-  const lon = useDataValue("telemachus", "v.long");
-  const altSea = useDataValue("telemachus", "v.altitude");
-  const bodyName = useDataValue("telemachus", "v.body");
-  const q = useDataValue("telemachus", "v.dynamicPressure");
-  const mach = useDataValue("telemachus", "v.mach");
-  const speed = useDataValue("telemachus", "v.surfaceSpeed");
-  const vSpeed = useDataValue("telemachus", "v.verticalSpeed");
+  const lat = useDataValue("data", "v.lat");
+  const lon = useDataValue("data", "v.long");
+  const altSea = useDataValue("data", "v.altitude");
+  const bodyName = useDataValue("data", "v.body");
+  const q = useDataValue("data", "v.dynamicPressure");
+  const mach = useDataValue("data", "v.mach");
+  const speed = useDataValue("data", "v.surfaceSpeed");
+  const vSpeed = useDataValue("data", "v.verticalSpeed");
 
   const targetBodyId = bodyName;
   const body = targetBodyId ? getBody(targetBodyId) : undefined;

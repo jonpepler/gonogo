@@ -54,8 +54,8 @@ function ActionGroupComponent({
   const group = ACTION_GROUPS.find((g) => g.name === config?.actionGroupId);
   const currentLabel = config?.label ?? group?.name ?? "";
 
-  const value = useDataValue("telemachus", group?.value ?? "v.sasValue");
-  const execute = useExecuteAction("telemachus");
+  const value = useDataValue("data", group?.value ?? "v.sasValue");
+  const execute = useExecuteAction("data");
 
   // Inline label editing state
   const [editing, setEditing] = useState(false);

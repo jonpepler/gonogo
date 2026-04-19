@@ -41,13 +41,13 @@ function OrbitViewComponent({
     },
   });
 
-  const sma = useDataValue("telemachus", "o.sma");
-  const eccentricity = useDataValue("telemachus", "o.eccentricity");
-  const trueAnomaly = useDataValue("telemachus", "o.trueAnomaly");
-  const apoapsisR = useDataValue("telemachus", "o.ApR");
-  const periapsisR = useDataValue("telemachus", "o.PeR");
-  const argPe = useDataValue("telemachus", "o.argumentOfPeriapsis");
-  const bodyName = useDataValue("telemachus", "v.body");
+  const sma = useDataValue("data", "o.sma");
+  const eccentricity = useDataValue("data", "o.eccentricity");
+  const trueAnomaly = useDataValue("data", "o.trueAnomaly");
+  const apoapsisR = useDataValue("data", "o.ApR");
+  const periapsisR = useDataValue("data", "o.PeR");
+  const argPe = useDataValue("data", "o.argumentOfPeriapsis");
+  const bodyName = useDataValue("data", "v.body");
 
   const body = bodyName === undefined ? undefined : getBody(bodyName);
   const { isOrbiting } = useIsOrbiting();

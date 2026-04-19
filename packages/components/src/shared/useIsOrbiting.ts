@@ -9,9 +9,9 @@ type OrbitInfo = {
 };
 
 export function useIsOrbiting(): OrbitInfo {
-  const bodyName = useDataValue("telemachus", "v.body");
-  const PeA = useDataValue("telemachus", "o.PeA");
-  const ApA = useDataValue("telemachus", "o.ApA");
+  const bodyName = useDataValue("data", "v.body");
+  const PeA = useDataValue("data", "o.PeA");
+  const ApA = useDataValue("data", "o.ApA");
 
   const body = bodyName ? getBody(bodyName) : undefined;
 

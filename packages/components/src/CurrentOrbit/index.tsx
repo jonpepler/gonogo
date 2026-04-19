@@ -43,20 +43,20 @@ function CurrentOrbitComponent({
     },
   });
 
-  const apoapsisA = useDataValue("telemachus", "o.ApA");
-  const periapsisA = useDataValue("telemachus", "o.PeA");
-  const apoapsisR = useDataValue("telemachus", "o.ApR");
-  const periapsisR = useDataValue("telemachus", "o.PeR");
-  const sma = useDataValue("telemachus", "o.sma");
-  const eccentricity = useDataValue("telemachus", "o.eccentricity");
-  const trueAnomaly = useDataValue("telemachus", "o.trueAnomaly");
-  const argPe = useDataValue("telemachus", "o.argumentOfPeriapsis");
-  const inclination = useDataValue("telemachus", "o.inclination");
-  const period = useDataValue("telemachus", "o.period");
-  const timeToAp = useDataValue("telemachus", "o.timeToAp");
-  const timeToPe = useDataValue("telemachus", "o.timeToPe");
-  const refBody = useDataValue("telemachus", "o.referenceBody");
-  const bodyName = useDataValue("telemachus", "v.body");
+  const apoapsisA = useDataValue("data", "o.ApA");
+  const periapsisA = useDataValue("data", "o.PeA");
+  const apoapsisR = useDataValue("data", "o.ApR");
+  const periapsisR = useDataValue("data", "o.PeR");
+  const sma = useDataValue("data", "o.sma");
+  const eccentricity = useDataValue("data", "o.eccentricity");
+  const trueAnomaly = useDataValue("data", "o.trueAnomaly");
+  const argPe = useDataValue("data", "o.argumentOfPeriapsis");
+  const inclination = useDataValue("data", "o.inclination");
+  const period = useDataValue("data", "o.period");
+  const timeToAp = useDataValue("data", "o.timeToAp");
+  const timeToPe = useDataValue("data", "o.timeToPe");
+  const refBody = useDataValue("data", "o.referenceBody");
+  const bodyName = useDataValue("data", "v.body");
 
   const body =
     (bodyName ?? refBody) === undefined

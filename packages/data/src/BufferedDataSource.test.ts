@@ -116,6 +116,25 @@ describe("BufferedDataSource", () => {
     expect(spy).toHaveBeenCalledWith(12_345);
   });
 
+  it("replays the last-known value to late subscribers", () => {
+    source.emit("v.altitude", 42);
+
+    const spy = vi.fn();
+    buffered.subscribe("v.altitude", spy);
+    expect(spy).toHaveBeenCalledWith(42);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    source.emit("v.altitude", 43);
+    expect(spy).toHaveBeenLastCalledWith(43);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not replay when no value has been emitted yet", () => {
+    const spy = vi.fn();
+    buffered.subscribe("v.altitude", spy);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it("persists samples once a flight has been identified", async () => {
     source.emit("v.name", "Kerbal X");
     source.emit("v.missionTime", 0);

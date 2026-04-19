@@ -4,6 +4,7 @@ import {
   DashboardItemContext,
   registerDataSource,
 } from "@gonogo/core";
+import { BufferedDataSource, MemoryStore } from "@gonogo/data";
 import {
   act,
   cleanup,
@@ -37,17 +38,27 @@ function withItemContext(instanceId: string, children: ReactNode) {
 const telemachusWs = ws.link("ws://localhost:8085/datalink");
 const server = setupServer();
 
+let buffered: BufferedDataSource | null = null;
+
 beforeAll(() => server.listen());
 afterEach(() => {
   cleanup(); // unmount before disconnect to avoid out-of-act state updates
   server.resetHandlers();
   telemachusSource.disconnect();
+  buffered?.disconnect();
+  buffered = null;
 });
 afterAll(() => server.close());
 
-beforeEach(() => {
+beforeEach(async () => {
   clearRegistry();
   registerDataSource(telemachusSource);
+  buffered = new BufferedDataSource({
+    source: telemachusSource,
+    store: new MemoryStore(),
+  });
+  registerDataSource(buffered);
+  await buffered.connect();
 });
 
 /**

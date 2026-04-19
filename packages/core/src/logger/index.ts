@@ -1,12 +1,41 @@
 import type { LogContext, Logger, LogLevel } from "./types";
 
+function defaultEnabled(): boolean {
+  // Suppress output in test runs so unit + integration suites stay quiet.
+  // Opt back in with `logger.setEnabled(true)` or the `GONOGO_LOG=1` env flag.
+  try {
+    const env = (globalThis as { process?: { env?: Record<string, string> } })
+      .process?.env;
+    if (env?.GONOGO_LOG === "1") return true;
+    if (env?.NODE_ENV === "test") return false;
+  } catch {
+    // ignore env access failures
+  }
+  return true;
+}
+
 export class ConsoleLogger implements Logger {
+  private enabled: boolean;
+
+  constructor(opts?: { enabled?: boolean }) {
+    this.enabled = opts?.enabled ?? defaultEnabled();
+  }
+
+  setEnabled(value: boolean): void {
+    this.enabled = value;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
   private log(
     level: LogLevel,
     message: string,
     context?: LogContext,
     error?: Error,
   ) {
+    if (!this.enabled) return;
     const entry = {
       level,
       message,

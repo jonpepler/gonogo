@@ -144,9 +144,10 @@ describe("VirtualDevice widget", () => {
 
     fireEvent.pointerDown(screen.getByRole("button", { name: "A" }));
 
-    // Let render-debounce microtasks flush.
-    await new Promise((r) => setTimeout(r, 5));
-
+    // findByText polls inside waitFor's act boundary, so the setFrame
+    // triggered by the debounced render is captured cleanly. Using a raw
+    // setTimeout wait here lets the state update land outside act and
+    // produces a React console warning.
     const frameEl = await screen.findByText(/HELLO 42/);
     expect(frameEl).toBeInTheDocument();
 

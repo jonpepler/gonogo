@@ -96,8 +96,11 @@ export function DataKeyPicker({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && activeIndex >= 0) {
-      const opt = flatOptions[activeIndex];
+    } else if (e.key === "Enter") {
+      // Arrow-highlighted item first; fall back to first filtered result so
+      // "type a partial label + Enter" works without needing an arrow key.
+      const opt =
+        activeIndex >= 0 ? flatOptions[activeIndex] : flatOptions[0];
       if (opt) selectOption(opt.key);
     }
   };

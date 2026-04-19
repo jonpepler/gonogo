@@ -2,11 +2,31 @@ import { debugPeer, logger } from "@gonogo/core";
 import Peer, { type DataConnection } from "peerjs";
 import type { PeerMessage } from "./protocol";
 
-export type ConnStatus = "idle" | "connecting" | "connected" | "disconnected";
+export type ConnStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected";
+
+const DEFAULT_RETRY_INTERVAL_MS = 2_000;
+const DEFAULT_RETRY_TIMEOUT_MS = 5 * 60 * 1000;
+
+export interface PeerClientOptions {
+  retryIntervalMs?: number;
+  retryTimeoutMs?: number;
+}
 
 export class PeerClientService {
   private peer: Peer | null = null;
   private conn: DataConnection | null = null;
+  private hostPeerId: string | null = null;
+  private intentionalDisconnect = false;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private retryStart: number | null = null;
+  private readonly retryIntervalMs: number;
+  private readonly retryTimeoutMs: number;
+
   private dataListeners = new Set<
     (sourceId: string, key: string, value: unknown) => void
   >();
@@ -23,20 +43,38 @@ export class PeerClientService {
   private kosOpenedListeners = new Set<(sessionId: string) => void>();
   private kosCloseListeners = new Set<(sessionId: string) => void>();
 
+  constructor({
+    retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS,
+    retryTimeoutMs = DEFAULT_RETRY_TIMEOUT_MS,
+  }: PeerClientOptions = {}) {
+    this.retryIntervalMs = retryIntervalMs;
+    this.retryTimeoutMs = retryTimeoutMs;
+  }
+
   connect(hostPeerId: string) {
-    logger.info(`[PeerClient] connecting to host=${hostPeerId}`);
-    this.connStatusListeners.forEach((cb) => cb("connecting"));
+    this.hostPeerId = hostPeerId;
+    this.intentionalDisconnect = false;
+    this.retryStart = null;
+    this.openPeer();
+  }
+
+  private openPeer() {
+    if (!this.hostPeerId) return;
+    logger.info(`[PeerClient] connecting to host=${this.hostPeerId}`);
+    this.emitConnStatus("connecting");
     this.peer = new Peer();
     this.peer.on("open", () => {
-      this.conn = this.peer!.connect(hostPeerId);
+      if (!this.peer || !this.hostPeerId) return;
+      this.conn = this.peer.connect(this.hostPeerId);
       this.conn.on("open", () => {
-        logger.info(`[PeerClient] connected to host=${hostPeerId}`);
-        this.connStatusListeners.forEach((cb) => cb("connected"));
+        logger.info(`[PeerClient] connected to host=${this.hostPeerId}`);
+        this.retryStart = null;
+        this.emitConnStatus("connected");
       });
       this.conn.on("data", (raw) => this.handleMessage(raw as PeerMessage));
       this.conn.on("close", () => {
         logger.info(`[PeerClient] connection closed`);
-        this.connStatusListeners.forEach((cb) => cb("disconnected"));
+        this.handleUnexpectedClose();
       });
       this.conn.on("error", (err) => {
         logger.error("[PeerClient] connection error", err);
@@ -44,6 +82,51 @@ export class PeerClientService {
     });
     this.peer.on("error", (err) => {
       logger.error("[PeerClient] peer error", err);
+      // PeerJS fires "error" for things like unavailable-peer-id when the host
+      // is between refreshes. Schedule a retry rather than giving up.
+      this.handleUnexpectedClose();
+    });
+  }
+
+  private handleUnexpectedClose() {
+    if (this.intentionalDisconnect) return;
+    if (this.retryTimer !== null) return; // already scheduled
+
+    this.tearDownPeer();
+
+    if (this.retryStart === null) this.retryStart = Date.now();
+    if (Date.now() - this.retryStart >= this.retryTimeoutMs) {
+      logger.warn("[PeerClient] giving up on reconnect");
+      this.retryStart = null;
+      this.emitConnStatus("disconnected");
+      return;
+    }
+
+    this.emitConnStatus("reconnecting");
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      this.openPeer();
+    }, this.retryIntervalMs);
+  }
+
+  private tearDownPeer() {
+    try {
+      this.conn?.close();
+    } catch {
+      /* already closed */
+    }
+    try {
+      this.peer?.destroy();
+    } catch {
+      /* already destroyed */
+    }
+    this.peer = null;
+    this.conn = null;
+  }
+
+  private emitConnStatus(status: ConnStatus) {
+    this.connStatusListeners.forEach((cb) => {
+      cb(status);
     });
   }
 
@@ -163,10 +246,13 @@ export class PeerClientService {
   }
 
   disconnect() {
-    this.conn?.close();
-    this.peer?.destroy();
-    this.peer = null;
-    this.conn = null;
+    this.intentionalDisconnect = true;
+    if (this.retryTimer !== null) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    this.tearDownPeer();
+    this.hostPeerId = null;
     logger.info("[PeerClient] disconnected");
   }
 }

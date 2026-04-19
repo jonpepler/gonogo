@@ -1,4 +1,70 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// vi.mock is hoisted to the top of the file, so FakePeer / FakeDataConnection
+// must be declared via vi.hoisted to be available when the factory runs.
+const { FakePeer } = vi.hoisted(() => {
+  class FakeDataConnection {
+    private listeners = new Map<
+      string,
+      Array<(...args: unknown[]) => void>
+    >();
+
+    on(event: string, cb: (...args: unknown[]) => void) {
+      const bucket = this.listeners.get(event) ?? [];
+      bucket.push(cb);
+      this.listeners.set(event, bucket);
+    }
+
+    emit(event: string, ...args: unknown[]) {
+      this.listeners.get(event)?.forEach((cb) => {
+        cb(...args);
+      });
+    }
+
+    close() {}
+    send(_msg: unknown) {}
+  }
+
+  class FakePeer {
+    static instances: FakePeer[] = [];
+    private listeners = new Map<
+      string,
+      Array<(...args: unknown[]) => void>
+    >();
+
+    _lastConn: FakeDataConnection | null = null;
+
+    constructor() {
+      FakePeer.instances.push(this);
+    }
+
+    on(event: string, cb: (...args: unknown[]) => void) {
+      const bucket = this.listeners.get(event) ?? [];
+      bucket.push(cb);
+      this.listeners.set(event, bucket);
+    }
+
+    emit(event: string, ...args: unknown[]) {
+      this.listeners.get(event)?.forEach((cb) => {
+        cb(...args);
+      });
+    }
+
+    connect(_id: string) {
+      const conn = new FakeDataConnection();
+      this._lastConn = conn;
+      return conn;
+    }
+
+    destroy() {}
+  }
+
+  return { FakePeer, FakeDataConnection };
+});
+
+vi.mock("peerjs", () => ({ default: FakePeer }));
+
+import type { ConnStatus } from "../peer/PeerClientService";
 import { PeerClientService } from "../peer/PeerClientService";
 import type { PeerMessage } from "../peer/protocol";
 
@@ -102,5 +168,92 @@ describe("PeerClientService", () => {
       kosData: 1,
       kosClose: 0,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reconnect loop — drives lifecycle via the hoisted FakePeer / FakeDataConnection.
+// ---------------------------------------------------------------------------
+
+describe("PeerClientService reconnect loop", () => {
+  beforeEach(() => {
+    FakePeer.instances = [];
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function driveOpen(peer: InstanceType<typeof FakePeer>) {
+    peer.emit("open");
+    peer._lastConn?.emit("open");
+  }
+
+  it("fires reconnecting → connected when the conn drops and peer is recreated", () => {
+    const svc = new PeerClientService({
+      retryIntervalMs: 50,
+      retryTimeoutMs: 60_000,
+    });
+    const statuses: ConnStatus[] = [];
+    svc.onConnectionStatus((s) => statuses.push(s));
+
+    svc.connect("HOST");
+    expect(FakePeer.instances).toHaveLength(1);
+    driveOpen(FakePeer.instances[0]);
+
+    // Drop the conn — should schedule a retry
+    FakePeer.instances[0]._lastConn?.emit("close");
+    expect(statuses).toContain("reconnecting");
+    expect(FakePeer.instances).toHaveLength(1); // retry hasn't fired yet
+
+    vi.advanceTimersByTime(50);
+    expect(FakePeer.instances).toHaveLength(2);
+
+    driveOpen(FakePeer.instances[1]);
+    // Final status sequence should contain the full cycle
+    expect(statuses.filter((s) => s === "connected")).toHaveLength(2);
+  });
+
+  it("gives up with disconnected after exceeding the retry timeout", () => {
+    const svc = new PeerClientService({
+      retryIntervalMs: 10,
+      retryTimeoutMs: 100,
+    });
+    const statuses: ConnStatus[] = [];
+    svc.onConnectionStatus((s) => statuses.push(s));
+
+    svc.connect("HOST");
+    driveOpen(FakePeer.instances[0]);
+
+    // Simulate repeated failed reconnects by firing close on each new peer's
+    // conn (or peer error) after the retry timer fires.
+    for (let i = 0; i < 20; i++) {
+      FakePeer.instances[FakePeer.instances.length - 1]?.emit(
+        "error",
+        new Error("fail"),
+      );
+      vi.advanceTimersByTime(11);
+      if (statuses.includes("disconnected")) break;
+    }
+
+    expect(statuses).toContain("disconnected");
+  });
+
+  it("disconnect() stops any pending retry", () => {
+    const svc = new PeerClientService({
+      retryIntervalMs: 50,
+      retryTimeoutMs: 60_000,
+    });
+    svc.connect("HOST");
+    driveOpen(FakePeer.instances[0]);
+
+    FakePeer.instances[0]._lastConn?.emit("close");
+    // Retry is scheduled but not yet fired
+    svc.disconnect();
+
+    vi.advanceTimersByTime(1000);
+    // No new FakePeer should be constructed after disconnect
+    expect(FakePeer.instances).toHaveLength(1);
   });
 });

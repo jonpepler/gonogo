@@ -7,6 +7,7 @@ function makeFakeClient() {
     (sessionId: string, data: string) => void
   >();
   const kosCloseListeners = new Set<(sessionId: string) => void>();
+  const connStatusListeners = new Set<(status: string) => void>();
 
   return {
     onKosOpened: vi.fn((cb: (sessionId: string) => void) => {
@@ -20,6 +21,10 @@ function makeFakeClient() {
     onKosClose: vi.fn((cb: (sessionId: string) => void) => {
       kosCloseListeners.add(cb);
       return () => kosCloseListeners.delete(cb);
+    }),
+    onConnectionStatus: vi.fn((cb: (status: string) => void) => {
+      connStatusListeners.add(cb);
+      return () => connStatusListeners.delete(cb);
     }),
     sendKosOpen: vi.fn(),
     sendKosData: vi.fn(),
@@ -37,6 +42,11 @@ function makeFakeClient() {
     _emitClose(sid: string) {
       kosCloseListeners.forEach((cb) => {
         cb(sid);
+      });
+    },
+    _emitConnStatus(status: string) {
+      connStatusListeners.forEach((cb) => {
+        cb(status);
       });
     },
     _kosOpenedListenerCount: () => kosOpenedListeners.size,
@@ -145,5 +155,78 @@ describe("KosPeerConnection", () => {
     client._emitOpened("sess-1");
     kpc.send("later");
     expect(client.sendKosData).toHaveBeenCalledWith("sess-1", "later");
+  });
+
+  it("does not re-send kos-open on the initial 'connected' peer status", () => {
+    const client = makeFakeClient();
+    new KosPeerConnection("sess-1", client as never, params);
+
+    expect(client.sendKosOpen).toHaveBeenCalledTimes(1); // from constructor
+
+    // Initial peer open fires "connected" once — should NOT re-send
+    client._emitConnStatus("connected");
+    expect(client.sendKosOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-sends kos-open when the peer reconnects after a drop", () => {
+    const client = makeFakeClient();
+    const kpc = new KosPeerConnection("sess-1", client as never, params);
+
+    // Initial open sequence
+    client._emitConnStatus("connected");
+    client._emitOpened("sess-1");
+    expect(kpc.readyState).toBe(WebSocket.OPEN);
+
+    const closes: unknown[] = [];
+    kpc.addEventListener("close", () => closes.push(1));
+
+    // Peer drops
+    client._emitConnStatus("reconnecting");
+    expect(kpc.readyState).toBe(WebSocket.CONNECTING);
+    expect(closes).toEqual([1]); // UI gets notified of the transient drop
+
+    // Peer comes back — kos-open should re-fire
+    client._emitConnStatus("connected");
+    expect(client.sendKosOpen).toHaveBeenCalledTimes(2);
+    expect(client.sendKosOpen).toHaveBeenLastCalledWith("sess-1", params);
+
+    // And a fresh kos-opened restores OPEN state
+    const opens: unknown[] = [];
+    kpc.addEventListener("open", () => opens.push(1));
+    client._emitOpened("sess-1");
+    expect(kpc.readyState).toBe(WebSocket.OPEN);
+    expect(opens).toEqual([1]);
+  });
+
+  it("after explicit close(), ignores subsequent peer reconnects", () => {
+    const client = makeFakeClient();
+    new KosPeerConnection("sess-1", client as never, params).close();
+
+    // Make sure the "initial connected" bookkeeping is out of the way, then
+    // simulate a peer cycle — close() should suppress any re-sends.
+    client._emitConnStatus("connected");
+    client._emitConnStatus("reconnecting");
+    client._emitConnStatus("connected");
+
+    // Only the constructor send + the close send — never a re-open.
+    expect(client.sendKosOpen).toHaveBeenCalledTimes(1);
+    expect(client.sendKosClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("after host-initiated kos-close, ignores subsequent peer reconnects", () => {
+    const client = makeFakeClient();
+    const kpc = new KosPeerConnection("sess-1", client as never, params);
+
+    client._emitConnStatus("connected");
+    client._emitOpened("sess-1");
+
+    // Host says the PTY died
+    client._emitClose("sess-1");
+    expect(kpc.readyState).toBe(WebSocket.CLOSED);
+
+    // Further peer cycles must not re-open
+    client._emitConnStatus("reconnecting");
+    client._emitConnStatus("connected");
+    expect(client.sendKosOpen).toHaveBeenCalledTimes(1);
   });
 });

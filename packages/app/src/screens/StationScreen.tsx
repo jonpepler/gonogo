@@ -5,12 +5,9 @@ import {
   ComponentOverlay,
   OverlayProvider,
 } from "../components/ComponentOverlay";
-import type {
-  DashboardConfig,
-  DashboardHandle,
-  DashboardItem,
-} from "../components/Dashboard";
+import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
+import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { KosPeerConnection } from "../peer/KosPeerConnection";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
 import type { ConnStatus } from "../peer/PeerClientService";
@@ -32,7 +29,10 @@ export function StationScreen() {
     localStorage.getItem(HOST_ID_KEY) ?? "",
   );
   const [client] = useState(() => new PeerClientService());
-  const dashboardRef = useRef<DashboardHandle>(null);
+  const dashboard = useDashboardState(
+    "gonogo:dashboard:station",
+    DEFAULT_CONFIG,
+  );
   const unsubsRef = useRef<Array<() => void>>([]);
   const schemaHandledRef = useRef(false);
 
@@ -83,15 +83,6 @@ export function StationScreen() {
     };
   }, []);
 
-  const addItem = (
-    item: DashboardItem,
-    layout: { x: number; y: number; w: number; h: number },
-  ) => {
-    dashboardRef.current?.addItem(item, layout);
-  };
-
-  const currentLayouts = dashboardRef.current?.currentLayouts ?? { lg: [] };
-
   const kosProxy = useMemo(
     () => ({
       createConnection: (params: {
@@ -141,14 +132,19 @@ export function StationScreen() {
 
   return (
     <KosProxyContext.Provider value={kosProxy}>
-      <OverlayProvider addItem={addItem}>
+      <OverlayProvider addItem={dashboard.addItem}>
         <Layout>
           <Dashboard
-            ref={dashboardRef}
-            config={DEFAULT_CONFIG}
-            storageKey="gonogo:dashboard:station"
+            items={dashboard.items}
+            layouts={dashboard.layouts}
+            currentLayouts={dashboard.currentLayouts}
+            breakpoint={dashboard.breakpoint}
+            onLayoutChange={dashboard.handleLayoutChange}
+            onBreakpointChange={dashboard.handleBreakpointChange}
+            updateItemConfig={dashboard.updateItemConfig}
+            updateItemMappings={dashboard.updateItemMappings}
           />
-          <ComponentOverlay currentLayouts={currentLayouts} />
+          <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
         </Layout>
       </OverlayProvider>
     </KosProxyContext.Provider>

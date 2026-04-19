@@ -6,7 +6,7 @@ import {
   handleError,
 } from "@gonogo/core";
 import { Tabs, useModal } from "@gonogo/ui";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { useState } from "react";
 import type { Layout, Layouts } from "react-grid-layout";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import styled from "styled-components";
@@ -53,205 +53,93 @@ const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
 const ROW_HEIGHT = 25; // px per grid unit
 
 // ---------------------------------------------------------------------------
-// Persistence helpers
+// Dashboard — fully controlled. State lives in `useDashboardState` (called
+// by the owning screen) so external consumers like the Phase 4 InputDispatcher
+// can subscribe to item changes without reaching into Dashboard internals.
 // ---------------------------------------------------------------------------
 
-interface PersistedState {
+export interface DashboardProps {
   items: DashboardItem[];
   layouts: Layouts;
-}
-
-function loadState(key: string): PersistedState | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as PersistedState) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveState(key: string, state: PersistedState): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(state));
-  } catch {
-    // Ignore storage errors (private browsing, quota exceeded, etc.)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Dashboard
-// ---------------------------------------------------------------------------
-
-interface DashboardProps {
-  config: DashboardConfig;
-  storageKey?: string;
-  onLayoutChange?: (layouts: Layouts) => void;
-}
-
-export interface DashboardHandle {
-  addItem: (item: DashboardItem, layout: Partial<Layout>) => void;
   currentLayouts: Layouts;
+  breakpoint: string;
+  onLayoutChange: (current: Layout[], all: Layouts) => void;
+  onBreakpointChange: (bp: string) => void;
+  updateItemConfig: (id: string, config: Record<string, unknown>) => void;
+  updateItemMappings: (id: string, mappings: InputMappings) => void;
 }
 
-export const Dashboard = forwardRef<DashboardHandle, DashboardProps>(
-  function Dashboard({ config, storageKey, onLayoutChange }, ref) {
-    const saved = storageKey ? loadState(storageKey) : null;
+export function Dashboard({
+  items,
+  layouts,
+  currentLayouts,
+  breakpoint,
+  onLayoutChange,
+  onBreakpointChange,
+  updateItemConfig,
+  updateItemMappings,
+}: Readonly<DashboardProps>) {
+  return (
+    <ResponsiveGridLayout
+      className="dashboard-grid"
+      layouts={layouts}
+      breakpoints={BREAKPOINTS}
+      cols={COLS}
+      rowHeight={ROW_HEIGHT}
+      margin={[8, 8]}
+      containerPadding={[0, 0]}
+      draggableHandle=".drag-handle"
+      onLayoutChange={onLayoutChange}
+      onBreakpointChange={onBreakpointChange}
+    >
+      {items.map((item) => {
+        const def = getComponent(item.componentId);
+        if (!def) return null;
+        const Comp = def.component;
 
-    const [items, setItems] = useState<DashboardItem[]>(
-      saved?.items ?? config.items,
-    );
-    const [layouts, setLayouts] = useState<Layouts>(
-      saved?.layouts ?? config.layouts,
-    );
-    const [breakpoint, setBreakpoint] = useState<string>("lg");
-    const [currentLayouts, setCurrentLayouts] = useState<Layouts>(
-      saved?.layouts ?? config.layouts,
-    );
+        const bpLayouts = currentLayouts[breakpoint] ?? currentLayouts.lg ?? [];
+        const entry = bpLayouts.find((l) => l.i === item.i);
+        const w = entry?.w;
+        const h = entry?.h;
 
-    const persist = useCallback(
-      (nextItems: DashboardItem[], nextLayouts: Layouts) => {
-        if (storageKey)
-          saveState(storageKey, { items: nextItems, layouts: nextLayouts });
-      },
-      [storageKey],
-    );
+        const hasConfig = Boolean(def.configComponent);
+        const hasActions = Boolean(def.actions?.length);
 
-    function handleLayoutChange(_current: Layout[], all: Layouts) {
-      setCurrentLayouts(all);
-      setLayouts(all);
-      persist(items, all);
-      onLayoutChange?.(all);
-    }
-
-    function handleBreakpointChange(bp: string) {
-      setBreakpoint(bp);
-    }
-
-    const updateItemConfig = useCallback(
-      (itemId: string, newConfig: Record<string, unknown>) => {
-        setItems((prev) => {
-          const next = prev.map((it) =>
-            it.i === itemId ? { ...it, config: newConfig } : it,
-          );
-          persist(next, layouts);
-          return next;
-        });
-      },
-      [layouts, persist],
-    );
-
-    const updateItemMappings = useCallback(
-      (itemId: string, next: InputMappings) => {
-        setItems((prev) => {
-          const updated = prev.map((it) =>
-            it.i === itemId ? { ...it, inputMappings: next } : it,
-          );
-          persist(updated, layouts);
-          return updated;
-        });
-      },
-      [layouts, persist],
-    );
-
-    /** Exposed for the component-selection overlay (T41). */
-    const addItem = useCallback(
-      (item: DashboardItem, layout: Partial<Layout>) => {
-        setItems((prev) => {
-          const next = [...prev, item];
-          const entry: Layout = {
-            i: item.i,
-            x: layout.x ?? 0,
-            y: layout.y ?? 9999,
-            w: layout.w ?? 3,
-            h: layout.h ?? 3,
-            ...layout,
-          };
-          const nextLayouts = Object.fromEntries(
-            Object.keys(COLS).map((bp) => [
-              bp,
-              [...(currentLayouts[bp] ?? []), entry],
-            ]),
-          );
-          persist(next, nextLayouts);
-          setLayouts(nextLayouts);
-          return next;
-        });
-      },
-      [currentLayouts, persist],
-    );
-
-    // Expose addItem and currentLayouts to parent via ref
-    useImperativeHandle(ref, () => ({ addItem, currentLayouts }), [
-      addItem,
-      currentLayouts,
-    ]);
-
-    return (
-      <ResponsiveGridLayout
-        className="dashboard-grid"
-        layouts={layouts}
-        breakpoints={BREAKPOINTS}
-        cols={COLS}
-        rowHeight={ROW_HEIGHT}
-        margin={[8, 8]}
-        containerPadding={[0, 0]}
-        draggableHandle=".drag-handle"
-        onLayoutChange={handleLayoutChange}
-        onBreakpointChange={handleBreakpointChange}
-      >
-        {items.map((item) => {
-          const def = getComponent(item.componentId);
-          if (!def) return null;
-          const Comp = def.component;
-
-          // Derive current w/h from the active breakpoint layout
-          const bpLayouts =
-            currentLayouts[breakpoint] ?? currentLayouts.lg ?? [];
-          const entry = bpLayouts.find((l) => l.i === item.i);
-          const w = entry?.w;
-          const h = entry?.h;
-
-          const hasConfig = Boolean(def.configComponent);
-          const hasActions = Boolean(def.actions?.length);
-
-          return (
-            <GridCell key={item.i}>
-              <CellHeader className="drag-handle" title="Drag to reposition">
-                {(hasConfig || hasActions) && (
-                  <GearWrapper>
-                    <GearButton
-                      item={item}
-                      def={def}
-                      onSaveConfig={(newConfig) =>
-                        updateItemConfig(item.i, newConfig)
-                      }
-                      onSaveMappings={(next) =>
-                        updateItemMappings(item.i, next)
-                      }
-                    />
-                  </GearWrapper>
-                )}
-              </CellHeader>
-              <ComponentWrapper>
-                <DashboardItemContext.Provider value={{ instanceId: item.i }}>
-                  <Comp
-                    id={item.i}
-                    config={item.config}
-                    w={w}
-                    h={h}
-                    onConfigChange={(newConfig) =>
+        return (
+          <GridCell key={item.i}>
+            <CellHeader className="drag-handle" title="Drag to reposition">
+              {(hasConfig || hasActions) && (
+                <GearWrapper>
+                  <GearButton
+                    item={item}
+                    def={def}
+                    onSaveConfig={(newConfig) =>
                       updateItemConfig(item.i, newConfig)
                     }
+                    onSaveMappings={(next) => updateItemMappings(item.i, next)}
                   />
-                </DashboardItemContext.Provider>
-              </ComponentWrapper>
-            </GridCell>
-          );
-        })}
-      </ResponsiveGridLayout>
-    );
-  },
-);
+                </GearWrapper>
+              )}
+            </CellHeader>
+            <ComponentWrapper>
+              <DashboardItemContext.Provider value={{ instanceId: item.i }}>
+                <Comp
+                  id={item.i}
+                  config={item.config}
+                  w={w}
+                  h={h}
+                  onConfigChange={(newConfig) =>
+                    updateItemConfig(item.i, newConfig)
+                  }
+                />
+              </DashboardItemContext.Provider>
+            </ComponentWrapper>
+          </GridCell>
+        );
+      })}
+    </ResponsiveGridLayout>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Gear button — separate component so useModal can be called inside the tree
@@ -311,8 +199,6 @@ function GearButton({
   );
 }
 
-// Content rendered inside the modal. Split out so `useState` can live here
-// (the outer `GearButton` only needs to open a modal, not track tab state).
 function GearModalContent({
   item,
   def,

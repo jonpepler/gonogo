@@ -16,6 +16,29 @@ import {
   type DashboardConfig,
   type DashboardItem,
 } from "../components/Dashboard";
+import { useDashboardState } from "../components/Dashboard/useDashboardState";
+
+function DashboardHarness({
+  config,
+  storageKey,
+}: {
+  config: DashboardConfig;
+  storageKey: string;
+}) {
+  const s = useDashboardState(storageKey, config);
+  return (
+    <Dashboard
+      items={s.items}
+      layouts={s.layouts}
+      currentLayouts={s.currentLayouts}
+      breakpoint={s.breakpoint}
+      onLayoutChange={s.handleLayoutChange}
+      onBreakpointChange={s.handleBreakpointChange}
+      updateItemConfig={s.updateItemConfig}
+      updateItemMappings={s.updateItemMappings}
+    />
+  );
+}
 
 const actions = [
   { id: "toggle", label: "Toggle", accepts: ["button"] },
@@ -82,7 +105,7 @@ describe("Dashboard tabbed config modal", () => {
     registerFakeWithConfigAndActions();
     render(
       <ModalProvider>
-        <Dashboard config={CONFIG} storageKey={STORAGE_KEY} />
+        <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />
       </ModalProvider>,
     );
 
@@ -96,7 +119,7 @@ describe("Dashboard tabbed config modal", () => {
     registerFakeWithConfigAndActions();
     render(
       <ModalProvider>
-        <Dashboard config={CONFIG} storageKey={STORAGE_KEY} />
+        <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />
       </ModalProvider>,
     );
 
@@ -115,7 +138,7 @@ describe("Dashboard tabbed config modal", () => {
     registerFakeWithConfigAndActions();
     render(
       <ModalProvider>
-        <Dashboard config={CONFIG} storageKey={STORAGE_KEY} />
+        <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />
       </ModalProvider>,
     );
 
@@ -138,7 +161,7 @@ describe("Dashboard tabbed config modal", () => {
     });
     render(
       <ModalProvider>
-        <Dashboard
+        <DashboardHarness
           config={{
             items: [{ i: "w1", componentId: "fake-config-only" }],
             layouts: { lg: [{ i: "w1", x: 0, y: 0, w: 3, h: 3 }] },
@@ -167,7 +190,7 @@ describe("Dashboard tabbed config modal", () => {
     });
     render(
       <ModalProvider>
-        <Dashboard
+        <DashboardHarness
           config={{
             items: [{ i: "w1", componentId: "fake-actions-only" }],
             layouts: { lg: [{ i: "w1", x: 0, y: 0, w: 3, h: 3 }] },

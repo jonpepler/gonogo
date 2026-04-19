@@ -1,13 +1,14 @@
 import { getDataSources } from "@gonogo/core";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import styled from "styled-components";
 import {
   ComponentOverlay,
   OverlayProvider,
 } from "../components/ComponentOverlay";
-import type { DashboardConfig, DashboardHandle } from "../components/Dashboard";
+import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
+import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { usePeerHost } from "../peer/PeerHostProvider";
 
 const DEMO_CONFIG: DashboardConfig = {
@@ -672,7 +673,7 @@ function PeerStatusPanel() {
 }
 
 export function MainScreen() {
-  const dashboardRef = useRef<DashboardHandle>(null);
+  const dashboard = useDashboardState("gonogo:dashboard:main", DEMO_CONFIG);
 
   useEffect(() => {
     const sources = getDataSources();
@@ -686,32 +687,25 @@ export function MainScreen() {
     };
   }, []);
 
-  const addItem: OverlayProvider_AddItem = (item, layout) => {
-    dashboardRef.current?.addItem(item, layout);
-  };
-
-  const currentLayouts = dashboardRef.current?.currentLayouts ?? { lg: [] };
-
   return (
-    <OverlayProvider addItem={addItem}>
+    <OverlayProvider addItem={dashboard.addItem}>
       <Layout>
         <PeerStatusPanel />
         <Dashboard
-          ref={dashboardRef}
-          config={DEMO_CONFIG}
-          storageKey="gonogo:dashboard:main"
+          items={dashboard.items}
+          layouts={dashboard.layouts}
+          currentLayouts={dashboard.currentLayouts}
+          breakpoint={dashboard.breakpoint}
+          onLayoutChange={dashboard.handleLayoutChange}
+          onBreakpointChange={dashboard.handleBreakpointChange}
+          updateItemConfig={dashboard.updateItemConfig}
+          updateItemMappings={dashboard.updateItemMappings}
         />
-        <ComponentOverlay currentLayouts={currentLayouts} />
+        <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
       </Layout>
     </OverlayProvider>
   );
 }
-
-// Inline type alias to avoid importing DashboardItem directly here
-type OverlayProvider_AddItem = (
-  item: import("../components/Dashboard").DashboardItem,
-  layout: { x: number; y: number; w: number; h: number },
-) => void;
 
 const Layout = styled.div`
   padding: 24px;

@@ -11,6 +11,7 @@ export default defineConfig({
         import.meta.dirname,
         "../components/src/index.ts",
       ),
+      "@gonogo/data": path.resolve(import.meta.dirname, "../data/src/index.ts"),
       "@gonogo/serial": path.resolve(
         import.meta.dirname,
         "../serial/src/index.ts",

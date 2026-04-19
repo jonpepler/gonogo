@@ -162,7 +162,7 @@ describe("serial → action → telemachus end-to-end", () => {
       ],
     });
 
-    render(
+    const { unmount } = render(
       <SerialDeviceProvider service={service}>
         <ModalProvider>
           <DashboardItemContext.Provider value={{ instanceId: "ag-1" }}>
@@ -176,21 +176,25 @@ describe("serial → action → telemachus end-to-end", () => {
     await waitFor(() => expect(screen.getByText("OFF")).toBeInTheDocument());
 
     // ── 4. Drive the serial port: press button A ──────────────────────
-    await port.emitData(" 1 0 \n");
-    for (let i = 0; i < 5; i++) await Promise.resolve();
+    // Drive the full cascade (serial read → parser → InputDispatcher →
+    // ActionGroup handler → fetch → MSW → WS push → subscriber → setState)
+    // inside a single act scope. The raw microtask drains that used to live
+    // here ran outside act, so the trailing setState from the WS push landed
+    // outside React's act boundary and tripped a warning.
+    await act(async () => {
+      await port.emitData(" 1 0 \n");
+      // Drain enough microtasks for the full async cascade to settle.
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+    });
 
     // ── 5. Assert MSW saw the execute + UI reflects the toggle ────────
     await waitFor(() => expect(executeSpy).toHaveBeenCalledWith("f.ag1"));
     await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
 
-    // MSW's WS delivery can leave one more microtask in flight after the
-    // state-pushed re-render settles. Flush it inside act so it doesn't land
-    // on the still-mounted component outside React's act boundary.
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
-    });
+    // Unmount so pending subscribers are torn down before we disconnect the
+    // data source in afterEach.
+    unmount();
 
-    // Cleanup
     dispatcher.dispose();
     await service.destroy();
     mock.restore();

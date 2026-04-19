@@ -21,7 +21,7 @@ import {
   SerialDeviceService,
 } from "@gonogo/serial";
 import { ModalProvider } from "@gonogo/ui";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http, ws } from "msw";
 import { setupServer } from "msw/node";
 import {
@@ -182,6 +182,13 @@ describe("serial → action → telemachus end-to-end", () => {
     // ── 5. Assert MSW saw the execute + UI reflects the toggle ────────
     await waitFor(() => expect(executeSpy).toHaveBeenCalledWith("f.ag1"));
     await waitFor(() => expect(screen.getByText("ON")).toBeInTheDocument());
+
+    // MSW's WS delivery can leave one more microtask in flight after the
+    // state-pushed re-render settles. Flush it inside act so it doesn't land
+    // on the still-mounted component outside React's act boundary.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
 
     // Cleanup
     dispatcher.dispose();

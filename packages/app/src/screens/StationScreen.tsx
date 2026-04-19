@@ -12,6 +12,9 @@ import { KosPeerConnection } from "../peer/KosPeerConnection";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
 import type { ConnStatus } from "../peer/PeerClientService";
 import { PeerClientService } from "../peer/PeerClientService";
+import { InputDispatcher } from "../serial/InputDispatcher";
+import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
+import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 const HOST_ID_KEY = "gonogo-station-host-id";
 
@@ -33,8 +36,21 @@ export function StationScreen() {
     "gonogo:dashboard:station",
     DEFAULT_CONFIG,
   );
+  const [serialService] = useState(
+    () => new SerialDeviceService({ screenKey: "station" }),
+  );
   const unsubsRef = useRef<Array<() => void>>([]);
   const schemaHandledRef = useRef(false);
+
+  useEffect(() => {
+    const dispatcher = new InputDispatcher({
+      service: serialService,
+      getItems: dashboard.getItems,
+    });
+    return () => {
+      dispatcher.dispose();
+    };
+  }, [serialService, dashboard.getItems]);
 
   function attemptConnect(hostId: string) {
     const trimmed = hostId.trim().toUpperCase();
@@ -132,21 +148,23 @@ export function StationScreen() {
 
   return (
     <KosProxyContext.Provider value={kosProxy}>
-      <OverlayProvider addItem={dashboard.addItem}>
-        <Layout>
-          <Dashboard
-            items={dashboard.items}
-            layouts={dashboard.layouts}
-            currentLayouts={dashboard.currentLayouts}
-            breakpoint={dashboard.breakpoint}
-            onLayoutChange={dashboard.handleLayoutChange}
-            onBreakpointChange={dashboard.handleBreakpointChange}
-            updateItemConfig={dashboard.updateItemConfig}
-            updateItemMappings={dashboard.updateItemMappings}
-          />
-          <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
-        </Layout>
-      </OverlayProvider>
+      <SerialDeviceProvider service={serialService}>
+        <OverlayProvider addItem={dashboard.addItem}>
+          <Layout>
+            <Dashboard
+              items={dashboard.items}
+              layouts={dashboard.layouts}
+              currentLayouts={dashboard.currentLayouts}
+              breakpoint={dashboard.breakpoint}
+              onLayoutChange={dashboard.handleLayoutChange}
+              onBreakpointChange={dashboard.handleBreakpointChange}
+              updateItemConfig={dashboard.updateItemConfig}
+              updateItemMappings={dashboard.updateItemMappings}
+            />
+            <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
+          </Layout>
+        </OverlayProvider>
+      </SerialDeviceProvider>
     </KosProxyContext.Provider>
   );
 }

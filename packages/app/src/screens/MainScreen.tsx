@@ -1,6 +1,6 @@
 import { getDataSources } from "@gonogo/core";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import {
   ComponentOverlay,
@@ -10,6 +10,9 @@ import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { usePeerHost } from "../peer/PeerHostProvider";
+import { InputDispatcher } from "../serial/InputDispatcher";
+import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
+import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 const DEMO_CONFIG: DashboardConfig = {
   items: [
@@ -674,6 +677,19 @@ function PeerStatusPanel() {
 
 export function MainScreen() {
   const dashboard = useDashboardState("gonogo:dashboard:main", DEMO_CONFIG);
+  const [serialService] = useState(
+    () => new SerialDeviceService({ screenKey: "main" }),
+  );
+
+  useEffect(() => {
+    const dispatcher = new InputDispatcher({
+      service: serialService,
+      getItems: dashboard.getItems,
+    });
+    return () => {
+      dispatcher.dispose();
+    };
+  }, [serialService, dashboard.getItems]);
 
   useEffect(() => {
     const sources = getDataSources();
@@ -688,22 +704,24 @@ export function MainScreen() {
   }, []);
 
   return (
-    <OverlayProvider addItem={dashboard.addItem}>
-      <Layout>
-        <PeerStatusPanel />
-        <Dashboard
-          items={dashboard.items}
-          layouts={dashboard.layouts}
-          currentLayouts={dashboard.currentLayouts}
-          breakpoint={dashboard.breakpoint}
-          onLayoutChange={dashboard.handleLayoutChange}
-          onBreakpointChange={dashboard.handleBreakpointChange}
-          updateItemConfig={dashboard.updateItemConfig}
-          updateItemMappings={dashboard.updateItemMappings}
-        />
-        <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
-      </Layout>
-    </OverlayProvider>
+    <SerialDeviceProvider service={serialService}>
+      <OverlayProvider addItem={dashboard.addItem}>
+        <Layout>
+          <PeerStatusPanel />
+          <Dashboard
+            items={dashboard.items}
+            layouts={dashboard.layouts}
+            currentLayouts={dashboard.currentLayouts}
+            breakpoint={dashboard.breakpoint}
+            onLayoutChange={dashboard.handleLayoutChange}
+            onBreakpointChange={dashboard.handleBreakpointChange}
+            updateItemConfig={dashboard.updateItemConfig}
+            updateItemMappings={dashboard.updateItemMappings}
+          />
+          <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
+        </Layout>
+      </OverlayProvider>
+    </SerialDeviceProvider>
   );
 }
 

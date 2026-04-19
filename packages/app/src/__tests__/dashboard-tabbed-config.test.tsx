@@ -17,6 +17,8 @@ import {
   type DashboardItem,
 } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
+import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
+import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 function DashboardHarness({
   config,
@@ -38,6 +40,24 @@ function DashboardHarness({
       updateItemMappings={s.updateItemMappings}
     />
   );
+}
+
+function renderWithProviders(
+  service: SerialDeviceService,
+  tree: React.ReactNode,
+) {
+  return render(
+    <SerialDeviceProvider service={service}>
+      <ModalProvider>{tree}</ModalProvider>
+    </SerialDeviceProvider>,
+  );
+}
+
+function makeEmptyService(): SerialDeviceService {
+  return new SerialDeviceService({
+    screenKey: `test-${Math.random().toString(36).slice(2)}`,
+    renderDebounceMs: 0,
+  });
 }
 
 const actions = [
@@ -103,10 +123,9 @@ afterEach(() => {
 describe("Dashboard tabbed config modal", () => {
   it("opens tabs when a component has both a configComponent and actions", () => {
     registerFakeWithConfigAndActions();
-    render(
-      <ModalProvider>
-        <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />
-      </ModalProvider>,
+    renderWithProviders(
+      makeEmptyService(),
+      <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /configure fake/i }));
@@ -117,10 +136,9 @@ describe("Dashboard tabbed config modal", () => {
 
   it("persists config from the Settings tab into localStorage", () => {
     registerFakeWithConfigAndActions();
-    render(
-      <ModalProvider>
-        <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />
-      </ModalProvider>,
+    renderWithProviders(
+      makeEmptyService(),
+      <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /configure fake/i }));
@@ -134,12 +152,60 @@ describe("Dashboard tabbed config modal", () => {
     expect(persisted.items[0].config).toEqual({ label: "ALPHA" });
   });
 
+  it("persists a real inputMapping round-trip when saving from the Inputs tab", async () => {
+    registerFakeWithConfigAndActions();
+    const service = makeEmptyService();
+    for (const d of service.getDevices()) await service.removeDevice(d.id);
+    for (const t of service.getDeviceTypes())
+      await service.removeDeviceType(t.id);
+    service.upsertDeviceType({
+      id: "panel",
+      name: "Panel",
+      parser: "char-position",
+      inputs: [{ id: "btnA", name: "A", kind: "button" }],
+    });
+    service.addDevice({
+      id: "panel-1",
+      name: "Panel 1",
+      typeId: "panel",
+      transport: "virtual",
+    });
+
+    const { unmount } = renderWithProviders(
+      service,
+      <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /configure fake/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /inputs/i }));
+    fireEvent.change(screen.getByLabelText("Toggle"), {
+      target: { value: "panel-1::btnA" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+    expect(persisted.items[0].inputMappings).toEqual({
+      toggle: { deviceId: "panel-1", inputId: "btnA" },
+    });
+
+    // Reload — new Dashboard instance sees the persisted mapping.
+    unmount();
+    renderWithProviders(
+      service,
+      <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /configure fake/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /inputs/i }));
+    expect((screen.getByLabelText("Toggle") as HTMLSelectElement).value).toBe(
+      "panel-1::btnA",
+    );
+  });
+
   it("persists inputMappings (empty) when saving from the Inputs tab", () => {
     registerFakeWithConfigAndActions();
-    render(
-      <ModalProvider>
-        <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />
-      </ModalProvider>,
+    renderWithProviders(
+      makeEmptyService(),
+      <DashboardHarness config={CONFIG} storageKey={STORAGE_KEY} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /configure fake/i }));
@@ -159,16 +225,15 @@ describe("Dashboard tabbed config modal", () => {
       component: FakeComponent,
       configComponent: FakeConfig,
     });
-    render(
-      <ModalProvider>
-        <DashboardHarness
-          config={{
-            items: [{ i: "w1", componentId: "fake-config-only" }],
-            layouts: { lg: [{ i: "w1", x: 0, y: 0, w: 3, h: 3 }] },
-          }}
-          storageKey={STORAGE_KEY}
-        />
-      </ModalProvider>,
+    renderWithProviders(
+      makeEmptyService(),
+      <DashboardHarness
+        config={{
+          items: [{ i: "w1", componentId: "fake-config-only" }],
+          layouts: { lg: [{ i: "w1", x: 0, y: 0, w: 3, h: 3 }] },
+        }}
+        storageKey={STORAGE_KEY}
+      />,
     );
 
     fireEvent.click(
@@ -188,16 +253,15 @@ describe("Dashboard tabbed config modal", () => {
       component: FakeComponent,
       actions,
     });
-    render(
-      <ModalProvider>
-        <DashboardHarness
-          config={{
-            items: [{ i: "w1", componentId: "fake-actions-only" }],
-            layouts: { lg: [{ i: "w1", x: 0, y: 0, w: 3, h: 3 }] },
-          }}
-          storageKey={STORAGE_KEY}
-        />
-      </ModalProvider>,
+    renderWithProviders(
+      makeEmptyService(),
+      <DashboardHarness
+        config={{
+          items: [{ i: "w1", componentId: "fake-actions-only" }],
+          layouts: { lg: [{ i: "w1", x: 0, y: 0, w: 3, h: 3 }] },
+        }}
+        storageKey={STORAGE_KEY}
+      />,
     );
 
     fireEvent.click(

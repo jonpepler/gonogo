@@ -46,6 +46,8 @@ export interface DashboardState {
   updateItemMappings: (id: string, mappings: InputMappings) => void;
   /** Subscribe to item changes — fires after every add / update. */
   subscribeItems: (cb: (items: DashboardItem[]) => void) => () => void;
+  /** Always returns the latest items without going through React render. */
+  getItems: () => readonly DashboardItem[];
 }
 
 export function useDashboardState(
@@ -166,6 +168,8 @@ export function useDashboardState(
     };
   }, []);
 
+  const getItems = useCallback(() => itemsRef.current, []);
+
   return {
     items,
     layouts,
@@ -177,5 +181,6 @@ export function useDashboardState(
     updateItemConfig,
     updateItemMappings,
     subscribeItems,
+    getItems,
   };
 }

@@ -90,12 +90,15 @@ export class WebSerialTransport implements DeviceTransport {
       await this.reader?.cancel();
       this.reader?.releaseLock();
       this.reader = null;
-      await this.readableClosed?.catch(() => {});
+      // Do NOT await readableClosed / writableClosed — their pipeTo promises
+      // only resolve once the source/destination fully close, which for a
+      // mock or a hard-pulled USB device may never happen. Drop the refs.
+      this.readableClosed?.catch(() => {});
       this.readableClosed = null;
 
       this.writer?.releaseLock();
       this.writer = null;
-      await this.writableClosed?.catch(() => {});
+      this.writableClosed?.catch(() => {});
       this.writableClosed = null;
 
       await this.port?.close();

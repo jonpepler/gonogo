@@ -1,7 +1,19 @@
-import type { ActionDefinition } from "@gonogo/core";
-import { FieldHint, FieldLabel, GhostButton, PrimaryButton } from "@gonogo/ui";
-import { useMemo } from "react";
+import type {
+  ActionDefinition,
+  DeviceInstance,
+  DeviceType,
+} from "@gonogo/core";
+import {
+  Field,
+  FieldHint,
+  FieldLabel,
+  GhostButton,
+  PrimaryButton,
+  Select,
+} from "@gonogo/ui";
+import { useMemo, useState } from "react";
 import styled from "styled-components";
+import { useSerialDeviceService } from "../serial/SerialDeviceContext";
 
 export interface InputBinding {
   deviceId: string;
@@ -17,20 +29,61 @@ interface InputMappingTabProps {
   onClose?: () => void;
 }
 
-/**
- * Phase 3 stub — renders the action list for the component so users can
- * see what can be mapped. Phase 4 wires in the actual device-input dropdowns
- * and the `onSave` flow.
- */
+interface PickerOption {
+  value: string; // encoded as `${deviceId}::${inputId}` or "" for unbound
+  label: string;
+}
+
+function encode(deviceId: string, inputId: string): string {
+  return `${deviceId}::${inputId}`;
+}
+
+function decode(value: string): InputBinding | null {
+  if (!value) return null;
+  const [deviceId, inputId] = value.split("::");
+  return deviceId && inputId ? { deviceId, inputId } : null;
+}
+
+function optionsForAction(
+  action: ActionDefinition,
+  devices: DeviceInstance[],
+  typeById: Map<string, DeviceType>,
+): PickerOption[] {
+  const opts: PickerOption[] = [{ value: "", label: "— unbound —" }];
+  for (const device of devices) {
+    const type = typeById.get(device.typeId);
+    if (!type) continue;
+    for (const input of type.inputs) {
+      if (!action.accepts.includes(input.kind)) continue;
+      opts.push({
+        value: encode(device.id, input.id),
+        label: `${device.name} · ${input.name}`,
+      });
+    }
+  }
+  return opts;
+}
+
 export function InputMappingTab({
   actions,
   mappings,
   onSave,
   onClose,
 }: Readonly<InputMappingTabProps>) {
-  const rows = useMemo(() => actions, [actions]);
+  const svc = useSerialDeviceService();
+  const devices = svc.getDevices();
+  const typeById = useMemo(() => {
+    const map = new Map<string, DeviceType>();
+    for (const t of svc.getDeviceTypes()) map.set(t.id, t);
+    return map;
+    // getDeviceTypes is a stable ref via the service; the list only changes
+    // when the user edits types in the serial menu, which the parent modal
+    // isn't live for.
+  }, [svc]);
 
-  if (rows.length === 0) {
+  const [draft, setDraft] = useState<InputMappings>(() => ({ ...mappings }));
+
+  if (actions.length === 0) {
     return (
       <Empty>
         This component does not expose any actions, so there is nothing to bind.
@@ -38,31 +91,51 @@ export function InputMappingTab({
     );
   }
 
+  const handleChange = (actionId: string, raw: string) => {
+    setDraft((prev) => ({ ...prev, [actionId]: decode(raw) }));
+  };
+
   return (
     <Wrap>
-      <FieldHint>
-        Device binding UI lands in Phase 4. For now this tab lists the actions
-        the component exposes.
-      </FieldHint>
+      {devices.length === 0 && (
+        <FieldHint>
+          No serial devices registered yet. Open the joystick FAB to add one.
+        </FieldHint>
+      )}
       <List>
-        {rows.map((action) => (
-          <Row key={action.id}>
-            <RowHeader>
-              <FieldLabel>{action.label}</FieldLabel>
-              <Accepts>{action.accepts.join(" · ")}</Accepts>
-            </RowHeader>
-            {action.description && <FieldHint>{action.description}</FieldHint>}
-            <Binding>
-              {mappings[action.id]
-                ? `${mappings[action.id]?.deviceId} · ${mappings[action.id]?.inputId}`
-                : "unbound"}
-            </Binding>
-          </Row>
-        ))}
+        {actions.map((action) => {
+          const opts = optionsForAction(action, devices, typeById);
+          const current = draft[action.id];
+          const currentValue = current
+            ? encode(current.deviceId, current.inputId)
+            : "";
+          const selectId = `input-mapping-${action.id}`;
+          return (
+            <Row key={action.id}>
+              <Field>
+                <FieldLabel htmlFor={selectId}>{action.label}</FieldLabel>
+                {action.description && (
+                  <FieldHint>{action.description}</FieldHint>
+                )}
+                <Select
+                  id={selectId}
+                  value={currentValue}
+                  onChange={(e) => handleChange(action.id, e.target.value)}
+                >
+                  {opts.map((opt) => (
+                    <option key={opt.value || "unbound"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Row>
+          );
+        })}
       </List>
       <Actions>
         {onClose && <GhostButton onClick={onClose}>Cancel</GhostButton>}
-        <PrimaryButton onClick={() => onSave(mappings)}>Save</PrimaryButton>
+        <PrimaryButton onClick={() => onSave(draft)}>Save</PrimaryButton>
       </Actions>
     </Wrap>
   );
@@ -83,37 +156,14 @@ const Empty = styled.div`
 const List = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 `;
 
 const Row = styled.div`
   background: #161616;
   border: 1px solid #222;
   border-radius: 4px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const RowHeader = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-`;
-
-const Accepts = styled.span`
-  font-size: 10px;
-  color: #555;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-`;
-
-const Binding = styled.span`
-  font-family: monospace;
-  font-size: 11px;
-  color: #888;
+  padding: 10px 12px;
 `;
 
 const Actions = styled.div`

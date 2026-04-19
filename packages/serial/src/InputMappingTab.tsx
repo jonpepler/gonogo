@@ -1,8 +1,4 @@
-import type {
-  ActionDefinition,
-  DeviceInstance,
-  DeviceType,
-} from "@gonogo/core";
+import type { ActionDefinition } from "@gonogo/core";
 import {
   Field,
   FieldHint,
@@ -13,14 +9,9 @@ import {
 } from "@gonogo/ui";
 import { useMemo, useState } from "react";
 import styled from "styled-components";
-import { useSerialDeviceService } from "../serial/SerialDeviceContext";
-
-export interface InputBinding {
-  deviceId: string;
-  inputId: string;
-}
-
-export type InputMappings = Record<string, InputBinding | null>;
+import type { InputBinding, InputMappings } from "./bindings";
+import { useSerialDeviceService } from "./SerialDeviceContext";
+import type { DeviceInstance, DeviceType } from "./types";
 
 interface InputMappingTabProps {
   actions: readonly ActionDefinition[];

@@ -1,5 +1,5 @@
-import type { DeviceInput } from "@gonogo/core";
 import { describe, expect, it } from "vitest";
+import type { DeviceInput } from "../types";
 import { parseCharPosition } from "./charPosition";
 
 describe("parseCharPosition", () => {

@@ -1,5 +1,5 @@
-import type { DeviceInput } from "@gonogo/core";
 import type { InputEvent } from "../transports/DeviceTransport";
+import type { DeviceInput } from "../types";
 
 /**
  * Parse one incoming line using fixed character offsets defined on each

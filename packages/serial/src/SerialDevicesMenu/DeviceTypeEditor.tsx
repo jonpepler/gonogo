@@ -1,5 +1,3 @@
-import type { DeviceInput, DeviceInputKind, DeviceType } from "@gonogo/core";
-import { getSerialRenderStyles } from "@gonogo/core";
 import {
   Button,
   Field,
@@ -12,6 +10,8 @@ import {
 } from "@gonogo/ui";
 import { useMemo, useState } from "react";
 import styled from "styled-components";
+import { getSerialRenderStyles } from "../registry";
+import type { DeviceInput, DeviceInputKind, DeviceType } from "../types";
 
 interface Props {
   initial?: DeviceType;

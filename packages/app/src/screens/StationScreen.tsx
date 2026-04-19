@@ -1,4 +1,10 @@
 import { debugPeer, KosProxyContext, registerDataSource } from "@gonogo/core";
+import {
+  InputDispatcher,
+  SerialDeviceProvider,
+  SerialDeviceService,
+  SerialFab,
+} from "@gonogo/serial";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import {
@@ -8,22 +14,12 @@ import {
 import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
-import { SerialFab } from "../components/SerialFab";
 import { KosPeerConnection } from "../peer/KosPeerConnection";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
 import type { ConnStatus } from "../peer/PeerClientService";
 import { PeerClientService } from "../peer/PeerClientService";
-import { InputDispatcher } from "../serial/InputDispatcher";
-import { useInstallVirtualDeviceAccessor } from "../serial/installVirtualDeviceAccessor";
-import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
-import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 const HOST_ID_KEY = "gonogo-station-host-id";
-
-function VirtualDeviceAccessorInstaller() {
-  useInstallVirtualDeviceAccessor();
-  return null;
-}
 
 const DEFAULT_CONFIG: DashboardConfig = {
   items: [{ i: "status", componentId: "data-source-status" }],
@@ -156,7 +152,6 @@ export function StationScreen() {
   return (
     <KosProxyContext.Provider value={kosProxy}>
       <SerialDeviceProvider service={serialService}>
-        <VirtualDeviceAccessorInstaller />
         <OverlayProvider addItem={dashboard.addItem}>
           <Layout>
             <Dashboard

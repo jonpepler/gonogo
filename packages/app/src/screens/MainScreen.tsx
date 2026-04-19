@@ -1,4 +1,10 @@
 import { getDataSources } from "@gonogo/core";
+import {
+  InputDispatcher,
+  SerialDeviceProvider,
+  SerialDeviceService,
+  SerialFab,
+} from "@gonogo/serial";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
@@ -9,12 +15,7 @@ import {
 import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
-import { SerialFab } from "../components/SerialFab";
 import { usePeerHost } from "../peer/PeerHostProvider";
-import { InputDispatcher } from "../serial/InputDispatcher";
-import { useInstallVirtualDeviceAccessor } from "../serial/installVirtualDeviceAccessor";
-import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
-import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 const DEMO_CONFIG: DashboardConfig = {
   items: [
@@ -664,11 +665,6 @@ const DEMO_CONFIG: DashboardConfig = {
 // Screen
 // ---------------------------------------------------------------------------
 
-function VirtualDeviceAccessorInstaller() {
-  useInstallVirtualDeviceAccessor();
-  return null;
-}
-
 function PeerStatusPanel() {
   const { peerId } = usePeerHost();
   if (!peerId) return <PeerStatus>Connecting to peer network…</PeerStatus>;
@@ -712,7 +708,6 @@ export function MainScreen() {
 
   return (
     <SerialDeviceProvider service={serialService}>
-      <VirtualDeviceAccessorInstaller />
       <OverlayProvider addItem={dashboard.addItem}>
         <Layout>
           <PeerStatusPanel />

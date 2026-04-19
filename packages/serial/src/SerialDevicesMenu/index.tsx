@@ -1,4 +1,3 @@
-import type { DeviceInstance, DeviceType } from "@gonogo/core";
 import { Button, GhostButton, Tabs } from "@gonogo/ui";
 import { useState } from "react";
 import styled from "styled-components";
@@ -7,7 +6,8 @@ import {
   useSerialDeviceStatus,
   useSerialDevices,
   useSerialDeviceTypes,
-} from "../../serial/SerialDeviceContext";
+} from "../SerialDeviceContext";
+import type { DeviceInstance, DeviceType } from "../types";
 import { DeviceEditor } from "./DeviceEditor";
 import { DeviceTypeEditor } from "./DeviceTypeEditor";
 

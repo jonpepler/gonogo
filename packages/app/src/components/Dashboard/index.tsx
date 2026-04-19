@@ -5,6 +5,7 @@ import {
   getComponent,
   handleError,
 } from "@gonogo/core";
+import { type InputMappings, InputMappingTab } from "@gonogo/serial";
 import { Tabs, useModal } from "@gonogo/ui";
 import { useState } from "react";
 import type { Layout, Layouts } from "react-grid-layout";
@@ -12,7 +13,6 @@ import { Responsive, WidthProvider } from "react-grid-layout";
 import styled from "styled-components";
 import "react-grid-layout/css/styles.css";
 import "../../styles/react-resizable.css";
-import { type InputMappings, InputMappingTab } from "../InputMappingTab";
 import { handleMouseDown } from "./mouseHandlers";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);

@@ -88,12 +88,20 @@ describe("useActionInput", () => {
   });
 
   it("throws when used outside a DashboardItemContext.Provider", () => {
+    // React logs render errors via console.error, and jsdom re-dispatches the
+    // caught error as an `error` event that the default handler writes to
+    // stderr. Silence both for this intentionally-throwing test.
     const suppress = vi.spyOn(console, "error").mockImplementation(() => {});
+    const swallow = (e: ErrorEvent) => e.preventDefault();
+    window.addEventListener("error", swallow);
 
-    expect(() => render(<ToggleConsumer onToggle={() => undefined} />)).toThrow(
-      /DashboardItemContext/,
-    );
-
-    suppress.mockRestore();
+    try {
+      expect(() =>
+        render(<ToggleConsumer onToggle={() => undefined} />),
+      ).toThrow(/DashboardItemContext/);
+    } finally {
+      window.removeEventListener("error", swallow);
+      suppress.mockRestore();
+    }
   });
 });

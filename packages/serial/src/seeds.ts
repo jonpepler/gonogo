@@ -1,4 +1,4 @@
-import type { DeviceInstance, DeviceType } from "@gonogo/core";
+import type { DeviceInstance, DeviceType } from "./types";
 
 /**
  * Default device type seeded on first run so the virtual widget is usable

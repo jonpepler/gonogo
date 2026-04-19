@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from "react";
+import type { InputMappings } from "@gonogo/serial";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Layout, Layouts } from "react-grid-layout";
-import type { InputMappings } from "../InputMappingTab";
 import type { DashboardConfig, DashboardItem } from "./index";
 
 const COLS_KEYS = ["lg", "md", "sm", "xs", "xxs", "xxxs"] as const;
@@ -76,38 +76,26 @@ export function useDashboardState(
   layoutsRef.current = layouts;
 
   const itemListeners = useRef(new Set<(items: DashboardItem[]) => void>());
+  const hasMountedRef = useRef(false);
 
-  const persist = useCallback(
-    (nextItems: DashboardItem[], nextLayouts: Layouts) => {
-      if (storageKey) {
-        saveState(storageKey, { items: nextItems, layouts: nextLayouts });
-      }
-    },
-    [storageKey],
-  );
+  // Side effects (persistence + external subscribers) run from an effect, NOT
+  // inside the setState updater — StrictMode double-invokes updaters to
+  // detect impurity, which would duplicate writes and subscriber callbacks.
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    if (storageKey) saveState(storageKey, { items, layouts });
+    itemListeners.current.forEach((cb) => {
+      cb(items);
+    });
+  }, [items, layouts, storageKey]);
 
-  const setItems = useCallback(
-    (update: (prev: DashboardItem[]) => DashboardItem[]) => {
-      setItemsInner((prev) => {
-        const next = update(prev);
-        persist(next, layoutsRef.current);
-        itemListeners.current.forEach((cb) => {
-          cb(next);
-        });
-        return next;
-      });
-    },
-    [persist],
-  );
-
-  const handleLayoutChange = useCallback(
-    (_current: Layout[], all: Layouts) => {
-      setCurrentLayouts(all);
-      setLayouts(all);
-      persist(itemsRef.current, all);
-    },
-    [persist],
-  );
+  const handleLayoutChange = useCallback((_current: Layout[], all: Layouts) => {
+    setCurrentLayouts(all);
+    setLayouts(all);
+  }, []);
 
   const handleBreakpointChange = useCallback((bp: string) => {
     setBreakpoint(bp);
@@ -115,14 +103,7 @@ export function useDashboardState(
 
   const addItem = useCallback(
     (item: DashboardItem, layout: Partial<Layout>) => {
-      setItemsInner((prev) => {
-        const next = [...prev, item];
-        persist(next, layoutsRef.current);
-        itemListeners.current.forEach((cb) => {
-          cb(next);
-        });
-        return next;
-      });
+      setItemsInner((prev) => [...prev, item]);
       const entry: Layout = {
         i: item.i,
         x: layout.x ?? 0,
@@ -136,29 +117,28 @@ export function useDashboardState(
       );
       setLayouts(nextLayouts);
       setCurrentLayouts(nextLayouts);
-      persist(itemsRef.current, nextLayouts);
     },
-    [currentLayouts, persist],
+    [currentLayouts],
   );
 
   const updateItemConfig = useCallback(
     (id: string, newConfig: Record<string, unknown>) => {
-      setItems((prev) =>
+      setItemsInner((prev) =>
         prev.map((it) => (it.i === id ? { ...it, config: newConfig } : it)),
       );
     },
-    [setItems],
+    [],
   );
 
   const updateItemMappings = useCallback(
     (id: string, mappings: InputMappings) => {
-      setItems((prev) =>
+      setItemsInner((prev) =>
         prev.map((it) =>
           it.i === id ? { ...it, inputMappings: mappings } : it,
         ),
       );
     },
-    [setItems],
+    [],
   );
 
   const subscribeItems = useCallback((cb: (items: DashboardItem[]) => void) => {

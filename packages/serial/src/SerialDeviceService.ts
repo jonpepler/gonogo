@@ -1,9 +1,9 @@
-import type {
-  DeviceInstance,
-  DeviceRenderStyle,
-  DeviceType,
-} from "@gonogo/core";
-import { getSerialRenderStyle, logger } from "@gonogo/core";
+import { logger } from "@gonogo/core";
+import { getSerialRenderStyle } from "./registry";
+// Side-effect import: built-in render styles self-register on load so the
+// service can resolve `text-buffer-168` without the caller opting in.
+// Do not remove without first moving registration elsewhere.
+import "./renderStyles/textBuffer168";
 import { defaultVirtualDevice, VIRTUAL_CONTROLLER_TYPE } from "./seeds";
 import type {
   DeviceTransport,
@@ -12,6 +12,7 @@ import type {
 } from "./transports/DeviceTransport";
 import { VirtualTransport } from "./transports/VirtualTransport";
 import { WebSerialTransport } from "./transports/WebSerialTransport";
+import type { DeviceInstance, DeviceRenderStyle, DeviceType } from "./types";
 
 const DEVICE_TYPES_KEY = "gonogo.serial.device-types";
 const DEFAULT_RENDER_DEBOUNCE_MS = 100;

@@ -1,6 +1,6 @@
-import type { DeviceType } from "@gonogo/core";
 import { logger } from "@gonogo/core";
 import { parseCharPosition } from "../parsers/charPosition";
+import type { DeviceType } from "../types";
 import type {
   DeviceTransport,
   InputEvent,

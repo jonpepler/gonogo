@@ -7,6 +7,7 @@
 
 import type { ActionDefinition } from "@gonogo/core";
 import { clearRegistry, registerComponent } from "@gonogo/core";
+import { SerialDeviceProvider, SerialDeviceService } from "@gonogo/serial";
 import { ModalProvider } from "@gonogo/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
@@ -17,8 +18,6 @@ import {
   type DashboardItem,
 } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
-import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
-import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 function DashboardHarness({
   config,

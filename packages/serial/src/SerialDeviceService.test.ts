@@ -1,7 +1,7 @@
-import type { DeviceInstance, DeviceType } from "@gonogo/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SerialDeviceService } from "./SerialDeviceService";
 import type { VirtualTransport } from "./transports/VirtualTransport";
+import type { DeviceInstance, DeviceType } from "./types";
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();

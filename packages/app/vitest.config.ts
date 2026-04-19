@@ -11,6 +11,10 @@ export default defineConfig({
         import.meta.dirname,
         "../components/src/index.ts",
       ),
+      "@gonogo/serial": path.resolve(
+        import.meta.dirname,
+        "../serial/src/index.ts",
+      ),
     },
   },
   test: {

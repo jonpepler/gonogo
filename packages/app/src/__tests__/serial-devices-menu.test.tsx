@@ -2,12 +2,14 @@
  * Smoke test for the SerialDevicesMenu: create a device type via the UI,
  * create a virtual device of that type, verify the service exposes both.
  */
+import {
+  SerialDeviceProvider,
+  SerialDeviceService,
+  SerialDevicesMenu,
+} from "@gonogo/serial";
 import { ModalProvider } from "@gonogo/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { SerialDevicesMenu } from "../components/SerialDevicesMenu";
-import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
-import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();

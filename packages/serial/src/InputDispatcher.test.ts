@@ -1,7 +1,6 @@
 import { clearActionHandlers, registerActionHandler } from "@gonogo/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DashboardItem } from "../components/Dashboard";
-import { InputDispatcher } from "./InputDispatcher";
+import { InputDispatcher, type InputMappingSource } from "./InputDispatcher";
 import { SerialDeviceService } from "./SerialDeviceService";
 import type { VirtualTransport } from "./transports/VirtualTransport";
 
@@ -71,7 +70,7 @@ describe("InputDispatcher", () => {
       return undefined;
     });
 
-    const items: DashboardItem[] = [
+    const items: InputMappingSource[] = [
       {
         i: "ag-1",
         componentId: "action-group",
@@ -144,7 +143,7 @@ describe("InputDispatcher", () => {
     const spy = vi.fn();
     registerActionHandler("ag-1", "toggle", spy);
 
-    let items: DashboardItem[] = [
+    let items: InputMappingSource[] = [
       {
         i: "ag-1",
         componentId: "action-group",

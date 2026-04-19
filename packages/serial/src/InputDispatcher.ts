@@ -1,7 +1,17 @@
 import { dispatchAction } from "@gonogo/core";
-import type { DashboardItem } from "../components/Dashboard";
+import type { InputBinding } from "./bindings";
 import type { SerialDeviceService } from "./SerialDeviceService";
 import type { InputEvent } from "./transports/DeviceTransport";
+
+/**
+ * Minimal shape the dispatcher needs from each dashboard item — structural
+ * so @gonogo/app's `DashboardItem` satisfies it without an explicit import
+ * (keeps the dependency flowing app → serial, not the other way).
+ */
+export interface InputMappingSource {
+  readonly i: string;
+  readonly inputMappings?: Record<string, InputBinding | null>;
+}
 
 interface Options {
   /**
@@ -9,7 +19,7 @@ interface Options {
    * reads it on every serial event, so changes to items or inputMappings are
    * picked up immediately.
    */
-  getItems: () => readonly DashboardItem[];
+  getItems: () => readonly InputMappingSource[];
   service: SerialDeviceService;
 }
 
@@ -27,7 +37,7 @@ interface Options {
  * Constructed per-screen; the owner calls `dispose()` on unmount.
  */
 export class InputDispatcher {
-  private readonly getItems: () => readonly DashboardItem[];
+  private readonly getItems: () => readonly InputMappingSource[];
   private readonly service: SerialDeviceService;
   private readonly unsubInput: () => void;
 

@@ -1,6 +1,6 @@
-import type { DeviceType } from "@gonogo/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WebSerialTransport } from "../transports/WebSerialTransport";
+import type { DeviceType } from "../types";
 import { MockWebSerial } from "./mockWebSerial";
 
 const TYPE: DeviceType = {

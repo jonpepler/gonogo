@@ -5,19 +5,19 @@
  */
 
 import {
-  __setVirtualDeviceServiceAccessor,
-  VirtualDeviceComponent,
-} from "@gonogo/components";
-import {
   clearActionHandlers,
   DashboardItemContext,
   registerActionHandler,
 } from "@gonogo/core";
+import {
+  InputDispatcher,
+  type InputMappingSource,
+  SerialDeviceProvider,
+  SerialDeviceService,
+  VirtualDeviceComponent,
+} from "@gonogo/serial";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DashboardItem } from "../components/Dashboard";
-import { InputDispatcher } from "../serial/InputDispatcher";
-import { SerialDeviceService } from "../serial/SerialDeviceService";
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -66,27 +66,26 @@ describe("VirtualDevice widget", () => {
     });
     await service.connect("panel-1");
 
-    __setVirtualDeviceServiceAccessor(() => service);
-
     const toggleSpy = vi.fn();
     registerActionHandler("ag-1", "toggle", (payload) => {
       toggleSpy(payload);
       return undefined;
     });
 
-    const items: DashboardItem[] = [
+    const items: InputMappingSource[] = [
       {
         i: "ag-1",
-        componentId: "action-group",
         inputMappings: { toggle: { deviceId: "panel-1", inputId: "a" } },
       },
     ];
     const dispatcher = new InputDispatcher({ service, getItems: () => items });
 
     render(
-      <DashboardItemContext.Provider value={{ instanceId: "vd-1" }}>
-        <VirtualDeviceComponent id="vd-1" config={{ deviceId: "panel-1" }} />
-      </DashboardItemContext.Provider>,
+      <SerialDeviceProvider service={service}>
+        <DashboardItemContext.Provider value={{ instanceId: "vd-1" }}>
+          <VirtualDeviceComponent id="vd-1" config={{ deviceId: "panel-1" }} />
+        </DashboardItemContext.Provider>
+      </SerialDeviceProvider>,
     );
 
     const btnA = screen.getByRole("button", { name: "A" });
@@ -126,22 +125,21 @@ describe("VirtualDevice widget", () => {
     });
     await service.connect("panel-2");
 
-    __setVirtualDeviceServiceAccessor(() => service);
-
     registerActionHandler("ag-1", "toggle", () => ({ HELLO: 42 }));
-    const items: DashboardItem[] = [
+    const items: InputMappingSource[] = [
       {
         i: "ag-1",
-        componentId: "action-group",
         inputMappings: { toggle: { deviceId: "panel-2", inputId: "a" } },
       },
     ];
     const dispatcher = new InputDispatcher({ service, getItems: () => items });
 
     render(
-      <DashboardItemContext.Provider value={{ instanceId: "vd-2" }}>
-        <VirtualDeviceComponent id="vd-2" config={{ deviceId: "panel-2" }} />
-      </DashboardItemContext.Provider>,
+      <SerialDeviceProvider service={service}>
+        <DashboardItemContext.Provider value={{ instanceId: "vd-2" }}>
+          <VirtualDeviceComponent id="vd-2" config={{ deviceId: "panel-2" }} />
+        </DashboardItemContext.Provider>
+      </SerialDeviceProvider>,
     );
 
     fireEvent.pointerDown(screen.getByRole("button", { name: "A" }));

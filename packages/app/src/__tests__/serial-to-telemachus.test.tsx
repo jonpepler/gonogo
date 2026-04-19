@@ -7,13 +7,19 @@
  */
 
 import { ActionGroupComponent } from "@gonogo/components";
-import type { DeviceInstance } from "@gonogo/core";
 import {
   clearActionHandlers,
   clearRegistry,
   DashboardItemContext,
   registerDataSource,
 } from "@gonogo/core";
+import {
+  type DeviceInstance,
+  InputDispatcher,
+  MockWebSerial,
+  SerialDeviceProvider,
+  SerialDeviceService,
+} from "@gonogo/serial";
 import { ModalProvider } from "@gonogo/ui";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http, ws } from "msw";
@@ -29,10 +35,6 @@ import {
   vi,
 } from "vitest";
 import { telemachusSource } from "../dataSources/telemachus";
-import { InputDispatcher } from "../serial/InputDispatcher";
-import { SerialDeviceProvider } from "../serial/SerialDeviceContext";
-import { SerialDeviceService } from "../serial/SerialDeviceService";
-import { MockWebSerial } from "../serial/test/mockWebSerial";
 
 const telemachusWs = ws.link("ws://localhost:8085/datalink");
 const server = setupServer();

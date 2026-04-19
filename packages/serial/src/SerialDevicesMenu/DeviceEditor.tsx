@@ -1,8 +1,3 @@
-import type {
-  DeviceInstance,
-  DeviceTransportKind,
-  DeviceType,
-} from "@gonogo/core";
 import {
   Field,
   FieldHint,
@@ -15,6 +10,7 @@ import {
 } from "@gonogo/ui";
 import { useState } from "react";
 import styled from "styled-components";
+import type { DeviceInstance, DeviceTransportKind, DeviceType } from "../types";
 
 interface Props {
   initial?: DeviceInstance;

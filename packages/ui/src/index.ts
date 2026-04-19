@@ -1,5 +1,6 @@
 export * from "./Button";
 export * from "./DataKeyPicker";
+export * from "./Fab";
 export * from "./FabCluster";
 export * from "./LineChart";
 export * from "./lineChartMath";

@@ -45,6 +45,29 @@ export function HistoryIcon(props: Readonly<IconProps>) {
   );
 }
 
+export function BroadcastIcon(props: Readonly<IconProps>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="2" />
+      <path d="M8.5 15.5a5 5 0 0 1 0-7" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M5.6 18.4a9 9 0 0 1 0-12.8" />
+      <path d="M18.4 5.6a9 9 0 0 1 0 12.8" />
+    </svg>
+  );
+}
+
 export function PlusIcon(props: Readonly<IconProps>) {
   return (
     <svg

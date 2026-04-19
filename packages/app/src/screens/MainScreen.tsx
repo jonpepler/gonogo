@@ -6,7 +6,6 @@ import {
   SerialDeviceService,
   SerialFab,
 } from "@gonogo/serial";
-import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { FabClusterProvider } from "@gonogo/ui";
@@ -17,7 +16,7 @@ import {
 import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
-import { usePeerHost } from "../peer/PeerHostProvider";
+import { StationLinkFab } from "../components/StationLinkFab";
 
 const DEMO_CONFIG: DashboardConfig = {
   items: [
@@ -667,19 +666,6 @@ const DEMO_CONFIG: DashboardConfig = {
 // Screen
 // ---------------------------------------------------------------------------
 
-function PeerStatusPanel() {
-  const { peerId } = usePeerHost();
-  if (!peerId) return <PeerStatus>Connecting to peer network…</PeerStatus>;
-  return (
-    <PeerStatus>
-      <p>
-        Host ID: <code>{peerId}</code>
-      </p>
-      <QRCodeSVG value={peerId} size={96} />
-    </PeerStatus>
-  );
-}
-
 export function MainScreen() {
   const dashboard = useDashboardState("gonogo:dashboard:main", DEMO_CONFIG);
   const [serialService] = useState(
@@ -712,7 +698,6 @@ export function MainScreen() {
     <SerialDeviceProvider service={serialService}>
       <OverlayProvider addItem={dashboard.addItem}>
         <Layout>
-          <PeerStatusPanel />
           <Dashboard
             items={dashboard.items}
             layouts={dashboard.layouts}
@@ -728,6 +713,7 @@ export function MainScreen() {
             <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
             <FlightsFab />
             <SerialFab />
+            <StationLinkFab />
           </FabClusterProvider>
         </Layout>
       </OverlayProvider>
@@ -739,27 +725,4 @@ const Layout = styled.div`
   padding: 24px;
   background: #050505;
   min-height: 100vh;
-`;
-
-const PeerStatus = styled.div`
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 100;
-  background: #111;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 10px 14px;
-  font-size: 11px;
-  color: #aaa;
-  line-height: 1.4;
-
-  code {
-    color: #7cf;
-    font-family: monospace;
-  }
-
-  p {
-    margin: 0 0 8px;
-  }
 `;

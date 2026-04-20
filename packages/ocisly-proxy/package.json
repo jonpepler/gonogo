@@ -1,0 +1,28 @@
+{
+  "name": "@gonogo/ocisly-proxy",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@grpc/grpc-js": "^1.12.2",
+    "@grpc/proto-loader": "^0.7.13",
+    "@roamhq/wrtc": "^0.8.0",
+    "fastify": "^5.0.0",
+    "jpeg-js": "^0.4.4",
+    "peerjs": "^1.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.4"
+  }
+}

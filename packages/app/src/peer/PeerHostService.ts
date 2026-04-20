@@ -1,5 +1,6 @@
 import { debugPeer, logger } from "@gonogo/core";
 import Peer, { type DataConnection } from "peerjs";
+import { loadIceServers } from "./iceServers";
 import type { PeerMessage } from "./protocol";
 
 const PEER_ID_KEY = "gonogo-host-peer-id";
@@ -31,11 +32,16 @@ export class PeerHostService {
   private connections: Set<DataConnection> = new Set();
   private idListeners = new Set<(id: string | null) => void>();
   private kosSessions = new Map<string, KosSession>();
+  private ocislyProxyPeerId: string | null = null;
   peerId: string | null = null;
 
   start() {
     const peerId = getOrCreatePeerId();
-    this.peer = new Peer(peerId);
+    const iceServers = loadIceServers();
+    this.peer = new Peer(
+      peerId,
+      iceServers.length > 0 ? { config: { iceServers } } : undefined,
+    );
 
     this.peer.on("open", (id) => {
       localStorage.setItem(PEER_ID_KEY, id);
@@ -54,6 +60,15 @@ export class PeerHostService {
           `[PeerHost] connection open — peer=${conn.peer}, total=${this.connections.size}`,
         );
         this.sendSchema(conn);
+        // Station needs this to reach the OCISLY proxy directly — resend
+        // whenever a new station connects so latecomers aren't stuck in
+        // "disconnected".
+        if (this.ocislyProxyPeerId !== null) {
+          conn.send({
+            type: "ocisly-proxy-peer-id",
+            peerId: this.ocislyProxyPeerId,
+          } satisfies PeerMessage);
+        }
       });
       conn.on("data", (raw) => this.handleIncoming(raw as PeerMessage, conn));
       conn.on("close", () => {
@@ -70,6 +85,34 @@ export class PeerHostService {
 
     this.peer.on("error", (err) => {
       logger.error("[PeerHost] peer error", err);
+    });
+  }
+
+  /**
+   * Set (and broadcast) the current OCISLY proxy peer id. Called by the
+   * host-side OcislyStreamSource once it resolves the id over HTTP. Passing
+   * null tears it back down for all stations.
+   */
+  setOcislyProxyPeerId(peerId: string | null) {
+    this.ocislyProxyPeerId = peerId;
+    this.broadcast({ type: "ocisly-proxy-peer-id", peerId });
+  }
+
+  /**
+   * Returns a Promise that resolves with the open Peer instance once the
+   * broker handshake completes. Used by services that need to make outgoing
+   * peer connections of their own (e.g. OcislyStreamSource calling the
+   * ocisly-proxy). Resolves immediately if already open.
+   */
+  waitForPeer(): Promise<Peer> {
+    if (this.peer && this.peerId) return Promise.resolve(this.peer);
+    return new Promise<Peer>((resolve) => {
+      const remove = this.onPeerIdChange(() => {
+        if (this.peer && this.peerId) {
+          remove();
+          resolve(this.peer);
+        }
+      });
     });
   }
 

@@ -2,6 +2,7 @@
 // Add new component imports here as they are built.
 
 export * from "./ActionGroup";
+export * from "./CameraFeed";
 export * from "./Graph";
 export * from "./CurrentOrbit";
 export * from "./DataSourceStatus";

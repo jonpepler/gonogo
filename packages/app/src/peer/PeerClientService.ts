@@ -1,5 +1,6 @@
 import { debugPeer, logger } from "@gonogo/core";
 import Peer, { type DataConnection } from "peerjs";
+import { loadIceServers } from "./iceServers";
 import type { PeerMessage } from "./protocol";
 
 export type ConnStatus =
@@ -42,6 +43,10 @@ export class PeerClientService {
   >();
   private kosOpenedListeners = new Set<(sessionId: string) => void>();
   private kosCloseListeners = new Set<(sessionId: string) => void>();
+  private ocislyProxyPeerIdListeners = new Set<
+    (peerId: string | null) => void
+  >();
+  private ocislyProxyPeerId: string | null = null;
 
   private pendingQueries = new Map<
     string,
@@ -71,7 +76,11 @@ export class PeerClientService {
     if (!this.hostPeerId) return;
     logger.info(`[PeerClient] connecting to host=${this.hostPeerId}`);
     this.emitConnStatus("connecting");
-    this.peer = new Peer();
+    const iceServers = loadIceServers();
+    this.peer = new Peer(
+      undefined as unknown as string,
+      iceServers.length > 0 ? { config: { iceServers } } : undefined,
+    );
     this.peer.on("open", () => {
       if (!this.peer || !this.hostPeerId) return;
       this.conn = this.peer.connect(this.hostPeerId);
@@ -321,7 +330,47 @@ export class PeerClientService {
       this.kosCloseListeners.forEach((cb) => {
         cb(msg.sessionId);
       });
+    } else if (msg.type === "ocisly-proxy-peer-id") {
+      this.ocislyProxyPeerId = msg.peerId;
+      this.ocislyProxyPeerIdListeners.forEach((cb) => {
+        cb(msg.peerId);
+      });
     }
+  }
+
+  /** Latest OCISLY proxy peer id the host has announced, or null if none. */
+  getOcislyProxyPeerId(): string | null {
+    return this.ocislyProxyPeerId;
+  }
+
+  /**
+   * Notified every time the host announces a new OCISLY proxy peer id
+   * (including null → proxy is down).
+   */
+  onOcislyProxyPeerIdChange(cb: (peerId: string | null) => void): () => void {
+    this.ocislyProxyPeerIdListeners.add(cb);
+    return () => {
+      this.ocislyProxyPeerIdListeners.delete(cb);
+    };
+  }
+
+  /**
+   * Resolves with the station's own Peer instance once the broker handshake
+   * completes. Used by OcislyStreamSource on stations so it can open an
+   * outgoing data channel + accept media calls directly from the proxy.
+   */
+  waitForPeer(): Promise<Peer> {
+    if (this.peer?.open) return Promise.resolve(this.peer);
+    return new Promise<Peer>((resolve) => {
+      const tick = () => {
+        if (this.peer?.open) {
+          resolve(this.peer);
+        } else {
+          setTimeout(tick, 50);
+        }
+      };
+      tick();
+    });
   }
 
   disconnect() {

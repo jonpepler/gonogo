@@ -14,11 +14,46 @@ function defaultEnabled(): boolean {
   return true;
 }
 
+// Numeric ordering so a threshold check is a single comparison.
+const LEVEL_ORDER: Record<LogLevel, number> = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
+};
+
+function isLogLevel(v: string): v is LogLevel {
+  return v === "debug" || v === "info" || v === "warn" || v === "error";
+}
+
+function defaultLevel(): LogLevel {
+  // Browser: `localStorage.LOG_LEVEL = 'warn'` then reload.
+  // Node:    `LOG_LEVEL=warn` in the env.
+  try {
+    const ls = (globalThis as { localStorage?: Storage }).localStorage;
+    const fromLs = ls?.getItem("LOG_LEVEL");
+    if (fromLs && isLogLevel(fromLs)) return fromLs;
+  } catch {
+    // ignore — localStorage may be unavailable in SSR / node
+  }
+  try {
+    const env = (globalThis as { process?: { env?: Record<string, string> } })
+      .process?.env;
+    const fromEnv = env?.LOG_LEVEL;
+    if (fromEnv && isLogLevel(fromEnv)) return fromEnv;
+  } catch {
+    // ignore
+  }
+  return "debug";
+}
+
 export class ConsoleLogger implements Logger {
   private enabled: boolean;
+  private level: LogLevel;
 
-  constructor(opts?: { enabled?: boolean }) {
+  constructor(opts?: { enabled?: boolean; level?: LogLevel }) {
     this.enabled = opts?.enabled ?? defaultEnabled();
+    this.level = opts?.level ?? defaultLevel();
   }
 
   setEnabled(value: boolean): void {
@@ -29,6 +64,14 @@ export class ConsoleLogger implements Logger {
     return this.enabled;
   }
 
+  setLevel(level: LogLevel): void {
+    this.level = level;
+  }
+
+  getLevel(): LogLevel {
+    return this.level;
+  }
+
   private log(
     level: LogLevel,
     message: string,
@@ -36,6 +79,7 @@ export class ConsoleLogger implements Logger {
     error?: Error,
   ) {
     if (!this.enabled) return;
+    if (LEVEL_ORDER[level] < LEVEL_ORDER[this.level]) return;
     const entry = {
       level,
       message,

@@ -1,4 +1,10 @@
-import { debugPeer, KosProxyContext, registerDataSource } from "@gonogo/core";
+import {
+  debugPeer,
+  getStreamSources,
+  KosProxyContext,
+  registerDataSource,
+  registerStreamSource,
+} from "@gonogo/core";
 import { FlightsFab } from "@gonogo/data";
 import {
   InputDispatcher,
@@ -20,6 +26,7 @@ import { KosPeerConnection } from "../peer/KosPeerConnection";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
 import type { ConnStatus } from "../peer/PeerClientService";
 import { PeerClientService } from "../peer/PeerClientService";
+import { OcislyStreamSource } from "../streamSources/ocisly";
 
 const HOST_ID_KEY = "gonogo-station-host-id";
 
@@ -85,6 +92,35 @@ export function StationScreen() {
           registerDataSource(source);
           void source.connect();
         }
+
+        // Station-side OCISLY stream source: overrides the default host
+        // registration (same id) with a variant that uses the station's own
+        // Peer and receives the proxy peer id from the host via the existing
+        // data channel. Registration happens after schema so the connect()
+        // below reliably sees all sources, including this one.
+        const ocislySource = new OcislyStreamSource({
+          peerProvider: () => client.waitForPeer(),
+          proxyPeerIdProvider: () =>
+            new Promise<string>((resolve) => {
+              const cached = client.getOcislyProxyPeerId();
+              if (cached) {
+                resolve(cached);
+                return;
+              }
+              const remove = client.onOcislyProxyPeerIdChange((peerId) => {
+                if (peerId) {
+                  remove();
+                  resolve(peerId);
+                }
+              });
+            }),
+        });
+        registerStreamSource(ocislySource);
+
+        for (const streamSource of getStreamSources()) {
+          void streamSource.connect();
+        }
+
         setConnected(true);
       }),
     );
@@ -100,6 +136,7 @@ export function StationScreen() {
         u();
       });
       unsubsRef.current = [];
+      for (const s of getStreamSources()) s.disconnect();
       client.disconnect();
     };
   }, []);

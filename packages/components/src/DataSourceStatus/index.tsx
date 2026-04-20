@@ -1,5 +1,11 @@
 import type { ConfigField, DataSourceStatus } from "@gonogo/core";
-import { getDataSource, registerComponent, useDataSources } from "@gonogo/core";
+import {
+  getDataSource,
+  getStreamSource,
+  registerComponent,
+  useDataSources,
+  useStreamSources,
+} from "@gonogo/core";
 import {
   FieldLabel,
   FieldRow,
@@ -17,6 +23,7 @@ import styled, { keyframes } from "styled-components";
 
 function DataSourceStatusComponent() {
   const sources = useDataSources();
+  const streamSources = useStreamSources();
   const [configuringId, setConfiguringId] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
 
@@ -138,6 +145,36 @@ function DataSourceStatusComponent() {
           })}
         </List>
       )}
+
+      {streamSources.length > 0 && (
+        <>
+          <PanelTitle>Stream Sources</PanelTitle>
+          <List>
+            {streamSources.map((s) => (
+              <Item key={s.id}>
+                <Row>
+                  <Indicator $status={s.status} />
+                  <Name>{s.name}</Name>
+                  <StreamCount>
+                    {s.streamCount} stream{s.streamCount === 1 ? "" : "s"}
+                  </StreamCount>
+                  <StatusLabel $status={s.status}>{s.status}</StatusLabel>
+                  {s.status === "disconnected" && (
+                    <RetryButton
+                      onClick={() => {
+                        void getStreamSource(s.id)?.connect();
+                      }}
+                      aria-label={`Reconnect ${s.name}`}
+                    >
+                      Reconnect
+                    </RetryButton>
+                  )}
+                </Row>
+              </Item>
+            ))}
+          </List>
+        </>
+      )}
     </PanelScrollable>
   );
 }
@@ -214,6 +251,12 @@ const StatusLabel = styled.span<{ $status: DataSourceStatus }>`
   font-size: 11px;
   color: ${({ $status }) => statusColor[$status]};
   text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+const StreamCount = styled.span`
+  font-size: 11px;
+  color: #777;
   letter-spacing: 0.05em;
 `;
 

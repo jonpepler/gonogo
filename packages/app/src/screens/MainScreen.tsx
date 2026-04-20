@@ -1,4 +1,4 @@
-import { getDataSources } from "@gonogo/core";
+import { getDataSources, getStreamSources } from "@gonogo/core";
 import { FlightsFab } from "@gonogo/data";
 import {
   InputDispatcher,
@@ -687,8 +687,15 @@ export function MainScreen() {
     sources.forEach((s) => {
       void s.connect();
     });
+    const streamSources = getStreamSources();
+    streamSources.forEach((s) => {
+      void s.connect();
+    });
     return () => {
       sources.forEach((s) => {
+        s.disconnect();
+      });
+      streamSources.forEach((s) => {
         s.disconnect();
       });
     };

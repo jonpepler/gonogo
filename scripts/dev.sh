@@ -1,26 +1,35 @@
 #!/bin/sh
 set -e
 
-watch_proxy() {
-  last=$(find packages/telnet-proxy/src -type f -exec cksum {} \; 2>/dev/null | sort)
+watch_service() {
+  service="$1"
+  src_dir="packages/$service/src"
+  last=$(find "$src_dir" -type f -exec cksum {} \; 2>/dev/null | sort)
   while true; do
     sleep 2
-    current=$(find packages/telnet-proxy/src -type f -exec cksum {} \; 2>/dev/null | sort)
+    current=$(find "$src_dir" -type f -exec cksum {} \; 2>/dev/null | sort)
     if [ "$current" != "$last" ]; then
       last="$current"
-      echo "[telnet-proxy] source changed — rebuilding container…"
-      podman compose up -d --build proxy
+      echo "[$service] source changed — rebuilding container…"
+      podman compose up -d --build "$service"
     fi
   done
 }
 
 cleanup() {
-  kill "$WATCH_PID" 2>/dev/null
+  for pid in $WATCH_PIDS; do
+    kill "$pid" 2>/dev/null
+  done
   podman compose down
 }
 trap cleanup EXIT
 
 podman compose up -d --build
-watch_proxy &
-WATCH_PID=$!
-turbo dev --filter='!@gonogo/telnet-proxy'
+
+WATCH_PIDS=""
+watch_service telnet-proxy &
+WATCH_PIDS="$WATCH_PIDS $!"
+watch_service ocisly-proxy &
+WATCH_PIDS="$WATCH_PIDS $!"
+
+turbo dev --filter='!@gonogo/telnet-proxy' --filter='!@gonogo/ocisly-proxy'

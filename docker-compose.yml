@@ -10,3 +10,76 @@ services:
       KOS_HOST: ${KOS_HOST:-host.containers.internal}
       KOS_PORT: ${KOS_PORT:-5410}
     restart: unless-stopped
+
+  ocisly-proxy:
+    build: ./packages/ocisly-proxy
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      # OCISLY_HOST: IP or hostname of the machine running the OCISLY server.
+      # Default reaches the compose host (for users running the server on the
+      # game box). With `--profile ocisly-local`, override to `ocisly-server`
+      # so the proxy reaches the sidecar via the compose network.
+      OCISLY_HOST: ${OCISLY_HOST:-host.containers.internal}
+      OCISLY_PORT: ${OCISLY_PORT:-5077}
+      # ICE relay — the proxy talks to coturn over the compose network name.
+      TURN_URL: ${TURN_URL_INTERNAL:-turn:coturn:3478}
+      TURN_USERNAME: ${TURN_USERNAME:-gonogo}
+      TURN_CREDENTIAL: ${TURN_SECRET:-gonogo-dev-secret}
+    depends_on:
+      coturn:
+        condition: service_started
+      # Only enforced when the ocisly-local profile is active; compose skips
+      # the dependency silently if ocisly-server isn't being started.
+      ocisly-server:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+
+  # TURN/STUN relay. WebRTC peer-to-peer can't traverse podman's container NAT
+  # directly — ICE candidates from the container aren't reachable from the
+  # browser. coturn gives both peers a third address they can both reach, and
+  # forwards traffic between them. See packages/app/src/peer/iceServers.ts
+  # for how the browser-side Peer is configured to match.
+  coturn:
+    image: coturn/coturn:latest
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      # Relay port range — coturn picks ports in this window for active
+      # sessions, so the whole range must be mappable to the host. Matches
+      # --min-port / --max-port below.
+      - "49160-49200:49160-49200/udp"
+    command:
+      - "-n"
+      - "--log-file=stdout"
+      - "--lt-cred-mech"
+      - "--realm=gonogo"
+      - "--user=${TURN_USERNAME:-gonogo}:${TURN_SECRET:-gonogo-dev-secret}"
+      - "--fingerprint"
+      - "--min-port=49160"
+      - "--max-port=49200"
+      - "--no-tls"
+      - "--no-dtls"
+    restart: unless-stopped
+
+  # Optional: run the OCISLY gRPC server next to the proxy instead of on the
+  # game machine. Enable with `podman compose --profile ocisly-local up`.
+  # Note: published image is linux/amd64 only — Apple Silicon will run it
+  # under qemu emulation.
+  ocisly-server:
+    image: jrodrigv/ofcourseistillloveyou:latest
+    platform: linux/amd64
+    ports:
+      - "5077:5077"
+    command: [ "--port", "5077", "--endpoint", "0.0.0.0" ]
+    # Base image (dotnet:6.0 runtime) lacks curl / nc, so we use bash's
+    # built-in /dev/tcp to check the gRPC port is accepting connections.
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/localhost/5077" ]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped

@@ -5,6 +5,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@gonogo/components"; // triggers all component self-registration
 import "./dataSources"; // triggers all data source self-registration
+import "./streamSources"; // triggers all stream source self-registration
 import App from "./App";
 
 // Pass the Vite base URL so texture paths resolve correctly under sub-path

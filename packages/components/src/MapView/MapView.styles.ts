@@ -53,6 +53,7 @@ export const BaseCanvas = CanvasBase;
 export const OverlayCanvas = CanvasBase;
 export const DataCanvas = CanvasBase;
 export const PersistentDataCanvas = CanvasBase;
+export const PredictionCanvas = CanvasBase;
 
 export const NoSignal = styled.div`
   position: absolute;
@@ -65,6 +66,22 @@ export const NoSignal = styled.div`
   letter-spacing: 0.08em;
   text-transform: uppercase;
   pointer-events: none;
+`;
+
+export const PredictionChip = styled.div`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  background: rgba(80, 40, 120, 0.8);
+  color: #e0c8ff;
+  border: 1px solid #6a3a9a;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: monospace;
+  pointer-events: none;
+  border-radius: 2px;
 `;
 
 export const TelemetryPanel = styled.div`

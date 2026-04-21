@@ -20,7 +20,16 @@ export function SignalLossIndicator() {
   const connected = useDataValue("data", "comm.connected");
   const controlState = useDataValue("data", "comm.controlState");
 
-  const state = deriveState(connected, controlState);
+  // Mirror `BufferedDataSource`'s gate: only trust a `false` as a blackout
+  // AFTER we've observed a confirmed `true`. Cold-start false (no vessel,
+  // CommNet off, no antenna) must not flash the banner. Without this the
+  // banner stayed up permanently for any user whose KSP never reports true.
+  const [hasConfirmedConnection, setHasConfirmedConnection] = useState(false);
+  useEffect(() => {
+    if (connected === true) setHasConfirmedConnection(true);
+  }, [connected]);
+
+  const state = deriveState(connected, controlState, hasConfirmedConnection);
 
   const lostSinceRef = useRef<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -62,13 +71,19 @@ export function SignalLossIndicator() {
 export function deriveState(
   connected: boolean | undefined,
   controlState: number | undefined,
+  hasConfirmedConnection: boolean,
 ): SignalState {
-  // Haven't heard from Telemachus yet — treat as connected (banner hidden).
-  // Any true blackout will land a `comm.connected: false` via the always-
-  // exempt gating path.
-  if (connected === undefined && controlState === undefined) return "connected";
-
-  if (connected === false) return "lost";
-  if (controlState === 0 || controlState === 1) return "partial";
+  // "Lost" only when we've seen a confirmed-true previously and it flipped
+  // to false. Matches `BufferedDataSource`'s gate: if the user's KSP never
+  // asserts `comm.connected: true` (CommNet off, no antenna, no vessel),
+  // the banner stays hidden and data continues to flow — the UI being
+  // quiet is more honest than flashing SIGNAL LOSS while live samples
+  // arrive.
+  if (connected === false && hasConfirmedConnection) return "lost";
+  // "Partial" only when we've heard an affirmative connect. A stray
+  // `controlState: 0` arriving before `connected` doesn't flash the banner.
+  if (connected === true && (controlState === 0 || controlState === 1)) {
+    return "partial";
+  }
   return "connected";
 }

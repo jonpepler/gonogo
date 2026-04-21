@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { LineChart } from "./LineChart";
 import type { ChartSeries } from "./LineChart";
+import { LineChart } from "./LineChart";
 import {
   buildPath,
   formatTimeLabel,
@@ -105,10 +105,21 @@ describe("LineChart", () => {
 
   it("renders nothing for a series with no data points", () => {
     const emptySeries: ChartSeries[] = [
-      { id: "x", label: "X", axis: "primary", color: "#fff", data: { x: [], y: [] } },
+      {
+        id: "x",
+        label: "X",
+        axis: "primary",
+        color: "#fff",
+        data: { x: [], y: [] },
+      },
     ];
     const { container } = render(
-      <LineChart series={emptySeries} xDomain={[0, 1000]} width={400} height={200} />,
+      <LineChart
+        series={emptySeries}
+        xDomain={[0, 1000]}
+        width={400}
+        height={200}
+      />,
     );
     const paths = container.querySelectorAll("path[stroke='#fff']");
     expect(paths).toHaveLength(0);
@@ -137,7 +148,10 @@ describe("LineChart", () => {
     );
     // Expect two y-axis label groups
     const texts = Array.from(container.querySelectorAll("text"));
-    const axisLabels = texts.filter((t) => t.textContent?.includes("Altitude") || t.textContent?.includes("Speed"));
+    const axisLabels = texts.filter(
+      (t) =>
+        t.textContent?.includes("Altitude") || t.textContent?.includes("Speed"),
+    );
     expect(axisLabels.length).toBeGreaterThan(0);
   });
 });

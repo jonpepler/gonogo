@@ -26,7 +26,7 @@ export function niceTicks(min: number, max: number, count = 5): number[] {
   const span = max - min;
   const rawStep = span / (count - 1);
   // Round step to a "nice" magnitude
-  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const mag = 10 ** Math.floor(Math.log10(rawStep));
   const nice = [1, 2, 2.5, 5, 10].find((m) => m * mag >= rawStep) ?? 10;
   const step = nice * mag;
   const start = Math.ceil(min / step) * step;

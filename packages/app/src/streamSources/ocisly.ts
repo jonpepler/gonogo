@@ -1,8 +1,4 @@
-import type {
-  DataSourceStatus,
-  StreamInfo,
-  StreamSource,
-} from "@gonogo/core";
+import type { DataSourceStatus, StreamInfo, StreamSource } from "@gonogo/core";
 import { logger, registerStreamSource } from "@gonogo/core";
 import type { DataConnection, MediaConnection, Peer } from "peerjs";
 import { peerHostService } from "../peer/PeerHostService";
@@ -244,9 +240,7 @@ export class OcislyStreamSource implements StreamSource {
       return;
     }
     if (msg.type === "metadata") {
-      const idx = this.streams.findIndex(
-        (s) => s.id === msg.metadata.cameraId,
-      );
+      const idx = this.streams.findIndex((s) => s.id === msg.metadata.cameraId);
       if (idx === -1) return;
       const next = [...this.streams];
       next[idx] = {

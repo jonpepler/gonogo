@@ -46,10 +46,14 @@ function renderWithProviders(
   service: SerialDeviceService,
   tree: React.ReactNode,
 ) {
+  // Match the real app's provider order: ModalProvider sits ABOVE
+  // SerialDeviceProvider (app root vs screen-level). If the harness inverted
+  // this, the modal's portal content would see the serial context for free
+  // and we'd never notice when GearButton forgets to re-provide it.
   return render(
-    <SerialDeviceProvider service={service}>
-      <ModalProvider>{tree}</ModalProvider>
-    </SerialDeviceProvider>,
+    <ModalProvider>
+      <SerialDeviceProvider service={service}>{tree}</SerialDeviceProvider>
+    </ModalProvider>,
   );
 }
 

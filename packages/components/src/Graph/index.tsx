@@ -1,26 +1,21 @@
 import type { ComponentProps, ConfigComponentProps } from "@gonogo/core";
 import { registerComponent } from "@gonogo/core";
-import { useDataSchema } from "@gonogo/data";
 import type { DataKeyMeta, SeriesRange } from "@gonogo/data";
+import { useDataSchema } from "@gonogo/data";
+import type { ChartSeries } from "@gonogo/ui";
 import {
   ConfigForm,
   DataKeyPicker,
   Field,
   FieldLabel,
   Input,
+  LineChart,
   Panel,
   PanelTitle,
   PrimaryButton,
   Select,
 } from "@gonogo/ui";
-import type { ChartSeries } from "@gonogo/ui";
-import { LineChart } from "@gonogo/ui";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { alignXY } from "./align";
 import { GraphSeries } from "./GraphSeries";
@@ -85,7 +80,7 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
 
   const schema = useDataSchema("data");
   const metaMap = new Map(schema.map((k) => [k.key, k]));
-  const xMeta = xIsTime ? null : metaMap.get(xKey) ?? null;
+  const xMeta = xIsTime ? null : (metaMap.get(xKey) ?? null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -112,7 +107,10 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
 
   // Clear stale X buffer when the X key changes — otherwise the first frame
   // after reconfigure pairs new Y against the previous key's values.
-  useEffect(() => { setXData({ t: [], v: [] }); }, [xKey]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: xKey is a trigger, not a read inside the body
+  useEffect(() => {
+    setXData({ t: [], v: [] });
+  }, [xKey]);
 
   const handleData = useCallback((key: string, data: SeriesRange<number>) => {
     setSeriesData((prev) => {
@@ -232,7 +230,10 @@ function GraphConfigComponent({
   const schema = useDataSchema("data");
   const numericKeys = schema.filter(
     (k) =>
-      k.unit !== "bool" && k.unit !== "enum" && k.unit !== "raw" && k.group !== "Actions",
+      k.unit !== "bool" &&
+      k.unit !== "enum" &&
+      k.unit !== "raw" &&
+      k.group !== "Actions",
   );
   // X-axis picker: time is an always-present pseudo-key; numeric data keys below.
   const xKeyOptions = [
@@ -281,7 +282,7 @@ function GraphConfigComponent({
       </Field>
       <Field>
         <FieldLabel>Series</FieldLabel>
-        {seriesList.map((s, i) => (
+        {seriesList.map((s) => (
           <SeriesRow key={s.id}>
             <DataKeyPicker
               keys={numericKeys}

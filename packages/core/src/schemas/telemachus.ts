@@ -17,6 +17,37 @@
 type IndexedKey<K extends string> = `${K}[${number}]`;
 
 /**
+ * One entry of the `dv.stages` complex-object response. Note the JSON field
+ * names differ from the per-key names Telemachus uses for the indexed
+ * accessors (e.g. `dv.stageDVVac[n]` → `deltaVVac`) — the labels below match
+ * the JSON response, not the dv keys.
+ *
+ * `stage` is the stage number as KSP counts them (current stage counts down
+ * as stages separate).
+ */
+export interface StageInfo {
+  stage: number;
+  stageMass: number;
+  dryMass: number;
+  fuelMass: number;
+  startMass: number;
+  endMass: number;
+  burnTime: number;
+  deltaVVac: number;
+  deltaVASL: number;
+  deltaVActual: number;
+  TWRVac: number;
+  TWRASL: number;
+  TWRActual: number;
+  ispVac: number;
+  ispASL: number;
+  ispActual: number;
+  thrustVac: number;
+  thrustASL: number;
+  thrustActual: number;
+}
+
+/**
  * A single patched-conic segment as returned by Telemachus's
  * `OrbitPatchJSONFormatter`. One of the array entries for `o.orbitPatches`
  * and for each `ManeuverNode.orbitPatches`.
@@ -235,7 +266,11 @@ export interface TelemaachusSchema {
   [key: `r.resourceCurrentMax[${string}]`]: number;
 
   // --- dv.* — Stage delta-V & mass ---
+  // Prefer `dv.stages` (the whole-vessel complex object) over the indexed
+  // accessors — one subscription, one broadcast per tick, length matches the
+  // actual stage count rather than an arbitrary cap.
   "dv.stageCount": number;
+  "dv.stages": StageInfo[];
   [key: IndexedKey<"dv.stageFuelMass">]: number;
 
   // --- comm.* — CommNet signal state ---

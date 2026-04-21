@@ -1,8 +1,8 @@
-import type { CameraFrame, OcislyClient } from "./OcislyClient.js";
 import {
-  createCameraVideoSource,
   type CameraVideoSource,
+  createCameraVideoSource,
 } from "../peer/mediaTracks.js";
+import type { CameraFrame, OcislyClient } from "./OcislyClient.js";
 
 export interface CameraMetadata {
   cameraId: string;
@@ -61,7 +61,10 @@ export class CameraPoller {
 
   constructor(opts: CameraPollerOptions) {
     this.client = opts.client;
-    this.intervalMs = Math.max(1, Math.round(1000 / (opts.framesPerSecond ?? 30)));
+    this.intervalMs = Math.max(
+      1,
+      Math.round(1000 / (opts.framesPerSecond ?? 30)),
+    );
     this.onFrame = opts.onFrame;
     this.logger = opts.logger ?? {
       error: (msg, err) => console.error(msg, err),

@@ -20,7 +20,9 @@ function matches(option: KeyOption, query: string): boolean {
   if (!query) return true;
   const q = query.toLowerCase();
   const label = option.label ?? option.key;
-  return label.toLowerCase().includes(q) || option.key.toLowerCase().includes(q);
+  return (
+    label.toLowerCase().includes(q) || option.key.toLowerCase().includes(q)
+  );
 }
 
 export function DataKeyPicker({
@@ -99,8 +101,7 @@ export function DataKeyPicker({
     } else if (e.key === "Enter") {
       // Arrow-highlighted item first; fall back to first filtered result so
       // "type a partial label + Enter" works without needing an arrow key.
-      const opt =
-        activeIndex >= 0 ? flatOptions[activeIndex] : flatOptions[0];
+      const opt = activeIndex >= 0 ? flatOptions[activeIndex] : flatOptions[0];
       if (opt) selectOption(opt.key);
     }
   };
@@ -114,9 +115,7 @@ export function DataKeyPicker({
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, [open, closePicker]);
 
-  const displayValue = open
-    ? query
-    : (selectedOption?.label ?? value ?? "");
+  const displayValue = open ? query : (selectedOption?.label ?? value ?? "");
 
   return (
     <Container ref={containerRef}>

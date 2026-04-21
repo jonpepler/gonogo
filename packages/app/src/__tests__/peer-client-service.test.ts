@@ -279,7 +279,8 @@ describe("PeerClientService.sendQueryRange", () => {
 
   it("resolves when a matching query-range-response arrives", async () => {
     const { svc, peer } = connectedSvc();
-    const conn = peer._lastConn!;
+    if (!peer._lastConn) throw new Error("expected an active peer connection");
+    const conn = peer._lastConn;
     const sent: PeerMessage[] = [];
     conn.send = (msg: PeerMessage) => {
       sent.push(msg);
@@ -303,7 +304,8 @@ describe("PeerClientService.sendQueryRange", () => {
 
   it("rejects when the host responds with an error", async () => {
     const { svc, peer } = connectedSvc();
-    const conn = peer._lastConn!;
+    if (!peer._lastConn) throw new Error("expected an active peer connection");
+    const conn = peer._lastConn;
     const sent: PeerMessage[] = [];
     conn.send = (msg: PeerMessage) => {
       sent.push(msg);
@@ -328,7 +330,8 @@ describe("PeerClientService.sendQueryRange", () => {
 
   it("rejects pending queries when the connection drops", async () => {
     const { svc, peer } = connectedSvc();
-    const conn = peer._lastConn!;
+    if (!peer._lastConn) throw new Error("expected an active peer connection");
+    const conn = peer._lastConn;
     conn.send = () => {};
 
     const pending = svc.sendQueryRange("data", "v.altitude", 0, 1_000);
@@ -339,7 +342,8 @@ describe("PeerClientService.sendQueryRange", () => {
 
   it("rejects pending queries on explicit disconnect()", async () => {
     const { svc, peer } = connectedSvc();
-    const conn = peer._lastConn!;
+    if (!peer._lastConn) throw new Error("expected an active peer connection");
+    const conn = peer._lastConn;
     conn.send = () => {};
 
     const pending = svc.sendQueryRange("data", "v.altitude", 0, 1_000);

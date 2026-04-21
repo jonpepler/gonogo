@@ -20,10 +20,11 @@ const TELEMACHUS_KEYS: DataKey[] = [
   { key: "v.terrainHeight" },
   { key: "v.lat" },
   { key: "v.long" },
-  // Velocity
+  // Velocity. `v.obtSpeed` is intentionally omitted — it reads KSP's stock
+  // `Vessel.obt_speed` which is known-flaky (often stuck at 0). Use
+  // `v.orbitalVelocity` instead; it reads `obt_velocity.magnitude` reliably.
   { key: "v.surfaceSpeed" },
   { key: "v.verticalSpeed" },
-  { key: "v.obtSpeed" },
   { key: "v.orbitalVelocity" },
   { key: "v.surfaceVelocity" },
   { key: "v.speed" },
@@ -137,19 +138,11 @@ const TELEMACHUS_KEYS: DataKey[] = [
   { key: "r.resourceMax[ElectricCharge]" },
   { key: "r.resourceCurrent[ElectricCharge]" },
   { key: "r.resourceCurrentMax[ElectricCharge]" },
-  // Stage info — indexed dv.stageFuelMass[0..9] pre-registered so PBDS
-  // broadcasts them and the fuel widget's per-stage stack works.
+  // Stage info — `dv.stages` is the whole-vessel complex object, so one
+  // subscription covers all stages regardless of count. Consumers project
+  // the field they want (fuelMass, deltaVVac, etc.) client-side.
   { key: "dv.stageCount" },
-  { key: "dv.stageFuelMass[0]" },
-  { key: "dv.stageFuelMass[1]" },
-  { key: "dv.stageFuelMass[2]" },
-  { key: "dv.stageFuelMass[3]" },
-  { key: "dv.stageFuelMass[4]" },
-  { key: "dv.stageFuelMass[5]" },
-  { key: "dv.stageFuelMass[6]" },
-  { key: "dv.stageFuelMass[7]" },
-  { key: "dv.stageFuelMass[8]" },
-  { key: "dv.stageFuelMass[9]" },
+  { key: "dv.stages" },
   // Trajectory prediction: full patch list + maneuver nodes (complex objects),
   // physics-mode flag for Principia detection, landing prediction.
   { key: "o.orbitPatches" },

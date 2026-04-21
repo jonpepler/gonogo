@@ -62,13 +62,15 @@ describe("CameraPoller", () => {
     poller.subscribe("cam-1");
     await vi.advanceTimersByTimeAsync(50);
     await Promise.resolve();
-    const callsBeforeRelease = (client.getCameraTexture as ReturnType<typeof vi.fn>)
-      .mock.calls.length;
+    const callsBeforeRelease = (
+      client.getCameraTexture as ReturnType<typeof vi.fn>
+    ).mock.calls.length;
 
     poller.release("cam-1");
     await vi.advanceTimersByTimeAsync(500);
-    const callsAfterRelease = (client.getCameraTexture as ReturnType<typeof vi.fn>)
-      .mock.calls.length;
+    const callsAfterRelease = (
+      client.getCameraTexture as ReturnType<typeof vi.fn>
+    ).mock.calls.length;
 
     // Polling stopped — at most one additional in-flight call may have resolved.
     expect(callsAfterRelease - callsBeforeRelease).toBeLessThanOrEqual(1);

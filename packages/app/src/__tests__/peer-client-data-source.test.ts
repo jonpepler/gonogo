@@ -40,14 +40,12 @@ function makeFakeClient(
       };
     },
     sendExecute: vi.fn(),
-    sendQueryRange: vi.fn(
-      async (sourceId, key, tStart, tEnd, flightId) => {
-        fake.lastQuery = { sourceId, key, tStart, tEnd, flightId };
-        return queryImpl
-          ? queryImpl()
-          : ({ t: [], v: [] } as { t: number[]; v: unknown[] });
-      },
-    ),
+    sendQueryRange: vi.fn(async (sourceId, key, tStart, tEnd, flightId) => {
+      fake.lastQuery = { sourceId, key, tStart, tEnd, flightId };
+      return queryImpl
+        ? queryImpl()
+        : ({ t: [], v: [] } as { t: number[]; v: unknown[] });
+    }),
     lastQuery: null,
   };
   return {
@@ -99,9 +97,7 @@ describe("PeerClientDataSource", () => {
     const fake = makeFakeClient();
     const source = new PeerClientDataSource("data", "Data", fake.service);
     const samples: Array<{ t: number; v: unknown }> = [];
-    const unsub = source.subscribeSamples("v.altitude", (s) =>
-      samples.push(s),
-    );
+    const unsub = source.subscribeSamples("v.altitude", (s) => samples.push(s));
 
     fake.emitData("data", "v.altitude", 1, 1000);
     unsub();

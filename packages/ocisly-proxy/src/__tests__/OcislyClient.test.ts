@@ -1,5 +1,5 @@
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -116,7 +116,9 @@ describe("OcislyClient", () => {
 
   afterEach(async () => {
     client.close();
-    await new Promise<void>((resolve) => handles.server.tryShutdown(() => resolve()));
+    await new Promise<void>((resolve) =>
+      handles.server.tryShutdown(() => resolve()),
+    );
   });
 
   it("returns the list of active camera ids", async () => {

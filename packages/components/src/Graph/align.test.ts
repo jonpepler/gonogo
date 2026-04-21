@@ -3,7 +3,10 @@ import { alignXY } from "./align";
 
 describe("alignXY", () => {
   it("returns empty for empty inputs", () => {
-    expect(alignXY({ t: [], v: [] }, { t: [], v: [] })).toEqual({ x: [], y: [] });
+    expect(alignXY({ t: [], v: [] }, { t: [], v: [] })).toEqual({
+      x: [],
+      y: [],
+    });
   });
 
   it("pairs same-tick samples via nearest-prior match", () => {

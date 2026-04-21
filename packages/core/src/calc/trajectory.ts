@@ -51,7 +51,7 @@ function normalisePi(rad: number): number {
 
 /** Wrap a degree value to (-180, 180]. */
 export function wrap180(deg: number): number {
-  let x = ((deg + 180) % 360 + 360) % 360 - 180;
+  let x = ((((deg + 180) % 360) + 360) % 360) - 180;
   // Avoid returning -180 exactly; prefer +180 for continuity.
   if (x <= -180) x = 180;
   return x;
@@ -135,7 +135,10 @@ export interface GeoState {
 }
 
 /** Extract lat / inertial-lon / altitude from an inertial state + body radius. */
-export function geoFromInertial(state: InertialState, bodyRadius: number): GeoState {
+export function geoFromInertial(
+  state: InertialState,
+  bodyRadius: number,
+): GeoState {
   const lat = (Math.asin(state.z / state.radius) * 180) / Math.PI;
   const lonInertial = (Math.atan2(state.y, state.x) * 180) / Math.PI;
   return { lat, lonInertial, alt: state.radius - bodyRadius };
@@ -206,9 +209,7 @@ const MIN_RENDER_ALT_M = -100;
 /** A patch is propagable with our elliptical solver. Hyperbolic and parabolic trajectories aren't. */
 function isPatchElliptical(patch: OrbitPatch): boolean {
   return (
-    patch.eccentricity < 1 &&
-    Number.isFinite(patch.period) &&
-    patch.period > 0
+    patch.eccentricity < 1 && Number.isFinite(patch.period) && patch.period > 0
   );
 }
 
@@ -220,19 +221,27 @@ export function predictGroundTrack(
   ref: PredictionRef,
   horizonSec: number,
   stepSec: number,
+  /**
+   * Patches used to calibrate body rotation against `ref`. Defaults to
+   * `patches`. Override when rendering a future trajectory (e.g. a maneuver
+   * node's post-burn patches) that doesn't contain `ref.ut` — pass the
+   * current `o.orbitPatches` so the calibration comes from the patch the
+   * vessel is actually in right now.
+   */
+  calibrationPatches: readonly OrbitPatch[] = patches,
 ): TrackSample[] {
   if (patches.length === 0 || stepSec <= 0 || horizonSec <= 0) return [];
 
-  // We calibrate body rotation off whichever patch contains `ref.ut`, falling
-  // back to the first elliptical patch for the named body. Calibration has to
-  // use a patch orbiting the named body; otherwise the inertial longitude is
-  // in a different frame.
-  const candidatePatches = patches.filter(
+  // We calibrate body rotation off whichever calibration patch contains
+  // `ref.ut`, falling back to the first elliptical patch for the named body.
+  // Calibration has to use a patch orbiting the named body; otherwise the
+  // inertial longitude is in a different frame.
+  const calCandidates = calibrationPatches.filter(
     (p) => p.referenceBody === bodyId && isPatchElliptical(p),
   );
   const refPatch =
-    candidatePatches.find((p) => ref.ut >= p.startUT && ref.ut <= p.endUT) ??
-    candidatePatches[0];
+    calCandidates.find((p) => ref.ut >= p.startUT && ref.ut <= p.endUT) ??
+    calCandidates[0];
   if (!refPatch) return [];
 
   const toBodyLon = buildBodyRotation(refPatch, ref, rotationPeriod);
@@ -248,9 +257,9 @@ export function predictGroundTrack(
   for (let patchIndex = 0; patchIndex < patches.length; patchIndex++) {
     const patch = patches[patchIndex];
     if (patch.referenceBody !== bodyId) break; // SOI change — stop.
-    if (!isPatchElliptical(patch)) break;      // Hyperbolic/parabolic — not supported in v1.
-    if (patch.endUT < ref.ut) continue;        // Already finished.
-    if (patch.startUT > endUT) break;          // Past horizon.
+    if (!isPatchElliptical(patch)) break; // Hyperbolic/parabolic — not supported in v1.
+    if (patch.endUT < ref.ut) continue; // Already finished.
+    if (patch.startUT > endUT) break; // Past horizon.
 
     const from = Math.max(patch.startUT, ref.ut);
     const to = Math.min(patch.endUT, endUT);

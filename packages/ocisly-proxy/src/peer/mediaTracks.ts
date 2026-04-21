@@ -1,5 +1,5 @@
-import wrtc from "@roamhq/wrtc";
 import type { MediaStreamTrack as WrtcMediaStreamTrack } from "@roamhq/wrtc";
+import wrtc from "@roamhq/wrtc";
 import { decodeJpeg } from "../decode/jpegDecoder.js";
 
 const { RTCVideoSource, rgbaToI420 } = wrtc.nonstandard;

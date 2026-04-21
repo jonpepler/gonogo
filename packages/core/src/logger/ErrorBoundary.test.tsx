@@ -8,14 +8,25 @@ function Thrower({ msg }: { msg: string }) {
 
 describe("ErrorBoundary", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  const suppressWindowError = (e: ErrorEvent) => {
+    e.preventDefault();
+  };
 
   beforeEach(() => {
-    // React logs the caught error regardless of our handler; silence it so
-    // the test output stays clean without hiding genuine failures.
+    // Three sources of noise for a caught-error test:
+    //   1. React logs its "The above error occurred in…" boundary warning to
+    //      console.error (we silence via spy).
+    //   2. React 18 also calls globalThis.reportError, which jsdom routes
+    //      through a window `'error'` event whose default handler prints the
+    //      full stack to stderr. preventDefault on that event stops it.
+    //   3. jsdom's "Uncaught [Error]" fallback for anything that escapes both
+    //      of the above. The spy catches this too.
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    window.addEventListener("error", suppressWindowError);
   });
 
   afterEach(() => {
+    window.removeEventListener("error", suppressWindowError);
     consoleErrorSpy.mockRestore();
   });
 
@@ -38,7 +49,9 @@ describe("ErrorBoundary", () => {
   });
 
   it("calls the fallback with the caught error and a reset handler", () => {
-    const fallback = vi.fn((error: Error) => <div>caught: {error.message}</div>);
+    const fallback = vi.fn((error: Error) => (
+      <div>caught: {error.message}</div>
+    ));
 
     const { getByText } = render(
       <ErrorBoundary fallback={fallback}>

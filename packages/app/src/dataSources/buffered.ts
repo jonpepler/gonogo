@@ -1,5 +1,9 @@
 import { registerDataSource } from "@gonogo/core";
-import { BufferedDataSource, IndexedDbStore, registerBuiltinDerivedKeys } from "@gonogo/data";
+import {
+  BufferedDataSource,
+  IndexedDbStore,
+  registerBuiltinDerivedKeys,
+} from "@gonogo/data";
 import { telemachusSource } from "./telemachus";
 
 registerBuiltinDerivedKeys();

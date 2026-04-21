@@ -6,7 +6,12 @@ import {
   getComponent,
   handleError,
 } from "@gonogo/core";
-import { type InputMappings, InputMappingTab } from "@gonogo/serial";
+import {
+  type InputMappings,
+  InputMappingTab,
+  SerialDeviceProvider,
+  useSerialDeviceService,
+} from "@gonogo/serial";
 import { Tabs, useModal } from "@gonogo/ui";
 import { useEffect, useRef, useState } from "react";
 import type { Layout, Layouts } from "react-grid-layout";
@@ -243,6 +248,11 @@ function GearButton({
   onSaveMappings,
 }: GearButtonProps) {
   const { open, close } = useModal();
+  // ModalProvider lives at the app root, above SerialDeviceProvider, so modal
+  // content rendered via portal doesn't see the serial context. Capture the
+  // service here (where the provider IS in scope) and re-provide inside the
+  // modal content so `InputMappingTab` can resolve `useSerialDeviceService`.
+  const serialService = useSerialDeviceService();
   const ConfigComp = def.configComponent;
   const actions = def.actions ?? [];
   const hasConfig = Boolean(ConfigComp);
@@ -255,18 +265,30 @@ function GearButton({
       return;
     }
     const id = open(
-      <GearModalContent
-        item={item}
-        def={def}
-        onSaveConfig={(c) => {
-          onSaveConfig(c);
-          close(id);
-        }}
-        onSaveMappings={(m) => {
-          onSaveMappings(m);
-          close(id);
-        }}
-      />,
+      <SerialDeviceProvider service={serialService}>
+        <ErrorBoundary
+          fallback={(error, reset) => (
+            <WidgetError
+              componentName={`${def.name} config`}
+              error={error}
+              onRetry={reset}
+            />
+          )}
+        >
+          <GearModalContent
+            item={item}
+            def={def}
+            onSaveConfig={(c) => {
+              onSaveConfig(c);
+              close(id);
+            }}
+            onSaveMappings={(m) => {
+              onSaveMappings(m);
+              close(id);
+            }}
+          />
+        </ErrorBoundary>
+      </SerialDeviceProvider>,
       { title: def.name },
     );
   }

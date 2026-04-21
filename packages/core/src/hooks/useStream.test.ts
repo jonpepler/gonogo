@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { clearStreamRegistry, registerStreamSource } from "../streamRegistry";
 import type { StreamInfo, StreamSource } from "../streamRegistry";
+import { clearStreamRegistry, registerStreamSource } from "../streamRegistry";
 import type { DataSourceStatus } from "../types";
 import { useStream } from "./useStream";
 import { useStreamList } from "./useStreamList";

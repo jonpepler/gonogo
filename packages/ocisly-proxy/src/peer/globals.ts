@@ -9,7 +9,8 @@ type Globalish = typeof globalThis & Record<string, unknown>;
 function install(): void {
   const g = globalThis as Globalish;
   if (!g.RTCPeerConnection) g.RTCPeerConnection = wrtc.RTCPeerConnection;
-  if (!g.RTCSessionDescription) g.RTCSessionDescription = wrtc.RTCSessionDescription;
+  if (!g.RTCSessionDescription)
+    g.RTCSessionDescription = wrtc.RTCSessionDescription;
   if (!g.RTCIceCandidate) g.RTCIceCandidate = wrtc.RTCIceCandidate;
   if (!g.MediaStream) g.MediaStream = wrtc.MediaStream;
   if (!g.MediaStreamTrack) g.MediaStreamTrack = wrtc.MediaStreamTrack;

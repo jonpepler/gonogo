@@ -1,5 +1,5 @@
 import { getDataSource } from "@gonogo/core";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import type { BufferedDataSource } from "../BufferedDataSource";
 import { useFlight } from "../hooks/useFlight";
@@ -30,16 +30,17 @@ export function FlightsManager() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
-  const reload = async () => {
+  const reload = useCallback(async () => {
     const src = getSource();
     if (!src) return;
     const list = await src.listFlights();
     setFlights(list.sort((a, b) => b.launchedAt - a.launchedAt));
-  };
+  }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentFlight is a trigger, not a read inside the body — we refetch when the current flight changes
   useEffect(() => {
     void reload();
-  }, [currentFlight]);
+  }, [currentFlight, reload]);
 
   const handleDelete = async (id: string) => {
     const src = getSource();
@@ -156,7 +157,7 @@ const Th = styled.th`
   border-bottom: 1px solid #222;
 `;
 
-const Tr = styled.tr<{ $current: boolean; }>`
+const Tr = styled.tr<{ $current: boolean }>`
   background: ${({ $current }) => ($current ? "#1a2a1a" : "transparent")};
   &:hover { background: #1e1e1e; }
 `;

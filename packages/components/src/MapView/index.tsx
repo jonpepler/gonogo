@@ -2,17 +2,20 @@ import type {
   ActionDefinition,
   ComponentProps,
   DataSourceRegistry,
+  TrackSample,
 } from "@gonogo/core";
 import {
   getBody,
   latLonToMap,
+  predictGroundTrack,
   registerComponent,
+  splitOnLongitudeWrap,
   useActionInput,
   useDataValue,
 } from "@gonogo/core";
 import { useDataSchema } from "@gonogo/data";
 import { Panel, PanelTitle, Switch } from "@gonogo/ui";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cameraTransform,
   fitCamera,
@@ -32,6 +35,8 @@ import {
   NoSignal,
   OverlayCanvas,
   PersistentDataCanvas,
+  PredictionCanvas,
+  PredictionChip,
   TelemetryPanel,
   TelKey,
   TelRow,
@@ -73,10 +78,49 @@ export type MapViewActions = typeof mapViewActions;
 
 const ZOOM_STEP = 1.3;
 
+/**
+ * Stroke a list of longitude-wrap-split segments with a fade that's
+ * continuous across the whole list (rather than resetting per segment).
+ * Caller is responsible for transform, lineWidth, and dash.
+ */
+function drawFadedSegments(
+  ctx: CanvasRenderingContext2D,
+  segments: readonly TrackSample[][],
+  toMap: (
+    w: number,
+    h: number,
+    lat: number,
+    lon: number,
+  ) => { x: number; y: number },
+  rgb: readonly [number, number, number],
+): void {
+  const total = segments.reduce((sum, seg) => sum + seg.length, 0);
+  if (total === 0) return;
+  const [r, g, b] = rgb;
+  let globalIndex = 0;
+  for (const segment of segments) {
+    for (let i = 1; i < segment.length; i++) {
+      const prev = segment[i - 1];
+      const curr = segment[i];
+      const { x: x0, y: y0 } = toMap(WORLD_W, WORLD_H, prev.lat, prev.lon);
+      const { x: x1, y: y1 } = toMap(WORLD_W, WORLD_H, curr.lat, curr.lon);
+      const t = (globalIndex + i) / Math.max(1, total - 1);
+      const alpha = Math.max(0.15, 1 - 0.85 * t);
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+    globalIndex += segment.length;
+  }
+}
+
 function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const trajectoryLength = config?.trajectoryLength ?? 200;
   const telemetryKeys = config?.telemetryKeys ?? [];
   const showTelemetry = telemetryKeys.length > 0;
+  const showPrediction = config?.showPrediction ?? true;
 
   const schema = useDataSchema("data");
   const labelMap = new Map(schema.map((k) => [k.key, k.label]));
@@ -89,6 +133,22 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const mach = useDataValue("data", "v.mach");
   const speed = useDataValue("data", "v.surfaceSpeed");
   const vSpeed = useDataValue("data", "v.verticalSpeed");
+  const orbitPatches = useDataValue("data", "o.orbitPatches");
+  const maneuverNodes = useDataValue("data", "o.maneuverNodes");
+  const universalTime = useDataValue("data", "t.universalTime");
+  const impactLat = useDataValue("data", "land.predictedLat");
+  const impactLon = useDataValue("data", "land.predictedLon");
+  const physicsMode = useDataValue("data", "a.physicsMode");
+  // Principia (N-body) breaks patched-conic assumptions, so stock o.* and our
+  // Keplerian propagator are both wrong. Suppress the prediction entirely and
+  // show a chip. On Principia installs this field can briefly flap to
+  // "patched_conics" during scene loads — we accept a short cosmetic window
+  // where prediction is drawn before suppressing it; not worth the extra
+  // state machine to debounce.
+  const isNBody = physicsMode === "n_body";
+  // Whether we should bother computing any prediction at all. Consumed by
+  // both the current-orbit and maneuver memoisations and the chip overlay.
+  const predictionEnabled = showPrediction && !isNBody;
 
   const targetBodyId = bodyName;
   const body = targetBodyId ? getBody(targetBodyId) : undefined;
@@ -160,6 +220,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const dataRef = useRef<HTMLCanvasElement>(null);
   const persistentDataRef = useRef<HTMLCanvasElement>(null);
+  const predictionRef = useRef<HTMLCanvasElement>(null);
 
   // Per-body coordinate offsets — applied in both world canvas and screen space
   const adjustedMap = useCallback(
@@ -302,6 +363,180 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }, [containerSize, camera, trajectoryCount]);
 
+  // ── Prediction: forward-propagated ground track from o.orbitPatches ───────
+  // Kept as a memoised pure computation so the render effect only fires when
+  // the sampled path actually changes.
+  const predictionSegments = useMemo<TrackSample[][]>(() => {
+    if (!predictionEnabled) return [];
+    if (
+      !orbitPatches ||
+      orbitPatches.length === 0 ||
+      !targetBodyId ||
+      !body ||
+      body.rotationPeriod === undefined ||
+      lat === undefined ||
+      lon === undefined ||
+      universalTime === undefined
+    ) {
+      return [];
+    }
+    const firstForBody = orbitPatches.find(
+      (p) => p.referenceBody === targetBodyId,
+    );
+    if (!firstForBody) return [];
+    // 1.5 × period shows the whole closed orbit plus a bit so the loop is
+    // obvious. Capped at 1 Kerbin day (21600s) for absurdly long interplanetary
+    // patches; MAX_TRACK_SAMPLES further bounds sample count.
+    const horizon = Math.min(1.5 * firstForBody.period, 21_600);
+    const samples = predictGroundTrack(
+      orbitPatches,
+      targetBodyId,
+      body.radius,
+      body.rotationPeriod,
+      { ut: universalTime, lat, lon },
+      horizon,
+      10,
+    );
+    return splitOnLongitudeWrap(samples);
+  }, [
+    predictionEnabled,
+    orbitPatches,
+    targetBodyId,
+    body,
+    lat,
+    lon,
+    universalTime,
+  ]);
+
+  // Planned maneuvers: each node's `orbitPatches` is the post-burn trajectory.
+  // We calibrate from the current orbit patches (they contain ref.ut) and
+  // sample from the node's patches. Horizon uses the node's first-patch
+  // period so near-maneuver orbits render without extending indefinitely.
+  const maneuverSegments = useMemo<TrackSample[][][]>(() => {
+    if (!predictionEnabled) return [];
+    if (
+      !orbitPatches ||
+      !maneuverNodes ||
+      maneuverNodes.length === 0 ||
+      !targetBodyId ||
+      !body ||
+      body.rotationPeriod === undefined ||
+      lat === undefined ||
+      lon === undefined ||
+      universalTime === undefined
+    ) {
+      return [];
+    }
+    // Capture past the outer guard so TS doesn't re-widen inside the map
+    // callback below.
+    const bodyRadius = body.radius;
+    const rotPeriod = body.rotationPeriod;
+    return maneuverNodes.map((node) => {
+      const firstPatch = node.orbitPatches.find(
+        (p) => p.referenceBody === targetBodyId,
+      );
+      if (!firstPatch) return [];
+      // Horizon extends from ref.ut up through the maneuver and 1.5 × its
+      // first post-burn period — enough to see the new orbit close up.
+      const horizon = Math.min(
+        node.UT - universalTime + 1.5 * firstPatch.period,
+        21_600,
+      );
+      if (horizon <= 0) return [];
+      const samples = predictGroundTrack(
+        node.orbitPatches,
+        targetBodyId,
+        bodyRadius,
+        rotPeriod,
+        { ut: universalTime, lat, lon },
+        horizon,
+        10,
+        orbitPatches,
+      );
+      return splitOnLongitudeWrap(samples);
+    });
+  }, [
+    predictionEnabled,
+    orbitPatches,
+    maneuverNodes,
+    targetBodyId,
+    body,
+    lat,
+    lon,
+    universalTime,
+  ]);
+
+  useEffect(() => {
+    const canvas = predictionRef.current;
+    if (!canvas || !containerSize) return;
+    const { w, h } = containerSize;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+
+    const hasMain = predictionSegments.length > 0;
+    const hasManeuvers = maneuverSegments.some((s) => s.length > 0);
+    if (!hasMain && !hasManeuvers) return;
+
+    ctx.setTransform(...cameraTransform(camera, w, h));
+    // Compensate stroke + dash for camera zoom so they stay visually
+    // consistent at any scale.
+    const screenLineWidth = 1.5;
+    const screenDash = 4;
+    ctx.lineWidth = screenLineWidth / camera.zoom;
+    ctx.setLineDash([screenDash / camera.zoom, screenDash / camera.zoom]);
+
+    // Current-orbit prediction — amber, faded proportional to time from now.
+    drawFadedSegments(ctx, predictionSegments, adjustedMap, [255, 180, 64]);
+
+    // Planned maneuvers — cyan, same fade. Drawn on top of the main
+    // prediction so upcoming burns read as "future plan".
+    for (const segments of maneuverSegments) {
+      drawFadedSegments(ctx, segments, adjustedMap, [64, 200, 255]);
+    }
+
+    ctx.setLineDash([]);
+
+    // Impact marker — Telemachus's own landing math. (0, 0) is the
+    // "no prediction" sentinel; skip it. Rendered in world space so the
+    // marker pans/zooms with the map.
+    if (
+      impactLat !== undefined &&
+      impactLon !== undefined &&
+      Number.isFinite(impactLat) &&
+      Number.isFinite(impactLon) &&
+      !(impactLat === 0 && impactLon === 0)
+    ) {
+      const { x: ix, y: iy } = adjustedMap(
+        WORLD_W,
+        WORLD_H,
+        impactLat,
+        impactLon,
+      );
+      const crossSize = 6 / camera.zoom;
+      ctx.strokeStyle = "rgba(255, 64, 64, 0.9)";
+      ctx.lineWidth = 1.5 / camera.zoom;
+      ctx.beginPath();
+      ctx.moveTo(ix - crossSize, iy - crossSize);
+      ctx.lineTo(ix + crossSize, iy + crossSize);
+      ctx.moveTo(ix + crossSize, iy - crossSize);
+      ctx.lineTo(ix - crossSize, iy + crossSize);
+      ctx.stroke();
+    }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }, [
+    containerSize,
+    camera,
+    predictionSegments,
+    maneuverSegments,
+    impactLat,
+    impactLon,
+    adjustedMap,
+  ]);
+
   // ── Data layer: vessel dot in world → screen space ────────────────────────
   useEffect(() => {
     const canvas = dataRef.current;
@@ -365,6 +600,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
           <BaseCanvas ref={baseRef} />
           <OverlayCanvas ref={overlayRef} />
           <PersistentDataCanvas ref={persistentDataRef} />
+          <PredictionCanvas ref={predictionRef} />
           <DataCanvas ref={dataRef} />
           {(lat === undefined || lon === undefined) && (
             <NoSignal>
@@ -372,6 +608,11 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
                 ? "Waiting for telemetry…"
                 : "No position data"}
             </NoSignal>
+          )}
+          {showPrediction && isNBody && (
+            <PredictionChip title="Principia's N-body integrator invalidates patched-conic prediction.">
+              Prediction unavailable · N-body
+            </PredictionChip>
           )}
         </CanvasContainer>
       </MapOuter>
@@ -449,9 +690,15 @@ registerComponent<MapViewConfig>({
   defaultSize: { w: 12, h: 18 },
   component: MapViewComponent,
   configComponent: MapViewConfigComponent,
-  dataRequirements: ["v.lat", "v.long", "v.body"],
+  dataRequirements: [
+    "v.lat",
+    "v.long",
+    "v.body",
+    "o.orbitPatches",
+    "t.universalTime",
+  ],
   behaviors: [],
-  defaultConfig: { trajectoryLength: 2000 },
+  defaultConfig: { trajectoryLength: 2000, showPrediction: true },
   actions: mapViewActions,
 });
 

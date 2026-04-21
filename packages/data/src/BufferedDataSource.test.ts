@@ -84,6 +84,7 @@ const MOCK_KEYS: DataKey[] = [
   { key: "v.name" },
   { key: "v.missionTime" },
   { key: "v.altitude" },
+  { key: "v.surfaceSpeed" },
 ];
 
 describe("BufferedDataSource", () => {
@@ -133,6 +134,41 @@ describe("BufferedDataSource", () => {
     const spy = vi.fn();
     buffered.subscribe("v.altitude", spy);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  describe("subscribeCollection", () => {
+    it("emits an array of current values whenever any key changes", () => {
+      const spy = vi.fn();
+      const unsub = buffered.subscribeCollection(
+        ["v.altitude", "v.surfaceSpeed"],
+        spy,
+      );
+      source.emit("v.altitude", 100);
+      source.emit("v.surfaceSpeed", 42);
+
+      // Two emits — one per raw sample. Order matches the keys array.
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(spy).toHaveBeenNthCalledWith(1, [100, undefined]);
+      expect(spy).toHaveBeenNthCalledWith(2, [100, 42]);
+
+      source.emit("v.altitude", 101);
+      expect(spy).toHaveBeenLastCalledWith([101, 42]);
+
+      unsub();
+      source.emit("v.altitude", 999);
+      expect(spy).toHaveBeenCalledTimes(3);
+    });
+
+    it("replays last-known values on subscribe so late subscribers see the snapshot", () => {
+      source.emit("v.altitude", 500);
+
+      const spy = vi.fn();
+      buffered.subscribeCollection(["v.altitude", "v.surfaceSpeed"], spy);
+
+      // Replay for v.altitude fires during setup; v.surfaceSpeed has no value,
+      // so its snapshot slot stays undefined.
+      expect(spy).toHaveBeenCalledWith([500, undefined]);
+    });
   });
 
   it("persists samples once a flight has been identified", async () => {
@@ -304,7 +340,11 @@ describe("BufferedDataSource", () => {
       { key: "v.missionTime" },
       { key: "totally.unknown.key" },
     ]);
-    const buf = new BufferedDataSource({ source: unknownSource, store: new MemoryStore(), now: () => clock });
+    const buf = new BufferedDataSource({
+      source: unknownSource,
+      store: new MemoryStore(),
+      now: () => clock,
+    });
     // connect() is not needed — schema() is synchronous
     const schema = buf.schema();
     const unknown = schema.find((k) => k.key === "totally.unknown.key");
@@ -478,7 +518,10 @@ describe("BufferedDataSource — derived keys", () => {
       id: "test.rate",
       inputs: ["v.altitude"],
       meta: { label: "Rate", group: "Test" },
-      fn: ([alt], previous) => (previous === null ? undefined : (alt.v as number) - (previous[0].v as number)),
+      fn: ([alt], previous) =>
+        previous === null
+          ? undefined
+          : (alt.v as number) - (previous[0].v as number),
     });
 
     source.emit("v.altitude", 100); // seeds lastRawSample + derivedPrevious
@@ -519,9 +562,12 @@ describe("BufferedDataSource — affectedBySignalLoss gate", () => {
     buffered = new BufferedDataSource({ source, store, now: () => clock });
     await buffered.connect();
 
-    // Prime a flight so persistence path is active.
+    // Prime a flight so persistence path is active. Also confirm comm link
+    // so subsequent `false` actually activates the gate — a cold-start
+    // `false` is intentionally NOT trusted (see the dedicated test).
     source.emit("v.name", "Kerbal X");
     source.emit("v.missionTime", 0);
+    source.emit("comm.connected", true);
   });
 
   afterEach(() => {
@@ -569,6 +615,25 @@ describe("BufferedDataSource — affectedBySignalLoss gate", () => {
 
     expect(spy).toHaveBeenCalledWith(false);
     expect(spy).toHaveBeenCalledWith(true);
+  });
+
+  it("does NOT gate on a cold-start comm.connected=false (no confirmed link yet)", async () => {
+    // Tear down and rebuild without the priming `comm.connected: true` — this
+    // replicates the real-world scenario where Telemachus reports false
+    // because there's no vessel / CommNet is disabled / similar. Previous
+    // versions spuriously gated here and widgets went dark on every load.
+    buffered.disconnect();
+    buffered = new BufferedDataSource({ source, store, now: () => clock });
+    await buffered.connect();
+
+    source.emit("v.name", "Kerbal X");
+    source.emit("v.missionTime", 0);
+    source.emit("comm.connected", false); // cold-start false — ignored
+
+    clock = 5000;
+    source.emit("v.altitude", 42);
+    const range = await buffered.queryRange("v.altitude", 0, 10_000);
+    expect(range.v).toContain(42);
   });
 
   it("does not gate sources that leave affectedBySignalLoss false", async () => {

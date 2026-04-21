@@ -91,7 +91,10 @@ function CameraFeedComponent({
   const [cyclePaused, setCyclePaused] = useState(false);
   useEffect(() => {
     if (mode !== "cycle" || streams.length <= 1 || cyclePaused) return;
-    const intervalMs = Math.max(1000, config?.cycleIntervalMs ?? DEFAULT_CYCLE_MS);
+    const intervalMs = Math.max(
+      1000,
+      config?.cycleIntervalMs ?? DEFAULT_CYCLE_MS,
+    );
     const id = setInterval(() => {
       setCycleIndex((i) => (i + 1) % Math.max(1, streams.length));
     }, intervalMs);
@@ -163,7 +166,9 @@ function CameraFeedComponent({
   if (!selectedId) {
     return (
       <Panel>
-        <Placeholder>{placeholderText(status, "No cameras active")}</Placeholder>
+        <Placeholder>
+          {placeholderText(status, "No cameras active")}
+        </Placeholder>
       </Panel>
     );
   }
@@ -190,7 +195,9 @@ function CameraFeedComponent({
           </TopRow>
           {showMetadata && meta && (meta.speed || meta.altitude) && (
             <BottomRow>
-              {meta.speed && <MetaChip>SPD {formatNumber(meta.speed)}</MetaChip>}
+              {meta.speed && (
+                <MetaChip>SPD {formatNumber(meta.speed)}</MetaChip>
+              )}
               {meta.altitude && (
                 <MetaChip>ALT {formatNumber(meta.altitude)}</MetaChip>
               )}
@@ -228,7 +235,9 @@ function CameraFeedConfigComponent({
   onSave,
 }: Readonly<ConfigComponentProps<CameraFeedConfig>>) {
   const streams = useStreamList("ocisly");
-  const [mode, setMode] = useState<"single" | "cycle">(config?.mode ?? "single");
+  const [mode, setMode] = useState<"single" | "cycle">(
+    config?.mode ?? "single",
+  );
   const [cameraId, setCameraId] = useState(config?.cameraId ?? "");
   const [cycleSeconds, setCycleSeconds] = useState(
     String(Math.round((config?.cycleIntervalMs ?? DEFAULT_CYCLE_MS) / 1000)),

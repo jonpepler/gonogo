@@ -1,5 +1,5 @@
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 
@@ -32,10 +32,7 @@ interface CameraStreamClient extends grpc.Client {
   ): void;
   GetAverageFps(
     req: Record<string, never>,
-    cb: (
-      err: grpc.ServiceError | null,
-      res?: { averageFps?: number },
-    ) => void,
+    cb: (err: grpc.ServiceError | null, res?: { averageFps?: number }) => void,
   ): void;
 }
 

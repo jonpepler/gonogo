@@ -86,44 +86,51 @@ describe("fn invocation semantics", () => {
 
 describe("built-in derived key shapes (via registerBuiltinDerivedKeys)", () => {
   it("v.missionTimeHours converts seconds to hours", async () => {
-    const { registerBuiltinDerivedKeys } = await import("./schema/builtinDerivedKeys");
+    const { registerBuiltinDerivedKeys } = await import(
+      "./schema/builtinDerivedKeys"
+    );
     registerBuiltinDerivedKeys();
 
     const def = getDerivedKeys().find((d) => d.id === "v.missionTimeHours");
-    expect(def).toBeDefined();
-    const result = def!.fn([{ t: 1000, v: 3600 }], null);
+    if (!def) throw new Error("v.missionTimeHours not registered");
+    const result = def.fn([{ t: 1000, v: 3600 }], null);
     expect(result).toBe(1);
   });
 
   it("v.altitudeRate returns undefined on first sample", async () => {
-    const { registerBuiltinDerivedKeys } = await import("./schema/builtinDerivedKeys");
+    const { registerBuiltinDerivedKeys } = await import(
+      "./schema/builtinDerivedKeys"
+    );
     registerBuiltinDerivedKeys();
 
     const def = getDerivedKeys().find((d) => d.id === "v.altitudeRate");
-    expect(def).toBeDefined();
-    expect(def!.fn([{ t: 1000, v: 0 }], null)).toBeUndefined();
+    if (!def) throw new Error("v.altitudeRate not registered");
+    expect(def.fn([{ t: 1000, v: 0 }], null)).toBeUndefined();
   });
 
   it("v.altitudeRate computes m/s correctly", async () => {
-    const { registerBuiltinDerivedKeys } = await import("./schema/builtinDerivedKeys");
+    const { registerBuiltinDerivedKeys } = await import(
+      "./schema/builtinDerivedKeys"
+    );
     registerBuiltinDerivedKeys();
 
     const def = getDerivedKeys().find((d) => d.id === "v.altitudeRate");
+    if (!def) throw new Error("v.altitudeRate not registered");
     // 100m gained in 2 seconds = 50 m/s
-    const result = def!.fn(
-      [{ t: 3000, v: 200 }],
-      [{ t: 1000, v: 100 }],
-    );
+    const result = def.fn([{ t: 3000, v: 200 }], [{ t: 1000, v: 100 }]);
     expect(result).toBe(50);
   });
 
   it("v.altitudeRate returns undefined when dt === 0", async () => {
-    const { registerBuiltinDerivedKeys } = await import("./schema/builtinDerivedKeys");
+    const { registerBuiltinDerivedKeys } = await import(
+      "./schema/builtinDerivedKeys"
+    );
     registerBuiltinDerivedKeys();
 
     const def = getDerivedKeys().find((d) => d.id === "v.altitudeRate");
+    if (!def) throw new Error("v.altitudeRate not registered");
     expect(
-      def!.fn([{ t: 1000, v: 200 }], [{ t: 1000, v: 100 }]),
+      def.fn([{ t: 1000, v: 200 }], [{ t: 1000, v: 100 }]),
     ).toBeUndefined();
   });
 });

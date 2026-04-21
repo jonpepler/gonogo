@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getStreamSource } from "../streamRegistry";
 import type { StreamInfo } from "../streamRegistry";
+import { getStreamSource } from "../streamRegistry";
 
 /**
  * Live list of streams advertised by a StreamSource.

@@ -18,34 +18,55 @@ class MockSource implements DataSource {
   private readonly statusSubs = new Set<(s: DataSourceStatus) => void>();
   private readonly keys: DataKey[];
 
-  constructor(keys: DataKey[]) { this.keys = keys; }
+  constructor(keys: DataKey[]) {
+    this.keys = keys;
+  }
 
   async connect(): Promise<void> {
     this.status = "connected";
-    this.statusSubs.forEach((cb) => { cb("connected"); });
+    this.statusSubs.forEach((cb) => {
+      cb("connected");
+    });
   }
   disconnect(): void {
     this.status = "disconnected";
-    this.statusSubs.forEach((cb) => { cb("disconnected"); });
+    this.statusSubs.forEach((cb) => {
+      cb("disconnected");
+    });
   }
-  schema(): DataKey[] { return this.keys; }
+  schema(): DataKey[] {
+    return this.keys;
+  }
   subscribe(key: string, cb: (v: unknown) => void): () => void {
     let bucket = this.subs.get(key);
-    if (!bucket) { bucket = new Set(); this.subs.set(key, bucket); }
+    if (!bucket) {
+      bucket = new Set();
+      this.subs.set(key, bucket);
+    }
     bucket.add(cb);
-    return () => { bucket?.delete(cb); };
+    return () => {
+      bucket?.delete(cb);
+    };
   }
   onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
     this.statusSubs.add(cb);
-    return () => { this.statusSubs.delete(cb); };
+    return () => {
+      this.statusSubs.delete(cb);
+    };
   }
   async execute(): Promise<void> {}
-  configSchema(): ConfigField[] { return []; }
+  configSchema(): ConfigField[] {
+    return [];
+  }
   configure(): void {}
-  getConfig(): Record<string, unknown> { return {}; }
+  getConfig(): Record<string, unknown> {
+    return {};
+  }
 
   emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => { cb(value); });
+    this.subs.get(key)?.forEach((cb) => {
+      cb(value);
+    });
   }
 }
 
@@ -54,6 +75,7 @@ const FUEL_KEYS: DataKey[] = [
   { key: "v.missionTime" },
   { key: "v.currentStage" },
   { key: "dv.stageCount" },
+  { key: "dv.stages" },
   { key: "r.resource[LiquidFuel]" },
   { key: "r.resourceMax[LiquidFuel]" },
   { key: "r.resourceCurrent[LiquidFuel]" },
@@ -74,8 +96,33 @@ const FUEL_KEYS: DataKey[] = [
   { key: "r.resourceMax[ElectricCharge]" },
   { key: "r.resourceCurrent[ElectricCharge]" },
   { key: "r.resourceCurrentMax[ElectricCharge]" },
-  ...Array.from({ length: 10 }, (_, i) => ({ key: `dv.stageFuelMass[${i}]` })),
 ];
+
+function makeStage(stage: number, fuelMass: number): Record<string, number> {
+  // Minimal stage fixture — only fuelMass is exercised by the widget; other
+  // fields present-and-zero so the shape matches what Telemachus emits.
+  return {
+    stage,
+    fuelMass,
+    stageMass: fuelMass,
+    dryMass: 0,
+    startMass: fuelMass,
+    endMass: 0,
+    burnTime: 0,
+    deltaVVac: 0,
+    deltaVASL: 0,
+    deltaVActual: 0,
+    TWRVac: 0,
+    TWRASL: 0,
+    TWRActual: 0,
+    ispVac: 0,
+    ispASL: 0,
+    ispActual: 0,
+    thrustVac: 0,
+    thrustASL: 0,
+    thrustActual: 0,
+  };
+}
 
 describe("FuelStatusComponent", () => {
   let source: MockSource;
@@ -89,7 +136,9 @@ describe("FuelStatusComponent", () => {
     await buffered.connect();
   });
 
-  afterEach(() => { buffered.disconnect(); });
+  afterEach(() => {
+    buffered.disconnect();
+  });
 
   function primeFlight(): void {
     // FlightDetector gates sample persistence on name + missionTime arriving;
@@ -120,8 +169,9 @@ describe("FuelStatusComponent", () => {
     expect(queryByText("Power")).toBeNull();
 
     // 600/1200 on LF → 50% fill (width: 50%). Look for the BarFill inline style.
-    const fills = Array.from(container.querySelectorAll("div[style*='width']"))
-      .map((el) => (el as HTMLElement).style.width);
+    const fills = Array.from(
+      container.querySelectorAll("div[style*='width']"),
+    ).map((el) => (el as HTMLElement).style.width);
     expect(fills).toContain("50%");
   });
 
@@ -151,9 +201,12 @@ describe("FuelStatusComponent", () => {
       primeFlight();
       source.emit("v.currentStage", 1);
       source.emit("dv.stageCount", 3);
-      source.emit("dv.stageFuelMass[0]", 1200);
-      source.emit("dv.stageFuelMass[1]", 4400);
-      source.emit("dv.stageFuelMass[2]", 8000);
+      // Telemachus emits stages high → low (current-top-of-stack first).
+      source.emit("dv.stages", [
+        makeStage(2, 8000),
+        makeStage(1, 4400),
+        makeStage(0, 1200),
+      ]);
     });
 
     // StageLabel spans render as leaf elements with text content like
@@ -161,6 +214,6 @@ describe("FuelStatusComponent", () => {
     const stageTexts = Array.from(container.querySelectorAll("span"))
       .map((el) => el.textContent ?? "")
       .filter((t) => /^[▶ ] Stage \d$/.test(t));
-    expect(stageTexts).toEqual(["  Stage 0", "▶ Stage 1", "  Stage 2"]);
+    expect(stageTexts).toEqual(["  Stage 2", "▶ Stage 1", "  Stage 0"]);
   });
 });

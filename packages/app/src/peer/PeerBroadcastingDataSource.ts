@@ -25,12 +25,34 @@ type QueryRangeAware = {
   queryRange: (key: string, from: number, to: number) => Promise<SeriesRange>;
 };
 
-function hasSubscribeSamples(source: DataSource): source is DataSource & SampleAware {
-  return typeof (source as Partial<SampleAware>).subscribeSamples === "function";
+type CollectionAware = {
+  subscribeCollection: (
+    keys: readonly string[],
+    cb: (values: unknown[]) => void,
+  ) => () => void;
+};
+
+function hasSubscribeSamples(
+  source: DataSource,
+): source is DataSource & SampleAware {
+  return (
+    typeof (source as Partial<SampleAware>).subscribeSamples === "function"
+  );
 }
 
-function hasQueryRange(source: DataSource): source is DataSource & QueryRangeAware {
+function hasQueryRange(
+  source: DataSource,
+): source is DataSource & QueryRangeAware {
   return typeof (source as Partial<QueryRangeAware>).queryRange === "function";
+}
+
+function hasSubscribeCollection(
+  source: DataSource,
+): source is DataSource & CollectionAware {
+  return (
+    typeof (source as Partial<CollectionAware>).subscribeCollection ===
+    "function"
+  );
 }
 
 export class PeerBroadcastingDataSource implements DataSource {
@@ -145,10 +167,40 @@ export class PeerBroadcastingDataSource implements DataSource {
     });
   }
 
-  async queryRange(key: string, from: number, to: number): Promise<SeriesRange> {
+  async queryRange(
+    key: string,
+    from: number,
+    to: number,
+  ): Promise<SeriesRange> {
     if (hasQueryRange(this.real)) {
       return this.real.queryRange(key, from, to);
     }
     return { t: [], v: [] };
+  }
+
+  subscribeCollection(
+    keys: readonly string[],
+    cb: (values: unknown[]) => void,
+  ): () => void {
+    if (hasSubscribeCollection(this.real)) {
+      return this.real.subscribeCollection(keys, cb);
+    }
+    // Fall back to individual subscribes for sources that don't support
+    // batched collection (e.g. a raw Telemachus wrapper without buffering).
+    const snapshot: unknown[] = new Array<unknown>(keys.length).fill(undefined);
+    const unsubs: Array<() => void> = [];
+    keys.forEach((key, i) => {
+      unsubs.push(
+        this.real.subscribe(key, (value) => {
+          snapshot[i] = value;
+          cb(snapshot.slice());
+        }),
+      );
+    });
+    return () => {
+      unsubs.forEach((u) => {
+        u();
+      });
+    };
   }
 }

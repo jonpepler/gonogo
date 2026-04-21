@@ -15,6 +15,7 @@ const require = createRequire(import.meta.url);
 const { Peer } = require("peerjs") as { Peer: typeof PeerClass };
 
 const WrtcMediaStream = wrtc.MediaStream;
+
 import type { CameraMetadata, CameraPoller } from "../grpc/cameraPoller.js";
 import type { OcislyClient } from "../grpc/OcislyClient.js";
 import type { PeerIn, PeerOut } from "./controlProtocol.js";
@@ -156,7 +157,10 @@ export class PeerHost {
     });
   }
 
-  private async handleMessage(session: PeerSession, msg: PeerIn): Promise<void> {
+  private async handleMessage(
+    session: PeerSession,
+    msg: PeerIn,
+  ): Promise<void> {
     try {
       if (msg.type === "listCameras") {
         const cameras = await this.opts.client.getActiveCameraIds();

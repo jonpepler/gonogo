@@ -1,6 +1,6 @@
+import type { SeriesRange } from "@gonogo/data";
 import { useDataSeries } from "@gonogo/data";
 import { useEffect } from "react";
-import type { SeriesRange } from "@gonogo/data";
 
 interface Props {
   dataKey: string;

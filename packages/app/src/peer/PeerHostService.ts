@@ -213,11 +213,7 @@ export class PeerHostService {
           ) => Promise<{ t: number[]; v: unknown[] }>;
         })
       | undefined;
-    const respond = (
-      t: number[],
-      v: unknown[],
-      error?: string,
-    ) => {
+    const respond = (t: number[], v: unknown[], error?: string) => {
       conn.send({
         type: "query-range-response",
         requestId: msg.requestId,

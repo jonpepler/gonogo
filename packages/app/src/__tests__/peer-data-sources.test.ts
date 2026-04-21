@@ -245,10 +245,12 @@ describe("PeerBroadcastingDataSource", () => {
     };
     real.queryRange = vi.fn().mockResolvedValue({ t: [1, 2], v: [10, 20] });
     const sampleSubs = new Set<(s: { t: number; v: unknown }) => void>();
-    real.subscribeSamples = vi.fn((_key: string, cb: (s: { t: number; v: unknown }) => void) => {
-      sampleSubs.add(cb);
-      return () => sampleSubs.delete(cb);
-    });
+    real.subscribeSamples = vi.fn(
+      (_key: string, cb: (s: { t: number; v: unknown }) => void) => {
+        sampleSubs.add(cb);
+        return () => sampleSubs.delete(cb);
+      },
+    );
     const host = makeFakeHost();
     const wrapper = new PeerBroadcastingDataSource(real, host as never);
 
@@ -258,7 +260,9 @@ describe("PeerBroadcastingDataSource", () => {
 
     const received: Array<{ t: number; v: unknown }> = [];
     wrapper.subscribeSamples("v.altitude", (s) => received.push(s));
-    sampleSubs.forEach((cb) => cb({ t: 42, v: 99 }));
+    sampleSubs.forEach((cb) => {
+      cb({ t: 42, v: 99 });
+    });
     expect(received).toEqual([{ t: 42, v: 99 }]);
   });
 

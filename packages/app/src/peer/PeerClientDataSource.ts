@@ -19,10 +19,7 @@ interface SeriesRange {
 
 export class PeerClientDataSource implements DataSource {
   private subscribers = new Map<string, Set<(value: unknown) => void>>();
-  private sampleSubscribers = new Map<
-    string,
-    Set<(sample: Sample) => void>
-  >();
+  private sampleSubscribers = new Map<string, Set<(sample: Sample) => void>>();
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private seenKeys = new Set<string>();
   status: DataSourceStatus = "disconnected";
@@ -127,12 +124,34 @@ export class PeerClientDataSource implements DataSource {
     tEnd: number,
     flightId?: string,
   ): Promise<SeriesRange> {
-    return this.client.sendQueryRange(
-      this.id,
-      key,
-      tStart,
-      tEnd,
-      flightId,
-    );
+    return this.client.sendQueryRange(this.id, key, tStart, tEnd, flightId);
+  }
+
+  /**
+   * Match BufferedDataSource's `subscribeCollection`: subscribe to a fixed
+   * set of keys and fire a single callback with the current value array
+   * whenever any of them changes. Each broadcast sample flows through the
+   * same per-key subscribers the host wired up, so the station sees the same
+   * group-update cadence as the main screen.
+   */
+  subscribeCollection(
+    keys: readonly string[],
+    cb: (values: unknown[]) => void,
+  ): () => void {
+    const snapshot: unknown[] = new Array<unknown>(keys.length).fill(undefined);
+    const unsubs: Array<() => void> = [];
+    keys.forEach((key, i) => {
+      unsubs.push(
+        this.subscribe(key, (value) => {
+          snapshot[i] = value;
+          cb(snapshot.slice());
+        }),
+      );
+    });
+    return () => {
+      unsubs.forEach((u) => {
+        u();
+      });
+    };
   }
 }

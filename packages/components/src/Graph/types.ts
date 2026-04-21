@@ -1,4 +1,5 @@
 export type { SeriesType } from "@gonogo/ui";
+
 import type { SeriesType } from "@gonogo/ui";
 
 /** Sentinel `xKey` value meaning "plot against wall-clock time". */

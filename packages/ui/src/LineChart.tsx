@@ -55,7 +55,6 @@ export interface LineChartProps {
 
 const MARGIN = { top: 10, right: 50, bottom: 28, left: 50 };
 const TICK_COUNT = 5;
-const FONT = "11px monospace";
 
 export function LineChart({
   series,
@@ -76,8 +75,12 @@ export function LineChart({
   const plotW = plotX1 - plotX0;
   const plotH = plotY1 - plotY0;
 
-  const primarySeries = series.filter((s) => s.axis === "primary" && s.data.x.length > 0);
-  const secondarySeries = series.filter((s) => s.axis === "secondary" && s.data.x.length > 0);
+  const primarySeries = series.filter(
+    (s) => s.axis === "primary" && s.data.x.length > 0,
+  );
+  const secondarySeries = series.filter(
+    (s) => s.axis === "secondary" && s.data.x.length > 0,
+  );
   const hasSecondary = secondarySeries.length > 0;
 
   const primaryDomain = useMemo((): [number, number] => {
@@ -95,11 +98,25 @@ export function LineChart({
   }, [secondarySeries, yDomainSecondary]);
 
   const scaleX = makeScale(xDomain[0], xDomain[1], plotX0, plotX1);
-  const scaleYPrimary = makeScale(primaryDomain[0], primaryDomain[1], plotY1, plotY0);
-  const scaleYSecondary = makeScale(secondaryDomain[0], secondaryDomain[1], plotY1, plotY0);
+  const scaleYPrimary = makeScale(
+    primaryDomain[0],
+    primaryDomain[1],
+    plotY1,
+    plotY0,
+  );
+  const scaleYSecondary = makeScale(
+    secondaryDomain[0],
+    secondaryDomain[1],
+    plotY1,
+    plotY0,
+  );
 
   const xTicks = niceTicks(xDomain[0], xDomain[1], TICK_COUNT);
-  const yTicksPrimary = niceTicks(primaryDomain[0], primaryDomain[1], TICK_COUNT);
+  const yTicksPrimary = niceTicks(
+    primaryDomain[0],
+    primaryDomain[1],
+    TICK_COUNT,
+  );
   const yTicksSecondary = hasSecondary
     ? niceTicks(secondaryDomain[0], secondaryDomain[1], TICK_COUNT)
     : [];
@@ -123,23 +140,38 @@ export function LineChart({
   // draw, and negative <rect> dimensions spam the console. Render an empty
   // svg until the ResizeObserver reports a usable size.
   if (plotW <= 0 || plotH <= 0) {
-    return <svg width={Math.max(0, w)} height={Math.max(0, h)} />;
+    return (
+      <svg
+        width={Math.max(0, w)}
+        height={Math.max(0, h)}
+        role="img"
+        aria-label="Chart too small to render"
+      >
+        <title>Chart too small to render</title>
+      </svg>
+    );
   }
 
   return (
     <svg
       width={w}
       height={h}
+      role="img"
+      aria-label="Telemetry line chart"
       style={{ fontFamily: "monospace", overflow: "visible" }}
     >
+      <title>Telemetry line chart</title>
       {/* Background */}
       <rect x={plotX0} y={plotY0} width={plotW} height={plotH} fill="#111" />
 
-      {/* Horizontal grid lines + left y-axis ticks */}
-      {yTicksPrimary.map((tick) => {
+      {/* Horizontal grid lines + left y-axis ticks. Keyed by index rather
+          than value because niceTicks returns duplicate ticks when the domain
+          has zero span (single-sample or pinned-equal-bounds data). */}
+      {yTicksPrimary.map((tick, idx) => {
         const y = scaleYPrimary(tick);
         return (
-          <React.Fragment key={`py-${tick}`}>
+          // biome-ignore lint/suspicious/noArrayIndexKey: tick position IS identity; niceTicks may emit duplicate values for zero-span domains
+          <React.Fragment key={`py-${idx}`}>
             <line
               x1={plotX0}
               y1={y}
@@ -163,11 +195,12 @@ export function LineChart({
       })}
 
       {/* Right y-axis ticks (secondary) */}
-      {yTicksSecondary.map((tick) => {
+      {yTicksSecondary.map((tick, idx) => {
         const y = scaleYSecondary(tick);
         return (
           <text
-            key={`sy-${tick}`}
+            // biome-ignore lint/suspicious/noArrayIndexKey: tick position IS identity; niceTicks may emit duplicate values for zero-span domains
+            key={`sy-${idx}`}
             x={plotX1 + 4}
             y={y}
             textAnchor="start"
@@ -181,10 +214,11 @@ export function LineChart({
       })}
 
       {/* Vertical grid lines + x-axis ticks */}
-      {xTicks.map((tick) => {
+      {xTicks.map((tick, idx) => {
         const x = scaleX(tick);
         return (
-          <React.Fragment key={`xt-${tick}`}>
+          // biome-ignore lint/suspicious/noArrayIndexKey: tick position IS identity; niceTicks may emit duplicate values for zero-span domains
+          <React.Fragment key={`xt-${idx}`}>
             <line
               x1={x}
               y1={plotY0}
@@ -207,10 +241,31 @@ export function LineChart({
       })}
 
       {/* Axis borders */}
-      <line x1={plotX0} y1={plotY0} x2={plotX0} y2={plotY1} stroke="#333" strokeWidth={1} />
-      <line x1={plotX0} y1={plotY1} x2={plotX1} y2={plotY1} stroke="#333" strokeWidth={1} />
+      <line
+        x1={plotX0}
+        y1={plotY0}
+        x2={plotX0}
+        y2={plotY1}
+        stroke="#333"
+        strokeWidth={1}
+      />
+      <line
+        x1={plotX0}
+        y1={plotY1}
+        x2={plotX1}
+        y2={plotY1}
+        stroke="#333"
+        strokeWidth={1}
+      />
       {hasSecondary && (
-        <line x1={plotX1} y1={plotY0} x2={plotX1} y2={plotY1} stroke="#333" strokeWidth={1} />
+        <line
+          x1={plotX1}
+          y1={plotY0}
+          x2={plotX1}
+          y2={plotY1}
+          stroke="#333"
+          strokeWidth={1}
+        />
       )}
 
       {/* Series paths */}

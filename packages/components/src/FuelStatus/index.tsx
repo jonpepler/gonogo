@@ -5,10 +5,6 @@ import styled from "styled-components";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-// Fixed hook count: calling useDataValue in a loop requires a stable loop
-// length across renders. 10 stages is well above the KSP ceiling in practice.
-const MAX_STAGES = 10;
-
 // Empty config for now — kept so future toggles (resource visibility, stage
 // stack hide/show, etc.) can slot in without changing the registration.
 type FuelStatusConfig = Record<string, never>;
@@ -21,18 +17,28 @@ type FuelStatusConfig = Record<string, never>;
  * Resources absent from the active vessel (max === 0) are skipped at render.
  */
 interface ResourceDef {
-  name: "LiquidFuel" | "Oxidizer" | "MonoPropellant" | "XenonGas" | "ElectricCharge";
+  name:
+    | "LiquidFuel"
+    | "Oxidizer"
+    | "MonoPropellant"
+    | "XenonGas"
+    | "ElectricCharge";
   label: string;
   color: string;
   scope: "current" | "vessel";
 }
 
 const RESOURCES: readonly ResourceDef[] = [
-  { name: "LiquidFuel",    label: "Liquid Fuel", color: "#4caf50", scope: "current" },
-  { name: "Oxidizer",      label: "Oxidizer",    color: "#2196f3", scope: "current" },
-  { name: "MonoPropellant",label: "RCS",         color: "#ffd54f", scope: "vessel"  },
-  { name: "XenonGas",      label: "Xenon",       color: "#ab47bc", scope: "vessel"  },
-  { name: "ElectricCharge",label: "Power",       color: "#ff9800", scope: "vessel"  },
+  {
+    name: "LiquidFuel",
+    label: "Liquid Fuel",
+    color: "#4caf50",
+    scope: "current",
+  },
+  { name: "Oxidizer", label: "Oxidizer", color: "#2196f3", scope: "current" },
+  { name: "MonoPropellant", label: "RCS", color: "#ffd54f", scope: "vessel" },
+  { name: "XenonGas", label: "Xenon", color: "#ab47bc", scope: "vessel" },
+  { name: "ElectricCharge", label: "Power", color: "#ff9800", scope: "vessel" },
 ] as const;
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
@@ -61,17 +67,28 @@ function FuelStatusComponent(_: Readonly<ComponentProps<FuelStatusConfig>>) {
   const currentStage = useDataValue("data", "v.currentStage");
   const stageCount = useDataValue("data", "dv.stageCount");
 
-  const readings = RESOURCES.map((def) => ({
-    def,
-    ...useResourceReading(def),
-  }));
+  // Hooks unrolled explicitly — Rules of Hooks forbids hook calls inside any
+  // loop or `.map` callback (even ones that happen to iterate a constant
+  // tuple). The RESOURCES catalogue has a fixed order so these reads are 1:1.
+  const lf = useResourceReading(RESOURCES[0]);
+  const ox = useResourceReading(RESOURCES[1]);
+  const rcs = useResourceReading(RESOURCES[2]);
+  const xe = useResourceReading(RESOURCES[3]);
+  const ec = useResourceReading(RESOURCES[4]);
+  const readings = [
+    { def: RESOURCES[0], ...lf },
+    { def: RESOURCES[1], ...ox },
+    { def: RESOURCES[2], ...rcs },
+    { def: RESOURCES[3], ...xe },
+    { def: RESOURCES[4], ...ec },
+  ];
 
-  const stageMasses = readStageMasses();
-  const visibleStageCount = clampStageCount(stageCount, stageMasses);
-  const maxStageMass = Math.max(
-    ...stageMasses.slice(0, visibleStageCount),
-    0.001,
-  );
+  // `dv.stages` is the whole-vessel stage array. One subscription, all the
+  // per-stage data Telemachus knows about — length matches the real stage
+  // count, no hardcoded cap, no hook-per-stage. Entries arrive high → low
+  // (stage 3 first, stage 0 last) matching the stack-top-down render order.
+  const stages = useDataValue("data", "dv.stages") ?? [];
+  const maxStageMass = Math.max(...stages.map((s) => s.fuelMass), 0.001);
 
   return (
     <Panel>
@@ -108,23 +125,23 @@ function FuelStatusComponent(_: Readonly<ComponentProps<FuelStatusConfig>>) {
           ))}
       </ResourceList>
 
-      {visibleStageCount > 0 && (
+      {stages.length > 0 && (
         <StageStack>
           <StageHeader>Stages · fuel mass (kg)</StageHeader>
-          {stageMasses.slice(0, visibleStageCount).map((mass, i) => (
-            <StageRow key={i} $active={i === currentStage}>
+          {stages.map((s) => (
+            <StageRow key={s.stage} $active={s.stage === currentStage}>
               <StageLabel>
-                {i === currentStage ? "▶ " : "  "}Stage {i}
+                {s.stage === currentStage ? "▶ " : "  "}Stage {s.stage}
               </StageLabel>
               <Bar>
                 <BarFill
                   style={{
-                    width: `${clampPct((mass / maxStageMass) * 100)}%`,
-                    background: i === currentStage ? "#ffb74d" : "#555",
+                    width: `${clampPct((s.fuelMass / maxStageMass) * 100)}%`,
+                    background: s.stage === currentStage ? "#ffb74d" : "#555",
                   }}
                 />
               </Bar>
-              <StageReadout>{formatKg(mass)}</StageReadout>
+              <StageReadout>{formatKg(s.fuelMass)}</StageReadout>
             </StageRow>
           ))}
         </StageStack>
@@ -134,43 +151,6 @@ function FuelStatusComponent(_: Readonly<ComponentProps<FuelStatusConfig>>) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Read `dv.stageFuelMass[0..MAX_STAGES-1]` with one hook call per index.
- * The loop length is the module-level `MAX_STAGES` constant so the hook
- * count is fixed across renders and Rules of Hooks isn't violated.
- */
-function readStageMasses(): number[] {
-  /* eslint-disable react-hooks/rules-of-hooks */
-  const masses: number[] = [];
-  for (let i = 0; i < MAX_STAGES; i++) {
-    masses.push(
-      useDataValue("data", `dv.stageFuelMass[${i}]` as const) ?? 0,
-    );
-  }
-  /* eslint-enable react-hooks/rules-of-hooks */
-  return masses;
-}
-
-/**
- * Settle on how many stages to actually render. Telemachus's `dv.stageCount`
- * is authoritative when present; otherwise fall back to the number of stages
- * that have reported a non-zero mass at least once.
- */
-function clampStageCount(
-  stageCount: number | undefined,
-  stageMasses: number[],
-): number {
-  if (stageCount !== undefined && stageCount > 0) {
-    return Math.min(stageCount, MAX_STAGES);
-  }
-  // Find the last index with non-zero mass and include everything up to it.
-  let last = -1;
-  for (let i = 0; i < stageMasses.length; i++) {
-    if (stageMasses[i] > 0) last = i;
-  }
-  return last + 1;
-}
 
 function clampPct(pct: number): number {
   if (!Number.isFinite(pct) || pct < 0) return 0;
@@ -310,10 +290,7 @@ registerComponent<FuelStatusConfig>({
     "r.resourceMax[ElectricCharge]",
     "r.resourceCurrent[ElectricCharge]",
     "r.resourceCurrentMax[ElectricCharge]",
-    ...Array.from(
-      { length: MAX_STAGES },
-      (_, i) => `dv.stageFuelMass[${i}]`,
-    ),
+    "dv.stages",
   ],
   behaviors: [],
   defaultConfig: {},

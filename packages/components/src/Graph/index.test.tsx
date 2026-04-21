@@ -1,4 +1,9 @@
-import type { ConfigField, DataKey, DataSource, DataSourceStatus } from "@gonogo/core";
+import type {
+  ConfigField,
+  DataKey,
+  DataSource,
+  DataSourceStatus,
+} from "@gonogo/core";
 import { clearRegistry, registerDataSource } from "@gonogo/core";
 import { BufferedDataSource, MemoryStore } from "@gonogo/data";
 import { act, render, waitFor } from "@testing-library/react";
@@ -19,30 +24,49 @@ class MockSource implements DataSource {
 
   async connect(): Promise<void> {
     this.status = "connected";
-    this.statusSubs.forEach((cb) => { cb("connected"); });
+    this.statusSubs.forEach((cb) => {
+      cb("connected");
+    });
   }
   disconnect(): void {
     this.status = "disconnected";
-    this.statusSubs.forEach((cb) => { cb("disconnected"); });
+    this.statusSubs.forEach((cb) => {
+      cb("disconnected");
+    });
   }
-  schema(): DataKey[] { return this.keys; }
+  schema(): DataKey[] {
+    return this.keys;
+  }
   subscribe(key: string, cb: (v: unknown) => void): () => void {
     let bucket = this.subs.get(key);
-    if (!bucket) { bucket = new Set(); this.subs.set(key, bucket); }
+    if (!bucket) {
+      bucket = new Set();
+      this.subs.set(key, bucket);
+    }
     bucket.add(cb);
-    return () => { bucket?.delete(cb); };
+    return () => {
+      bucket?.delete(cb);
+    };
   }
   onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
     this.statusSubs.add(cb);
-    return () => { this.statusSubs.delete(cb); };
+    return () => {
+      this.statusSubs.delete(cb);
+    };
   }
   async execute(_action: string): Promise<void> {}
-  configSchema(): ConfigField[] { return []; }
+  configSchema(): ConfigField[] {
+    return [];
+  }
   configure(_config: Record<string, unknown>): void {}
-  getConfig(): Record<string, unknown> { return {}; }
+  getConfig(): Record<string, unknown> {
+    return {};
+  }
 
   emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => { cb(value); });
+    this.subs.get(key)?.forEach((cb) => {
+      cb(value);
+    });
   }
 }
 
@@ -52,18 +76,27 @@ describe("GraphComponent", () => {
 
   beforeEach(async () => {
     clearRegistry();
-    vi.stubGlobal("ResizeObserver", class FakeResizeObserver {
-      private cb: ResizeObserverCallback;
-      constructor(cb: ResizeObserverCallback) { this.cb = cb; }
-      observe(_el: Element) {
-        this.cb(
-          [{ contentRect: { width: 400, height: 300 } } as ResizeObserverEntry],
-          this as unknown as ResizeObserver,
-        );
-      }
-      unobserve() {}
-      disconnect() {}
-    });
+    vi.stubGlobal(
+      "ResizeObserver",
+      class FakeResizeObserver {
+        private cb: ResizeObserverCallback;
+        constructor(cb: ResizeObserverCallback) {
+          this.cb = cb;
+        }
+        observe(_el: Element) {
+          this.cb(
+            [
+              {
+                contentRect: { width: 400, height: 300 },
+              } as ResizeObserverEntry,
+            ],
+            this as unknown as ResizeObserver,
+          );
+        }
+        unobserve() {}
+        disconnect() {}
+      },
+    );
     source = new MockSource([
       { key: "v.name" },
       { key: "v.missionTime" },
@@ -111,8 +144,12 @@ describe("GraphComponent", () => {
       windowSec: 300,
     };
 
-    const { getByText } = render(<GraphComponent config={config} id="graph-test" />);
-    expect(getByText("Configure series to begin graphing.")).toBeInTheDocument();
+    const { getByText } = render(
+      <GraphComponent config={config} id="graph-test" />,
+    );
+    expect(
+      getByText("Configure series to begin graphing."),
+    ).toBeInTheDocument();
   });
 
   it("auto-splits two series with different units onto separate axes", async () => {
@@ -124,7 +161,9 @@ describe("GraphComponent", () => {
       windowSec: 300,
     };
 
-    const { container } = render(<GraphComponent config={config} id="graph-test" />);
+    const { container } = render(
+      <GraphComponent config={config} id="graph-test" />,
+    );
 
     act(() => {
       source.emit("v.name", "Kerbal X");
@@ -179,7 +218,9 @@ describe("GraphComponent", () => {
       yDomainPrimary: [0, 1000] as [number, number],
     };
 
-    const { container } = render(<GraphComponent config={config} id="graph-test" />);
+    const { container } = render(
+      <GraphComponent config={config} id="graph-test" />,
+    );
 
     act(() => {
       source.emit("v.name", "Kerbal X");

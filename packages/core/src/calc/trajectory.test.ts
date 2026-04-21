@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { OrbitPatch } from "../schemas/telemachus";
 import {
-  MAX_TRACK_SAMPLES,
   buildBodyRotation,
   eccentricToTrueAnomaly,
   geoFromInertial,
+  MAX_TRACK_SAMPLES,
   patchStateAt,
   predictGroundTrack,
   solveKepler,
@@ -94,7 +94,11 @@ describe("eccentricToTrueAnomaly", () => {
 
 describe("patchStateAt", () => {
   it("places the vessel at periapsis (+x) at epoch for a canonical orbit", () => {
-    const patch = circularEquatorial({ sma: 1_000_000, eccentricity: 0, maae: 0 });
+    const patch = circularEquatorial({
+      sma: 1_000_000,
+      eccentricity: 0,
+      maae: 0,
+    });
     const state = patchStateAt(patch, 0);
     expect(state.x).toBeCloseTo(1_000_000, 5);
     expect(state.y).toBeCloseTo(0, 5);
@@ -203,13 +207,29 @@ describe("buildBodyRotation", () => {
 
 describe("predictGroundTrack", () => {
   it("returns empty for empty patches", () => {
-    const out = predictGroundTrack([], "Kerbin", 600_000, 21_549, { ut: 0, lat: 0, lon: 0 }, 100, 1);
+    const out = predictGroundTrack(
+      [],
+      "Kerbin",
+      600_000,
+      21_549,
+      { ut: 0, lat: 0, lon: 0 },
+      100,
+      1,
+    );
     expect(out).toEqual([]);
   });
 
   it("returns empty when no patches match the requested body", () => {
     const patch = circularEquatorial({ referenceBody: "Mun" });
-    const out = predictGroundTrack([patch], "Kerbin", 600_000, 21_549, { ut: 0, lat: 0, lon: 0 }, 100, 1);
+    const out = predictGroundTrack(
+      [patch],
+      "Kerbin",
+      600_000,
+      21_549,
+      { ut: 0, lat: 0, lon: 0 },
+      100,
+      1,
+    );
     expect(out).toEqual([]);
   });
 
@@ -233,7 +253,10 @@ describe("predictGroundTrack", () => {
   });
 
   it("stops at an SOI transition (next patch has a different body)", () => {
-    const kerbin = circularEquatorial({ endUT: 50, patchEndTransition: "ESCAPE" });
+    const kerbin = circularEquatorial({
+      endUT: 50,
+      patchEndTransition: "ESCAPE",
+    });
     const mun = circularEquatorial({
       referenceBody: "Mun",
       startUT: 50,
@@ -311,6 +334,30 @@ describe("predictGroundTrack", () => {
     expect(out.every((s) => s.alt > -100)).toBe(true);
   });
 
+  it("uses external calibrationPatches when sampling a future-only patch set", () => {
+    // Simulates a maneuver preview: current orbit at ref.ut=0 is fine; the
+    // maneuver patch doesn't start until UT=100 so it can't calibrate itself.
+    const currentPatch = circularEquatorial({ endUT: 200 });
+    const maneuverPatch = circularEquatorial({
+      startUT: 100,
+      endUT: 400,
+      sma: 1_500_000,
+      period: 200,
+    });
+    const out = predictGroundTrack(
+      [maneuverPatch],
+      "Kerbin",
+      600_000,
+      1_000_000,
+      { ut: 0, lat: 0, lon: 0 },
+      400,
+      10,
+      [currentPatch], // calibrationPatches
+    );
+    expect(out.length).toBeGreaterThan(0);
+    expect(out.every((s) => s.ut >= 100)).toBe(true);
+  });
+
   it("caps sample count at MAX_TRACK_SAMPLES for very long horizons", () => {
     // Solar-year horizon with 1 s step would be 31.5M samples if uncapped.
     const patch = circularEquatorial({ endUT: 1e10, period: 1_000_000 });
@@ -340,9 +387,7 @@ describe("splitOnLongitudeWrap", () => {
   });
 
   it("splits at a date-line crossing", () => {
-    const samples = [
-      { lon: 170 }, { lon: 175 }, { lon: -175 }, { lon: -170 },
-    ];
+    const samples = [{ lon: 170 }, { lon: 175 }, { lon: -175 }, { lon: -170 }];
     const out = splitOnLongitudeWrap(samples);
     expect(out).toHaveLength(2);
     expect(out[0].map((s) => s.lon)).toEqual([170, 175]);
@@ -351,9 +396,12 @@ describe("splitOnLongitudeWrap", () => {
 
   it("handles multiple wraps across a long prediction", () => {
     const samples = [
-      { lon: 170 }, { lon: -175 }, // wrap
-      { lon: -170 }, { lon: -160 },
-      { lon: 170 }, { lon: 175 }, // wrap back? no — jump of 330 > 180
+      { lon: 170 },
+      { lon: -175 }, // wrap
+      { lon: -170 },
+      { lon: -160 },
+      { lon: 170 },
+      { lon: 175 }, // wrap back? no — jump of 330 > 180
     ];
     const out = splitOnLongitudeWrap(samples);
     expect(out.length).toBeGreaterThanOrEqual(2);

@@ -1,9 +1,4 @@
-import type {
-  ConfigField,
-  DataKey,
-  DataSource,
-  DataSourceStatus,
-} from "@gonogo/core";
+import type { ConfigField, DataSource, DataSourceStatus } from "@gonogo/core";
 import { getDerivedKeys } from "./derive";
 import { FlightDetector } from "./flightDetector";
 import { debugFlight } from "./logger";
@@ -97,12 +92,17 @@ export class BufferedDataSource implements DataSource {
 
   /**
    * CommNet signal state tracked internally off `comm.connected` samples.
-   * Defaults to `true` — until we hear otherwise, data flows. Flips to
-   * `false` on the first `comm.connected: false`, back to `true` on any
-   * later `true`. Gates non-`comm.*` samples from sources that declare
-   * `affectedBySignalLoss`.
+   * The gate only activates after we've observed a `comm.connected: true`
+   * AT LEAST ONCE and then seen it flip to `false`. Cold-start `false`
+   * values (Telemachus on a vessel with no antenna, CommNet disabled in
+   * difficulty, or transient null-deref responses) must NOT be trusted as
+   * a signal-loss event — otherwise widgets freeze the moment the station
+   * connects. Only a confirmed live-to-dead transition counts.
+   *
+   * Default `true` so non-signal-affected sources (`kos`) aren't held back.
    */
   private signalConnected = true;
+  private hasConfirmedConnection = false;
 
   constructor(opts: Options) {
     this.id = opts.id ?? "data";
@@ -253,6 +253,39 @@ export class BufferedDataSource implements DataSource {
   }
 
   /**
+   * Subscribe to a fixed set of keys and receive a single callback with an
+   * array of all current values whenever any of them changes. Keeps the
+   * coalescing and relabelling inside the data layer — consumers treat a
+   * group of related keys (e.g. per-stage fuel masses) as one value with
+   * one hook call.
+   *
+   * `values[i]` is `undefined` until `keys[i]` has emitted at least once.
+   * On subscribe, the last-known value for each key is replayed via
+   * `subscribe()`, so the callback typically fires once per already-seen
+   * key during setup and then once per change afterwards.
+   */
+  subscribeCollection(
+    keys: readonly string[],
+    cb: (values: unknown[]) => void,
+  ): () => void {
+    const snapshot: unknown[] = new Array<unknown>(keys.length).fill(undefined);
+    const unsubs: Array<() => void> = [];
+    keys.forEach((key, i) => {
+      unsubs.push(
+        this.subscribe(key, (value) => {
+          snapshot[i] = value;
+          cb(snapshot.slice());
+        }),
+      );
+    });
+    return () => {
+      unsubs.forEach((u) => {
+        u();
+      });
+    };
+  }
+
+  /**
    * Timestamped variant of `subscribe`. Fires on every sample with both
    * the store-side timestamp and value — used by `useDataSeries` so its
    * appended points share the store's clock (matters in tests where the
@@ -310,18 +343,29 @@ export class BufferedDataSource implements DataSource {
   private handleSample(key: string, value: unknown): void {
     // Signal-state tracker: `comm.connected` updates our gate regardless of
     // the gate's current state (this is the one key that must always flow
-    // through, otherwise we'd never see the restore event).
+    // through, otherwise we'd never see the restore event). We require a
+    // confirmed `true` at least once before a later `false` activates the
+    // gate — otherwise widgets would freeze on any cold-start scenario
+    // where Telemachus reports `false` before the vessel has a link.
     if (key === "comm.connected") {
-      this.signalConnected = value !== false;
+      if (value === true) {
+        this.signalConnected = true;
+        this.hasConfirmedConnection = true;
+      } else if (value === false && this.hasConfirmedConnection) {
+        this.signalConnected = false;
+      }
+      // Any other value (null, undefined, transient) leaves the gate alone.
     }
 
     // CommNet blackout gate. When the wrapped source is signal-affected
-    // (Telemachus) and CommNet link is down, drop anything that isn't a
-    // `comm.*` key — not persisted to the store, not fanned out to live or
-    // sample subscribers, doesn't update lastEmittedValue. Widgets freeze at
-    // their pre-blackout value; historical queries show a clean gap.
+    // (Telemachus) and we've confirmed a prior live link that has since
+    // dropped, drop anything that isn't a `comm.*` key — not persisted to
+    // the store, not fanned out to live or sample subscribers, doesn't
+    // update lastEmittedValue. Widgets freeze at their pre-blackout value;
+    // historical queries show a clean gap.
     if (
       this.source.affectedBySignalLoss &&
+      this.hasConfirmedConnection &&
       !this.signalConnected &&
       !key.startsWith("comm.")
     ) {

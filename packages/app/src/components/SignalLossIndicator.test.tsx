@@ -3,25 +3,41 @@ import { deriveState } from "./SignalLossIndicator";
 
 describe("SignalLossIndicator — deriveState", () => {
   it("treats absent telemetry as connected (warmup hides the banner)", () => {
-    expect(deriveState(undefined, undefined)).toBe("connected");
+    expect(deriveState(undefined, undefined, false)).toBe("connected");
+    expect(deriveState(undefined, undefined, true)).toBe("connected");
+  });
+
+  it("does not flash the banner when controlState arrives before connected", () => {
+    // Cold-start order can land controlState=0 before comm.connected. Until
+    // `connected` has been confirmed true we have no business asserting a
+    // blackout or partial-control state.
+    expect(deriveState(undefined, 0, false)).toBe("connected");
+    expect(deriveState(undefined, 1, false)).toBe("connected");
+    expect(deriveState(undefined, 2, false)).toBe("connected");
   });
 
   it("reports connected when comm.connected is true and controlState is full", () => {
-    expect(deriveState(true, 2)).toBe("connected");
+    expect(deriveState(true, 2, true)).toBe("connected");
   });
 
-  it("reports lost whenever comm.connected is false — same condition as the gate", () => {
-    expect(deriveState(false, 2)).toBe("lost");
-    expect(deriveState(false, 1)).toBe("lost");
-    expect(deriveState(false, 0)).toBe("lost");
-    expect(deriveState(false, undefined)).toBe("lost");
+  it("does NOT report lost on a cold-start false (hasConfirmedConnection = false)", () => {
+    // Mirrors BufferedDataSource's gate: a user whose KSP reports false
+    // without ever asserting true (CommNet off, no antenna, no vessel)
+    // should see data flow AND a quiet banner, not a flashing blackout.
+    expect(deriveState(false, 2, false)).toBe("connected");
+    expect(deriveState(false, 1, false)).toBe("connected");
+    expect(deriveState(false, 0, false)).toBe("connected");
+    expect(deriveState(false, undefined, false)).toBe("connected");
   });
 
-  it("reports partial for reduced-control states while still connected", () => {
-    // controlState 1 = partial control (probe with signal but no crew pilot)
-    expect(deriveState(true, 1)).toBe("partial");
-    // controlState 0 while somehow still connected — rare but possible;
-    // keep data flowing (gate doesn't fire), show an amber warning.
-    expect(deriveState(true, 0)).toBe("partial");
+  it("reports lost when we've seen a confirmed link and it dropped", () => {
+    expect(deriveState(false, 2, true)).toBe("lost");
+    expect(deriveState(false, 0, true)).toBe("lost");
+    expect(deriveState(false, undefined, true)).toBe("lost");
+  });
+
+  it("reports partial for reduced-control states while connected is confirmed true", () => {
+    expect(deriveState(true, 1, true)).toBe("partial");
+    expect(deriveState(true, 0, true)).toBe("partial");
   });
 });

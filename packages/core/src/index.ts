@@ -14,7 +14,7 @@ export * from "./kos/KosProxyContext";
 export * from "./logger";
 export * from "./orbital";
 export * from "./registry";
-export * from "./streamRegistry";
 export * from "./schemas/telemachus";
 export * from "./stock-bodies";
+export * from "./streamRegistry";
 export * from "./types";

@@ -10,44 +10,98 @@ type MetaEntry = Omit<DataKeyMeta, "key">;
 export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // --- Position & altitude ---
   "v.altitude": { label: "Altitude", unit: "m", group: "Position" },
-  "v.heightFromTerrain": { label: "Height from terrain", unit: "m", group: "Position" },
-  "v.heightFromSurface": { label: "Height from surface", unit: "m", group: "Position" },
+  "v.heightFromTerrain": {
+    label: "Height from terrain",
+    unit: "m",
+    group: "Position",
+  },
+  "v.heightFromSurface": {
+    label: "Height from surface",
+    unit: "m",
+    group: "Position",
+  },
   "v.terrainHeight": { label: "Terrain height", unit: "m", group: "Position" },
   "v.lat": { label: "Latitude", unit: "°", group: "Position" },
   "v.long": { label: "Longitude", unit: "°", group: "Position" },
 
   // --- Velocity ---
   "v.surfaceSpeed": { label: "Surface speed", unit: "m/s", group: "Velocity" },
-  "v.verticalSpeed": { label: "Vertical speed", unit: "m/s", group: "Velocity" },
-  "v.obtSpeed": { label: "Orbital speed", unit: "m/s", group: "Velocity" },
-  "v.orbitalVelocity": { label: "Orbital velocity", unit: "m/s", group: "Velocity" },
-  "v.surfaceVelocity": { label: "Surface velocity", unit: "m/s", group: "Velocity" },
+  "v.verticalSpeed": {
+    label: "Vertical speed",
+    unit: "m/s",
+    group: "Velocity",
+  },
+  // v.obtSpeed intentionally absent — KSP's stock `Vessel.obt_speed` is
+  // cached/stale and often reads 0 mid-flight. v.orbitalVelocity reads the
+  // velocity-vector magnitude which is always correct.
+  "v.orbitalVelocity": {
+    label: "Orbital speed",
+    unit: "m/s",
+    group: "Velocity",
+  },
+  "v.surfaceVelocity": {
+    label: "Surface velocity",
+    unit: "m/s",
+    group: "Velocity",
+  },
   "v.speed": { label: "Speed", unit: "m/s", group: "Velocity" },
-  "v.srfSpeed": { label: "Surface speed (alt)", unit: "m/s", group: "Velocity" },
+  "v.srfSpeed": {
+    label: "Surface speed (alt)",
+    unit: "m/s",
+    group: "Velocity",
+  },
 
   // --- Forces & environment ---
   "v.geeForce": { label: "G-force", unit: "g", group: "Forces" },
-  "v.geeForceImmediate": { label: "G-force (immediate)", unit: "g", group: "Forces" },
+  "v.geeForceImmediate": {
+    label: "G-force (immediate)",
+    unit: "g",
+    group: "Forces",
+  },
   "v.mass": { label: "Mass", unit: "kg", group: "Forces" },
   "v.mach": { label: "Mach number", unit: "raw", group: "Forces" },
-  "v.dynamicPressure": { label: "Dynamic pressure", unit: "Pa", group: "Forces" },
-  "v.dynamicPressurekPa": { label: "Dynamic pressure (kPa)", unit: "kPa", group: "Forces" },
+  "v.dynamicPressure": {
+    label: "Dynamic pressure",
+    unit: "Pa",
+    group: "Forces",
+  },
+  "v.dynamicPressurekPa": {
+    label: "Dynamic pressure (kPa)",
+    unit: "kPa",
+    group: "Forces",
+  },
   "v.staticPressure": { label: "Static pressure", unit: "Pa", group: "Forces" },
-  "v.atmosphericPressure": { label: "Atmospheric pressure", unit: "kPa", group: "Forces" },
+  "v.atmosphericPressure": {
+    label: "Atmospheric pressure",
+    unit: "kPa",
+    group: "Forces",
+  },
 
   // --- State & situation ---
   "v.name": { label: "Vessel name", unit: "enum", group: "State" },
   "v.body": { label: "Current body", unit: "enum", group: "State" },
   "v.situation": { label: "Situation", unit: "enum", group: "State" },
-  "v.situationString": { label: "Situation (string)", unit: "enum", group: "State" },
+  "v.situationString": {
+    label: "Situation (string)",
+    unit: "enum",
+    group: "State",
+  },
   "v.missionTime": { label: "Mission time", unit: "s", group: "State" },
-  "v.missionTimeString": { label: "Mission time (string)", unit: "enum", group: "State" },
+  "v.missionTimeString": {
+    label: "Mission time (string)",
+    unit: "enum",
+    group: "State",
+  },
   "v.currentStage": { label: "Current stage", unit: "raw", group: "State" },
   "v.landed": { label: "Landed", unit: "bool", group: "State" },
   "v.splashed": { label: "Splashed", unit: "bool", group: "State" },
   "v.landedAt": { label: "Landed at", unit: "enum", group: "State" },
   "v.isEVA": { label: "Is EVA", unit: "bool", group: "State" },
-  "v.angleToPrograde": { label: "Angle to prograde", unit: "°", group: "State" },
+  "v.angleToPrograde": {
+    label: "Angle to prograde",
+    unit: "°",
+    group: "State",
+  },
 
   // --- Action groups ---
   "v.sasValue": { label: "SAS", unit: "bool", group: "Actions" },
@@ -56,7 +110,11 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   "v.brakeValue": { label: "Brakes", unit: "bool", group: "Actions" },
   "v.gearValue": { label: "Gear", unit: "bool", group: "Actions" },
   "v.abortValue": { label: "Abort", unit: "bool", group: "Actions" },
-  "v.precisionControlValue": { label: "Precision control", unit: "bool", group: "Actions" },
+  "v.precisionControlValue": {
+    label: "Precision control",
+    unit: "bool",
+    group: "Actions",
+  },
   "v.ag1Value": { label: "Action group 1", unit: "bool", group: "Actions" },
   "v.ag2Value": { label: "Action group 2", unit: "bool", group: "Actions" },
   "v.ag3Value": { label: "Action group 3", unit: "bool", group: "Actions" },
@@ -93,11 +151,19 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // --- Orbit: Keplerian elements ---
   "o.sma": { label: "Semi-major axis", unit: "m", group: "Orbit" },
   "o.semiMinorAxis": { label: "Semi-minor axis", unit: "m", group: "Orbit" },
-  "o.semiLatusRectum": { label: "Semi-latus rectum", unit: "m", group: "Orbit" },
+  "o.semiLatusRectum": {
+    label: "Semi-latus rectum",
+    unit: "m",
+    group: "Orbit",
+  },
   "o.eccentricity": { label: "Eccentricity", unit: "raw", group: "Orbit" },
   "o.inclination": { label: "Inclination", unit: "°", group: "Orbit" },
   "o.lan": { label: "Long. of ascending node", unit: "°", group: "Orbit" },
-  "o.argumentOfPeriapsis": { label: "Arg. of periapsis", unit: "°", group: "Orbit" },
+  "o.argumentOfPeriapsis": {
+    label: "Arg. of periapsis",
+    unit: "°",
+    group: "Orbit",
+  },
   "o.period": { label: "Orbital period", unit: "s", group: "Orbit" },
   "o.epoch": { label: "Epoch", unit: "s", group: "Orbit" },
   "o.referenceBody": { label: "Reference body", unit: "enum", group: "Orbit" },
@@ -105,7 +171,11 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // --- Orbit: anomalies ---
   "o.trueAnomaly": { label: "True anomaly", unit: "°", group: "Orbit" },
   "o.meanAnomaly": { label: "Mean anomaly", unit: "°", group: "Orbit" },
-  "o.eccentricAnomaly": { label: "Eccentric anomaly", unit: "°", group: "Orbit" },
+  "o.eccentricAnomaly": {
+    label: "Eccentric anomaly",
+    unit: "°",
+    group: "Orbit",
+  },
   "o.orbitPercent": { label: "Orbit percent", unit: "%", group: "Orbit" },
 
   // --- Orbit: velocity & energy ---
@@ -114,8 +184,16 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   "o.orbitalEnergy": { label: "Orbital energy", unit: "raw", group: "Orbit" },
 
   // --- Orbit: patch transitions ---
-  "o.timeToTransition1": { label: "Time to transition 1", unit: "s", group: "Orbit" },
-  "o.timeToTransition2": { label: "Time to transition 2", unit: "s", group: "Orbit" },
+  "o.timeToTransition1": {
+    label: "Time to transition 1",
+    unit: "s",
+    group: "Orbit",
+  },
+  "o.timeToTransition2": {
+    label: "Time to transition 2",
+    unit: "s",
+    group: "Orbit",
+  },
 
   // --- Celestial bodies ---
   "b.number": { label: "Body count", unit: "raw", group: "Bodies" },
@@ -123,36 +201,117 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // --- Resources ---
   // Units: stock KSP resources are "units" (not litres / kg) — labelled "raw"
   // here since no domain-specific unit applies.
-  "r.resource[LiquidFuel]": { label: "Liquid Fuel", unit: "raw", group: "Resources" },
-  "r.resourceMax[LiquidFuel]": { label: "Liquid Fuel (max)", unit: "raw", group: "Resources" },
-  "r.resourceCurrent[LiquidFuel]": { label: "Liquid Fuel (stage)", unit: "raw", group: "Resources" },
-  "r.resourceCurrentMax[LiquidFuel]": { label: "Liquid Fuel (stage max)", unit: "raw", group: "Resources" },
+  "r.resource[LiquidFuel]": {
+    label: "Liquid Fuel",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceMax[LiquidFuel]": {
+    label: "Liquid Fuel (max)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrent[LiquidFuel]": {
+    label: "Liquid Fuel (stage)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrentMax[LiquidFuel]": {
+    label: "Liquid Fuel (stage max)",
+    unit: "raw",
+    group: "Resources",
+  },
 
-  "r.resource[Oxidizer]": { label: "Oxidizer", unit: "raw", group: "Resources" },
-  "r.resourceMax[Oxidizer]": { label: "Oxidizer (max)", unit: "raw", group: "Resources" },
-  "r.resourceCurrent[Oxidizer]": { label: "Oxidizer (stage)", unit: "raw", group: "Resources" },
-  "r.resourceCurrentMax[Oxidizer]": { label: "Oxidizer (stage max)", unit: "raw", group: "Resources" },
+  "r.resource[Oxidizer]": {
+    label: "Oxidizer",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceMax[Oxidizer]": {
+    label: "Oxidizer (max)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrent[Oxidizer]": {
+    label: "Oxidizer (stage)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrentMax[Oxidizer]": {
+    label: "Oxidizer (stage max)",
+    unit: "raw",
+    group: "Resources",
+  },
 
-  "r.resource[MonoPropellant]": { label: "Monopropellant (RCS)", unit: "raw", group: "Resources" },
-  "r.resourceMax[MonoPropellant]": { label: "Monopropellant max", unit: "raw", group: "Resources" },
-  "r.resourceCurrent[MonoPropellant]": { label: "Monopropellant (stage)", unit: "raw", group: "Resources" },
-  "r.resourceCurrentMax[MonoPropellant]": { label: "Monopropellant (stage max)", unit: "raw", group: "Resources" },
+  "r.resource[MonoPropellant]": {
+    label: "Monopropellant (RCS)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceMax[MonoPropellant]": {
+    label: "Monopropellant max",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrent[MonoPropellant]": {
+    label: "Monopropellant (stage)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrentMax[MonoPropellant]": {
+    label: "Monopropellant (stage max)",
+    unit: "raw",
+    group: "Resources",
+  },
 
-  "r.resource[XenonGas]": { label: "Xenon Gas", unit: "raw", group: "Resources" },
-  "r.resourceMax[XenonGas]": { label: "Xenon Gas (max)", unit: "raw", group: "Resources" },
-  "r.resourceCurrent[XenonGas]": { label: "Xenon Gas (stage)", unit: "raw", group: "Resources" },
-  "r.resourceCurrentMax[XenonGas]": { label: "Xenon Gas (stage max)", unit: "raw", group: "Resources" },
+  "r.resource[XenonGas]": {
+    label: "Xenon Gas",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceMax[XenonGas]": {
+    label: "Xenon Gas (max)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrent[XenonGas]": {
+    label: "Xenon Gas (stage)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrentMax[XenonGas]": {
+    label: "Xenon Gas (stage max)",
+    unit: "raw",
+    group: "Resources",
+  },
 
-  "r.resource[ElectricCharge]": { label: "Electric Charge", unit: "raw", group: "Resources" },
-  "r.resourceMax[ElectricCharge]": { label: "Electric Charge (max)", unit: "raw", group: "Resources" },
-  "r.resourceCurrent[ElectricCharge]": { label: "Electric Charge (stage)", unit: "raw", group: "Resources" },
-  "r.resourceCurrentMax[ElectricCharge]": { label: "Electric Charge (stage max)", unit: "raw", group: "Resources" },
+  "r.resource[ElectricCharge]": {
+    label: "Electric Charge",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceMax[ElectricCharge]": {
+    label: "Electric Charge (max)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrent[ElectricCharge]": {
+    label: "Electric Charge (stage)",
+    unit: "raw",
+    group: "Resources",
+  },
+  "r.resourceCurrentMax[ElectricCharge]": {
+    label: "Electric Charge (stage max)",
+    unit: "raw",
+    group: "Resources",
+  },
 
   // --- Stage delta-V / mass ---
   "dv.stageCount": { label: "Stage count", unit: "raw", group: "Stages" },
-  // Per-stage indexed keys (dv.stageFuelMass[0..9]) fall through to the "Other"
-  // group via enrichKey — the fuel widget reads them by constructed key and
-  // doesn't need them in the DataKeyPicker.
+  // `dv.stages` is the whole-vessel stage array (complex object). Labelled
+  // "raw" so graphs / pickers filter it out — consumers read it with
+  // `useDataValue("data", "dv.stages")` and project the field they need.
+  "dv.stages": { label: "Stages (all)", unit: "raw", group: "Stages" },
 
   // --- Orbit: patch list + maneuvers (complex objects) ---
   // Labelled "raw" so the DataKeyPicker excludes them from numeric-only pickers
@@ -167,19 +326,63 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // Sentinels: lat === 0 && lon === 0 means "no prediction". timeToImpact is
   // NaN when vessel isn't SUB_ORBITAL or FLYING. Guard on the consumer side.
   "land.timeToImpact": { label: "Time to impact", unit: "s", group: "Landing" },
-  "land.speedAtImpact": { label: "Speed at impact", unit: "m/s", group: "Landing" },
-  "land.bestSpeedAtImpact": { label: "Best speed at impact", unit: "m/s", group: "Landing" },
-  "land.suicideBurnCountdown": { label: "Suicide burn countdown", unit: "s", group: "Landing" },
-  "land.predictedLat": { label: "Predicted landing lat", unit: "°", group: "Landing" },
-  "land.predictedLon": { label: "Predicted landing lon", unit: "°", group: "Landing" },
-  "land.predictedAlt": { label: "Predicted landing alt", unit: "m", group: "Landing" },
-  "land.slopeAngle": { label: "Terrain slope angle", unit: "°", group: "Landing" },
+  "land.speedAtImpact": {
+    label: "Speed at impact",
+    unit: "m/s",
+    group: "Landing",
+  },
+  "land.bestSpeedAtImpact": {
+    label: "Best speed at impact",
+    unit: "m/s",
+    group: "Landing",
+  },
+  "land.suicideBurnCountdown": {
+    label: "Suicide burn countdown",
+    unit: "s",
+    group: "Landing",
+  },
+  "land.predictedLat": {
+    label: "Predicted landing lat",
+    unit: "°",
+    group: "Landing",
+  },
+  "land.predictedLon": {
+    label: "Predicted landing lon",
+    unit: "°",
+    group: "Landing",
+  },
+  "land.predictedAlt": {
+    label: "Predicted landing alt",
+    unit: "m",
+    group: "Landing",
+  },
+  "land.slopeAngle": {
+    label: "Terrain slope angle",
+    unit: "°",
+    group: "Landing",
+  },
 
   // --- CommNet signal state ---
-  "comm.connected": { label: "CommNet connected", unit: "bool", group: "CommNet" },
-  "comm.signalStrength": { label: "Signal strength", unit: "raw", group: "CommNet" },
-  "comm.controlState": { label: "Control state", unit: "raw", group: "CommNet" },
-  "comm.controlStateName": { label: "Control state (name)", unit: "enum", group: "CommNet" },
+  "comm.connected": {
+    label: "CommNet connected",
+    unit: "bool",
+    group: "CommNet",
+  },
+  "comm.signalStrength": {
+    label: "Signal strength",
+    unit: "raw",
+    group: "CommNet",
+  },
+  "comm.controlState": {
+    label: "Control state",
+    unit: "raw",
+    group: "CommNet",
+  },
+  "comm.controlStateName": {
+    label: "Control state (name)",
+    unit: "enum",
+    group: "CommNet",
+  },
   "comm.signalDelay": { label: "Signal delay", unit: "s", group: "CommNet" },
 
   // --- Time ---
@@ -193,11 +396,27 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   "tar.distance": { label: "Target distance", unit: "m", group: "Target" },
   "tar.o.PeA": { label: "Target periapsis", unit: "m", group: "Target" },
   "tar.o.ApA": { label: "Target apoapsis", unit: "m", group: "Target" },
-  "tar.o.inclination": { label: "Target inclination", unit: "°", group: "Target" },
-  "tar.o.eccentricity": { label: "Target eccentricity", unit: "raw", group: "Target" },
+  "tar.o.inclination": {
+    label: "Target inclination",
+    unit: "°",
+    group: "Target",
+  },
+  "tar.o.eccentricity": {
+    label: "Target eccentricity",
+    unit: "raw",
+    group: "Target",
+  },
   "tar.o.period": { label: "Target period", unit: "s", group: "Target" },
-  "tar.o.relativeVelocity": { label: "Relative velocity", unit: "m/s", group: "Target" },
-  "tar.o.orbitingBody": { label: "Target orbiting body", unit: "enum", group: "Target" },
+  "tar.o.relativeVelocity": {
+    label: "Relative velocity",
+    unit: "m/s",
+    group: "Target",
+  },
+  "tar.o.orbitingBody": {
+    label: "Target orbiting body",
+    unit: "enum",
+    group: "Target",
+  },
 };
 
 /** Enrich a raw key with metadata. Falls back to `{ label: key, group: "Other" }`. */

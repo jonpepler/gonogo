@@ -7,15 +7,30 @@ import type {
 import { debugPeer } from "@gonogo/core";
 import type { PeerHostService } from "./PeerHostService";
 
+interface Sample {
+  t: number;
+  v: unknown;
+}
+
+interface SeriesRange {
+  t: number[];
+  v: unknown[];
+}
+
 type SampleAware = {
-  subscribeSamples: (
-    key: string,
-    cb: (sample: { t: number; v: unknown }) => void,
-  ) => () => void;
+  subscribeSamples: (key: string, cb: (sample: Sample) => void) => () => void;
+};
+
+type QueryRangeAware = {
+  queryRange: (key: string, from: number, to: number) => Promise<SeriesRange>;
 };
 
 function hasSubscribeSamples(source: DataSource): source is DataSource & SampleAware {
   return typeof (source as Partial<SampleAware>).subscribeSamples === "function";
+}
+
+function hasQueryRange(source: DataSource): source is DataSource & QueryRangeAware {
+  return typeof (source as Partial<QueryRangeAware>).queryRange === "function";
 }
 
 export class PeerBroadcastingDataSource implements DataSource {
@@ -115,5 +130,25 @@ export class PeerBroadcastingDataSource implements DataSource {
 
   async execute(action: string) {
     return this.real.execute(action);
+  }
+
+  // The BufferedDataSource extensions `useDataSeries` expects. When the wrapped
+  // source doesn't implement them (e.g. a raw telemachus source wrapped for
+  // broadcasting), fall back to the base `subscribe` contract and return empty
+  // history so the hook keeps working.
+  subscribeSamples(key: string, cb: (sample: Sample) => void) {
+    if (hasSubscribeSamples(this.real)) {
+      return this.real.subscribeSamples(key, cb);
+    }
+    return this.real.subscribe(key, (value) => {
+      cb({ t: Date.now(), v: value });
+    });
+  }
+
+  async queryRange(key: string, from: number, to: number): Promise<SeriesRange> {
+    if (hasQueryRange(this.real)) {
+      return this.real.queryRange(key, from, to);
+    }
+    return { t: [], v: [] };
   }
 }

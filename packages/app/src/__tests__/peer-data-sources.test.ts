@@ -235,6 +235,47 @@ describe("PeerBroadcastingDataSource", () => {
     await wrapper.execute("toggle");
     expect(real.execute).toHaveBeenCalledWith("toggle");
   });
+
+  it("forwards queryRange + subscribeSamples to the real source when present", async () => {
+    const real = makeRealSource("buf", ["v.altitude"]) as ReturnType<
+      typeof makeRealSource
+    > & {
+      queryRange: ReturnType<typeof vi.fn>;
+      subscribeSamples: ReturnType<typeof vi.fn>;
+    };
+    real.queryRange = vi.fn().mockResolvedValue({ t: [1, 2], v: [10, 20] });
+    const sampleSubs = new Set<(s: { t: number; v: unknown }) => void>();
+    real.subscribeSamples = vi.fn((_key: string, cb: (s: { t: number; v: unknown }) => void) => {
+      sampleSubs.add(cb);
+      return () => sampleSubs.delete(cb);
+    });
+    const host = makeFakeHost();
+    const wrapper = new PeerBroadcastingDataSource(real, host as never);
+
+    const range = await wrapper.queryRange("v.altitude", 0, 100);
+    expect(real.queryRange).toHaveBeenCalledWith("v.altitude", 0, 100);
+    expect(range).toEqual({ t: [1, 2], v: [10, 20] });
+
+    const received: Array<{ t: number; v: unknown }> = [];
+    wrapper.subscribeSamples("v.altitude", (s) => received.push(s));
+    sampleSubs.forEach((cb) => cb({ t: 42, v: 99 }));
+    expect(received).toEqual([{ t: 42, v: 99 }]);
+  });
+
+  it("returns empty range + falls back to subscribe when the real source lacks the extensions", async () => {
+    const real = makeRealSource("raw", ["v.altitude"]);
+    const host = makeFakeHost();
+    const wrapper = new PeerBroadcastingDataSource(real, host as never);
+
+    const range = await wrapper.queryRange("v.altitude", 0, 100);
+    expect(range).toEqual({ t: [], v: [] });
+
+    const received: Array<{ t: number; v: unknown }> = [];
+    wrapper.subscribeSamples("v.altitude", (s) => received.push(s));
+    real._emit("v.altitude", 500);
+    expect(received).toHaveLength(1);
+    expect(received[0].v).toBe(500);
+  });
 });
 
 // ---------------------------------------------------------------------------

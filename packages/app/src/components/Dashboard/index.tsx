@@ -2,6 +2,7 @@ import {
   type AnyDef,
   AppError,
   DashboardItemContext,
+  ErrorBoundary,
   getComponent,
   handleError,
 } from "@gonogo/core";
@@ -126,15 +127,25 @@ export function Dashboard({
             </CellHeader>
             <ComponentWrapper>
               <DashboardItemContext.Provider value={{ instanceId: item.i }}>
-                <Comp
-                  id={item.i}
-                  config={item.config}
-                  w={w}
-                  h={h}
-                  onConfigChange={(newConfig) =>
-                    updateItemConfig(item.i, newConfig)
-                  }
-                />
+                <ErrorBoundary
+                  fallback={(error, reset) => (
+                    <WidgetError
+                      componentName={def.name}
+                      error={error}
+                      onRetry={reset}
+                    />
+                  )}
+                >
+                  <Comp
+                    id={item.i}
+                    config={item.config}
+                    w={w}
+                    h={h}
+                    onConfigChange={(newConfig) =>
+                      updateItemConfig(item.i, newConfig)
+                    }
+                  />
+                </ErrorBoundary>
               </DashboardItemContext.Provider>
             </ComponentWrapper>
           </GridCell>
@@ -187,6 +198,30 @@ function RemoveButton({ onRemove }: Readonly<{ onRemove: () => void }>) {
     >
       {confirming ? "✕?" : "✕"}
     </RemoveBtn>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Widget error fallback — rendered in place of a crashed widget so the rest
+// of the dashboard keeps working and the failure is visible instead of silent.
+// ---------------------------------------------------------------------------
+
+function WidgetError({
+  componentName,
+  error,
+  onRetry,
+}: Readonly<{ componentName: string; error: Error; onRetry: () => void }>) {
+  return (
+    <WidgetErrorPanel role="alert">
+      <WidgetErrorTitle>{componentName} crashed</WidgetErrorTitle>
+      <WidgetErrorMessage>{error.message || String(error)}</WidgetErrorMessage>
+      <WidgetErrorHint>
+        Open the widget config to fix the inputs, then retry.
+      </WidgetErrorHint>
+      <WidgetErrorRetry type="button" onClick={onRetry}>
+        Retry
+      </WidgetErrorRetry>
+    </WidgetErrorPanel>
   );
 }
 
@@ -386,4 +421,50 @@ const ComponentWrapper = styled.div`
   flex: 1;
   min-height: 0;
   overflow: hidden;
+`;
+
+const WidgetErrorPanel = styled.div`
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  background: #2a0e0e;
+  border: 1px solid #662222;
+  color: #ffb4b4;
+  font-family: monospace;
+  font-size: 11px;
+  text-align: center;
+`;
+
+const WidgetErrorTitle = styled.div`
+  font-size: 13px;
+  font-weight: bold;
+  color: #ff6666;
+`;
+
+const WidgetErrorMessage = styled.div`
+  word-break: break-word;
+  max-width: 90%;
+  color: #ffcccc;
+`;
+
+const WidgetErrorHint = styled.div`
+  color: #888;
+`;
+
+const WidgetErrorRetry = styled.button`
+  margin-top: 4px;
+  padding: 4px 10px;
+  background: #441a1a;
+  border: 1px solid #773333;
+  color: #ffcccc;
+  font-family: monospace;
+  font-size: 11px;
+  cursor: pointer;
+  &:hover {
+    background: #5a2222;
+  }
 `;

@@ -22,9 +22,37 @@ import {
   useState,
 } from "react";
 import styled from "styled-components";
+import { alignXY } from "./align";
 import { GraphSeries } from "./GraphSeries";
 import { paletteColor } from "./palette";
 import type { GraphConfig, GraphSeriesConfig } from "./types";
+import { TIME_AXIS } from "./types";
+
+function withDefaults(raw: GraphSeriesConfig): GraphSeriesConfig {
+  return { ...raw, type: raw.type ?? "line" };
+}
+
+function computeValueDomain(values: readonly number[]): [number, number] {
+  if (values.length === 0) return [0, 1];
+  let min = values[0];
+  let max = values[0];
+  for (let i = 1; i < values.length; i++) {
+    const v = values[i];
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return min === max ? [min - 1, min + 1] : [min, max];
+}
+
+function formatNumericTick(value: number, unit?: string): string {
+  const abs = Math.abs(value);
+  let text: string;
+  if (abs >= 1_000_000) text = `${(value / 1_000_000).toFixed(1)}M`;
+  else if (abs >= 1_000) text = `${(value / 1_000).toFixed(1)}k`;
+  else if (Number.isInteger(value)) text = String(value);
+  else text = value.toFixed(2);
+  return unit ? `${text}${unit}` : text;
+}
 
 // ── Axis resolution ───────────────────────────────────────────────────────────
 
@@ -50,11 +78,14 @@ function resolveAxes(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
-  const series = config?.series ?? [];
+  const series = (config?.series ?? []).map(withDefaults);
   const windowSec = config?.windowSec ?? 300;
+  const xKey = config?.xKey ?? TIME_AXIS;
+  const xIsTime = xKey === TIME_AXIS;
 
   const schema = useDataSchema("data");
   const metaMap = new Map(schema.map((k) => [k.key, k]));
+  const xMeta = xIsTime ? null : metaMap.get(xKey) ?? null;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -71,9 +102,17 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
   }, []);
 
   // Collected numeric series data from child GraphSeries components.
+  // Contains Y-series data keyed by their data-key. When xKey is a data key
+  // (not time), xData is fetched in parallel and held separately so we can
+  // re-pair samples at render time.
   const [seriesData, setSeriesData] = useState<
     Map<string, SeriesRange<number>>
   >(new Map());
+  const [xData, setXData] = useState<SeriesRange<number>>({ t: [], v: [] });
+
+  // Clear stale X buffer when the X key changes — otherwise the first frame
+  // after reconfigure pairs new Y against the previous key's values.
+  useEffect(() => { setXData({ t: [], v: [] }); }, [xKey]);
 
   const handleData = useCallback((key: string, data: SeriesRange<number>) => {
     setSeriesData((prev) => {
@@ -81,6 +120,10 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
       next.set(key, data);
       return next;
     });
+  }, []);
+
+  const handleXData = useCallback((_key: string, data: SeriesRange<number>) => {
+    setXData(data);
   }, []);
 
   const axes = resolveAxes(series, metaMap);
@@ -91,18 +134,30 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
 
   const chartSeries: ChartSeries[] = series.map((cfg, i) => {
     const meta = metaMap.get(cfg.key);
-    const data = seriesData.get(cfg.key) ?? { t: [], v: [] };
+    const raw = seriesData.get(cfg.key) ?? { t: [], v: [] };
+    const data = xIsTime
+      ? { x: raw.t, y: raw.v as number[] }
+      : alignXY(raw as SeriesRange<number>, xData);
     return {
       id: cfg.id,
       label: cfg.label ?? meta?.label ?? cfg.key,
       axis: axes[i],
       color: cfg.color ?? paletteColor(i),
+      type: cfg.type ?? "line",
       data,
     };
   });
 
-  const now = Date.now();
-  const xDomain: [number, number] = [now - windowSec * 1000, now];
+  const xDomain: [number, number] = xIsTime
+    ? (() => {
+        const now = Date.now();
+        return [now - windowSec * 1000, now];
+      })()
+    : computeValueDomain(xData.v as number[]);
+
+  const xTickFormat = xIsTime
+    ? undefined
+    : (value: number) => formatNumericTick(value, xMeta?.unit);
 
   return (
     <Panel>
@@ -117,6 +172,9 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
             <LineChart
               series={chartSeries}
               xDomain={xDomain}
+              xTickFormat={xTickFormat}
+              yDomainPrimary={config?.yDomainPrimary}
+              yDomainSecondary={config?.yDomainSecondary}
               width={size.w}
               height={size.h}
             />
@@ -126,7 +184,7 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
           )}
         </ChartArea>
       )}
-      {/* Invisible data-fetcher components, one per series */}
+      {/* Invisible data-fetcher components, one per series + one for X when non-time */}
       {series.map((cfg) => (
         <GraphSeries
           key={cfg.id}
@@ -135,6 +193,14 @@ function GraphComponent({ config }: Readonly<ComponentProps<GraphConfig>>) {
           onData={handleData}
         />
       ))}
+      {!xIsTime && (
+        <GraphSeries
+          key={`x-${xKey}`}
+          dataKey={xKey}
+          windowSec={windowSec}
+          onData={handleXData}
+        />
+      )}
     </Panel>
   );
 }
@@ -149,17 +215,35 @@ function GraphConfigComponent({
     config?.series ?? [],
   );
   const [windowSec, setWindowSec] = useState(String(config?.windowSec ?? 300));
+  const [xKey, setXKey] = useState<string>(config?.xKey ?? TIME_AXIS);
+  const [yMinPrimary, setYMinPrimary] = useState(
+    config?.yDomainPrimary ? String(config.yDomainPrimary[0]) : "",
+  );
+  const [yMaxPrimary, setYMaxPrimary] = useState(
+    config?.yDomainPrimary ? String(config.yDomainPrimary[1]) : "",
+  );
+  const [yMinSecondary, setYMinSecondary] = useState(
+    config?.yDomainSecondary ? String(config.yDomainSecondary[0]) : "",
+  );
+  const [yMaxSecondary, setYMaxSecondary] = useState(
+    config?.yDomainSecondary ? String(config.yDomainSecondary[1]) : "",
+  );
 
   const schema = useDataSchema("data");
   const numericKeys = schema.filter(
     (k) =>
       k.unit !== "bool" && k.unit !== "enum" && k.unit !== "raw" && k.group !== "Actions",
   );
+  // X-axis picker: time is an always-present pseudo-key; numeric data keys below.
+  const xKeyOptions = [
+    { key: TIME_AXIS, label: "Time", group: "Axis" },
+    ...numericKeys,
+  ];
 
   const addSeries = () => {
     setSeriesList((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), key: "", axis: "auto" },
+      { id: crypto.randomUUID(), key: "", type: "line", axis: "auto" },
     ]);
   };
 
@@ -175,14 +259,26 @@ function GraphConfigComponent({
 
   const handleSave = () => {
     onSave({
-      style: "time-series",
+      ...config,
       series: seriesList.filter((s) => s.key !== ""),
       windowSec: Math.max(10, Number.parseInt(windowSec, 10) || 300),
+      xKey,
+      yDomainPrimary: parseDomain(yMinPrimary, yMaxPrimary),
+      yDomainSecondary: parseDomain(yMinSecondary, yMaxSecondary),
     });
   };
 
   return (
     <ConfigForm>
+      <Field>
+        <FieldLabel>X axis</FieldLabel>
+        <DataKeyPicker
+          keys={xKeyOptions}
+          value={xKey}
+          onChange={(k) => setXKey(k ?? TIME_AXIS)}
+          placeholder="Pick an X-axis key…"
+        />
+      </Field>
       <Field>
         <FieldLabel>Series</FieldLabel>
         {seriesList.map((s, i) => (
@@ -226,9 +322,54 @@ function GraphConfigComponent({
           onChange={(e) => setWindowSec(e.target.value)}
         />
       </Field>
+      <Field>
+        <FieldLabel>Primary Y range (leave blank for auto)</FieldLabel>
+        <DomainRow>
+          <Input
+            type="number"
+            placeholder="min"
+            value={yMinPrimary}
+            onChange={(e) => setYMinPrimary(e.target.value)}
+          />
+          <Input
+            type="number"
+            placeholder="max"
+            value={yMaxPrimary}
+            onChange={(e) => setYMaxPrimary(e.target.value)}
+          />
+        </DomainRow>
+      </Field>
+      <Field>
+        <FieldLabel>Secondary Y range (leave blank for auto)</FieldLabel>
+        <DomainRow>
+          <Input
+            type="number"
+            placeholder="min"
+            value={yMinSecondary}
+            onChange={(e) => setYMinSecondary(e.target.value)}
+          />
+          <Input
+            type="number"
+            placeholder="max"
+            value={yMaxSecondary}
+            onChange={(e) => setYMaxSecondary(e.target.value)}
+          />
+        </DomainRow>
+      </Field>
       <PrimaryButton onClick={handleSave}>Save</PrimaryButton>
     </ConfigForm>
   );
+}
+
+function parseDomain(
+  minStr: string,
+  maxStr: string,
+): [number, number] | undefined {
+  if (minStr.trim() === "" || maxStr.trim() === "") return undefined;
+  const min = Number(minStr);
+  const max = Number(maxStr);
+  if (Number.isNaN(min) || Number.isNaN(max) || min >= max) return undefined;
+  return [min, max];
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -276,6 +417,11 @@ const SeriesRow = styled.div`
   margin-bottom: 6px;
 `;
 
+const DomainRow = styled.div`
+  display: flex;
+  gap: 6px;
+`;
+
 const AddButton = styled.button`
   background: none;
   border: 1px dashed #444;
@@ -314,7 +460,7 @@ registerComponent<GraphConfig>({
   openConfigOnAdd: true,
   dataRequirements: [],
   behaviors: [],
-  defaultConfig: { style: "time-series", series: [], windowSec: 300 },
+  defaultConfig: { series: [], windowSec: 300 },
   actions: [],
 });
 

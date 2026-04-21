@@ -68,6 +68,7 @@ describe("GraphComponent", () => {
       { key: "v.name" },
       { key: "v.missionTime" },
       { key: "v.altitude" },
+      { key: "v.verticalSpeed" },
     ]);
     buffered = new BufferedDataSource({ source, store: new MemoryStore() });
     registerDataSource(buffered);
@@ -112,5 +113,91 @@ describe("GraphComponent", () => {
 
     const { getByText } = render(<GraphComponent config={config} id="graph-test" />);
     expect(getByText("Configure series to begin graphing.")).toBeInTheDocument();
+  });
+
+  it("auto-splits two series with different units onto separate axes", async () => {
+    const config = {
+      series: [
+        { id: "alt", key: "v.altitude", axis: "auto" as const },
+        { id: "vs", key: "v.verticalSpeed", axis: "auto" as const },
+      ],
+      windowSec: 300,
+    };
+
+    const { container } = render(<GraphComponent config={config} id="graph-test" />);
+
+    act(() => {
+      source.emit("v.name", "Kerbal X");
+      source.emit("v.missionTime", 0);
+      source.emit("v.altitude", 12_345);
+      source.emit("v.verticalSpeed", 42);
+    });
+
+    await waitFor(() => {
+      // Secondary y-axis tick labels sit at x = plotX1 + 4 with textAnchor="start".
+      const rightTicks = container.querySelectorAll(
+        'text[text-anchor="start"]',
+      );
+      expect(rightTicks.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("renders a path when X axis is a data key instead of time", async () => {
+    const config = {
+      series: [{ id: "vs", key: "v.verticalSpeed", axis: "auto" as const }],
+      windowSec: 300,
+      xKey: "v.altitude",
+    };
+
+    render(<GraphComponent config={config} id="graph-test" />);
+
+    // Emit two ticks so alignment has prior-x pairs on both.
+    act(() => {
+      source.emit("v.name", "Kerbal X");
+      source.emit("v.missionTime", 0);
+      source.emit("v.altitude", 100);
+      source.emit("v.verticalSpeed", 5);
+    });
+    act(() => {
+      source.emit("v.missionTime", 1);
+      source.emit("v.altitude", 200);
+      source.emit("v.verticalSpeed", 8);
+    });
+
+    await waitFor(() => {
+      const paths = Array.from(document.querySelectorAll("path[d]")).filter(
+        (p) => (p.getAttribute("d") ?? "").length > 0,
+      );
+      expect(paths.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("honours pinned primary Y domain in tick labels", async () => {
+    const config = {
+      series: [{ id: "alt", key: "v.altitude", axis: "primary" as const }],
+      windowSec: 300,
+      yDomainPrimary: [0, 1000] as [number, number],
+    };
+
+    const { container } = render(<GraphComponent config={config} id="graph-test" />);
+
+    act(() => {
+      source.emit("v.name", "Kerbal X");
+      source.emit("v.missionTime", 0);
+      // Emit a value way outside the pinned domain — ticks should stay anchored
+      // to [0, 1000] regardless.
+      source.emit("v.altitude", 500_000);
+    });
+
+    await waitFor(() => {
+      const texts = Array.from(container.querySelectorAll("text")).map(
+        (t) => t.textContent ?? "",
+      );
+      // niceTicks over [0, 1000] with 5 ticks produces 0, 250, 500, 750, 1000;
+      // formatYTick renders 1000 as "1.0k".
+      expect(texts).toContain("1.0k");
+      // And no tick should be near 500_000 ("500.0k") — the pin is respected.
+      expect(texts.some((t) => t === "500.0k")).toBe(false);
+    });
   });
 });

@@ -6,25 +6,49 @@ import {
   niceTicks,
 } from "./lineChartMath";
 
-export interface SeriesRange<V = unknown> {
-  t: number[];
-  v: V[];
+/**
+ * Columnar pairs of numeric values to plot. `x` and `y` are parallel arrays
+ * of equal length. For time-on-x charts, `x` is unix ms; for parametric
+ * charts (e.g. altitude vs velocity), `x` carries that dimension's values.
+ */
+export interface ChartSeriesData {
+  x: number[];
+  y: number[];
 }
+
+/**
+ * Render type for a single series. Only `"line"` is implemented today; the
+ * field is required on input so adding bar / step / scatter later needs no
+ * schema migration, just a new branch in the renderer.
+ */
+export type SeriesType = "line";
 
 export interface ChartSeries {
   id: string;
   label: string;
   axis: "primary" | "secondary";
   color: string;
-  data: SeriesRange<number>;
+  /** Defaults to `"line"` when omitted. */
+  type?: SeriesType;
+  data: ChartSeriesData;
 }
+
+/** Default tick formatter for an x-axis representing wall-clock time (unix ms). */
+export const timeXTickFormat = (
+  value: number,
+  domain: readonly [number, number],
+): string => formatTimeLabel(value - domain[0], domain[1] - domain[0]);
 
 export interface LineChartProps {
   series: ChartSeries[];
-  /** x-domain in unix ms. */
+  /** x-domain. Interpretation depends on `xTickFormat` — defaults to unix ms. */
   xDomain: [number, number];
   yDomainPrimary?: [number, number];
   yDomainSecondary?: [number, number];
+  /** Tick label formatter for the x-axis. Defaults to elapsed mm:ss / HH:mm:ss. */
+  xTickFormat?: (value: number, domain: readonly [number, number]) => string;
+  /** Tick label formatter for both y-axes. Defaults to k/M-suffixed numeric. */
+  yTickFormat?: (value: number) => string;
   width: number;
   height: number;
 }
@@ -38,6 +62,8 @@ export function LineChart({
   xDomain,
   yDomainPrimary,
   yDomainSecondary,
+  xTickFormat = timeXTickFormat,
+  yTickFormat = formatYTick,
   width,
   height,
 }: Readonly<LineChartProps>) {
@@ -50,21 +76,21 @@ export function LineChart({
   const plotW = plotX1 - plotX0;
   const plotH = plotY1 - plotY0;
 
-  const primarySeries = series.filter((s) => s.axis === "primary" && s.data.t.length > 0);
-  const secondarySeries = series.filter((s) => s.axis === "secondary" && s.data.t.length > 0);
+  const primarySeries = series.filter((s) => s.axis === "primary" && s.data.x.length > 0);
+  const secondarySeries = series.filter((s) => s.axis === "secondary" && s.data.x.length > 0);
   const hasSecondary = secondarySeries.length > 0;
 
   const primaryDomain = useMemo((): [number, number] => {
     if (yDomainPrimary) return yDomainPrimary;
     if (primarySeries.length === 0) return [0, 1];
-    const all = primarySeries.flatMap((s) => s.data.v);
+    const all = primarySeries.flatMap((s) => s.data.y);
     return [Math.min(...all), Math.max(...all)];
   }, [primarySeries, yDomainPrimary]);
 
   const secondaryDomain = useMemo((): [number, number] => {
     if (yDomainSecondary) return yDomainSecondary;
     if (secondarySeries.length === 0) return [0, 1];
-    const all = secondarySeries.flatMap((s) => s.data.v);
+    const all = secondarySeries.flatMap((s) => s.data.y);
     return [Math.min(...all), Math.max(...all)];
   }, [secondarySeries, yDomainSecondary]);
 
@@ -72,25 +98,33 @@ export function LineChart({
   const scaleYPrimary = makeScale(primaryDomain[0], primaryDomain[1], plotY1, plotY0);
   const scaleYSecondary = makeScale(secondaryDomain[0], secondaryDomain[1], plotY1, plotY0);
 
-  const xSpan = xDomain[1] - xDomain[0];
   const xTicks = niceTicks(xDomain[0], xDomain[1], TICK_COUNT);
   const yTicksPrimary = niceTicks(primaryDomain[0], primaryDomain[1], TICK_COUNT);
   const yTicksSecondary = hasSecondary
     ? niceTicks(secondaryDomain[0], secondaryDomain[1], TICK_COUNT)
     : [];
 
+  // Dispatch per series.type. Today only "line" is implemented; future types
+  // (bar, step, scatter) add their own parallel collectors + render blocks.
   const paths = useMemo(() => {
     return series
-      .filter((s) => s.data.t.length > 0)
+      .filter((s) => s.data.x.length > 0 && (s.type ?? "line") === "line")
       .map((s) => {
         const scaleY = s.axis === "primary" ? scaleYPrimary : scaleYSecondary;
         return {
           id: s.id,
           color: s.color,
-          d: buildPath(s.data.t, s.data.v, scaleX, scaleY),
+          d: buildPath(s.data.x, s.data.y, scaleX, scaleY),
         };
       });
   }, [series, scaleX, scaleYPrimary, scaleYSecondary]);
+
+  // Container is narrower/shorter than the margins — nothing meaningful to
+  // draw, and negative <rect> dimensions spam the console. Render an empty
+  // svg until the ResizeObserver reports a usable size.
+  if (plotW <= 0 || plotH <= 0) {
+    return <svg width={Math.max(0, w)} height={Math.max(0, h)} />;
+  }
 
   return (
     <svg
@@ -122,7 +156,7 @@ export function LineChart({
               fill="#555"
               fontSize={11}
             >
-              {formatYTick(tick)}
+              {yTickFormat(tick)}
             </text>
           </React.Fragment>
         );
@@ -141,7 +175,7 @@ export function LineChart({
             fill="#555"
             fontSize={11}
           >
-            {formatYTick(tick)}
+            {yTickFormat(tick)}
           </text>
         );
       })}
@@ -166,7 +200,7 @@ export function LineChart({
               fill="#555"
               fontSize={11}
             >
-              {formatTimeLabel(tick - xDomain[0], xSpan)}
+              {xTickFormat(tick, xDomain)}
             </text>
           </React.Fragment>
         );

@@ -82,7 +82,7 @@ const SERIES: ChartSeries[] = [
     label: "Altitude",
     axis: "primary",
     color: "#00ff88",
-    data: { t: [0, 1000, 2000], v: [0, 500, 1000] },
+    data: { x: [0, 1000, 2000], y: [0, 500, 1000] },
   },
 ];
 
@@ -105,7 +105,7 @@ describe("LineChart", () => {
 
   it("renders nothing for a series with no data points", () => {
     const emptySeries: ChartSeries[] = [
-      { id: "x", label: "X", axis: "primary", color: "#fff", data: { t: [], v: [] } },
+      { id: "x", label: "X", axis: "primary", color: "#fff", data: { x: [], y: [] } },
     ];
     const { container } = render(
       <LineChart series={emptySeries} xDomain={[0, 1000]} width={400} height={200} />,
@@ -129,7 +129,7 @@ describe("LineChart", () => {
         label: "Speed",
         axis: "secondary",
         color: "#4499ff",
-        data: { t: [0, 1000, 2000], v: [0, 100, 200] },
+        data: { x: [0, 1000, 2000], y: [0, 100, 200] },
       },
     ];
     const { container } = render(

@@ -141,6 +141,21 @@ export interface TelemaachusSchema {
   "t.currentRate": number;
   "t.isPaused": boolean;
 
+  // --- r.* — Resources ---
+  // Resource amounts are indexed by resource name (LiquidFuel, Oxidizer,
+  // MonoPropellant, XenonGas, ElectricCharge, …). Both vessel-wide totals
+  // (`r.resource[NAME]`, `r.resourceMax[NAME]`) and current-stage figures
+  // (`r.resourceCurrent[NAME]`, `r.resourceCurrentMax[NAME]`) are exposed.
+  "r.resourceNameList": string;
+  [key: `r.resource[${string}]`]: number;
+  [key: `r.resourceMax[${string}]`]: number;
+  [key: `r.resourceCurrent[${string}]`]: number;
+  [key: `r.resourceCurrentMax[${string}]`]: number;
+
+  // --- dv.* — Stage delta-V & mass ---
+  "dv.stageCount": number;
+  [key: IndexedKey<"dv.stageFuelMass">]: number;
+
   // --- tar.* — Target ---
   "tar.name": string;
   "tar.type": string;

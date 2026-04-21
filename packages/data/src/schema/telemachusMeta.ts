@@ -120,6 +120,40 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // --- Celestial bodies ---
   "b.number": { label: "Body count", unit: "raw", group: "Bodies" },
 
+  // --- Resources ---
+  // Units: stock KSP resources are "units" (not litres / kg) — labelled "raw"
+  // here since no domain-specific unit applies.
+  "r.resource[LiquidFuel]": { label: "Liquid Fuel", unit: "raw", group: "Resources" },
+  "r.resourceMax[LiquidFuel]": { label: "Liquid Fuel (max)", unit: "raw", group: "Resources" },
+  "r.resourceCurrent[LiquidFuel]": { label: "Liquid Fuel (stage)", unit: "raw", group: "Resources" },
+  "r.resourceCurrentMax[LiquidFuel]": { label: "Liquid Fuel (stage max)", unit: "raw", group: "Resources" },
+
+  "r.resource[Oxidizer]": { label: "Oxidizer", unit: "raw", group: "Resources" },
+  "r.resourceMax[Oxidizer]": { label: "Oxidizer (max)", unit: "raw", group: "Resources" },
+  "r.resourceCurrent[Oxidizer]": { label: "Oxidizer (stage)", unit: "raw", group: "Resources" },
+  "r.resourceCurrentMax[Oxidizer]": { label: "Oxidizer (stage max)", unit: "raw", group: "Resources" },
+
+  "r.resource[MonoPropellant]": { label: "Monopropellant (RCS)", unit: "raw", group: "Resources" },
+  "r.resourceMax[MonoPropellant]": { label: "Monopropellant max", unit: "raw", group: "Resources" },
+  "r.resourceCurrent[MonoPropellant]": { label: "Monopropellant (stage)", unit: "raw", group: "Resources" },
+  "r.resourceCurrentMax[MonoPropellant]": { label: "Monopropellant (stage max)", unit: "raw", group: "Resources" },
+
+  "r.resource[XenonGas]": { label: "Xenon Gas", unit: "raw", group: "Resources" },
+  "r.resourceMax[XenonGas]": { label: "Xenon Gas (max)", unit: "raw", group: "Resources" },
+  "r.resourceCurrent[XenonGas]": { label: "Xenon Gas (stage)", unit: "raw", group: "Resources" },
+  "r.resourceCurrentMax[XenonGas]": { label: "Xenon Gas (stage max)", unit: "raw", group: "Resources" },
+
+  "r.resource[ElectricCharge]": { label: "Electric Charge", unit: "raw", group: "Resources" },
+  "r.resourceMax[ElectricCharge]": { label: "Electric Charge (max)", unit: "raw", group: "Resources" },
+  "r.resourceCurrent[ElectricCharge]": { label: "Electric Charge (stage)", unit: "raw", group: "Resources" },
+  "r.resourceCurrentMax[ElectricCharge]": { label: "Electric Charge (stage max)", unit: "raw", group: "Resources" },
+
+  // --- Stage delta-V / mass ---
+  "dv.stageCount": { label: "Stage count", unit: "raw", group: "Stages" },
+  // Per-stage indexed keys (dv.stageFuelMass[0..9]) fall through to the "Other"
+  // group via enrichKey — the fuel widget reads them by constructed key and
+  // doesn't need them in the DataKeyPicker.
+
   // --- Time ---
   "t.universalTime": { label: "Universal time", unit: "s", group: "Time" },
   "t.currentRate": { label: "Time warp rate", unit: "raw", group: "Time" },

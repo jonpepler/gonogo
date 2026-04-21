@@ -7,6 +7,7 @@ export * from "./Graph";
 export * from "./CurrentOrbit";
 export * from "./DataSourceStatus";
 export * from "./DistanceToTarget";
+export * from "./FuelStatus";
 export * from "./KosTerminal";
 export * from "./MapView";
 export * from "./OrbitView";

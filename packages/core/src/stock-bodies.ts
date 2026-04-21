@@ -28,6 +28,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     color: "#FFF44F",
     hasAtmosphere: true,
     maxAtmosphere: 600000,
+    rotationPeriod: 432000,
   });
 
   // ── Inner planets ────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     parent: "Sun",
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 1210000,
   });
 
   registerBody({
@@ -50,6 +52,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Eve"),
     hasAtmosphere: true,
     maxAtmosphere: 90000,
+    rotationPeriod: 80500,
   });
 
   registerBody({
@@ -61,6 +64,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Gilly"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 28255,
   });
 
   registerBody({
@@ -75,6 +79,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     longitudeOffset: 90,
     hasAtmosphere: true,
     maxAtmosphere: 70000,
+    rotationPeriod: 21549.425,
   });
 
   registerBody({
@@ -86,6 +91,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Mun"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 138984.38,
   });
 
   registerBody({
@@ -97,6 +103,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Minmus"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 40400,
   });
 
   registerBody({
@@ -108,6 +115,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Duna"),
     hasAtmosphere: true,
     maxAtmosphere: 50000,
+    rotationPeriod: 65517.859,
   });
 
   registerBody({
@@ -119,6 +127,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Ike"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 65517.862,
   });
 
   registerBody({
@@ -130,6 +139,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Dres"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 34800,
   });
 
   // ── Outer system ─────────────────────────────────────────────────────────
@@ -141,6 +151,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     parent: "Sun",
     hasAtmosphere: true,
     maxAtmosphere: 200000,
+    rotationPeriod: 36000,
   });
 
   registerBody({
@@ -152,6 +163,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Laythe"),
     hasAtmosphere: true,
     maxAtmosphere: 50000,
+    rotationPeriod: 52980.879,
   });
 
   registerBody({
@@ -163,6 +175,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Vall"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 105962.09,
   });
 
   registerBody({
@@ -174,6 +187,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Tylo"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 211926.36,
   });
 
   registerBody({
@@ -185,6 +199,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Bop"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 544507.43,
   });
 
   registerBody({
@@ -196,6 +211,7 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Pol"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 901902.62,
   });
 
   registerBody({
@@ -207,5 +223,6 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     texture: tex("Eeloo"),
     hasAtmosphere: false,
     maxAtmosphere: 0,
+    rotationPeriod: 19460,
   });
 }

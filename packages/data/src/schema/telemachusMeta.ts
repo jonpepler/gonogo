@@ -154,6 +154,27 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // group via enrichKey — the fuel widget reads them by constructed key and
   // doesn't need them in the DataKeyPicker.
 
+  // --- Orbit: patch list + maneuvers (complex objects) ---
+  // Labelled "raw" so the DataKeyPicker excludes them from numeric-only pickers
+  // like the Graph widget's series selector.
+  "o.orbitPatches": { label: "Orbit patches", unit: "raw", group: "Orbit" },
+  "o.maneuverNodes": { label: "Maneuver nodes", unit: "raw", group: "Orbit" },
+
+  // --- Application / physics ---
+  "a.physicsMode": { label: "Physics mode", unit: "enum", group: "State" },
+
+  // --- Landing prediction (Telemachus WIP) ---
+  // Sentinels: lat === 0 && lon === 0 means "no prediction". timeToImpact is
+  // NaN when vessel isn't SUB_ORBITAL or FLYING. Guard on the consumer side.
+  "land.timeToImpact": { label: "Time to impact", unit: "s", group: "Landing" },
+  "land.speedAtImpact": { label: "Speed at impact", unit: "m/s", group: "Landing" },
+  "land.bestSpeedAtImpact": { label: "Best speed at impact", unit: "m/s", group: "Landing" },
+  "land.suicideBurnCountdown": { label: "Suicide burn countdown", unit: "s", group: "Landing" },
+  "land.predictedLat": { label: "Predicted landing lat", unit: "°", group: "Landing" },
+  "land.predictedLon": { label: "Predicted landing lon", unit: "°", group: "Landing" },
+  "land.predictedAlt": { label: "Predicted landing alt", unit: "m", group: "Landing" },
+  "land.slopeAngle": { label: "Terrain slope angle", unit: "°", group: "Landing" },
+
   // --- CommNet signal state ---
   "comm.connected": { label: "CommNet connected", unit: "bool", group: "CommNet" },
   "comm.signalStrength": { label: "Signal strength", unit: "raw", group: "CommNet" },

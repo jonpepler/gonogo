@@ -16,6 +16,64 @@
 
 type IndexedKey<K extends string> = `${K}[${number}]`;
 
+/**
+ * A single patched-conic segment as returned by Telemachus's
+ * `OrbitPatchJSONFormatter`. One of the array entries for `o.orbitPatches`
+ * and for each `ManeuverNode.orbitPatches`.
+ *
+ * Caveat: the `eccentricAnomaly` field in the raw response is a known bug —
+ * it's actually `eccentricity` again. Intentionally omitted from this type so
+ * callers don't accidentally treat it as anomaly data; compute E from e + M
+ * if you need it.
+ */
+export interface OrbitPatch {
+  startUT: number;
+  endUT: number;
+  /** `"INITIAL" | "ESCAPE" | "ENCOUNTER" | "MANEUVER" | "FINAL"` (enum varies by KSP version). */
+  patchStartTransition: string;
+  patchEndTransition: string;
+  PeA: number;
+  ApA: number;
+  inclination: number;
+  eccentricity: number;
+  epoch: number;
+  period: number;
+  argumentOfPeriapsis: number;
+  sma: number;
+  lan: number;
+  /** Mean anomaly at epoch (radians). */
+  maae: number;
+  /** Name of the reference body for this patch (matches body registry IDs). */
+  referenceBody: string;
+  semiLatusRectum: number;
+  semiMinorAxis: number;
+  closestEncounterBody: string | null;
+}
+
+/**
+ * A planned maneuver node. Telemachus includes the post-burn orbit patches
+ * inline so a single subscription to `o.maneuverNodes` covers both the node
+ * and its resulting trajectory.
+ */
+export interface ManeuverNode {
+  UT: number;
+  /** Raw Vector3d serialised as `[x, y, z]`. */
+  deltaV: [number, number, number];
+  PeA: number;
+  ApA: number;
+  inclination: number;
+  eccentricity: number;
+  epoch: number;
+  period: number;
+  argumentOfPeriapsis: number;
+  sma: number;
+  lan: number;
+  maae: number;
+  referenceBody: string;
+  closestEncounterBody: string | null;
+  orbitPatches: OrbitPatch[];
+}
+
 export interface TelemaachusSchema {
   // --- v.* — Vessel ---
 
@@ -135,6 +193,30 @@ export interface TelemaachusSchema {
   // Patch transitions
   "o.timeToTransition1": number;
   "o.timeToTransition2": number;
+
+  // Full patch list + maneuver nodes for the trajectory predictor. Subscribing
+  // once gets all patches (including post-maneuver) — no per-UT queries needed.
+  "o.orbitPatches": OrbitPatch[];
+  "o.maneuverNodes": ManeuverNode[];
+
+  // --- a.* — Application / physics ---
+  // "patched_conics" (stock) | "n_body" (Principia). Can transiently report
+  // "patched_conics" during scene loads on Principia installs — debounce
+  // before acting on a transition.
+  "a.physicsMode": string;
+
+  // --- land.* — Landing prediction (WIP in Telemachus) ---
+  // Gotcha: unpopulated fields return literal 0.0, not null/undefined.
+  // Guard `predictedLat === 0 && predictedLon === 0` as "no prediction".
+  // `timeToImpact` returns NaN when vessel isn't SUB_ORBITAL or FLYING.
+  "land.timeToImpact": number;
+  "land.speedAtImpact": number;
+  "land.bestSpeedAtImpact": number;
+  "land.suicideBurnCountdown": number;
+  "land.predictedLat": number;
+  "land.predictedLon": number;
+  "land.predictedAlt": number;
+  "land.slopeAngle": number;
 
   // --- t.* — Time ---
   "t.universalTime": number;

@@ -50,6 +50,14 @@ export interface BodyDefinition {
   hasAtmosphere: boolean;
   /** The height above sea level where the atmosphere is stopped */
   maxAtmosphere: number;
+  /**
+   * Sidereal rotation period in seconds. Used by the trajectory predictor to
+   * convert inertial positions into body-fixed lat/lon over time. Tidally
+   * locked moons still have rotation — use their orbital period around the
+   * parent body. Omit for bodies where rotation is irrelevant (e.g. solo
+   * applications never targeting the body).
+   */
+  rotationPeriod?: number;
 }
 
 const bodies = new Map<string, BodyDefinition>();

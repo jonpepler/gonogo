@@ -150,6 +150,12 @@ const TELEMACHUS_KEYS: DataKey[] = [
   { key: "dv.stageFuelMass[7]" },
   { key: "dv.stageFuelMass[8]" },
   { key: "dv.stageFuelMass[9]" },
+  // CommNet (for signal-loss gating)
+  { key: "comm.connected" },
+  { key: "comm.signalStrength" },
+  { key: "comm.controlState" },
+  { key: "comm.controlStateName" },
+  { key: "comm.signalDelay" },
   // Target
   { key: "tar.name" },
   { key: "tar.type" },
@@ -184,6 +190,10 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
   id = "telemachus";
   name = "Telemachus Reborn";
   status: DataSourceStatus = "disconnected";
+  // Telemachus data is gated by CommNet — during signal loss we drop samples
+  // at the buffering layer so historical data has a clean gap. `comm.*` keys
+  // are exempt (we need them to detect the signal-restore event).
+  affectedBySignalLoss = true;
 
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private ws: WebSocket | null = null;
@@ -401,3 +411,9 @@ export class TelemachusDataSource implements DataSource<TelemachusConfig> {
 
 export const telemachusSource = new TelemachusDataSource();
 registerDataSource(telemachusSource);
+// Note: widgets should read from the `"data"` source (the BufferedDataSource
+// wrapping this one) so the CommNet signal-loss gate applies. Reading
+// `"telemachus"` directly bypasses the gate — intentional as a live escape
+// hatch, but it means blackout-state UI will lie for such consumers.
+// Station peers see both sources via PeerBroadcastingDataSource; raw
+// telemachus broadcasts are similarly un-gated.

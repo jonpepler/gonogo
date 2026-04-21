@@ -78,6 +78,14 @@ export interface DataSource<
   configure(config: Record<string, unknown>): void;
   getConfig(): TConfig;
   setupInstructions?(): string | null;
+  /**
+   * When true, samples from this source are gated by the vessel's CommNet
+   * link — during blackout (`comm.connected === false`) the buffering layer
+   * drops non-`comm.*` samples rather than persisting or fanning them out.
+   * Sources that handle signal loss internally (e.g. kOS, which runs
+   * autonomously on the vessel) should leave this false.
+   */
+  affectedBySignalLoss?: boolean;
 }
 
 export type ComponentBehavior = "gonogo-participant";

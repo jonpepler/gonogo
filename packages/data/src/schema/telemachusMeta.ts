@@ -154,6 +154,13 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // group via enrichKey — the fuel widget reads them by constructed key and
   // doesn't need them in the DataKeyPicker.
 
+  // --- CommNet signal state ---
+  "comm.connected": { label: "CommNet connected", unit: "bool", group: "CommNet" },
+  "comm.signalStrength": { label: "Signal strength", unit: "raw", group: "CommNet" },
+  "comm.controlState": { label: "Control state", unit: "raw", group: "CommNet" },
+  "comm.controlStateName": { label: "Control state (name)", unit: "enum", group: "CommNet" },
+  "comm.signalDelay": { label: "Signal delay", unit: "s", group: "CommNet" },
+
   // --- Time ---
   "t.universalTime": { label: "Universal time", unit: "s", group: "Time" },
   "t.currentRate": { label: "Time warp rate", unit: "raw", group: "Time" },

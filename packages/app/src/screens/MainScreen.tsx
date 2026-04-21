@@ -16,6 +16,7 @@ import {
 import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
+import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { StationLinkFab } from "../components/StationLinkFab";
 
 const DEMO_CONFIG: DashboardConfig = {
@@ -722,6 +723,7 @@ export function MainScreen() {
             <SerialFab />
             <StationLinkFab />
           </FabClusterProvider>
+          <SignalLossIndicator />
         </Layout>
       </OverlayProvider>
     </SerialDeviceProvider>

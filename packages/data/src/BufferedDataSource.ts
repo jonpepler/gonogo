@@ -95,6 +95,15 @@ export class BufferedDataSource implements DataSource {
   private upstreamStatusUnsub: (() => void) | null = null;
   private lastEmittedCurrent: FlightRecord | null = null;
 
+  /**
+   * CommNet signal state tracked internally off `comm.connected` samples.
+   * Defaults to `true` — until we hear otherwise, data flows. Flips to
+   * `false` on the first `comm.connected: false`, back to `true` on any
+   * later `true`. Gates non-`comm.*` samples from sources that declare
+   * `affectedBySignalLoss`.
+   */
+  private signalConnected = true;
+
   constructor(opts: Options) {
     this.id = opts.id ?? "data";
     this.name = opts.name ?? `Buffered ${opts.source.name}`;
@@ -299,6 +308,26 @@ export class BufferedDataSource implements DataSource {
   // --- Internal ----------------------------------------------------------
 
   private handleSample(key: string, value: unknown): void {
+    // Signal-state tracker: `comm.connected` updates our gate regardless of
+    // the gate's current state (this is the one key that must always flow
+    // through, otherwise we'd never see the restore event).
+    if (key === "comm.connected") {
+      this.signalConnected = value !== false;
+    }
+
+    // CommNet blackout gate. When the wrapped source is signal-affected
+    // (Telemachus) and CommNet link is down, drop anything that isn't a
+    // `comm.*` key — not persisted to the store, not fanned out to live or
+    // sample subscribers, doesn't update lastEmittedValue. Widgets freeze at
+    // their pre-blackout value; historical queries show a clean gap.
+    if (
+      this.source.affectedBySignalLoss &&
+      !this.signalConnected &&
+      !key.startsWith("comm.")
+    ) {
+      return;
+    }
+
     // Cache the identity inputs regardless — the detector needs both and
     // they may arrive in separate callbacks within the same WS message.
     // `v.missionTime` drives the detector directly so we only cache name.

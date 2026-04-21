@@ -491,3 +491,102 @@ describe("BufferedDataSource — derived keys", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// CommNet blackout gating
+// ---------------------------------------------------------------------------
+
+const GATED_KEYS: DataKey[] = [
+  { key: "v.name" },
+  { key: "v.missionTime" },
+  { key: "v.altitude" },
+  { key: "comm.connected" },
+];
+
+describe("BufferedDataSource — affectedBySignalLoss gate", () => {
+  let source: MockSource & { affectedBySignalLoss?: boolean };
+  let store: MemoryStore;
+  let buffered: BufferedDataSource;
+  let clock = 1000;
+
+  beforeEach(async () => {
+    source = new MockSource(GATED_KEYS) as MockSource & {
+      affectedBySignalLoss?: boolean;
+    };
+    source.affectedBySignalLoss = true;
+    store = new MemoryStore();
+    clock = 1000;
+    buffered = new BufferedDataSource({ source, store, now: () => clock });
+    await buffered.connect();
+
+    // Prime a flight so persistence path is active.
+    source.emit("v.name", "Kerbal X");
+    source.emit("v.missionTime", 0);
+  });
+
+  afterEach(() => {
+    buffered.disconnect();
+  });
+
+  it("drops non-comm.* samples while signal is down", async () => {
+    const spy = vi.fn();
+    buffered.subscribe("v.altitude", spy);
+
+    clock = 2000;
+    source.emit("v.altitude", 100); // before blackout — stored + emitted
+    expect(spy).toHaveBeenLastCalledWith(100);
+
+    source.emit("comm.connected", false); // signal loss
+
+    clock = 3000;
+    source.emit("v.altitude", 999); // during blackout — dropped
+    expect(spy).toHaveBeenLastCalledWith(100); // subscriber still sees pre-blackout value
+
+    const range = await buffered.queryRange("v.altitude", 0, 10_000);
+    expect(range.v).toEqual([100]); // persisted data has a clean gap
+  });
+
+  it("resumes on signal restore", async () => {
+    source.emit("comm.connected", false);
+
+    clock = 2000;
+    source.emit("v.altitude", 500); // dropped
+    source.emit("comm.connected", true);
+
+    clock = 3000;
+    source.emit("v.altitude", 600); // flows again
+
+    const range = await buffered.queryRange("v.altitude", 0, 10_000);
+    expect(range.v).toEqual([600]);
+  });
+
+  it("always lets comm.* keys through during blackout (so we detect restore)", () => {
+    const spy = vi.fn();
+    buffered.subscribe("comm.connected", spy);
+
+    source.emit("comm.connected", false);
+    source.emit("comm.connected", true);
+
+    expect(spy).toHaveBeenCalledWith(false);
+    expect(spy).toHaveBeenCalledWith(true);
+  });
+
+  it("does not gate sources that leave affectedBySignalLoss false", async () => {
+    // Tear down the default-wrapped buffered source and rebuild with the gate
+    // flag off so we can verify gating is opt-in.
+    buffered.disconnect();
+    source.affectedBySignalLoss = false;
+    buffered = new BufferedDataSource({ source, store, now: () => clock });
+    await buffered.connect();
+
+    source.emit("v.name", "Kerbal X");
+    source.emit("v.missionTime", 10);
+    source.emit("comm.connected", false);
+
+    clock = 4000;
+    source.emit("v.altitude", 777); // would be dropped on a gated source
+
+    const range = await buffered.queryRange("v.altitude", 0, 10_000);
+    expect(range.v).toContain(777);
+  });
+});

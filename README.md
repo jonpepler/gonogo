@@ -191,6 +191,14 @@ Open `http://localhost:5173` in your browser.
 
 The app connects to `ws://host:8085/datalink` for live data and `http://host:8085/telemachus/datalink` for control actions.
 
+#### Signal loss (CommNet)
+
+gonogo treats Telemachus as gated by the vessel's CommNet link. When `comm.connected` flips to `false` (e.g. ship behind a body with no relay path), the buffering layer drops incoming telemetry samples — widgets freeze at their last reading and the stored history shows a clean gap. A `SIGNAL LOSS` banner appears at the top of every screen with a timer. Signal returns → data flows again.
+
+**RemoteTech is not supported.** Telemachus Reborn reads CommNet state directly from stock `Vessel.Connection`; RemoteTech's separate signal-delay / flight-computer model isn't exposed through the same keys. If you run RemoteTech, gonogo's blackout logic will reflect stock CommNet rather than RT's state. Stock CommNet alone supports the important gameplay beats — line-of-sight occlusion, relay-satellite networks, signal-strength gradient.
+
+Kerbalism's comm system updates the same stock fields, so it works out of the box; a future upgrade could read `kerbalism.connectionLinked` directly for higher fidelity.
+
 ### kOS Terminal _(optional)_
 
 The kOS terminal requires the **telnet proxy** — a small server that bridges the browser to kOS's telnet interface.

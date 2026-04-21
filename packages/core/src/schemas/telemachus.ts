@@ -156,6 +156,16 @@ export interface TelemaachusSchema {
   "dv.stageCount": number;
   [key: IndexedKey<"dv.stageFuelMass">]: number;
 
+  // --- comm.* — CommNet signal state ---
+  // Telemachus Reborn reads these straight from stock `Vessel.Connection`
+  // (CommNet). RemoteTech is not supported. `signalDelay` is always 0 on
+  // vanilla; becomes meaningful only with third-party signal-delay mods.
+  "comm.connected": boolean;
+  "comm.signalStrength": number;
+  "comm.controlState": number;
+  "comm.controlStateName": string;
+  "comm.signalDelay": number;
+
   // --- tar.* — Target ---
   "tar.name": string;
   "tar.type": string;

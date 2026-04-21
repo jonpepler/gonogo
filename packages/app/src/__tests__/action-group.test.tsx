@@ -68,8 +68,14 @@ beforeEach(async () => {
  * streaming back current state. The HTTP handler handles action toggles and
  * pushes the updated state back through the WS connection.
  */
-function setupTelemachus(initialState: Record<string, boolean> = {}) {
-  const state = { ...initialState };
+function setupTelemachus(initialState: Record<string, unknown> = {}) {
+  // Assume a healthy CommNet link by default — without it, BufferedDataSource
+  // would gate every non-comm.* sample and every test here would look broken.
+  // Individual tests that want to exercise blackout can override.
+  const state: Record<string, unknown> = {
+    "comm.connected": true,
+    ...initialState,
+  };
   let wsClient: { send: (data: string) => void } | null = null;
   let subscribedKeys: string[] = [];
 
@@ -105,7 +111,7 @@ function setupTelemachus(initialState: Record<string, boolean> = {}) {
         // Derive the value key: f.ag1 → v.ag1Value, f.sas → v.sasValue
         const base = actionKey.replace(/^f\./, "");
         const valueKey = `v.${base}Value`;
-        state[valueKey] = !state[valueKey];
+        state[valueKey] = !(state[valueKey] as boolean);
         pushState(); // immediately push updated state over WS
         return HttpResponse.json({ a: null });
       }

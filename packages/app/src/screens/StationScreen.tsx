@@ -22,6 +22,7 @@ import {
 import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
+import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { KosPeerConnection } from "../peer/KosPeerConnection";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
 import type { ConnStatus } from "../peer/PeerClientService";
@@ -209,6 +210,7 @@ export function StationScreen() {
               <FlightsFab />
               <SerialFab />
             </FabClusterProvider>
+            <SignalLossIndicator />
           </Layout>
         </OverlayProvider>
       </SerialDeviceProvider>

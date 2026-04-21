@@ -66,11 +66,16 @@ beforeEach(async () => {
 
 // Identical to the handler in action-group.test.tsx but duplicated so this
 // test is self-contained. Pushes state updates over WS on every execute.
-function setupTelemachus(initialState: Record<string, boolean> = {}): {
-  state: Record<string, boolean>;
+function setupTelemachus(initialState: Record<string, unknown> = {}): {
+  state: Record<string, unknown>;
   executeSpy: ReturnType<typeof vi.fn>;
 } {
-  const state = { ...initialState };
+  // Default to a healthy CommNet link so BufferedDataSource's signal gate
+  // doesn't drop our sample data.
+  const state: Record<string, unknown> = {
+    "comm.connected": true,
+    ...initialState,
+  };
   const executeSpy = vi.fn<(actionKey: string) => void>();
   let wsClient: { send: (data: string) => void } | null = null;
   let subscribedKeys: string[] = [];
@@ -106,7 +111,7 @@ function setupTelemachus(initialState: Record<string, boolean> = {}): {
       if (actionKey !== null) {
         executeSpy(actionKey);
         const base = actionKey.replace(/^f\./, "");
-        state[`v.${base}Value`] = !state[`v.${base}Value`];
+        state[`v.${base}Value`] = !(state[`v.${base}Value`] as boolean);
         pushState();
         return HttpResponse.json({ a: null });
       }

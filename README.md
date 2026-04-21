@@ -10,13 +10,13 @@ Connect gonogo to your KSP game to get a live telemetry dashboard you can layout
 
 This walks you all the way from a fresh KSP install to gonogo running with every feature. If you already know your way around KSP modding and Node, skip to [Prerequisites](#prerequisites) below — this section is for someone setting up for the first time.
 
-Every `compose` command below works with either **Docker Compose** or **Podman Compose** — pick whichever you have. Wherever you see:
+Every `compose` command below works with either **Docker Compose**, **Podman Compose**, or any compose compatible system. Pick whichever you have. Wherever you see:
 
 ```bash
-docker compose ...   # or: podman compose ...
+docker compose ... 
 ```
 
-…just run the one you're using. Behaviour is identical for this repo.
+You can substitute for your compose runtime or choice.
 
 ### The big picture
 

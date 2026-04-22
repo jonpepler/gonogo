@@ -120,11 +120,10 @@ function drawFadedSegments(
 }
 
 function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
-  const trajectoryLength = config?.trajectoryLength ?? 200;
+  const trajectoryLength = config?.trajectoryLength ?? 2000;
   const telemetryKeys = config?.telemetryKeys ?? [];
   const showTelemetry = telemetryKeys.length > 0;
   const showPrediction = config?.showPrediction ?? true;
-  const showFogOfWar = config?.showFogOfWar ?? true;
 
   const schema = useDataSchema("data");
   const labelMap = new Map(schema.map((k) => [k.key, k.label]));
@@ -349,12 +348,10 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     altitude: altSea,
     pitch: shipPitch,
     heading: shipHeading,
-    enabled: showFogOfWar,
+    enabled: true,
   });
 
-  const fogDisplay = useFogDisplayCanvas(
-    showFogOfWar ? targetBodyId : undefined,
-  );
+  const fogDisplay = useFogDisplayCanvas(targetBodyId);
 
   // fogDisplay.version is needed even though the canvas reference is stable:
   // the canvas contents are repainted in place as the fog mask mutates.
@@ -368,17 +365,11 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, w, h);
-    if (!showFogOfWar || !fogDisplay.canvas) return;
+    if (!fogDisplay.canvas) return;
     ctx.setTransform(...cameraTransform(camera, w, h));
     ctx.drawImage(fogDisplay.canvas, 0, 0, WORLD_W, WORLD_H);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }, [
-    containerSize,
-    camera,
-    showFogOfWar,
-    fogDisplay.canvas,
-    fogDisplay.version,
-  ]);
+  }, [containerSize, camera, fogDisplay.canvas, fogDisplay.version]);
 
   // ── Trajectory layer: blit world canvas through camera ────────────────────
   // trajectoryCount is needed here even though worldCanvasRef is a ref:
@@ -616,13 +607,13 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     label: string;
     variant: "on" | "off" | "warn";
   } | null>(() => {
-    if (!showFogOfWar || !body) return null;
+    if (!body) return null;
     if (altSea === undefined) return { label: "NO DATA", variant: "off" };
     const { min, max } = getImagingWindow(body);
     if (altSea < min) return { label: "TOO LOW", variant: "warn" };
     if (altSea > max) return { label: "TOO HIGH", variant: "warn" };
     return { label: "IMAGING", variant: "on" };
-  }, [showFogOfWar, body, altSea]);
+  }, [body, altSea]);
 
   return (
     <Panel>
@@ -761,7 +752,6 @@ registerComponent<MapViewConfig>({
   defaultConfig: {
     trajectoryLength: 2000,
     showPrediction: true,
-    showFogOfWar: true,
   },
   actions: mapViewActions,
 });

@@ -1,5 +1,5 @@
 export interface MapViewConfig {
-  /** Number of trajectory history points to keep. Default: 200. */
+  /** Number of trajectory history points to keep. Default: 2000. */
   trajectoryLength?: number;
   /** Data keys selected for display in the telemetry panel. */
   telemetryKeys?: string[];
@@ -8,10 +8,4 @@ export interface MapViewConfig {
    * When false, prediction is never computed — saves the work entirely.
    */
   showPrediction?: boolean;
-  /**
-   * Render the fog-of-war satellite imaging overlay. Default: true. When
-   * enabled, the ship reveals areas of the map as it orbits within the body's
-   * imaging altitude window.
-   */
-  showFogOfWar?: boolean;
 }

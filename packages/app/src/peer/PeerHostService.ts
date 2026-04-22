@@ -1,4 +1,5 @@
 import { debugPeer, logger } from "@gonogo/core";
+import type { DataKeyMeta } from "@gonogo/data";
 import Peer, { type DataConnection } from "peerjs";
 import { loadIceServers } from "./iceServers";
 import type { PeerMessage } from "./protocol";
@@ -148,12 +149,20 @@ export class PeerHostService {
     return () => this.idListeners.delete(cb);
   }
 
+  // Schema is sent once per station connect. Stations cache what arrives here
+  // and don't poll. If a data source registers keys dynamically after the
+  // initial handshake (e.g. a future kOS datastream), this will need to
+  // broadcast a new schema message to already-connected stations.
   private sendSchema(conn: DataConnection) {
     import("@gonogo/core").then(({ getDataSources }) => {
       const sources = getDataSources().map((s) => ({
         id: s.id,
         name: s.name,
-        keys: s.schema().map((k) => k.key),
+        // The DataSource interface declares `schema(): DataKey[]` but the
+        // BufferedDataSource wrappers that front every live source return
+        // `DataKeyMeta[]`. Cast locally so station-side pickers get label /
+        // unit / group without a wider type change across core.
+        keys: s.schema() as unknown as DataKeyMeta[],
       }));
       const msg: PeerMessage = { type: "schema", sources };
       conn.send(msg);

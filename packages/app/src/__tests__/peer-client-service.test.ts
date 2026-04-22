@@ -84,7 +84,13 @@ describe("PeerClientService", () => {
     // After unsub, a schema message should not reach the callback
     (svc as unknown as PeerClientServiceInternal).handleMessage({
       type: "schema",
-      sources: [{ id: "telemachus", name: "T", keys: ["v.altitude"] }],
+      sources: [
+        {
+          id: "telemachus",
+          name: "T",
+          keys: [{ key: "v.altitude", label: "Altitude" }],
+        },
+      ],
     });
     expect(received).toEqual([]);
   });

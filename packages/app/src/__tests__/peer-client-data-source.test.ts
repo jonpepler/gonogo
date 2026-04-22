@@ -134,4 +134,28 @@ describe("PeerClientDataSource", () => {
       /queryRange timeout/,
     );
   });
+
+  it("setSchema caches the host's enriched schema and returns it from schema()", () => {
+    const fake = makeFakeClient();
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+
+    // Before the schema message arrives, station-side config UIs see nothing.
+    expect(source.schema()).toEqual([]);
+
+    source.setSchema([
+      { key: "v.altitude", label: "Altitude", unit: "m", group: "Position" },
+      { key: "v.lat", label: "Latitude", unit: "°", group: "Position" },
+    ]);
+
+    const schema = source.schema();
+    expect(schema).toHaveLength(2);
+    // Critically, the label/unit/group are preserved — this is what drives
+    // the MapView config's grouped, searchable key picker on a station.
+    expect(schema[0]).toMatchObject({
+      key: "v.altitude",
+      label: "Altitude",
+      unit: "m",
+      group: "Position",
+    });
+  });
 });

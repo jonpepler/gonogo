@@ -1,7 +1,7 @@
 import { debugPeer, logger } from "@gonogo/core";
 import Peer, { type DataConnection } from "peerjs";
 import { loadIceServers } from "./iceServers";
-import type { PeerMessage } from "./protocol";
+import type { PeerMessage, PeerSchemaSource } from "./protocol";
 
 export type ConnStatus =
   | "idle"
@@ -35,9 +35,7 @@ export class PeerClientService {
     (sourceId: string, status: string) => void
   >();
   private connStatusListeners = new Set<(status: ConnStatus) => void>();
-  private schemaListeners = new Set<
-    (sources: Array<{ id: string; name: string; keys: string[] }>) => void
-  >();
+  private schemaListeners = new Set<(sources: PeerSchemaSource[]) => void>();
   private kosDataListeners = new Set<
     (sessionId: string, data: string) => void
   >();
@@ -270,9 +268,7 @@ export class PeerClientService {
     return () => this.connStatusListeners.delete(cb);
   }
 
-  onSchema(
-    cb: (sources: Array<{ id: string; name: string; keys: string[] }>) => void,
-  ) {
+  onSchema(cb: (sources: PeerSchemaSource[]) => void) {
     this.schemaListeners.add(cb);
     return () => this.schemaListeners.delete(cb);
   }

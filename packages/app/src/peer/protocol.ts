@@ -1,11 +1,18 @@
 import type { DataSourceStatus } from "@gonogo/core";
+import type { DataKeyMeta } from "@gonogo/data";
 
 export type { DataSourceStatus };
+
+export interface PeerSchemaSource {
+  id: string;
+  name: string;
+  keys: DataKeyMeta[];
+}
 
 export type PeerMessage =
   | {
       type: "schema";
-      sources: Array<{ id: string; name: string; keys: string[] }>;
+      sources: PeerSchemaSource[];
     }
   | { type: "status"; sourceId: string; status: DataSourceStatus }
   // `t` is the host's sample timestamp, optional so partial deploys stay

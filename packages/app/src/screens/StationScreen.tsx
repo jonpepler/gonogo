@@ -106,6 +106,7 @@ export function StationScreen() {
         schemaHandledRef.current = true;
         for (const s of sources) {
           const source = new PeerClientDataSource(s.id, s.name, client);
+          source.setSchema(s.keys);
           registerDataSource(source);
           void source.connect();
         }

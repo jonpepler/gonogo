@@ -5,6 +5,7 @@ import type {
   DataSourceStatus,
 } from "@gonogo/core";
 import { debugPeer } from "@gonogo/core";
+import type { DataKeyMeta } from "@gonogo/data";
 import type { PeerClientService } from "./PeerClientService";
 
 interface Sample {
@@ -22,6 +23,7 @@ export class PeerClientDataSource implements DataSource {
   private sampleSubscribers = new Map<string, Set<(sample: Sample) => void>>();
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private seenKeys = new Set<string>();
+  private cachedSchema: DataKeyMeta[] = [];
   status: DataSourceStatus = "disconnected";
 
   constructor(
@@ -65,8 +67,17 @@ export class PeerClientDataSource implements DataSource {
 
   disconnect() {}
 
+  /**
+   * Mirrors the host's enriched schema (label / unit / group) received via
+   * the one-shot `schema` PeerJS message. Station-side config UIs read this
+   * through `useDataSchema`.
+   */
+  setSchema(schema: DataKeyMeta[]): void {
+    this.cachedSchema = schema;
+  }
+
   schema(): DataKey[] {
-    return [];
+    return this.cachedSchema;
   }
   configSchema(): ConfigField[] {
     return [];

@@ -216,3 +216,84 @@ describe("PeerHostService — kOS session handling", () => {
     expect(kosCloseMessages[0].sessionId).toBe(sessionId);
   });
 });
+
+describe("PeerHostService — schema broadcast", () => {
+  beforeEach(() => {
+    FakePeer.last = null;
+  });
+
+  // Regression: the "schema" message originally carried only key names, so
+  // station-side config UIs (e.g. MapView telemetry picker) rendered an empty
+  // list because they needed label/unit/group. Host must forward the full
+  // DataKeyMeta shape.
+  it("sends the fully enriched DataKeyMeta[] to a connecting station", async () => {
+    const { registerDataSource, clearRegistry } = await import("@gonogo/core");
+    const { PeerHostService } = await import("../peer/PeerHostService");
+
+    clearRegistry();
+    registerDataSource({
+      id: "data",
+      name: "Data",
+      status: "connected",
+      affectedBySignalLoss: false,
+      connect: async () => {},
+      disconnect: () => {},
+      schema: () => [
+        {
+          key: "v.altitude",
+          label: "Altitude",
+          unit: "m",
+          group: "Position",
+        },
+        { key: "v.lat", label: "Latitude", unit: "°", group: "Position" },
+      ],
+      subscribe: () => () => {},
+      onStatusChange: () => () => {},
+      execute: async () => {},
+      configSchema: () => [],
+      configure: () => {},
+      getConfig: () => ({}),
+    } as unknown as Parameters<typeof registerDataSource>[0]);
+
+    const service = new PeerHostService();
+    service.start();
+    await Promise.resolve();
+
+    const conn = new FakeDataConnection();
+    if (!FakePeer.last) throw new Error("FakePeer not instantiated");
+    FakePeer.last.emit("connection", conn);
+    conn.emit("open");
+    // Flush the dynamic import inside sendSchema
+    await new Promise((r) => setTimeout(r, 0));
+
+    const schemaMsg = conn.sent.find(
+      (m): m is { type: string; sources: Array<Record<string, unknown>> } =>
+        typeof m === "object" &&
+        m !== null &&
+        "type" in m &&
+        (m as { type: string }).type === "schema",
+    );
+    expect(schemaMsg).toBeDefined();
+    expect(schemaMsg?.sources).toHaveLength(1);
+    const source = schemaMsg?.sources[0] as {
+      id: string;
+      name: string;
+      keys: Array<{
+        key: string;
+        label?: string;
+        unit?: string;
+        group?: string;
+      }>;
+    };
+    expect(source.id).toBe("data");
+    expect(source.keys).toHaveLength(2);
+    expect(source.keys[0]).toMatchObject({
+      key: "v.altitude",
+      label: "Altitude",
+      unit: "m",
+      group: "Position",
+    });
+
+    clearRegistry();
+  });
+});

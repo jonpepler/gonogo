@@ -140,31 +140,3 @@ export const TelValue = styled.span<{ $colour: string }>`
   min-width: 7ch;
   white-space: nowrap;
 `;
-
-export const CheckList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-export const CheckRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-export const Checkbox = styled.input`
-  accent-color: #00cc66;
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-  flex-shrink: 0;
-`;
-
-export const CheckLabel = styled.label`
-  font-family: monospace;
-  font-size: 12px;
-  color: #bbb;
-  cursor: pointer;
-  user-select: none;
-`;

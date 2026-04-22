@@ -9,9 +9,11 @@ import { usePushedWidgets, usePushHost } from "./PushHostContext";
 import type { PushedWidget } from "./PushHostService";
 
 const COLS = 12;
-const BASE_CELL_WIDTH = 100; // px per grid column at 1.0 scale
-const BASE_CELL_HEIGHT = 40; // px per grid row at 1.0 scale
 const GAP = 8;
+/** Minimum cell height below which pushed widgets become unreadable. */
+const MIN_CELL_HEIGHT = 18;
+/** Minimum cell width below which nothing renders usefully. */
+const MIN_CELL_WIDTH = 40;
 
 interface Placement {
   widget: PushedWidget;
@@ -80,16 +82,24 @@ export function PushedDashboardOverlay() {
 
   if (widgets.length === 0) return null;
 
-  // Natural (un-scaled) content footprint. The `+ GAP` accounts for the
-  // trailing gutter so scaled content doesn't overshoot its viewport.
-  const contentW = COLS * BASE_CELL_WIDTH + (COLS - 1) * GAP;
-  const contentH =
-    totalRows * BASE_CELL_HEIGHT + Math.max(0, totalRows - 1) * GAP;
-
-  const scale =
-    viewport.w > 0 && viewport.h > 0
-      ? Math.min(1, viewport.w / contentW, viewport.h / contentH)
-      : 1;
+  // Size each grid cell so the packed widgets fill the actual viewport
+  // instead of being rendered at a fixed BASE size and then CSS-scaled.
+  // Scaling via `transform` leaves each widget internally thinking it has
+  // some other pixel budget, so flex/overflow inside the widget root can
+  // clip content below the visible area. By handing every widget an actual
+  // pixel-size that fits, MapView / Graph / etc. resize their own contents
+  // (canvas, flex-wrap telemetry rows) to what's available.
+  const cellW =
+    viewport.w > 0
+      ? Math.max(MIN_CELL_WIDTH, (viewport.w - (COLS - 1) * GAP) / COLS)
+      : MIN_CELL_WIDTH;
+  const cellH =
+    viewport.h > 0 && totalRows > 0
+      ? Math.max(
+          MIN_CELL_HEIGHT,
+          (viewport.h - Math.max(0, totalRows - 1) * GAP) / totalRows,
+        )
+      : MIN_CELL_HEIGHT;
 
   return (
     <Backdrop>
@@ -101,23 +111,17 @@ export function PushedDashboardOverlay() {
           </Count>
         </Header>
         <Viewport ref={viewportRef}>
-          <ScaledFrame
-            style={{
-              transform: `scale(${scale})`,
-              width: contentW,
-              height: contentH,
-            }}
-          >
-            {placements.map((p) => (
-              <PushedItem
-                key={`${p.widget.peerId}:${p.widget.widgetInstanceId}`}
-                placement={p}
-                onDismiss={() =>
-                  host?.dismiss(p.widget.peerId, p.widget.widgetInstanceId)
-                }
-              />
-            ))}
-          </ScaledFrame>
+          {placements.map((p) => (
+            <PushedItem
+              key={`${p.widget.peerId}:${p.widget.widgetInstanceId}`}
+              placement={p}
+              cellW={cellW}
+              cellH={cellH}
+              onDismiss={() =>
+                host?.dismiss(p.widget.peerId, p.widget.widgetInstanceId)
+              }
+            />
+          ))}
         </Viewport>
       </Panel>
     </Backdrop>
@@ -126,13 +130,20 @@ export function PushedDashboardOverlay() {
 
 function PushedItem({
   placement,
+  cellW,
+  cellH,
   onDismiss,
-}: Readonly<{ placement: Placement; onDismiss: () => void }>) {
+}: Readonly<{
+  placement: Placement;
+  cellW: number;
+  cellH: number;
+  onDismiss: () => void;
+}>) {
   const def = getComponent(placement.widget.componentId);
-  const pxX = placement.x * (BASE_CELL_WIDTH + GAP);
-  const pxY = placement.y * (BASE_CELL_HEIGHT + GAP);
-  const pxW = placement.w * BASE_CELL_WIDTH + (placement.w - 1) * GAP;
-  const pxH = placement.h * BASE_CELL_HEIGHT + (placement.h - 1) * GAP;
+  const pxX = placement.x * (cellW + GAP);
+  const pxY = placement.y * (cellH + GAP);
+  const pxW = placement.w * cellW + (placement.w - 1) * GAP;
+  const pxH = placement.h * cellH + (placement.h - 1) * GAP;
   return (
     <ItemFrame
       style={{ left: pxX, top: pxY, width: pxW, height: pxH }}
@@ -242,14 +253,7 @@ const Viewport = styled.div`
   min-width: 0;
   position: relative;
   overflow: hidden;
-  padding: 12px;
-`;
-
-const ScaledFrame = styled.div`
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  transform-origin: top left;
+  padding: 0;
 `;
 
 const ItemFrame = styled.div`
@@ -257,8 +261,12 @@ const ItemFrame = styled.div`
   background: #0d0d0d;
   border: 1px solid #2a2a2a;
   border-radius: 4px;
-  display: flex;
-  flex-direction: column;
+  /* Grid (not flex) so the body row has a definite height. Widgets whose
+     root is @gonogo/ui's Panel use height: 100% and need a concrete
+     percentage reference — flex: 1 + min-height: 0 doesn't reliably
+     provide one. */
+  display: grid;
+  grid-template-rows: auto 1fr;
   overflow: hidden;
 `;
 
@@ -294,7 +302,8 @@ const DismissBtn = styled.button`
 `;
 
 const ItemBody = styled.div`
-  flex: 1;
+  /* 1fr grid row — children with height: 100% resolve to this row's
+     concrete height. min-height: 0 so content can't force the row taller. */
   min-height: 0;
   overflow: hidden;
 `;

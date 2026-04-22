@@ -75,4 +75,21 @@ export type PeerMessage =
   | { type: "gonogo-abort" }
   // Host → stations: someone triggered the abort. Carries the name so all
   // screens can show who did it.
-  | { type: "gonogo-abort-notify"; stationName: string; t: number };
+  | { type: "gonogo-abort-notify"; stationName: string; t: number }
+  // ──────────────────────────────────────────────────────────────────────
+  // Push-to-main: a station mirrors one of its widgets onto the main
+  // screen's modal dashboard. Config is passed through to the main's
+  // registered component; input mappings stay station-local. `width` and
+  // `height` are the station's grid units on its `lg` layout — the main
+  // modal uses them as the ideal size and scales uniformly if it can't
+  // fit everything without scrolling.
+  // ──────────────────────────────────────────────────────────────────────
+  | {
+      type: "widget-push";
+      widgetInstanceId: string;
+      componentId: string;
+      config: Record<string, unknown>;
+      width: number;
+      height: number;
+    }
+  | { type: "widget-recall"; widgetInstanceId: string };

@@ -35,6 +35,11 @@ type GonogoVoteListener = (
 ) => void;
 type GonogoAbortListener = (peerId: string) => void;
 type PeerLifecycleListener = (peerId: string) => void;
+type WidgetPushListener = (
+  peerId: string,
+  msg: Extract<PeerMessage, { type: "widget-push" }>,
+) => void;
+type WidgetRecallListener = (peerId: string, widgetInstanceId: string) => void;
 
 export class PeerHostService {
   private peer: Peer | null = null;
@@ -47,6 +52,8 @@ export class PeerHostService {
   private gonogoAbortListeners = new Set<GonogoAbortListener>();
   private peerConnectListeners = new Set<PeerLifecycleListener>();
   private peerDisconnectListeners = new Set<PeerLifecycleListener>();
+  private widgetPushListeners = new Set<WidgetPushListener>();
+  private widgetRecallListeners = new Set<WidgetRecallListener>();
   peerId: string | null = null;
 
   start() {
@@ -235,6 +242,17 @@ export class PeerHostService {
       for (const cb of this.gonogoAbortListeners) cb(conn.peer);
       return;
     }
+
+    if (msg.type === "widget-push") {
+      for (const cb of this.widgetPushListeners) cb(conn.peer, msg);
+      return;
+    }
+
+    if (msg.type === "widget-recall") {
+      for (const cb of this.widgetRecallListeners)
+        cb(conn.peer, msg.widgetInstanceId);
+      return;
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────
@@ -265,6 +283,16 @@ export class PeerHostService {
   onPeerDisconnect(cb: PeerLifecycleListener): () => void {
     this.peerDisconnectListeners.add(cb);
     return () => this.peerDisconnectListeners.delete(cb);
+  }
+
+  onWidgetPush(cb: WidgetPushListener): () => void {
+    this.widgetPushListeners.add(cb);
+    return () => this.widgetPushListeners.delete(cb);
+  }
+
+  onWidgetRecall(cb: WidgetRecallListener): () => void {
+    this.widgetRecallListeners.add(cb);
+    return () => this.widgetRecallListeners.delete(cb);
   }
 
   getConnectedPeerIds(): string[] {

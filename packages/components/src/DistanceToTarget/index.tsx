@@ -36,6 +36,7 @@ registerComponent({
   dataRequirements: ["tar.distance", "tar.name"],
   behaviors: [],
   defaultConfig: {},
+  pushable: true,
 });
 
 export { DistanceToTargetComponent };

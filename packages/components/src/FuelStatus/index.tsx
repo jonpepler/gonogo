@@ -295,6 +295,7 @@ registerComponent<FuelStatusConfig>({
   behaviors: [],
   defaultConfig: {},
   actions: [],
+  pushable: true,
 });
 
 export { FuelStatusComponent };

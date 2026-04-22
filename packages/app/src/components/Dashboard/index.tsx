@@ -19,6 +19,7 @@ import { Responsive, WidthProvider } from "react-grid-layout";
 import styled from "styled-components";
 import "react-grid-layout/css/styles.css";
 import "../../styles/react-resizable.css";
+import { usePushClient } from "../../pushToMain/PushClientContext";
 import { handleMouseDown } from "./mouseHandlers";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -128,6 +129,12 @@ export function Dashboard({
                   />
                 </GearWrapper>
               )}
+              <PushButton
+                item={item}
+                pushable={def.pushable === true}
+                w={w ?? 3}
+                h={h ?? 3}
+              />
               <RemoveButton onRemove={() => removeItem(item.i)} />
             </CellHeader>
             <ComponentWrapper>
@@ -203,6 +210,54 @@ function RemoveButton({ onRemove }: Readonly<{ onRemove: () => void }>) {
     >
       {confirming ? "✕?" : "✕"}
     </RemoveBtn>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Push-to-main toggle — only shown on stations (usePushClient() returns
+// non-null when the PushClientProvider is mounted) and only for components
+// that declared pushable: true at registration time.
+// ---------------------------------------------------------------------------
+
+function PushButton({
+  item,
+  pushable,
+  w,
+  h,
+}: Readonly<{
+  item: DashboardItem;
+  pushable: boolean;
+  w: number;
+  h: number;
+}>) {
+  const client = usePushClient();
+  if (!pushable || !client) return null;
+  const pushed = client.isPushed(item.i);
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (pushed) {
+      client.recall(item.i);
+    } else {
+      client.push({
+        widgetInstanceId: item.i,
+        componentId: item.componentId,
+        config: (item.config ?? {}) as Record<string, unknown>,
+        width: w,
+        height: h,
+      });
+    }
+  };
+  return (
+    <PushBtn
+      type="button"
+      onMouseDown={handleMouseDown}
+      onClick={handleClick}
+      aria-label={pushed ? "Recall from main" : "Push to main"}
+      title={pushed ? "Recall from main" : "Push to main"}
+      $pushed={pushed}
+    >
+      {pushed ? "⇦" : "⇪"}
+    </PushBtn>
   );
 }
 
@@ -436,6 +491,22 @@ const RemoveBtn = styled.button<{ $confirming: boolean }>`
 
   &:hover {
     color: #f66;
+  }
+`;
+
+const PushBtn = styled.button<{ $pushed: boolean }>`
+  pointer-events: all;
+  background: none;
+  border: none;
+  color: ${({ $pushed }) => ($pushed ? "#8cf" : "#444")};
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 1px 4px;
+  margin-left: 2px;
+
+  &:hover {
+    color: #6af;
   }
 `;
 

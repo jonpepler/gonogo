@@ -192,6 +192,14 @@ export interface ComponentDefinition<TConfig = Record<string, unknown>> {
    * runtime by the component calling `useActionInput`.
    */
   actions?: readonly ActionDefinition[];
+  /**
+   * When true, this component can be mirrored onto the main screen's modal
+   * dashboard from a station via the "Push to main" button. Only set this
+   * on components whose config + data shape work identically when re-rendered
+   * on main (i.e. that read data via `useDataValue` and don't depend on
+   * station-local state like serial input mappings).
+   */
+  pushable?: boolean;
 }
 
 export interface ThemeDefinition {

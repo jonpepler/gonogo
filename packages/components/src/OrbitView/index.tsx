@@ -106,6 +106,7 @@ registerComponent<OrbitViewConfig>({
   behaviors: [],
   defaultConfig: { showMarkers: true },
   actions: orbitViewActions,
+  pushable: true,
 });
 
 export { OrbitViewComponent };

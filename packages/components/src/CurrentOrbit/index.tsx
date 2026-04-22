@@ -157,6 +157,7 @@ registerComponent<CurrentOrbitConfig>({
   behaviors: [],
   defaultConfig: { showDiagram: true },
   actions: currentOrbitActions,
+  pushable: true,
 });
 
 export { CurrentOrbitComponent };

@@ -21,6 +21,9 @@ import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { StationLinkFab } from "../components/StationLinkFab";
 import { GoNoGoHostProvider, GoNoGoHostService } from "../goNoGo";
 import { peerHostService } from "../peer/PeerHostService";
+import { PushedDashboardOverlay } from "../pushToMain/PushedDashboardOverlay";
+import { PushHostProvider } from "../pushToMain/PushHostContext";
+import { PushHostService } from "../pushToMain/PushHostService";
 import {
   SaveProfileProvider,
   SaveProfileService,
@@ -688,6 +691,7 @@ export function MainScreen() {
   // second mount with a zombie service that no longer receives host events
   // (the useState initializer only runs once per mount cycle).
   const [goNoGoHost] = useState(() => new GoNoGoHostService(peerHostService));
+  const [pushHost] = useState(() => new PushHostService(peerHostService));
 
   useEffect(() => {
     const dispatcher = new InputDispatcher({
@@ -722,35 +726,38 @@ export function MainScreen() {
     <ScreenProvider value="main">
       <SaveProfileProvider service={saveProfileService}>
         <GoNoGoHostProvider service={goNoGoHost}>
-          <ScopedFogMaskCache store={fogMaskStore}>
-            <SerialDeviceProvider service={serialService}>
-              <OverlayProvider addItem={dashboard.addItem}>
-                <Layout>
-                  <Dashboard
-                    items={dashboard.items}
-                    layouts={dashboard.layouts}
-                    currentLayouts={dashboard.currentLayouts}
-                    breakpoint={dashboard.breakpoint}
-                    onLayoutChange={dashboard.handleLayoutChange}
-                    onBreakpointChange={dashboard.handleBreakpointChange}
-                    updateItemConfig={dashboard.updateItemConfig}
-                    updateItemMappings={dashboard.updateItemMappings}
-                    removeItem={dashboard.removeItem}
-                  />
-                  <FabClusterProvider>
-                    <ComponentOverlay
+          <PushHostProvider service={pushHost}>
+            <ScopedFogMaskCache store={fogMaskStore}>
+              <SerialDeviceProvider service={serialService}>
+                <OverlayProvider addItem={dashboard.addItem}>
+                  <Layout>
+                    <Dashboard
+                      items={dashboard.items}
+                      layouts={dashboard.layouts}
                       currentLayouts={dashboard.currentLayouts}
+                      breakpoint={dashboard.breakpoint}
+                      onLayoutChange={dashboard.handleLayoutChange}
+                      onBreakpointChange={dashboard.handleBreakpointChange}
+                      updateItemConfig={dashboard.updateItemConfig}
+                      updateItemMappings={dashboard.updateItemMappings}
+                      removeItem={dashboard.removeItem}
                     />
-                    <FlightsFab />
-                    <SerialFab />
-                    <StationLinkFab />
-                    <SaveProfilesFab />
-                  </FabClusterProvider>
-                  <SignalLossIndicator />
-                </Layout>
-              </OverlayProvider>
-            </SerialDeviceProvider>
-          </ScopedFogMaskCache>
+                    <FabClusterProvider>
+                      <ComponentOverlay
+                        currentLayouts={dashboard.currentLayouts}
+                      />
+                      <FlightsFab />
+                      <SerialFab />
+                      <StationLinkFab />
+                      <SaveProfilesFab />
+                    </FabClusterProvider>
+                    <SignalLossIndicator />
+                    <PushedDashboardOverlay />
+                  </Layout>
+                </OverlayProvider>
+              </SerialDeviceProvider>
+            </ScopedFogMaskCache>
+          </PushHostProvider>
         </GoNoGoHostProvider>
       </SaveProfileProvider>
     </ScreenProvider>

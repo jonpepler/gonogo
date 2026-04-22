@@ -754,6 +754,7 @@ registerComponent<MapViewConfig>({
     showPrediction: true,
   },
   actions: mapViewActions,
+  pushable: true,
 });
 
 export { MapViewComponent };

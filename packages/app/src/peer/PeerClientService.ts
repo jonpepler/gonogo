@@ -207,6 +207,23 @@ export class PeerClientService {
     this.conn?.send({ type: "gonogo-abort" } satisfies PeerMessage);
   }
 
+  sendWidgetPush(msg: {
+    widgetInstanceId: string;
+    componentId: string;
+    config: Record<string, unknown>;
+    width: number;
+    height: number;
+  }) {
+    this.conn?.send({ type: "widget-push", ...msg } satisfies PeerMessage);
+  }
+
+  sendWidgetRecall(widgetInstanceId: string) {
+    this.conn?.send({
+      type: "widget-recall",
+      widgetInstanceId,
+    } satisfies PeerMessage);
+  }
+
   /**
    * Query a range of historical samples from the host's buffered store.
    * Resolves with columnar `{ t, v }` arrays; rejects with a short error

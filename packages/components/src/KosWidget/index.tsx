@@ -109,6 +109,7 @@ registerComponent<KosWidgetConfig>({
     intervalMs: 1000,
   },
   actions: [],
+  pushable: true,
 });
 
 export { KosWidgetComponent };

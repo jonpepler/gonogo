@@ -463,6 +463,7 @@ registerComponent<GraphConfig>({
   behaviors: [],
   defaultConfig: { series: [], windowSec: 300 },
   actions: [],
+  pushable: true,
 });
 
 export { GraphComponent };

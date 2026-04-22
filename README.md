@@ -278,6 +278,19 @@ Layouts are saved automatically to `localStorage`.
 
 ---
 
+## Physical controllers (serial input)
+
+gonogo can take input from USB hardware controllers (throttle quadrants,
+button boxes, custom panels) — or from a built-in virtual controller for
+testing without hardware. Each screen has its own Serial Devices FAB
+(the joystick icon, bottom-right).
+
+For the full walkthrough — defining a device type, picking the USB port,
+wiring inputs to widget actions, and writing back to the device for
+displays/LEDs — see [`packages/serial/README.md`](packages/serial/README.md).
+
+---
+
 ## Contributing
 
 1. Fork the repo and create a branch.

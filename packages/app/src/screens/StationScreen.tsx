@@ -6,11 +6,7 @@ import {
   registerStreamSource,
   ScreenProvider,
 } from "@gonogo/core";
-import {
-  FlightsFab,
-  FogMaskCacheProvider,
-  FogMaskStore,
-} from "@gonogo/data";
+import { FlightsFab, FogMaskCacheProvider, FogMaskStore } from "@gonogo/data";
 import {
   InputDispatcher,
   SerialDeviceProvider,
@@ -226,39 +222,39 @@ export function StationScreen() {
         <ScopedStationIdentity>
           <StationInfoBroadcaster client={client} />
           <PeerClientProvider client={client}>
-          <ScopedFogMaskCache store={fogMaskStore}>
-            <KosProxyContext.Provider value={kosProxy}>
-              <SerialDeviceProvider service={serialService}>
-                <OverlayProvider addItem={dashboard.addItem}>
-                  <Layout>
-                    <Dashboard
-                      items={dashboard.items}
-                      layouts={dashboard.layouts}
-                      currentLayouts={dashboard.currentLayouts}
-                      breakpoint={dashboard.breakpoint}
-                      onLayoutChange={dashboard.handleLayoutChange}
-                      onBreakpointChange={dashboard.handleBreakpointChange}
-                      updateItemConfig={dashboard.updateItemConfig}
-                      updateItemMappings={dashboard.updateItemMappings}
-                      removeItem={dashboard.removeItem}
-                    />
-                    <FabClusterProvider>
-                      <ComponentOverlay
+            <ScopedFogMaskCache store={fogMaskStore}>
+              <KosProxyContext.Provider value={kosProxy}>
+                <SerialDeviceProvider service={serialService}>
+                  <OverlayProvider addItem={dashboard.addItem}>
+                    <Layout>
+                      <Dashboard
+                        items={dashboard.items}
+                        layouts={dashboard.layouts}
                         currentLayouts={dashboard.currentLayouts}
+                        breakpoint={dashboard.breakpoint}
+                        onLayoutChange={dashboard.handleLayoutChange}
+                        onBreakpointChange={dashboard.handleBreakpointChange}
+                        updateItemConfig={dashboard.updateItemConfig}
+                        updateItemMappings={dashboard.updateItemMappings}
+                        removeItem={dashboard.removeItem}
                       />
-                      <FlightsFab />
-                      <SerialFab />
-                      <SaveProfilesFab bottom={204} />
-                    </FabClusterProvider>
-                    <StationNameChip>
-                      <StationNameEditor compact />
-                    </StationNameChip>
-                    <SignalLossIndicator />
-                  </Layout>
-                </OverlayProvider>
-              </SerialDeviceProvider>
-            </KosProxyContext.Provider>
-          </ScopedFogMaskCache>
+                      <FabClusterProvider>
+                        <ComponentOverlay
+                          currentLayouts={dashboard.currentLayouts}
+                        />
+                        <FlightsFab />
+                        <SerialFab />
+                        <SaveProfilesFab bottom={204} />
+                      </FabClusterProvider>
+                      <StationNameChip>
+                        <StationNameEditor compact />
+                      </StationNameChip>
+                      <SignalLossIndicator />
+                    </Layout>
+                  </OverlayProvider>
+                </SerialDeviceProvider>
+              </KosProxyContext.Provider>
+            </ScopedFogMaskCache>
           </PeerClientProvider>
         </ScopedStationIdentity>
       </SaveProfileProvider>

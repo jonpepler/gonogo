@@ -38,10 +38,7 @@ export class FogMaskStore {
     this.dbName = opts.dbName ?? DB_NAME;
   }
 
-  async load(
-    profileId: string,
-    bodyId: string,
-  ): Promise<StoredMask | null> {
+  async load(profileId: string, bodyId: string): Promise<StoredMask | null> {
     const db = await this.open();
     return new Promise<StoredMask | null>((resolve, reject) => {
       const req = db

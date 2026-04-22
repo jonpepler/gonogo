@@ -43,6 +43,8 @@ pnpm --filter @gonogo/telnet-proxy dev     # run only the telnet proxy server
 pnpm --filter @gonogo/core test     # test a single package
 ```
 
+**Node version:** run `nvm use` before `pnpm`/`node` if your shell isn't already on the repo's pinned version (`.nvmrc` → 24). Do **not** `source ~/.nvm/nvm.sh` — `nvm` is already on the PATH in this environment, so just invoke it directly.
+
 ---
 
 ## Architecture

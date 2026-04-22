@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
-import { useStationIdentityService, useStationName } from "./StationIdentityContext";
+import {
+  useStationIdentityService,
+  useStationName,
+} from "./StationIdentityContext";
 
 const Wrap = styled.div<{ $compact: boolean }>`
   display: inline-flex;

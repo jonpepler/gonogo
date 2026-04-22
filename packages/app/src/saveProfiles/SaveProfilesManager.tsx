@@ -2,12 +2,12 @@ import { useFogMaskStore } from "@gonogo/data";
 import { Button, IconButton, Input, PrimaryButton } from "@gonogo/ui";
 import { useState } from "react";
 import styled from "styled-components";
-import type { SaveProfile } from "./SaveProfileService";
 import {
   useActiveProfile,
-  useSaveProfiles,
   useSaveProfileService,
+  useSaveProfiles,
 } from "./SaveProfileContext";
+import type { SaveProfile } from "./SaveProfileService";
 
 const List = styled.ul`
   list-style: none;

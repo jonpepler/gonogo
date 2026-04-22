@@ -1,10 +1,10 @@
 export {
   SaveProfileProvider,
   useActiveProfile,
-  useSaveProfiles,
   useSaveProfileService,
+  useSaveProfiles,
 } from "./SaveProfileContext";
+export type { SaveProfile } from "./SaveProfileService";
+export { SaveProfileService } from "./SaveProfileService";
 export { SaveProfilesFab } from "./SaveProfilesFab";
 export { SaveProfilesManager } from "./SaveProfilesManager";
-export { SaveProfileService } from "./SaveProfileService";
-export type { SaveProfile } from "./SaveProfileService";

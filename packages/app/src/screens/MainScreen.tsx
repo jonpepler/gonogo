@@ -1,13 +1,5 @@
-import {
-  getDataSources,
-  getStreamSources,
-  ScreenProvider,
-} from "@gonogo/core";
-import {
-  FlightsFab,
-  FogMaskCacheProvider,
-  FogMaskStore,
-} from "@gonogo/data";
+import { getDataSources, getStreamSources, ScreenProvider } from "@gonogo/core";
+import { FlightsFab, FogMaskCacheProvider, FogMaskStore } from "@gonogo/data";
 import {
   InputDispatcher,
   SerialDeviceProvider,
@@ -27,10 +19,7 @@ import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { StationLinkFab } from "../components/StationLinkFab";
-import {
-  GoNoGoHostProvider,
-  GoNoGoHostService,
-} from "../goNoGo";
+import { GoNoGoHostProvider, GoNoGoHostService } from "../goNoGo";
 import { peerHostService } from "../peer/PeerHostService";
 import {
   SaveProfileProvider,
@@ -731,37 +720,39 @@ export function MainScreen() {
 
   return (
     <ScreenProvider value="main">
-    <SaveProfileProvider service={saveProfileService}>
-      <GoNoGoHostProvider service={goNoGoHost}>
-      <ScopedFogMaskCache store={fogMaskStore}>
-        <SerialDeviceProvider service={serialService}>
-          <OverlayProvider addItem={dashboard.addItem}>
-            <Layout>
-              <Dashboard
-                items={dashboard.items}
-                layouts={dashboard.layouts}
-                currentLayouts={dashboard.currentLayouts}
-                breakpoint={dashboard.breakpoint}
-                onLayoutChange={dashboard.handleLayoutChange}
-                onBreakpointChange={dashboard.handleBreakpointChange}
-                updateItemConfig={dashboard.updateItemConfig}
-                updateItemMappings={dashboard.updateItemMappings}
-                removeItem={dashboard.removeItem}
-              />
-              <FabClusterProvider>
-                <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
-                <FlightsFab />
-                <SerialFab />
-                <StationLinkFab />
-                <SaveProfilesFab />
-              </FabClusterProvider>
-              <SignalLossIndicator />
-            </Layout>
-          </OverlayProvider>
-        </SerialDeviceProvider>
-      </ScopedFogMaskCache>
-      </GoNoGoHostProvider>
-    </SaveProfileProvider>
+      <SaveProfileProvider service={saveProfileService}>
+        <GoNoGoHostProvider service={goNoGoHost}>
+          <ScopedFogMaskCache store={fogMaskStore}>
+            <SerialDeviceProvider service={serialService}>
+              <OverlayProvider addItem={dashboard.addItem}>
+                <Layout>
+                  <Dashboard
+                    items={dashboard.items}
+                    layouts={dashboard.layouts}
+                    currentLayouts={dashboard.currentLayouts}
+                    breakpoint={dashboard.breakpoint}
+                    onLayoutChange={dashboard.handleLayoutChange}
+                    onBreakpointChange={dashboard.handleBreakpointChange}
+                    updateItemConfig={dashboard.updateItemConfig}
+                    updateItemMappings={dashboard.updateItemMappings}
+                    removeItem={dashboard.removeItem}
+                  />
+                  <FabClusterProvider>
+                    <ComponentOverlay
+                      currentLayouts={dashboard.currentLayouts}
+                    />
+                    <FlightsFab />
+                    <SerialFab />
+                    <StationLinkFab />
+                    <SaveProfilesFab />
+                  </FabClusterProvider>
+                  <SignalLossIndicator />
+                </Layout>
+              </OverlayProvider>
+            </SerialDeviceProvider>
+          </ScopedFogMaskCache>
+        </GoNoGoHostProvider>
+      </SaveProfileProvider>
     </ScreenProvider>
   );
 }

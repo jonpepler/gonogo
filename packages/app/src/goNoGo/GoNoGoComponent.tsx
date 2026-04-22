@@ -9,20 +9,12 @@ import {
   useDataValue,
   useScreen,
 } from "@gonogo/core";
-import {
-  Field,
-  FieldLabel,
-  Input,
-  PrimaryButton,
-  Switch,
-} from "@gonogo/ui";
+import { Field, FieldLabel, Input, PrimaryButton, Switch } from "@gonogo/ui";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { usePeerClient } from "../peer/PeerClientContext";
-import { useStationName } from "../stationIdentity";
-import type { GoNoGoConfig } from "./GoNoGoHostService";
-import { DEFAULT_GONOGO_CONFIG } from "./GoNoGoHostService";
 import { useGoNoGoHost, useGoNoGoSnapshot } from "./GoNoGoHostContext";
+import { DEFAULT_GONOGO_CONFIG } from "./GoNoGoHostService";
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -56,7 +48,9 @@ type GoNoGoActions = typeof actions;
 // Component entry — branches on screen context
 // ---------------------------------------------------------------------------
 
-function GoNoGoComponent({ config }: Readonly<ComponentProps<GoNoGoWidgetConfig>>) {
+function GoNoGoComponent({
+  config,
+}: Readonly<ComponentProps<GoNoGoWidgetConfig>>) {
   const screen = useScreen();
   if (screen === "station") return <StationView />;
   return <MainView config={config} />;
@@ -324,7 +318,8 @@ function GoNoGoConfigComponent({
 }: Readonly<ConfigComponentProps<GoNoGoWidgetConfig>>) {
   const [countdownSeconds, setCountdownSeconds] = useState(
     String(
-      config?.countdownSeconds ?? DEFAULT_GONOGO_CONFIG.countdownLengthMs / 1000,
+      config?.countdownSeconds ??
+        DEFAULT_GONOGO_CONFIG.countdownLengthMs / 1000,
     ),
   );
   const [triggerStage, setTriggerStage] = useState(

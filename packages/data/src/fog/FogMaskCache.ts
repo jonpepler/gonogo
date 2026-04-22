@@ -100,10 +100,7 @@ export class FogMaskCache {
     this.scheduleFlush();
   }
 
-  onChange(
-    bodyId: string,
-    listener: (mask: BodyMask) => void,
-  ): () => void {
+  onChange(bodyId: string, listener: (mask: BodyMask) => void): () => void {
     const entry = this.ensureEntryShell(bodyId);
     entry.listeners.add(listener);
     return () => entry.listeners.delete(listener);

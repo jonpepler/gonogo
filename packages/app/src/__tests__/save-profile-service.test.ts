@@ -36,10 +36,12 @@ describe("SaveProfileService", () => {
     const svc1 = new SaveProfileService(storage);
     svc1.create("Mission B");
     const svc2 = new SaveProfileService(storage);
-    expect(svc2.getAll().map((p) => p.name).sort()).toEqual([
-      "Mission B",
-      "Survey Profile 1",
-    ]);
+    expect(
+      svc2
+        .getAll()
+        .map((p) => p.name)
+        .sort(),
+    ).toEqual(["Mission B", "Survey Profile 1"]);
   });
 
   it("setActive updates active profile and notifies listeners", () => {

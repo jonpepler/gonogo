@@ -1,13 +1,6 @@
 import type { DataKey, DataSource, DataSourceStatus } from "@gonogo/core";
 import { clearRegistry, registerDataSource } from "@gonogo/core";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GoNoGoHostService } from "../goNoGo/GoNoGoHostService";
 import type { PeerHostService } from "../peer/PeerHostService";
 
@@ -21,9 +14,7 @@ class FakeHost {
     connect: new Set<(peerId: string) => void>(),
     disconnect: new Set<(peerId: string) => void>(),
     stationInfo: new Set<(peerId: string, name: string) => void>(),
-    vote: new Set<
-      (peerId: string, status: "go" | "no-go" | null) => void
-    >(),
+    vote: new Set<(peerId: string, status: "go" | "no-go" | null) => void>(),
     abort: new Set<(peerId: string) => void>(),
   };
 

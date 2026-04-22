@@ -29,7 +29,9 @@ describe("StationIdentityService", () => {
   it("seeds a generated name on first run for a profile", () => {
     const svc = new StationIdentityService("profile-A", storage);
     expect(svc.getName()).toMatch(/^Station [A-Z0-9]{4}$/);
-    expect(storage.getItem("gonogo.station.name.profile-A")).toBe(svc.getName());
+    expect(storage.getItem("gonogo.station.name.profile-A")).toBe(
+      svc.getName(),
+    );
   });
 
   it("preserves a saved name across instances for the same profile", () => {

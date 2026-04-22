@@ -1,7 +1,10 @@
 import { FogMaskStoreProvider, useFogMaskStore } from "@gonogo/data";
 import { Fab, SatelliteIcon, useModal } from "@gonogo/ui";
 import type { ReactNode } from "react";
-import { SaveProfileProvider, useSaveProfileService } from "./SaveProfileContext";
+import {
+  SaveProfileProvider,
+  useSaveProfileService,
+} from "./SaveProfileContext";
 import { SaveProfilesManager } from "./SaveProfilesManager";
 
 /**

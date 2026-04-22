@@ -1,9 +1,6 @@
 import type { ComponentDefinition } from "@gonogo/core";
 import { getComponents } from "@gonogo/core";
-import {
-  SerialDeviceProvider,
-  useSerialDeviceService,
-} from "@gonogo/serial";
+import { SerialDeviceProvider, useSerialDeviceService } from "@gonogo/serial";
 import { Tag, useFabCluster, useModal } from "@gonogo/ui";
 import type { ReactNode } from "react";
 import {

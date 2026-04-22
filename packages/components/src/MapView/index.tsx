@@ -356,6 +356,9 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     showFogOfWar ? targetBodyId : undefined,
   );
 
+  // fogDisplay.version is needed even though the canvas reference is stable:
+  // the canvas contents are repainted in place as the fog mask mutates.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fogDisplay.version triggers redraw when canvas content changes
   useEffect(() => {
     const canvas = overlayRef.current;
     if (!canvas || !containerSize) return;

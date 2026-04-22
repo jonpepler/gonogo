@@ -128,9 +128,7 @@ export function useFogPainter({
  * render after the mask loads already has the element available — avoids
  * the "map un-fogged for one frame" flicker.
  */
-export function useFogDisplayCanvas(
-  bodyId: string | undefined,
-): {
+export function useFogDisplayCanvas(bodyId: string | undefined): {
   canvas: HTMLCanvasElement | null;
   version: number;
   width: number;
@@ -140,6 +138,9 @@ export function useFogDisplayCanvas(
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const imageDataRef = useRef<ImageData | null>(null);
 
+  // `mask` reference is stable across mutations; `version` bumps to signal
+  // that mask.data bytes have changed and the canvas needs repainting.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version triggers repaint when mask bytes change
   useEffect(() => {
     if (!mask) return;
     if (typeof document === "undefined") return;

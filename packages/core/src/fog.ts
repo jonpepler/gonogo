@@ -187,7 +187,8 @@ export function paintFogFootprint(
   const lonSin = new Float64Array(W);
   for (let x = 0; x < W; x++) {
     const texLonPix = ((x + 0.5) / W) * 360 - 180;
-    const physLonRad = (wrapLon(texLonPix - params.longitudeOffset) * Math.PI) / 180;
+    const physLonRad =
+      (wrapLon(texLonPix - params.longitudeOffset) * Math.PI) / 180;
     lonCos[x] = Math.cos(physLonRad);
     lonSin[x] = Math.sin(physLonRad);
   }
@@ -328,7 +329,8 @@ export function paintFogDisc(
   const lonSin = new Float64Array(W);
   for (let x = 0; x < W; x++) {
     const texLonPix = ((x + 0.5) / W) * 360 - 180;
-    const physLonRad = (wrapLon(texLonPix - params.longitudeOffset) * Math.PI) / 180;
+    const physLonRad =
+      (wrapLon(texLonPix - params.longitudeOffset) * Math.PI) / 180;
     lonCos[x] = Math.cos(physLonRad);
     lonSin[x] = Math.sin(physLonRad);
   }

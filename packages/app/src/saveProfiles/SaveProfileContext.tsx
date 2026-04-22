@@ -31,10 +31,7 @@ export function useSaveProfileService(): SaveProfileService {
 export function useSaveProfiles(): SaveProfile[] {
   const svc = useSaveProfileService();
   const [snapshot, setSnapshot] = useState(() => svc.getAll());
-  useEffect(
-    () => svc.onProfilesChange(() => setSnapshot(svc.getAll())),
-    [svc],
-  );
+  useEffect(() => svc.onProfilesChange(() => setSnapshot(svc.getAll())), [svc]);
   return snapshot;
 }
 

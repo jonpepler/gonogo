@@ -22,6 +22,7 @@ interface OverlayContextValue {
     item: DashboardItem,
     layout: { x: number; y: number; w: number; h: number },
   ) => void;
+  updateItemConfig: (id: string, config: Record<string, unknown>) => void;
 }
 
 const OverlayContext = createContext<OverlayContextValue | null>(null);
@@ -29,14 +30,19 @@ const OverlayContext = createContext<OverlayContextValue | null>(null);
 export function OverlayProvider({
   children,
   addItem,
+  updateItemConfig,
 }: Readonly<{
   children: ReactNode;
   addItem: (
     item: DashboardItem,
     layout: { x: number; y: number; w: number; h: number },
   ) => void;
+  updateItemConfig: (id: string, config: Record<string, unknown>) => void;
 }>) {
-  const value = useMemo(() => ({ addItem }), [addItem]);
+  const value = useMemo(
+    () => ({ addItem, updateItemConfig }),
+    [addItem, updateItemConfig],
+  );
   return (
     <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>
   );
@@ -63,7 +69,7 @@ export function ComponentOverlay({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const { addItem } = useOverlay();
+  const { addItem, updateItemConfig } = useOverlay();
   const { open: openModal, close: closeModal } = useModal();
   // ModalProvider lives at the app root, above SerialDeviceProvider. Config
   // components opened here via `openConfigOnAdd` portal out of the provider
@@ -112,11 +118,11 @@ export function ComponentOverlay({
             <ConfigComp
               config={item.config ?? def.defaultConfig ?? {}}
               onSave={(newConfig: Record<string, unknown>) => {
-                // Config is in the item — the addItem call already placed it;
-                // a future update could propagate the saved config back.
-                // For now close the modal.
+                // Persist the user's freshly-entered config to the item
+                // that addItem just placed. Without this, the on-add modal
+                // was cosmetic — the widget reverted to defaultConfig.
+                updateItemConfig(item.i, newConfig);
                 closeModal(modalId);
-                void newConfig; // suppress unused warning
               }}
             />
           </SerialDeviceProvider>,
@@ -124,7 +130,7 @@ export function ComponentOverlay({
         );
       }
     },
-    [addItem, nextY, openModal, closeModal, serialService],
+    [addItem, updateItemConfig, nextY, openModal, closeModal, serialService],
   );
 
   const cluster = useFabCluster();

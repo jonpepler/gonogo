@@ -106,6 +106,22 @@ export class PeerClientDataSource implements DataSource {
   }
 
   /**
+   * Tunnel a kOS compute script execution up to the host. The host invokes
+   * its local KosComputeDataSource.executeScript and replies with the
+   * parsed [KOSDATA] object. Only meaningful on the station-side mirror of
+   * the "kos-compute" source — calling it on a different source id still
+   * sends a request, but the host will reply with an error (the protocol
+   * routes to "kos-compute" specifically by design).
+   */
+  async executeScript(
+    cpu: string,
+    script: string,
+    args: Array<number | string | boolean>,
+  ): Promise<Record<string, unknown>> {
+    return this.client.sendKosExecute(cpu, script, args);
+  }
+
+  /**
    * Timestamped variant of subscribe. Used by `useDataSeries` on station
    * screens so live samples carry the host's clock alongside the value.
    */

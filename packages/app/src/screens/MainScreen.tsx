@@ -729,7 +729,10 @@ export function MainScreen() {
           <PushHostProvider service={pushHost}>
             <ScopedFogMaskCache store={fogMaskStore}>
               <SerialDeviceProvider service={serialService}>
-                <OverlayProvider addItem={dashboard.addItem}>
+                <OverlayProvider
+                  addItem={dashboard.addItem}
+                  updateItemConfig={dashboard.updateItemConfig}
+                >
                   <Layout>
                     <Dashboard
                       items={dashboard.items}

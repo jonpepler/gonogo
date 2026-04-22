@@ -200,6 +200,11 @@ export class PeerHostService {
       return;
     }
 
+    if (msg.type === "kos-execute-request") {
+      void this.handleKosExecuteRequest(msg, conn);
+      return;
+    }
+
     if (msg.type === "kos-open") {
       void this.handleKosOpen(msg, conn);
       return;
@@ -339,6 +344,49 @@ export class PeerHostService {
       const error = err instanceof Error ? err : new Error(String(err));
       logger.error("[PeerHost] queryRange failed", error);
       respond([], [], error.message);
+    }
+  }
+
+  private async handleKosExecuteRequest(
+    msg: Extract<PeerMessage, { type: "kos-execute-request" }>,
+    conn: DataConnection,
+  ) {
+    const { getDataSource } = await import("@gonogo/core");
+    type KosExec = {
+      executeScript?: (
+        cpu: string,
+        script: string,
+        args: Array<number | string | boolean>,
+      ) => Promise<import("@gonogo/data").KosData>;
+    };
+    const source = getDataSource("kos-compute") as
+      | (ReturnType<typeof getDataSource> & KosExec)
+      | undefined;
+    const respond = (
+      data?: import("@gonogo/data").KosData,
+      error?: string,
+    ): void => {
+      conn.send({
+        type: "kos-execute-response",
+        requestId: msg.requestId,
+        data,
+        error,
+      } satisfies PeerMessage);
+    };
+    if (!source || typeof source.executeScript !== "function") {
+      respond(
+        undefined,
+        "kos-compute data source not registered on main screen",
+      );
+      return;
+    }
+    try {
+      const data = await source.executeScript(msg.cpu, msg.script, msg.args);
+      respond(data);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      logger.warn(`[PeerHost] kos execute failed — ${error.message}`);
+      respond(undefined, error.message);
     }
   }
 

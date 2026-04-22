@@ -62,6 +62,15 @@ export class PeerClientService {
     }
   >();
 
+  private pendingKosExecutes = new Map<
+    string,
+    {
+      resolve: (data: Record<string, unknown>) => void;
+      reject: (err: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
+
   constructor({
     retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS,
     retryTimeoutMs = DEFAULT_RETRY_TIMEOUT_MS,
@@ -266,6 +275,46 @@ export class PeerClientService {
       pending.reject(new Error(reason));
       this.pendingQueries.delete(id);
     }
+    for (const [id, pending] of this.pendingKosExecutes) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(reason));
+      this.pendingKosExecutes.delete(id);
+    }
+  }
+
+  /**
+   * Tunnel a kOS compute script execution through to the host. The host
+   * invokes its local KosComputeDataSource.executeScript and replies with
+   * the parsed [KOSDATA] object (or an error). Timeout defaults to 15s —
+   * a shade longer than the host's own per-call timeout so the station
+   * surfaces the real error rather than a timeout racing it.
+   */
+  sendKosExecute(
+    cpu: string,
+    script: string,
+    args: Array<number | string | boolean>,
+    timeoutMs = 15_000,
+  ): Promise<Record<string, unknown>> {
+    return new Promise((resolve, reject) => {
+      if (!this.conn || this.conn.open === false) {
+        reject(new Error("not connected to host"));
+        return;
+      }
+      const requestId = crypto.randomUUID();
+      const timer = setTimeout(() => {
+        if (this.pendingKosExecutes.delete(requestId)) {
+          reject(new Error("kos execute timeout"));
+        }
+      }, timeoutMs);
+      this.pendingKosExecutes.set(requestId, { resolve, reject, timer });
+      this.conn.send({
+        type: "kos-execute-request",
+        requestId,
+        cpu,
+        script,
+        args,
+      } satisfies PeerMessage);
+    });
   }
 
   onData(
@@ -353,6 +402,16 @@ export class PeerClientService {
         pending.reject(new Error(msg.error));
       } else {
         pending.resolve({ t: msg.t, v: msg.v });
+      }
+    } else if (msg.type === "kos-execute-response") {
+      const pending = this.pendingKosExecutes.get(msg.requestId);
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      this.pendingKosExecutes.delete(msg.requestId);
+      if (msg.error || !msg.data) {
+        pending.reject(new Error(msg.error ?? "kos execute: empty response"));
+      } else {
+        pending.resolve(msg.data);
       }
     } else if (msg.type === "status") {
       this.sourceStatusListeners.forEach((cb) => {

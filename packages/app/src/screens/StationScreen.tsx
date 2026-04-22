@@ -228,7 +228,10 @@ export function StationScreen() {
               <ScopedFogMaskCache store={fogMaskStore}>
                 <KosProxyContext.Provider value={kosProxy}>
                   <SerialDeviceProvider service={serialService}>
-                    <OverlayProvider addItem={dashboard.addItem}>
+                    <OverlayProvider
+                      addItem={dashboard.addItem}
+                      updateItemConfig={dashboard.updateItemConfig}
+                    >
                       <Layout>
                         <Dashboard
                           items={dashboard.items}

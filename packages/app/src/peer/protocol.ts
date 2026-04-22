@@ -1,5 +1,5 @@
 import type { DataSourceStatus } from "@gonogo/core";
-import type { DataKeyMeta } from "@gonogo/data";
+import type { DataKeyMeta, KosData, KosScriptArg } from "@gonogo/data";
 
 export type { DataSourceStatus };
 
@@ -92,4 +92,24 @@ export type PeerMessage =
       width: number;
       height: number;
     }
-  | { type: "widget-recall"; widgetInstanceId: string };
+  | { type: "widget-recall"; widgetInstanceId: string }
+  // ──────────────────────────────────────────────────────────────────────
+  // kOS compute script execution tunnel. Stations can't talk to the
+  // telnet proxy directly (only the main screen can), so station-side
+  // useKosWidget dispatches turn into `kos-execute-request` messages
+  // routed to the host's KosComputeDataSource. The host replies with
+  // `kos-execute-response` keyed by the same requestId.
+  // ──────────────────────────────────────────────────────────────────────
+  | {
+      type: "kos-execute-request";
+      requestId: string;
+      cpu: string;
+      script: string;
+      args: KosScriptArg[];
+    }
+  | {
+      type: "kos-execute-response";
+      requestId: string;
+      data?: KosData;
+      error?: string;
+    };

@@ -58,6 +58,77 @@ export interface BodyDefinition {
    * applications never targeting the body).
    */
   rotationPeriod?: number;
+  /**
+   * Minimum altitude (metres above sea level) at which satellite imaging
+   * produces usable data. Below this, quality is zero. For atmospheric bodies
+   * default to just above the atmosphere; for airless bodies default to a
+   * small fraction of the radius.
+   */
+  imagingMinAlt?: number;
+  /**
+   * Ideal imaging altitude (metres ASL). Quality reaches 1 here.
+   */
+  imagingIdealAlt?: number;
+  /**
+   * Maximum imaging altitude (metres ASL). Above this, quality is zero.
+   */
+  imagingMaxAlt?: number;
+  /**
+   * Camera half-angle (degrees) — the cone half-angle used when projecting
+   * the imaging footprint. Wider = larger footprint per pass but less detail.
+   */
+  cameraFovDeg?: number;
+  /**
+   * Optional circular region revealed from the start — a known landing site
+   * or space centre. Used so fresh fog masks aren't completely blank around
+   * the player's natural starting position.
+   */
+  initialReveal?: {
+    lat: number;
+    lon: number;
+    /** Disc radius in metres (surface-measured, not angular). */
+    radiusMetres: number;
+  };
+}
+
+/**
+ * Imaging altitude window for a body, with sensible defaults derived from
+ * radius and atmosphere when explicit values are missing.
+ *
+ * Atmospheric bodies get a floor of (maxAtmosphere + 10 km) — you can't image
+ * through the soup. Airless bodies use 5 % of the radius as the floor.
+ * The ceiling is 0.8 × radius; the ideal is 0.2 × radius.
+ */
+export function getImagingWindow(body: BodyDefinition): {
+  min: number;
+  ideal: number;
+  max: number;
+  fovDeg: number;
+} {
+  const atmoFloor = body.hasAtmosphere ? body.maxAtmosphere + 10_000 : 0;
+  const defaultMin = Math.max(atmoFloor, body.radius * 0.05);
+  const defaultIdeal = Math.max(defaultMin * 1.2, body.radius * 0.2);
+  const defaultMax = Math.max(defaultIdeal * 2, body.radius * 0.8);
+  return {
+    min: body.imagingMinAlt ?? defaultMin,
+    ideal: body.imagingIdealAlt ?? defaultIdeal,
+    max: body.imagingMaxAlt ?? defaultMax,
+    fovDeg: body.cameraFovDeg ?? 30,
+  };
+}
+
+/**
+ * Trapezoidal quality curve over altitude: 0 below `min`, ramps up to 1 at
+ * `ideal`, holds 1 until halfway between `ideal` and `max`, ramps back to 0
+ * at `max`.
+ */
+export function imagingQuality(altitude: number, body: BodyDefinition): number {
+  const { min, ideal, max } = getImagingWindow(body);
+  if (altitude <= min || altitude >= max) return 0;
+  if (altitude < ideal) return (altitude - min) / (ideal - min);
+  const holdEnd = (ideal + max) / 2;
+  if (altitude <= holdEnd) return 1;
+  return (max - altitude) / (max - holdEnd);
 }
 
 const bodies = new Map<string, BodyDefinition>();

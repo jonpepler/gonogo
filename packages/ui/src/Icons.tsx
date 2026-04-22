@@ -68,6 +68,30 @@ export function BroadcastIcon(props: Readonly<IconProps>) {
   );
 }
 
+export function SatelliteIcon(props: Readonly<IconProps>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M4 13l3-3 3 3-3 3-3-3z" />
+      <path d="M14 7l3-3 3 3-3 3-3-3z" />
+      <path d="M7 10l7 7" />
+      <path d="M10 13l3 3" />
+      <path d="M13 19c1-1 1-3 0-4" />
+      <path d="M16 21c2-2 2-5 0-7" />
+    </svg>
+  );
+}
+
 export function PlusIcon(props: Readonly<IconProps>) {
   return (
     <svg

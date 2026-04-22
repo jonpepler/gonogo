@@ -47,6 +47,13 @@ export class PeerClientService {
     (peerId: string | null) => void
   >();
   private ocislyProxyPeerId: string | null = null;
+  private gonogoCountdownStartListeners = new Set<(t0Ms: number) => void>();
+  private gonogoCountdownCancelListeners = new Set<
+    (reason: string | undefined) => void
+  >();
+  private gonogoAbortNotifyListeners = new Set<
+    (stationName: string, t: number) => void
+  >();
 
   private pendingQueries = new Map<
     string,
@@ -190,6 +197,18 @@ export class PeerClientService {
     this.conn?.send({ type: "kos-close", sessionId } satisfies PeerMessage);
   }
 
+  sendStationInfo(name: string) {
+    this.conn?.send({ type: "station-info", name } satisfies PeerMessage);
+  }
+
+  sendGonogoVote(status: "go" | "no-go" | null) {
+    this.conn?.send({ type: "gonogo-vote", status } satisfies PeerMessage);
+  }
+
+  sendGonogoAbort() {
+    this.conn?.send({ type: "gonogo-abort" } satisfies PeerMessage);
+  }
+
   /**
    * Query a range of historical samples from the host's buffered store.
    * Resolves with columnar `{ t, v }` arrays; rejects with a short error
@@ -273,6 +292,21 @@ export class PeerClientService {
     return () => this.kosCloseListeners.delete(cb);
   }
 
+  onGonogoCountdownStart(cb: (t0Ms: number) => void) {
+    this.gonogoCountdownStartListeners.add(cb);
+    return () => this.gonogoCountdownStartListeners.delete(cb);
+  }
+
+  onGonogoCountdownCancel(cb: (reason: string | undefined) => void) {
+    this.gonogoCountdownCancelListeners.add(cb);
+    return () => this.gonogoCountdownCancelListeners.delete(cb);
+  }
+
+  onGonogoAbortNotify(cb: (stationName: string, t: number) => void) {
+    this.gonogoAbortNotifyListeners.add(cb);
+    return () => this.gonogoAbortNotifyListeners.delete(cb);
+  }
+
   /** For tests + DEBUG_PEER diagnostics — exposes listener Set sizes. */
   _listenerCounts() {
     return {
@@ -335,6 +369,13 @@ export class PeerClientService {
       this.ocislyProxyPeerIdListeners.forEach((cb) => {
         cb(msg.peerId);
       });
+    } else if (msg.type === "gonogo-countdown-start") {
+      for (const cb of this.gonogoCountdownStartListeners) cb(msg.t0Ms);
+    } else if (msg.type === "gonogo-countdown-cancel") {
+      for (const cb of this.gonogoCountdownCancelListeners) cb(msg.reason);
+    } else if (msg.type === "gonogo-abort-notify") {
+      for (const cb of this.gonogoAbortNotifyListeners)
+        cb(msg.stationName, msg.t);
     }
   }
 

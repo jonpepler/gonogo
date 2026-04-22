@@ -51,7 +51,9 @@ function getKosDefaults() {
   };
 }
 
-function KosTerminalComponent({ config }: ComponentProps<KosTerminalConfig>) {
+function KosTerminalComponent({
+  config,
+}: Readonly<ComponentProps<KosTerminalConfig>>) {
   const { createConnection, resize } = useKosProxy();
   const defaults = getKosDefaults();
   const kosHost = config?.kosHost ?? defaults.kosHost;

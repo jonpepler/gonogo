@@ -4,8 +4,13 @@ import {
   KosProxyContext,
   registerDataSource,
   registerStreamSource,
+  ScreenProvider,
 } from "@gonogo/core";
-import { FlightsFab } from "@gonogo/data";
+import {
+  FlightsFab,
+  FogMaskCacheProvider,
+  FogMaskStore,
+} from "@gonogo/data";
 import {
   InputDispatcher,
   SerialDeviceProvider,
@@ -13,6 +18,7 @@ import {
   SerialFab,
 } from "@gonogo/serial";
 import { FabClusterProvider } from "@gonogo/ui";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import {
@@ -24,9 +30,21 @@ import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { KosPeerConnection } from "../peer/KosPeerConnection";
+import { PeerClientProvider } from "../peer/PeerClientContext";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
 import type { ConnStatus } from "../peer/PeerClientService";
 import { PeerClientService } from "../peer/PeerClientService";
+import {
+  SaveProfileProvider,
+  SaveProfileService,
+  SaveProfilesFab,
+  useActiveProfile,
+} from "../saveProfiles";
+import {
+  ScopedStationIdentity,
+  StationNameEditor,
+  useStationName,
+} from "../stationIdentity";
 import { OcislyStreamSource } from "../streamSources/ocisly";
 
 const HOST_ID_KEY = "gonogo-station-host-id";
@@ -52,6 +70,8 @@ export function StationScreen() {
   const [serialService] = useState(
     () => new SerialDeviceService({ screenKey: "station" }),
   );
+  const [saveProfileService] = useState(() => new SaveProfileService());
+  const [fogMaskStore] = useState(() => new FogMaskStore());
   const unsubsRef = useRef<Array<() => void>>([]);
   const schemaHandledRef = useRef(false);
 
@@ -159,62 +179,105 @@ export function StationScreen() {
 
   if (!connected) {
     return (
-      <ConnectLayout>
-        <ConnectBox>
-          <h1>Connect to Mission Control</h1>
-          <p>Enter the 4-character host ID shown on the main screen.</p>
-          <Row>
-            <HostInput
-              value={hostInput}
-              onChange={(e) => setHostInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && attemptConnect(hostInput)}
-              placeholder="e.g. AB3K"
-              maxLength={8}
-              autoFocus
-            />
-            <ConnectButton
-              onClick={() => attemptConnect(hostInput)}
-              disabled={connStatus === "connecting"}
-            >
-              {connStatus === "connecting" ? "Connecting…" : "Connect"}
-            </ConnectButton>
-          </Row>
-          {connStatus === "disconnected" && (
-            <ErrorMsg>
-              Connection lost. Check the host ID and try again.
-            </ErrorMsg>
-          )}
-        </ConnectBox>
-      </ConnectLayout>
+      <ScreenProvider value="station">
+        <SaveProfileProvider service={saveProfileService}>
+          <ScopedStationIdentity>
+            <ConnectLayout>
+              <ConnectBox>
+                <h1>Connect to Mission Control</h1>
+                <p>Enter the 4-character host ID shown on the main screen.</p>
+                <Row>
+                  <HostInput
+                    value={hostInput}
+                    onChange={(e) => setHostInput(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && attemptConnect(hostInput)
+                    }
+                    placeholder="e.g. AB3K"
+                    maxLength={8}
+                    autoFocus
+                  />
+                  <ConnectButton
+                    onClick={() => attemptConnect(hostInput)}
+                    disabled={connStatus === "connecting"}
+                  >
+                    {connStatus === "connecting" ? "Connecting…" : "Connect"}
+                  </ConnectButton>
+                </Row>
+                <NameRow>
+                  <StationNameEditor />
+                </NameRow>
+                {connStatus === "disconnected" && (
+                  <ErrorMsg>
+                    Connection lost. Check the host ID and try again.
+                  </ErrorMsg>
+                )}
+              </ConnectBox>
+            </ConnectLayout>
+          </ScopedStationIdentity>
+        </SaveProfileProvider>
+      </ScreenProvider>
     );
   }
 
   return (
-    <KosProxyContext.Provider value={kosProxy}>
-      <SerialDeviceProvider service={serialService}>
-        <OverlayProvider addItem={dashboard.addItem}>
-          <Layout>
-            <Dashboard
-              items={dashboard.items}
-              layouts={dashboard.layouts}
-              currentLayouts={dashboard.currentLayouts}
-              breakpoint={dashboard.breakpoint}
-              onLayoutChange={dashboard.handleLayoutChange}
-              onBreakpointChange={dashboard.handleBreakpointChange}
-              updateItemConfig={dashboard.updateItemConfig}
-              updateItemMappings={dashboard.updateItemMappings}
-              removeItem={dashboard.removeItem}
-            />
-            <FabClusterProvider>
-              <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
-              <FlightsFab />
-              <SerialFab />
-            </FabClusterProvider>
-            <SignalLossIndicator />
-          </Layout>
-        </OverlayProvider>
-      </SerialDeviceProvider>
-    </KosProxyContext.Provider>
+    <ScreenProvider value="station">
+      <SaveProfileProvider service={saveProfileService}>
+        <ScopedStationIdentity>
+          <StationInfoBroadcaster client={client} />
+          <PeerClientProvider client={client}>
+          <ScopedFogMaskCache store={fogMaskStore}>
+            <KosProxyContext.Provider value={kosProxy}>
+              <SerialDeviceProvider service={serialService}>
+                <OverlayProvider addItem={dashboard.addItem}>
+                  <Layout>
+                    <Dashboard
+                      items={dashboard.items}
+                      layouts={dashboard.layouts}
+                      currentLayouts={dashboard.currentLayouts}
+                      breakpoint={dashboard.breakpoint}
+                      onLayoutChange={dashboard.handleLayoutChange}
+                      onBreakpointChange={dashboard.handleBreakpointChange}
+                      updateItemConfig={dashboard.updateItemConfig}
+                      updateItemMappings={dashboard.updateItemMappings}
+                      removeItem={dashboard.removeItem}
+                    />
+                    <FabClusterProvider>
+                      <ComponentOverlay
+                        currentLayouts={dashboard.currentLayouts}
+                      />
+                      <FlightsFab />
+                      <SerialFab />
+                      <SaveProfilesFab bottom={204} />
+                    </FabClusterProvider>
+                    <StationNameChip>
+                      <StationNameEditor compact />
+                    </StationNameChip>
+                    <SignalLossIndicator />
+                  </Layout>
+                </OverlayProvider>
+              </SerialDeviceProvider>
+            </KosProxyContext.Provider>
+          </ScopedFogMaskCache>
+          </PeerClientProvider>
+        </ScopedStationIdentity>
+      </SaveProfileProvider>
+    </ScreenProvider>
+  );
+}
+
+function ScopedFogMaskCache({
+  store,
+  children,
+}: {
+  store: FogMaskStore;
+  children: ReactNode;
+}) {
+  const profile = useActiveProfile();
+  return (
+    <FogMaskCacheProvider store={store} profileId={profile.id}>
+      {children}
+    </FogMaskCacheProvider>
   );
 }
 
@@ -305,4 +368,43 @@ const Layout = styled.div`
   padding: 24px;
   background: #050505;
   min-height: 100vh;
+`;
+
+/**
+ * Keeps the host up to date with this station's current name. Sends on every
+ * transition into "connected" (covers reconnect) and again whenever the
+ * user renames.
+ */
+function StationInfoBroadcaster({ client }: { client: PeerClientService }) {
+  const name = useStationName();
+  useEffect(() => {
+    const send = () => client.sendStationInfo(name);
+    const unsub = client.onConnectionStatus((status) => {
+      if (status === "connected") send();
+    });
+    // Fire once immediately in case we're already connected by the time
+    // this effect runs (or the name changes while connected).
+    send();
+    return () => {
+      unsub();
+    };
+  }, [client, name]);
+  return null;
+}
+
+const NameRow = styled.div`
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #222;
+`;
+
+const StationNameChip = styled.div`
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  padding: 4px 10px;
+  background: rgba(20, 20, 20, 0.85);
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  z-index: 800;
 `;

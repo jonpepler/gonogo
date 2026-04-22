@@ -84,6 +84,30 @@ export const PredictionChip = styled.div`
   border-radius: 2px;
 `;
 
+export const ImagingChip = styled.span<{ $variant: "on" | "off" | "warn" }>`
+  padding: 2px 6px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: monospace;
+  border-radius: 2px;
+  border: 1px solid
+    ${({ $variant }) =>
+      $variant === "on"
+        ? "#2a6a3a"
+        : $variant === "warn"
+          ? "#6a5a2a"
+          : "#3a3a3a"};
+  background: ${({ $variant }) =>
+    $variant === "on"
+      ? "rgba(40, 120, 60, 0.3)"
+      : $variant === "warn"
+        ? "rgba(120, 100, 40, 0.3)"
+        : "rgba(40, 40, 40, 0.3)"};
+  color: ${({ $variant }) =>
+    $variant === "on" ? "#9ee4a9" : $variant === "warn" ? "#e4d99e" : "#888"};
+`;
+
 export const TelemetryPanel = styled.div`
   display: flex;
   flex-wrap: wrap;

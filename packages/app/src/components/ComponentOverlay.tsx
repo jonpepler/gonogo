@@ -1,5 +1,9 @@
 import type { ComponentDefinition } from "@gonogo/core";
 import { getComponents } from "@gonogo/core";
+import {
+  SerialDeviceProvider,
+  useSerialDeviceService,
+} from "@gonogo/serial";
 import { Tag, useFabCluster, useModal } from "@gonogo/ui";
 import type { ReactNode } from "react";
 import {
@@ -64,6 +68,13 @@ export function ComponentOverlay({
 
   const { addItem } = useOverlay();
   const { open: openModal, close: closeModal } = useModal();
+  // ModalProvider lives at the app root, above SerialDeviceProvider. Config
+  // components opened here via `openConfigOnAdd` portal out of the provider
+  // subtree, so we capture the serial service and re-provide it. Same
+  // pattern as the dashboard's GearButton. Component-level config UIs that
+  // need save-profile / fog / etc. contexts will need the same treatment
+  // if they're ever built.
+  const serialService = useSerialDeviceService();
 
   const allComponents = getComponents();
 
@@ -100,21 +111,23 @@ export function ComponentOverlay({
       if (def.openConfigOnAdd && def.configComponent) {
         const ConfigComp = def.configComponent;
         const modalId = openModal(
-          <ConfigComp
-            config={item.config ?? def.defaultConfig ?? {}}
-            onSave={(newConfig: Record<string, unknown>) => {
-              // Config is in the item — the addItem call already placed it;
-              // a future update could propagate the saved config back.
-              // For now close the modal.
-              closeModal(modalId);
-              void newConfig; // suppress unused warning
-            }}
-          />,
+          <SerialDeviceProvider service={serialService}>
+            <ConfigComp
+              config={item.config ?? def.defaultConfig ?? {}}
+              onSave={(newConfig: Record<string, unknown>) => {
+                // Config is in the item — the addItem call already placed it;
+                // a future update could propagate the saved config back.
+                // For now close the modal.
+                closeModal(modalId);
+                void newConfig; // suppress unused warning
+              }}
+            />
+          </SerialDeviceProvider>,
           { title: def.name },
         );
       }
     },
-    [addItem, nextY, openModal, closeModal],
+    [addItem, nextY, openModal, closeModal, serialService],
   );
 
   const cluster = useFabCluster();

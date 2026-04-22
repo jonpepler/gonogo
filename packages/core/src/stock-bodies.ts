@@ -80,6 +80,20 @@ export function registerStockBodies(baseUrl = "bodies"): void {
     hasAtmosphere: true,
     maxAtmosphere: 70000,
     rotationPeriod: 21549.425,
+    // Sweet spot modelled on real low-Earth-orbit imaging scaled for Kerbin:
+    // below the atmosphere gives no useful data, deep space gives too little
+    // resolution. 125 km sits in the usual low-orbit band.
+    imagingMinAlt: 80_000,
+    imagingIdealAlt: 125_000,
+    imagingMaxAlt: 500_000,
+    // KSC sits at roughly (-0.10°, -74.56°) in Telemachus's raw frame. Seed
+    // a generous region so launch / landing at the space centre starts with
+    // visible map context.
+    initialReveal: {
+      lat: -0.0972,
+      lon: -74.5577,
+      radiusMetres: 60_000,
+    },
   });
 
   registerBody({

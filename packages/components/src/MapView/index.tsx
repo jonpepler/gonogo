@@ -6,6 +6,7 @@ import type {
 } from "@gonogo/core";
 import {
   getBody,
+  getImagingWindow,
   latLonToMap,
   predictGroundTrack,
   registerComponent,
@@ -31,6 +32,7 @@ import {
   CanvasContainer,
   DataCanvas,
   Header,
+  ImagingChip,
   MapOuter,
   NoSignal,
   OverlayCanvas,
@@ -45,6 +47,7 @@ import {
 import { MapViewConfigComponent } from "./MapViewConfig";
 import type { MapViewConfig } from "./types";
 import { useCamera } from "./useCamera";
+import { useFogDisplayCanvas, useFogPainter } from "./useFogMask";
 import { useMapResize } from "./useMapResize";
 import { useTrajectoryBuffer } from "./useTrajectoryBuffer";
 import { useWorldCanvas } from "./useWorldCanvas";
@@ -121,6 +124,7 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const telemetryKeys = config?.telemetryKeys ?? [];
   const showTelemetry = telemetryKeys.length > 0;
   const showPrediction = config?.showPrediction ?? true;
+  const showFogOfWar = config?.showFogOfWar ?? true;
 
   const schema = useDataSchema("data");
   const labelMap = new Map(schema.map((k) => [k.key, k.label]));
@@ -129,6 +133,8 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
   const lon = useDataValue("data", "v.long");
   const altSea = useDataValue("data", "v.altitude");
   const bodyName = useDataValue("data", "v.body");
+  const shipPitch = useDataValue("data", "n.pitch");
+  const shipHeading = useDataValue("data", "n.heading");
   const q = useDataValue("data", "v.dynamicPressure");
   const mach = useDataValue("data", "v.mach");
   const speed = useDataValue("data", "v.surfaceSpeed");
@@ -335,13 +341,41 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }, [containerSize, camera, textureReady, body?.color]);
 
-  // ── Overlay layer (fog-of-war extension point) ────────────────────────────
+  // ── Fog-of-war: paint on telemetry tick, composite onto overlay ───────────
+  useFogPainter({
+    body,
+    shipLat: lat,
+    shipLon: lon,
+    altitude: altSea,
+    pitch: shipPitch,
+    heading: shipHeading,
+    enabled: showFogOfWar,
+  });
+
+  const fogDisplay = useFogDisplayCanvas(
+    showFogOfWar ? targetBodyId : undefined,
+  );
+
   useEffect(() => {
     const canvas = overlayRef.current;
     if (!canvas || !containerSize) return;
-    if (canvas.width !== containerSize.w) canvas.width = containerSize.w;
-    if (canvas.height !== containerSize.h) canvas.height = containerSize.h;
-  }, [containerSize]);
+    const { w, h } = containerSize;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+    if (!showFogOfWar || !fogDisplay.canvas) return;
+    ctx.setTransform(...cameraTransform(camera, w, h));
+    ctx.drawImage(fogDisplay.canvas, 0, 0, WORLD_W, WORLD_H);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }, [
+    containerSize,
+    camera,
+    showFogOfWar,
+    fogDisplay.canvas,
+    fogDisplay.version,
+  ]);
 
   // ── Trajectory layer: blit world canvas through camera ────────────────────
   // trajectoryCount is needed here even though worldCanvasRef is a ref:
@@ -572,11 +606,31 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
 
   const displayName = body?.name ?? targetBodyId;
 
+  // "NO SIGNAL" state lives in the global SignalLossIndicator banner;
+  // keeping it off this chip avoids double-reporting (and would be
+  // misleading now that fog still paints during blackout — see useFogPainter).
+  const imagingStatus = useMemo<{
+    label: string;
+    variant: "on" | "off" | "warn";
+  } | null>(() => {
+    if (!showFogOfWar || !body) return null;
+    if (altSea === undefined) return { label: "NO DATA", variant: "off" };
+    const { min, max } = getImagingWindow(body);
+    if (altSea < min) return { label: "TOO LOW", variant: "warn" };
+    if (altSea > max) return { label: "TOO HIGH", variant: "warn" };
+    return { label: "IMAGING", variant: "on" };
+  }, [showFogOfWar, body, altSea]);
+
   return (
     <Panel>
       <Header>
         <PanelTitle>MAP VIEW</PanelTitle>
         {displayName && <BodyLabel>{displayName}</BodyLabel>}
+        {imagingStatus && (
+          <ImagingChip $variant={imagingStatus.variant}>
+            {imagingStatus.label}
+          </ImagingChip>
+        )}
         <Switch
           checked={viewMode === "follow"}
           onChange={(on) => setViewMode(on ? "follow" : "global")}
@@ -693,12 +747,19 @@ registerComponent<MapViewConfig>({
   dataRequirements: [
     "v.lat",
     "v.long",
+    "v.altitude",
     "v.body",
     "o.orbitPatches",
     "t.universalTime",
+    "n.pitch",
+    "n.heading",
   ],
   behaviors: [],
-  defaultConfig: { trajectoryLength: 2000, showPrediction: true },
+  defaultConfig: {
+    trajectoryLength: 2000,
+    showPrediction: true,
+    showFogOfWar: true,
+  },
   actions: mapViewActions,
 });
 

@@ -45,4 +45,27 @@ export type PeerMessage =
   // for camera streams. Sent on initial station connect (if known) and again
   // whenever the proxy is re-resolved. null means the main screen no longer
   // has a live proxy connection.
-  | { type: "ocisly-proxy-peer-id"; peerId: string | null };
+  | { type: "ocisly-proxy-peer-id"; peerId: string | null }
+  // ──────────────────────────────────────────────────────────────────────
+  // GO/NO-GO and launch coordination
+  // ──────────────────────────────────────────────────────────────────────
+  // Station → host on connect and whenever the user renames the station.
+  // Host keys peer id → name for grid attribution and abort reporting.
+  | { type: "station-info"; name: string }
+  // Station → host whenever the local GO/NO-GO vote changes. `null` means
+  // "no widget mounted" so the station-info is still registered but the
+  // station doesn't contribute a vote.
+  | { type: "gonogo-vote"; status: "go" | "no-go" | null }
+  // Host → stations when all connected stations have voted GO. `t0Ms` is a
+  // wall-clock (`Date.now()`) instant — pre-synchronise to the host so the
+  // countdown display matches across devices within a small skew.
+  | { type: "gonogo-countdown-start"; t0Ms: number }
+  // Host → stations when a vote flips to NO-GO during an active countdown
+  // or when a station disconnects mid-countdown.
+  | { type: "gonogo-countdown-cancel"; reason?: string }
+  // Station → host after launch, when the operator hits the big red ABORT
+  // button. Host re-sends the action group execution for `f.abort`.
+  | { type: "gonogo-abort" }
+  // Host → stations: someone triggered the abort. Carries the name so all
+  // screens can show who did it.
+  | { type: "gonogo-abort-notify"; stationName: string; t: number };

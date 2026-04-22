@@ -27,12 +27,25 @@ interface KosSession {
   conn: DataConnection;
 }
 
+type StationInfoListener = (peerId: string, name: string) => void;
+type GonogoVoteListener = (
+  peerId: string,
+  status: "go" | "no-go" | null,
+) => void;
+type GonogoAbortListener = (peerId: string) => void;
+type PeerLifecycleListener = (peerId: string) => void;
+
 export class PeerHostService {
   private peer: Peer | null = null;
   private connections: Set<DataConnection> = new Set();
   private idListeners = new Set<(id: string | null) => void>();
   private kosSessions = new Map<string, KosSession>();
   private ocislyProxyPeerId: string | null = null;
+  private stationInfoListeners = new Set<StationInfoListener>();
+  private gonogoVoteListeners = new Set<GonogoVoteListener>();
+  private gonogoAbortListeners = new Set<GonogoAbortListener>();
+  private peerConnectListeners = new Set<PeerLifecycleListener>();
+  private peerDisconnectListeners = new Set<PeerLifecycleListener>();
   peerId: string | null = null;
 
   start() {
@@ -69,6 +82,7 @@ export class PeerHostService {
             peerId: this.ocislyProxyPeerId,
           } satisfies PeerMessage);
         }
+        for (const cb of this.peerConnectListeners) cb(conn.peer);
       });
       conn.on("data", (raw) => this.handleIncoming(raw as PeerMessage, conn));
       conn.on("close", () => {
@@ -77,6 +91,7 @@ export class PeerHostService {
         logger.info(
           `[PeerHost] connection closed — peer=${conn.peer}, total=${this.connections.size}`,
         );
+        for (const cb of this.peerDisconnectListeners) cb(conn.peer);
       });
       conn.on("error", (err) => {
         logger.error(`[PeerHost] connection error — peer=${conn.peer}`, err);
@@ -196,6 +211,55 @@ export class PeerHostService {
       }
       return;
     }
+
+    if (msg.type === "station-info") {
+      for (const cb of this.stationInfoListeners) cb(conn.peer, msg.name);
+      return;
+    }
+
+    if (msg.type === "gonogo-vote") {
+      for (const cb of this.gonogoVoteListeners) cb(conn.peer, msg.status);
+      return;
+    }
+
+    if (msg.type === "gonogo-abort") {
+      for (const cb of this.gonogoAbortListeners) cb(conn.peer);
+      return;
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // GO/NO-GO + peer lifecycle subscriptions. Kept as plain pub/sub so the
+  // GoNoGoHostService can aggregate without this class knowing the semantics.
+  // ───────────────────────────────────────────────────────────────────────
+
+  onStationInfo(cb: StationInfoListener): () => void {
+    this.stationInfoListeners.add(cb);
+    return () => this.stationInfoListeners.delete(cb);
+  }
+
+  onGonogoVote(cb: GonogoVoteListener): () => void {
+    this.gonogoVoteListeners.add(cb);
+    return () => this.gonogoVoteListeners.delete(cb);
+  }
+
+  onGonogoAbort(cb: GonogoAbortListener): () => void {
+    this.gonogoAbortListeners.add(cb);
+    return () => this.gonogoAbortListeners.delete(cb);
+  }
+
+  onPeerConnect(cb: PeerLifecycleListener): () => void {
+    this.peerConnectListeners.add(cb);
+    return () => this.peerConnectListeners.delete(cb);
+  }
+
+  onPeerDisconnect(cb: PeerLifecycleListener): () => void {
+    this.peerDisconnectListeners.add(cb);
+    return () => this.peerDisconnectListeners.delete(cb);
+  }
+
+  getConnectedPeerIds(): string[] {
+    return Array.from(this.connections, (c) => c.peer);
   }
 
   private async handleQueryRangeRequest(

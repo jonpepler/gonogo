@@ -1,5 +1,13 @@
-import { getDataSources, getStreamSources } from "@gonogo/core";
-import { FlightsFab } from "@gonogo/data";
+import {
+  getDataSources,
+  getStreamSources,
+  ScreenProvider,
+} from "@gonogo/core";
+import {
+  FlightsFab,
+  FogMaskCacheProvider,
+  FogMaskStore,
+} from "@gonogo/data";
 import {
   InputDispatcher,
   SerialDeviceProvider,
@@ -7,6 +15,7 @@ import {
   SerialFab,
 } from "@gonogo/serial";
 import { FabClusterProvider } from "@gonogo/ui";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import {
@@ -18,6 +27,17 @@ import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { StationLinkFab } from "../components/StationLinkFab";
+import {
+  GoNoGoHostProvider,
+  GoNoGoHostService,
+} from "../goNoGo";
+import { peerHostService } from "../peer/PeerHostService";
+import {
+  SaveProfileProvider,
+  SaveProfileService,
+  SaveProfilesFab,
+  useActiveProfile,
+} from "../saveProfiles";
 
 const DEMO_CONFIG: DashboardConfig = {
   items: [
@@ -672,6 +692,13 @@ export function MainScreen() {
   const [serialService] = useState(
     () => new SerialDeviceService({ screenKey: "main" }),
   );
+  const [saveProfileService] = useState(() => new SaveProfileService());
+  const [fogMaskStore] = useState(() => new FogMaskStore());
+  // GoNoGoHostService lives for the app's lifetime. Intentionally no dispose
+  // cleanup — StrictMode's simulated unmount would run it and leave the
+  // second mount with a zombie service that no longer receives host events
+  // (the useState initializer only runs once per mount cycle).
+  const [goNoGoHost] = useState(() => new GoNoGoHostService(peerHostService));
 
   useEffect(() => {
     const dispatcher = new InputDispatcher({
@@ -703,30 +730,57 @@ export function MainScreen() {
   }, []);
 
   return (
-    <SerialDeviceProvider service={serialService}>
-      <OverlayProvider addItem={dashboard.addItem}>
-        <Layout>
-          <Dashboard
-            items={dashboard.items}
-            layouts={dashboard.layouts}
-            currentLayouts={dashboard.currentLayouts}
-            breakpoint={dashboard.breakpoint}
-            onLayoutChange={dashboard.handleLayoutChange}
-            onBreakpointChange={dashboard.handleBreakpointChange}
-            updateItemConfig={dashboard.updateItemConfig}
-            updateItemMappings={dashboard.updateItemMappings}
-            removeItem={dashboard.removeItem}
-          />
-          <FabClusterProvider>
-            <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
-            <FlightsFab />
-            <SerialFab />
-            <StationLinkFab />
-          </FabClusterProvider>
-          <SignalLossIndicator />
-        </Layout>
-      </OverlayProvider>
-    </SerialDeviceProvider>
+    <ScreenProvider value="main">
+    <SaveProfileProvider service={saveProfileService}>
+      <GoNoGoHostProvider service={goNoGoHost}>
+      <ScopedFogMaskCache store={fogMaskStore}>
+        <SerialDeviceProvider service={serialService}>
+          <OverlayProvider addItem={dashboard.addItem}>
+            <Layout>
+              <Dashboard
+                items={dashboard.items}
+                layouts={dashboard.layouts}
+                currentLayouts={dashboard.currentLayouts}
+                breakpoint={dashboard.breakpoint}
+                onLayoutChange={dashboard.handleLayoutChange}
+                onBreakpointChange={dashboard.handleBreakpointChange}
+                updateItemConfig={dashboard.updateItemConfig}
+                updateItemMappings={dashboard.updateItemMappings}
+                removeItem={dashboard.removeItem}
+              />
+              <FabClusterProvider>
+                <ComponentOverlay currentLayouts={dashboard.currentLayouts} />
+                <FlightsFab />
+                <SerialFab />
+                <StationLinkFab />
+                <SaveProfilesFab />
+              </FabClusterProvider>
+              <SignalLossIndicator />
+            </Layout>
+          </OverlayProvider>
+        </SerialDeviceProvider>
+      </ScopedFogMaskCache>
+      </GoNoGoHostProvider>
+    </SaveProfileProvider>
+    </ScreenProvider>
+  );
+}
+
+// Thin adapter that reads the active profile from the save-profile context
+// and re-binds the fog cache to it. Lives here rather than in @gonogo/data
+// so the data package stays ignorant of save-profile concerns.
+function ScopedFogMaskCache({
+  store,
+  children,
+}: {
+  store: FogMaskStore;
+  children: ReactNode;
+}) {
+  const profile = useActiveProfile();
+  return (
+    <FogMaskCacheProvider store={store} profileId={profile.id}>
+      {children}
+    </FogMaskCacheProvider>
   );
 }
 

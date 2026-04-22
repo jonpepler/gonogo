@@ -203,106 +203,127 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
   // here since no domain-specific unit applies.
   "r.resource[LiquidFuel]": {
     label: "Liquid Fuel",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceMax[LiquidFuel]": {
     label: "Liquid Fuel (max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrent[LiquidFuel]": {
     label: "Liquid Fuel (stage)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrentMax[LiquidFuel]": {
     label: "Liquid Fuel (stage max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
 
   "r.resource[Oxidizer]": {
     label: "Oxidizer",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceMax[Oxidizer]": {
     label: "Oxidizer (max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrent[Oxidizer]": {
     label: "Oxidizer (stage)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrentMax[Oxidizer]": {
     label: "Oxidizer (stage max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
 
   "r.resource[MonoPropellant]": {
     label: "Monopropellant (RCS)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceMax[MonoPropellant]": {
     label: "Monopropellant max",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrent[MonoPropellant]": {
     label: "Monopropellant (stage)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrentMax[MonoPropellant]": {
     label: "Monopropellant (stage max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
 
   "r.resource[XenonGas]": {
     label: "Xenon Gas",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceMax[XenonGas]": {
     label: "Xenon Gas (max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrent[XenonGas]": {
     label: "Xenon Gas (stage)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrentMax[XenonGas]": {
     label: "Xenon Gas (stage max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
 
   "r.resource[ElectricCharge]": {
     label: "Electric Charge",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceMax[ElectricCharge]": {
     label: "Electric Charge (max)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrent[ElectricCharge]": {
     label: "Electric Charge (stage)",
-    unit: "raw",
+    unit: "units",
     group: "Resources",
   },
   "r.resourceCurrentMax[ElectricCharge]": {
     label: "Electric Charge (stage max)",
-    unit: "raw",
+    unit: "units",
+    group: "Resources",
+  },
+
+  "r.resource[SolidFuel]": {
+    label: "Solid Fuel",
+    unit: "units",
+    group: "Resources",
+  },
+  "r.resourceMax[SolidFuel]": {
+    label: "Solid Fuel (max)",
+    unit: "units",
+    group: "Resources",
+  },
+  "r.resourceCurrent[SolidFuel]": {
+    label: "Solid Fuel (stage)",
+    unit: "units",
+    group: "Resources",
+  },
+  "r.resourceCurrentMax[SolidFuel]": {
+    label: "Solid Fuel (stage max)",
+    unit: "units",
     group: "Resources",
   },
 

@@ -33,6 +33,10 @@ export type Unit =
   | "kPa"
   | "Pa"
   | "g"
+  // "units" covers KSP's dimensionless stock-resource quantities (fuel,
+  // oxidiser, monoprop, electric charge…). They're numeric and graphable
+  // but have no real SI unit.
+  | "units"
   | "bool"
   | "enum"
   | "raw";

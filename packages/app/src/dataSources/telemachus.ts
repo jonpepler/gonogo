@@ -138,6 +138,10 @@ const TELEMACHUS_KEYS: DataKey[] = [
   { key: "r.resourceMax[ElectricCharge]" },
   { key: "r.resourceCurrent[ElectricCharge]" },
   { key: "r.resourceCurrentMax[ElectricCharge]" },
+  { key: "r.resource[SolidFuel]" },
+  { key: "r.resourceMax[SolidFuel]" },
+  { key: "r.resourceCurrent[SolidFuel]" },
+  { key: "r.resourceCurrentMax[SolidFuel]" },
   // Stage info — `dv.stages` is the whole-vessel complex object, so one
   // subscription covers all stages regardless of count. Consumers project
   // the field they want (fuelMass, deltaVVac, etc.) client-side.

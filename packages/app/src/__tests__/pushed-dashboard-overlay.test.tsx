@@ -2,6 +2,8 @@ import {
   type ComponentDefinition,
   clearRegistry,
   registerComponent,
+  useActionInput,
+  useDashboardItemId,
 } from "@gonogo/core";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -135,6 +137,49 @@ describe("PushedDashboardOverlay", () => {
       ).not.toBeInTheDocument();
     });
     expect(host.dismiss).toHaveBeenCalledWith("peer-A", "w1");
+  });
+
+  it("provides DashboardItemContext so pushed widgets can call useActionInput without crashing", () => {
+    // Regression: MapView / ActionGroup etc. read useDashboardItemId through
+    // useActionInput. Without the context wrapper, pushing them from a
+    // station threw on the main screen.
+    const ACTIONS = [
+      { id: "toggle", label: "Toggle", accepts: ["button"] as const },
+    ] as const;
+    function ContextDependentWidget() {
+      const instanceId = useDashboardItemId();
+      useActionInput<typeof ACTIONS>({ toggle: () => {} });
+      return <div data-testid="ctxid">{instanceId}</div>;
+    }
+    registerComponent({
+      id: "ctx-widget",
+      name: "Ctx widget",
+      description: "",
+      tags: [],
+      component: ContextDependentWidget,
+      dataRequirements: [],
+      behaviors: [],
+      defaultConfig: {},
+      actions: ACTIONS,
+    } as unknown as ComponentDefinition);
+
+    const host = makeFakeHost([
+      {
+        peerId: "peer-A",
+        widgetInstanceId: "ctx-1",
+        componentId: "ctx-widget",
+        config: {},
+        width: 4,
+        height: 3,
+        stationName: "LDO",
+      },
+    ]);
+    render(
+      <PushHostProvider service={host}>
+        <PushedDashboardOverlay />
+      </PushHostProvider>,
+    );
+    expect(screen.getByTestId("ctxid").textContent).toBe("ctx-1");
   });
 
   it("shows a fallback when the pushed componentId isn't registered on main", () => {

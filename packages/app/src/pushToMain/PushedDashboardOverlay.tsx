@@ -1,4 +1,8 @@
-import { getComponent } from "@gonogo/core";
+import {
+  DashboardItemContext,
+  ErrorBoundary,
+  getComponent,
+} from "@gonogo/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { usePushedWidgets, usePushHost } from "./PushHostContext";
@@ -147,12 +151,29 @@ function PushedItem({
       </ItemHeader>
       <ItemBody>
         {def ? (
-          <def.component
-            id={placement.widget.widgetInstanceId}
-            config={placement.widget.config}
-            w={placement.w}
-            h={placement.h}
-          />
+          // DashboardItemContext is required by widgets that consume
+          // `useActionInput` (MapView, ActionGroup, …) — the station's
+          // copy has it; our mirror on main has to provide it too or the
+          // hook throws. Actions won't actually fire here since there's
+          // no main-side InputDispatcher bound to this instance id.
+          <DashboardItemContext.Provider
+            value={{ instanceId: placement.widget.widgetInstanceId }}
+          >
+            <ErrorBoundary
+              fallback={(error) => (
+                <MissingComponent>
+                  {def.name} crashed: {error.message || String(error)}
+                </MissingComponent>
+              )}
+            >
+              <def.component
+                id={placement.widget.widgetInstanceId}
+                config={placement.widget.config}
+                w={placement.w}
+                h={placement.h}
+              />
+            </ErrorBoundary>
+          </DashboardItemContext.Provider>
         ) : (
           <MissingComponent>
             Component "{placement.widget.componentId}" not registered on this

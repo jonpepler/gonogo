@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { textBuffer168 } from "./textBuffer168";
+import { textBuffer, textBuffer168 } from "./textBuffer";
 
 const LINE_WIDTH = 21;
 const LINE_COUNT = 8;
 const BLANK = " ".repeat(LINE_WIDTH);
 
-describe("text-buffer-168 render style", () => {
+describe("text-buffer-168 render style (backward-compat alias)", () => {
   it("returns 8 lines of 21 characters separated by newlines", () => {
     const out = textBuffer168.render({});
     expect(typeof out).toBe("string");
@@ -62,3 +62,43 @@ describe("text-buffer-168 render style", () => {
 function padTo(s: string): string {
   return s.padEnd(LINE_WIDTH, " ");
 }
+
+describe("text-buffer render style (parameterised)", () => {
+  it("defaults to 21×8 when no config is provided", () => {
+    const out = textBuffer.render({}) as string;
+    const lines = out.split("\n");
+    expect(lines).toHaveLength(8);
+    for (const line of lines) expect(line).toHaveLength(21);
+  });
+
+  it("uses config.w / config.h when provided", () => {
+    const out = textBuffer.render(
+      { A: 1, B: 2, C: 3, D: 4, E: 5 },
+      {
+        w: 10,
+        h: 4,
+      },
+    ) as string;
+    const lines = out.split("\n");
+    expect(lines).toHaveLength(4);
+    for (const line of lines) expect(line).toHaveLength(10);
+    // E is dropped — only 4 rows.
+    expect(lines[0]).toBe("A 1".padEnd(10, " "));
+    expect(lines[3]).toBe("D 4".padEnd(10, " "));
+  });
+
+  it("ignores non-numeric / zero / negative dimensions and falls back to defaults", () => {
+    const a = textBuffer.render({}, { w: 0, h: -3 }) as string;
+    const b = textBuffer.render({}, { w: "nope", h: null }) as string;
+    expect(a.split("\n")[0]).toHaveLength(21);
+    expect(a.split("\n")).toHaveLength(8);
+    expect(b.split("\n")[0]).toHaveLength(21);
+  });
+
+  it("floors fractional dimensions", () => {
+    const out = textBuffer.render({}, { w: 5.9, h: 3.1 }) as string;
+    const lines = out.split("\n");
+    expect(lines).toHaveLength(3);
+    for (const line of lines) expect(line).toHaveLength(5);
+  });
+});

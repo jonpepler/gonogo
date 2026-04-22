@@ -2,8 +2,9 @@ export * from "./bindings";
 export * from "./InputDispatcher";
 export { InputMappingTab } from "./InputMappingTab";
 export { MockSerialPort, MockWebSerial } from "./mocks/mockWebSerial";
+export * from "./parsers/jsonState";
 export * from "./registry";
-export * from "./renderStyles/textBuffer168";
+export * from "./renderStyles/textBuffer";
 export {
   SerialDeviceProvider,
   useSerialDeviceService,

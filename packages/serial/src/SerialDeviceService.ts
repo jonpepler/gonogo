@@ -3,7 +3,7 @@ import { getSerialRenderStyle } from "./registry";
 // Side-effect import: built-in render styles self-register on load so the
 // service can resolve `text-buffer-168` without the caller opting in.
 // Do not remove without first moving registration elsewhere.
-import "./renderStyles/textBuffer168";
+import "./renderStyles/textBuffer";
 import { defaultVirtualDevice, VIRTUAL_CONTROLLER_TYPE } from "./seeds";
 import type {
   DeviceTransport,
@@ -12,7 +12,12 @@ import type {
 } from "./transports/DeviceTransport";
 import { VirtualTransport } from "./transports/VirtualTransport";
 import { WebSerialTransport } from "./transports/WebSerialTransport";
-import type { DeviceInstance, DeviceRenderStyle, DeviceType } from "./types";
+import type {
+  DeviceInput,
+  DeviceInstance,
+  DeviceRenderStyle,
+  DeviceType,
+} from "./types";
 
 const DEVICE_TYPES_KEY = "gonogo.serial.device-types";
 const DEFAULT_RENDER_DEBOUNCE_MS = 100;
@@ -39,6 +44,7 @@ interface ManagedDevice {
   transport: DeviceTransport;
   unsubInput: () => void;
   unsubStatus: () => void;
+  unsubSchema: (() => void) | null;
   frameState: Record<string, unknown>;
   renderTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -298,20 +304,68 @@ export class SerialDeviceService {
         cb(instance.id, status, err);
       });
     });
+    const unsubSchema = transport.onSchema
+      ? transport.onSchema((update) => {
+          this.handleSchemaUpdate(instance.id, update);
+        })
+      : null;
     this.managed.set(instance.id, {
       instance,
       deviceType,
       transport,
       unsubInput,
       unsubStatus,
+      unsubSchema,
       frameState: {},
       renderTimer: null,
     });
   }
 
+  /**
+   * Apply a device-announced schema update to the managed type: merges
+   * newly-reported inputs, updates renderStyleConfig for txt screens,
+   * marks the type as device-authored, and swaps the transport's cached
+   * reference so the next tick parses against the new shape.
+   */
+  private handleSchemaUpdate(
+    deviceId: string,
+    update: {
+      inputs?: DeviceInput[] | null;
+      screen?: { type: string; [key: string]: unknown } | null;
+    },
+  ): void {
+    const managed = this.managed.get(deviceId);
+    if (!managed) return;
+    const current = managed.deviceType;
+    let changed = false;
+    const next: DeviceType = { ...current, authoredBy: "device" };
+    if (current.authoredBy !== "device") changed = true;
+
+    if (update.inputs) {
+      next.inputs = update.inputs;
+      changed = true;
+    }
+    if (update.screen) {
+      const { type: screenType, ...rest } = update.screen;
+      if (screenType === "txt") {
+        next.renderStyleId = "text-buffer";
+        next.renderStyleConfig = rest;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+
+    this.deviceTypes.set(next.id, next);
+    managed.deviceType = next;
+    managed.transport.updateDeviceType?.(next);
+    this.saveDeviceTypes();
+    this.emitDeviceTypesChange();
+  }
+
   private async teardown(managed: ManagedDevice): Promise<void> {
     managed.unsubInput();
     managed.unsubStatus();
+    managed.unsubSchema?.();
     if (managed.renderTimer !== null) {
       clearTimeout(managed.renderTimer);
       managed.renderTimer = null;
@@ -340,7 +394,10 @@ export class SerialDeviceService {
     const style: DeviceRenderStyle | undefined = getSerialRenderStyle(styleId);
     if (!style) return;
     try {
-      const frame = style.render(managed.frameState);
+      const frame = style.render(
+        managed.frameState,
+        managed.deviceType.renderStyleConfig,
+      );
       void managed.transport.write(frame);
     } catch (err) {
       logger.error(

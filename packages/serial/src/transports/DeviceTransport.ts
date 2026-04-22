@@ -10,6 +10,8 @@
 // - VirtualTransport bypasses parsing — widgets and tests inject normalised
 //   events directly.
 
+import type { DeviceInput, DeviceType } from "../types";
+
 export type TransportStatus = "disconnected" | "connected" | "error";
 
 export type InputValue = boolean | number;
@@ -17,6 +19,17 @@ export type InputValue = boolean | number;
 export interface InputEvent {
   inputId: string;
   value: InputValue;
+}
+
+/**
+ * Emitted by the json-state parser path when a device reports structural
+ * information — new inputs, an updated min/max, or a screen declaration.
+ * The service upserts the owning DeviceType; `null` fields mean "no change
+ * this tick" and are ignored.
+ */
+export interface SchemaUpdate {
+  inputs?: DeviceInput[] | null;
+  screen?: { type: string; [key: string]: unknown } | null;
 }
 
 export interface DeviceTransport {
@@ -27,5 +40,17 @@ export interface DeviceTransport {
   write(data: string | Uint8Array): Promise<void>;
   onInput(cb: (event: InputEvent) => void): () => void;
   onStatus(cb: (status: TransportStatus, err?: unknown) => void): () => void;
+  /**
+   * Fires when a json-state device announces or updates its schema. Default
+   * implementation (e.g. VirtualTransport) may never fire this — it's
+   * harmless to subscribe anyway.
+   */
+  onSchema?(cb: (update: SchemaUpdate) => void): () => void;
+  /**
+   * Swap the cached DeviceType — called by the service when an incoming
+   * schema update changes the type's inputs or renderStyleConfig, so the
+   * next tick's parser sees the new shape.
+   */
+  updateDeviceType?(type: DeviceType): void;
   readonly status: TransportStatus;
 }

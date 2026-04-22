@@ -207,3 +207,148 @@ describe("SerialDeviceService seeding", () => {
     expect(second.getDeviceType("virtual-controller")).toBeUndefined();
   });
 });
+
+describe("SerialDeviceService — json-state schema updates", () => {
+  /**
+   * Fake transport that pretends to be a WebSerialTransport: it hosts
+   * onSchema listeners and lets the test fire schema updates manually.
+   */
+  class FakeJsonTransport {
+    readonly id: string;
+    status = "connected" as const;
+    type: DeviceType;
+    lastFrame: string | Uint8Array | null = null;
+
+    private inputSubs = new Set<
+      (e: { inputId: string; value: boolean | number }) => void
+    >();
+    private statusSubs = new Set<
+      (s: "disconnected" | "connected" | "error") => void
+    >();
+    private schemaSubs = new Set<
+      (u: {
+        inputs?: DeviceInput[] | null;
+        screen?: { type: string; [k: string]: unknown } | null;
+      }) => void
+    >();
+
+    constructor(id: string, type: DeviceType) {
+      this.id = id;
+      this.type = type;
+    }
+
+    async connect() {}
+    async disconnect() {}
+    async write(data: string | Uint8Array) {
+      this.lastFrame = data;
+    }
+    onInput(cb: (e: { inputId: string; value: boolean | number }) => void) {
+      this.inputSubs.add(cb);
+      return () => this.inputSubs.delete(cb);
+    }
+    onStatus(cb: (s: "disconnected" | "connected" | "error") => void) {
+      this.statusSubs.add(cb);
+      return () => this.statusSubs.delete(cb);
+    }
+    onSchema(
+      cb: (u: {
+        inputs?: DeviceInput[] | null;
+        screen?: { type: string; [k: string]: unknown } | null;
+      }) => void,
+    ) {
+      this.schemaSubs.add(cb);
+      return () => this.schemaSubs.delete(cb);
+    }
+    updateDeviceType(t: DeviceType) {
+      this.type = t;
+    }
+
+    // test-only: drive a schema update as if it had come from the wire
+    fireSchema(update: {
+      inputs?: DeviceInput[] | null;
+      screen?: { type: string; [k: string]: unknown } | null;
+    }) {
+      for (const cb of this.schemaSubs) cb(update);
+    }
+  }
+
+  const BARE_JSON_TYPE: DeviceType = {
+    id: "json-panel",
+    name: "JSON Panel",
+    parser: "json-state",
+    inputs: [],
+  };
+  const JSON_INSTANCE: DeviceInstance = {
+    id: "jp1",
+    name: "JSON Panel 1",
+    typeId: BARE_JSON_TYPE.id,
+    transport: "web-serial",
+  };
+
+  async function makeWithFakeTransport(): Promise<{
+    svc: SerialDeviceService;
+    transport: FakeJsonTransport;
+  }> {
+    let transport: FakeJsonTransport | null = null;
+    const storage = memoryStorage();
+    const svc = new SerialDeviceService({
+      screenKey: "json-test",
+      storage,
+      renderDebounceMs: 0,
+      transportFactory: (instance, type) => {
+        const t = new FakeJsonTransport(instance.id, type);
+        transport = t;
+        return t as unknown as ReturnType<
+          NonNullable<
+            ConstructorParameters<
+              typeof SerialDeviceService
+            >[0]["transportFactory"]
+          >
+        >;
+      },
+    });
+    for (const d of svc.getDevices()) await svc.removeDevice(d.id);
+    for (const t of svc.getDeviceTypes()) await svc.removeDeviceType(t.id);
+    svc.upsertDeviceType(BARE_JSON_TYPE);
+    svc.addDevice(JSON_INSTANCE);
+    if (!transport) throw new Error("transport factory did not run");
+    return { svc, transport };
+  }
+
+  it("upserts newly-reported inputs onto the type and flips authoredBy to device", async () => {
+    const { svc, transport } = await makeWithFakeTransport();
+    transport.fireSchema({
+      inputs: [
+        { id: "A", name: "A", kind: "button" },
+        { id: "X", name: "X", kind: "analog", min: 0, max: 1023 },
+      ],
+      screen: null,
+    });
+    const type = svc.getDeviceType(BARE_JSON_TYPE.id);
+    expect(type?.inputs).toHaveLength(2);
+    expect(type?.authoredBy).toBe("device");
+    // Transport's cached type was also updated.
+    expect(transport.type.inputs).toHaveLength(2);
+  });
+
+  it("wires the text-buffer render style + config from a txt screen block", async () => {
+    const { svc, transport } = await makeWithFakeTransport();
+    transport.fireSchema({
+      inputs: null,
+      screen: { type: "txt", w: 40, h: 4 },
+    });
+    const type = svc.getDeviceType(BARE_JSON_TYPE.id);
+    expect(type?.renderStyleId).toBe("text-buffer");
+    expect(type?.renderStyleConfig).toEqual({ w: 40, h: 4 });
+  });
+
+  it("ignores unknown screen types (leaves renderStyleId untouched)", async () => {
+    const { svc, transport } = await makeWithFakeTransport();
+    transport.fireSchema({
+      inputs: null,
+      screen: { type: "rgb", w: 160, h: 120 },
+    });
+    const type = svc.getDeviceType(BARE_JSON_TYPE.id);
+    expect(type?.renderStyleId).toBeUndefined();
+  });
+});

@@ -1,6 +1,7 @@
 import {
   Button,
   Field,
+  FieldHint,
   FieldLabel,
   FormActions,
   GhostButton,
@@ -11,7 +12,13 @@ import {
 import { useMemo, useState } from "react";
 import styled from "styled-components";
 import { getSerialRenderStyles } from "../registry";
-import type { DeviceInput, DeviceInputKind, DeviceType } from "../types";
+import type {
+  DeviceInput,
+  DeviceInputKind,
+  DeviceParserId,
+  DeviceType,
+} from "../types";
+import { ProtocolReferenceButton } from "./ProtocolReferenceModal";
 
 interface Props {
   initial?: DeviceType;
@@ -43,6 +50,9 @@ export function DeviceTypeEditor({
   const renderStyles = useMemo(() => getSerialRenderStyles(), []);
 
   const [name, setName] = useState(initial?.name ?? "");
+  const [parser, setParser] = useState<DeviceParserId>(
+    initial?.parser ?? "char-position",
+  );
   const [renderStyleId, setRenderStyleId] = useState(
     initial?.renderStyleId ?? "",
   );
@@ -51,6 +61,8 @@ export function DeviceTypeEditor({
       { id: "a", name: "A", kind: "button", offset: 1, length: 1 },
     ],
   );
+
+  const isDeviceAuthored = parser === "json-state";
 
   const updateInput = (idx: number, patch: Partial<DraftInput>) => {
     setInputs((prev) =>
@@ -80,17 +92,24 @@ export function DeviceTypeEditor({
     const type: DeviceType = {
       id: initial?.id ?? slug(name),
       name: name.trim(),
-      parser: "char-position",
+      parser,
       renderStyleId: renderStyleId || undefined,
-      inputs: inputs.map((i) => ({
-        id: i.id,
-        name: i.name,
-        kind: i.kind,
-        offset: i.offset,
-        length: i.length,
-        min: i.min,
-        max: i.max,
-      })),
+      // For json-state types we preserve whatever inputs the device has
+      // already reported; the editor doesn't let the user edit them. For
+      // new json-state types this starts empty and fills on first connect.
+      inputs: isDeviceAuthored
+        ? (initial?.inputs ?? [])
+        : inputs.map((i) => ({
+            id: i.id,
+            name: i.name,
+            kind: i.kind,
+            offset: i.offset,
+            length: i.length,
+            min: i.min,
+            max: i.max,
+          })),
+      renderStyleConfig: initial?.renderStyleConfig,
+      authoredBy: initial?.authoredBy,
     };
     onSave(type);
   };
@@ -105,6 +124,28 @@ export function DeviceTypeEditor({
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Cockpit Panel"
         />
+      </Field>
+      <Field>
+        <ParserHeader>
+          <FieldLabel htmlFor="type-parser">Parser</FieldLabel>
+          <ProtocolReferenceButton parser={parser} />
+        </ParserHeader>
+        <Select
+          id="type-parser"
+          value={parser}
+          onChange={(e) => setParser(e.target.value as DeviceParserId)}
+        >
+          <option value="char-position">
+            Character position (fixed-width)
+          </option>
+          <option value="json-state">JSON state (self-describing)</option>
+        </Select>
+        {isDeviceAuthored && (
+          <FieldHint>
+            Device-authored: the device reports its own inputs and screen on
+            connect. You can't edit the input list here.
+          </FieldHint>
+        )}
       </Field>
       <Field>
         <FieldLabel htmlFor="type-render">Render Style</FieldLabel>
@@ -124,100 +165,106 @@ export function DeviceTypeEditor({
 
       <InputsHeader>
         <FieldLabel>Inputs</FieldLabel>
-        <Button type="button" onClick={addInput}>
-          + add input
-        </Button>
+        {!isDeviceAuthored && (
+          <Button type="button" onClick={addInput}>
+            + add input
+          </Button>
+        )}
       </InputsHeader>
-      {inputs.map((input, idx) => (
-        <InputRow key={input.id}>
-          <SmallField>
-            <FieldLabel htmlFor={`input-id-${idx}`}>ID</FieldLabel>
-            <Input
-              id={`input-id-${idx}`}
-              value={input.id}
-              onChange={(e) => updateInput(idx, { id: e.target.value })}
-            />
-          </SmallField>
-          <SmallField>
-            <FieldLabel htmlFor={`input-name-${idx}`}>Name</FieldLabel>
-            <Input
-              id={`input-name-${idx}`}
-              value={input.name}
-              onChange={(e) => updateInput(idx, { name: e.target.value })}
-            />
-          </SmallField>
-          <SmallField>
-            <FieldLabel htmlFor={`input-kind-${idx}`}>Kind</FieldLabel>
-            <Select
-              id={`input-kind-${idx}`}
-              value={input.kind}
-              onChange={(e) =>
-                updateInput(idx, {
-                  kind: e.target.value as DeviceInputKind,
-                })
-              }
+      {isDeviceAuthored ? (
+        <DiscoveredInputs inputs={initial?.inputs ?? []} />
+      ) : null}
+      {!isDeviceAuthored &&
+        inputs.map((input, idx) => (
+          <InputRow key={input.id}>
+            <SmallField>
+              <FieldLabel htmlFor={`input-id-${idx}`}>ID</FieldLabel>
+              <Input
+                id={`input-id-${idx}`}
+                value={input.id}
+                onChange={(e) => updateInput(idx, { id: e.target.value })}
+              />
+            </SmallField>
+            <SmallField>
+              <FieldLabel htmlFor={`input-name-${idx}`}>Name</FieldLabel>
+              <Input
+                id={`input-name-${idx}`}
+                value={input.name}
+                onChange={(e) => updateInput(idx, { name: e.target.value })}
+              />
+            </SmallField>
+            <SmallField>
+              <FieldLabel htmlFor={`input-kind-${idx}`}>Kind</FieldLabel>
+              <Select
+                id={`input-kind-${idx}`}
+                value={input.kind}
+                onChange={(e) =>
+                  updateInput(idx, {
+                    kind: e.target.value as DeviceInputKind,
+                  })
+                }
+              >
+                <option value="button">button</option>
+                <option value="analog">analog</option>
+              </Select>
+            </SmallField>
+            <TinyField>
+              <FieldLabel htmlFor={`input-offset-${idx}`}>Offset</FieldLabel>
+              <Input
+                id={`input-offset-${idx}`}
+                type="number"
+                value={input.offset ?? ""}
+                onChange={(e) =>
+                  updateInput(idx, { offset: Number(e.target.value) })
+                }
+              />
+            </TinyField>
+            <TinyField>
+              <FieldLabel htmlFor={`input-length-${idx}`}>Length</FieldLabel>
+              <Input
+                id={`input-length-${idx}`}
+                type="number"
+                value={input.length ?? ""}
+                onChange={(e) =>
+                  updateInput(idx, { length: Number(e.target.value) })
+                }
+              />
+            </TinyField>
+            {input.kind === "analog" && (
+              <>
+                <TinyField>
+                  <FieldLabel htmlFor={`input-min-${idx}`}>Min</FieldLabel>
+                  <Input
+                    id={`input-min-${idx}`}
+                    type="number"
+                    value={input.min ?? ""}
+                    onChange={(e) =>
+                      updateInput(idx, { min: Number(e.target.value) })
+                    }
+                  />
+                </TinyField>
+                <TinyField>
+                  <FieldLabel htmlFor={`input-max-${idx}`}>Max</FieldLabel>
+                  <Input
+                    id={`input-max-${idx}`}
+                    type="number"
+                    value={input.max ?? ""}
+                    onChange={(e) =>
+                      updateInput(idx, { max: Number(e.target.value) })
+                    }
+                  />
+                </TinyField>
+              </>
+            )}
+            <RemoveBtn
+              type="button"
+              onClick={() => removeInput(idx)}
+              aria-label={`Remove input ${input.name || input.id}`}
             >
-              <option value="button">button</option>
-              <option value="analog">analog</option>
-            </Select>
-          </SmallField>
-          <TinyField>
-            <FieldLabel htmlFor={`input-offset-${idx}`}>Offset</FieldLabel>
-            <Input
-              id={`input-offset-${idx}`}
-              type="number"
-              value={input.offset ?? ""}
-              onChange={(e) =>
-                updateInput(idx, { offset: Number(e.target.value) })
-              }
-            />
-          </TinyField>
-          <TinyField>
-            <FieldLabel htmlFor={`input-length-${idx}`}>Length</FieldLabel>
-            <Input
-              id={`input-length-${idx}`}
-              type="number"
-              value={input.length ?? ""}
-              onChange={(e) =>
-                updateInput(idx, { length: Number(e.target.value) })
-              }
-            />
-          </TinyField>
-          {input.kind === "analog" && (
-            <>
-              <TinyField>
-                <FieldLabel htmlFor={`input-min-${idx}`}>Min</FieldLabel>
-                <Input
-                  id={`input-min-${idx}`}
-                  type="number"
-                  value={input.min ?? ""}
-                  onChange={(e) =>
-                    updateInput(idx, { min: Number(e.target.value) })
-                  }
-                />
-              </TinyField>
-              <TinyField>
-                <FieldLabel htmlFor={`input-max-${idx}`}>Max</FieldLabel>
-                <Input
-                  id={`input-max-${idx}`}
-                  type="number"
-                  value={input.max ?? ""}
-                  onChange={(e) =>
-                    updateInput(idx, { max: Number(e.target.value) })
-                  }
-                />
-              </TinyField>
-            </>
-          )}
-          <RemoveBtn
-            type="button"
-            onClick={() => removeInput(idx)}
-            aria-label={`Remove input ${input.name || input.id}`}
-          >
-            ✕
-          </RemoveBtn>
-        </InputRow>
-      ))}
+              ✕
+            </RemoveBtn>
+          </InputRow>
+        ))}
 
       <FormActions>
         <GhostButton onClick={onCancel}>Cancel</GhostButton>
@@ -227,10 +274,78 @@ export function DeviceTypeEditor({
   );
 }
 
+function DiscoveredInputs({ inputs }: Readonly<{ inputs: DeviceInput[] }>) {
+  if (inputs.length === 0) {
+    return (
+      <FieldHint>
+        No inputs reported yet. Connect the device — the inputs it announces
+        will show up here.
+      </FieldHint>
+    );
+  }
+  return (
+    <DiscoveredList>
+      {inputs.map((input) => (
+        <DiscoveredRow key={input.id}>
+          <DiscoveredKind>{input.kind}</DiscoveredKind>
+          <DiscoveredId>{input.id}</DiscoveredId>
+          {input.kind === "analog" && (
+            <DiscoveredRange>
+              {input.min ?? "?"}–{input.max ?? "?"}
+            </DiscoveredRange>
+          )}
+        </DiscoveredRow>
+      ))}
+    </DiscoveredList>
+  );
+}
+
 const Wrap = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+`;
+
+const ParserHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const DiscoveredList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const DiscoveredRow = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #141414;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 11px;
+`;
+
+const DiscoveredKind = styled.span`
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 9px;
+  color: #666;
+  flex: 0 0 52px;
+`;
+
+const DiscoveredId = styled.span`
+  color: #ccc;
+  flex: 1 1 auto;
+`;
+
+const DiscoveredRange = styled.span`
+  color: #6af;
+  font-size: 10px;
 `;
 
 const InputsHeader = styled.div`

@@ -1,9 +1,11 @@
 import { logger } from "@gonogo/core";
 import { parseCharPosition } from "../parsers/charPosition";
+import { parseJsonState } from "../parsers/jsonState";
 import type { DeviceType } from "../types";
 import type {
   DeviceTransport,
   InputEvent,
+  SchemaUpdate,
   TransportStatus,
 } from "./DeviceTransport";
 
@@ -37,6 +39,7 @@ export class WebSerialTransport implements DeviceTransport {
   private buffer = "";
 
   private inputListeners = new Set<(event: InputEvent) => void>();
+  private schemaListeners = new Set<(update: SchemaUpdate) => void>();
   private statusListeners = new Set<
     (status: TransportStatus, err?: unknown) => void
   >();
@@ -129,6 +132,17 @@ export class WebSerialTransport implements DeviceTransport {
     };
   }
 
+  onSchema(cb: (update: SchemaUpdate) => void): () => void {
+    this.schemaListeners.add(cb);
+    return () => {
+      this.schemaListeners.delete(cb);
+    };
+  }
+
+  updateDeviceType(type: DeviceType): void {
+    this.deviceType = type;
+  }
+
   private async readLoop(): Promise<void> {
     const reader = this.reader;
     if (!reader) return;
@@ -152,12 +166,31 @@ export class WebSerialTransport implements DeviceTransport {
   }
 
   private handleLine(line: string): void {
-    if (this.deviceType.parser !== "char-position") return;
-    const events = parseCharPosition(line, this.deviceType.inputs);
-    for (const event of events) {
-      this.inputListeners.forEach((cb) => {
-        cb(event);
-      });
+    if (this.deviceType.parser === "char-position") {
+      const events = parseCharPosition(line, this.deviceType.inputs);
+      for (const event of events) {
+        this.inputListeners.forEach((cb) => {
+          cb(event);
+        });
+      }
+      return;
+    }
+    if (this.deviceType.parser === "json-state") {
+      const result = parseJsonState(line, this.deviceType.inputs);
+      if (result.inputsUpdate || result.screenUpdate) {
+        const update: SchemaUpdate = {
+          inputs: result.inputsUpdate,
+          screen: result.screenUpdate,
+        };
+        this.schemaListeners.forEach((cb) => {
+          cb(update);
+        });
+      }
+      for (const event of result.events) {
+        this.inputListeners.forEach((cb) => {
+          cb(event);
+        });
+      }
     }
   }
 

@@ -1,0 +1,427 @@
+import type {
+  ConfigField,
+  DataKey,
+  DataSource,
+  DataSourceStatus,
+} from "@gonogo/core";
+import { logger, registerDataSource } from "@gonogo/core";
+import type { KosData, KosScriptArg } from "@gonogo/data";
+import { parseKosData } from "@gonogo/data";
+import { parseKosMenu, parseListChanged } from "./kos-menu-parser";
+
+export type { KosScriptArg };
+
+export interface KosComputeConfig extends Record<string, unknown> {
+  /** Proxy host (our @gonogo/telnet-proxy server). */
+  host: string;
+  /** Proxy port. */
+  port: number;
+  /** kOS telnet host, as reached from the proxy. */
+  kosHost: string;
+  /** kOS telnet port. */
+  kosPort: number;
+}
+
+const DEFAULT_CONFIG: KosComputeConfig = {
+  host: "localhost",
+  port: 3001,
+  kosHost: "localhost",
+  kosPort: 5410,
+};
+const STORAGE_KEY = "gonogo.datasource.kos-compute";
+
+/** Milliseconds a single executeScript call will wait for its [KOSDATA] line. */
+const DEFAULT_CALL_TIMEOUT_MS = 10_000;
+
+interface SessionOptions {
+  callTimeoutMs?: number;
+}
+
+export class KosComputeDataSource implements DataSource<KosComputeConfig> {
+  id = "kos-compute";
+  name = "kOS Compute";
+  status: DataSourceStatus = "disconnected";
+  // kOS runs on the vessel; comm blackouts surface as their own errors at
+  // dispatch time, so this source is deliberately exempt from the buffering
+  // signal-loss gate.
+  affectedBySignalLoss = false;
+
+  private cfg: KosComputeConfig;
+  private readonly statusListeners = new Set<
+    (status: DataSourceStatus) => void
+  >();
+  private readonly sessions = new Map<string, KosComputeSession>();
+  private readonly callTimeoutMs: number;
+
+  constructor(config?: KosComputeConfig, opts: SessionOptions = {}) {
+    this.cfg = config ?? this.loadConfig();
+    this.callTimeoutMs = opts.callTimeoutMs ?? DEFAULT_CALL_TIMEOUT_MS;
+  }
+
+  // ── DataSource surface ─────────────────────────────────────────────────
+
+  connect(): Promise<void> {
+    // Sessions open lazily per-CPU on first executeScript. connect() exists
+    // purely to satisfy the DataSource interface.
+    return Promise.resolve();
+  }
+
+  disconnect(): void {
+    for (const s of this.sessions.values()) s.close();
+    this.sessions.clear();
+    this.setStatus("disconnected");
+  }
+
+  schema(): DataKey[] {
+    return [];
+  }
+
+  subscribe(): () => void {
+    return () => {};
+  }
+
+  onStatusChange(cb: (status: DataSourceStatus) => void): () => void {
+    this.statusListeners.add(cb);
+    return () => this.statusListeners.delete(cb);
+  }
+
+  async execute(): Promise<void> {
+    // Widgets use executeScript(cpu, script, args) directly via the hook.
+    // The generic execute(action) channel doesn't carry enough structure.
+    throw new Error(
+      "KosComputeDataSource.execute is not supported; use executeScript instead",
+    );
+  }
+
+  setupInstructions(): string {
+    return "The kOS proxy bridges telnet to WebSocket. Run it locally:\n\n  podman compose up -d\n\n(or: docker compose up -d)\n\nfrom the gonogo project root.";
+  }
+
+  configSchema(): ConfigField[] {
+    return [
+      {
+        key: "host",
+        label: "Proxy Host",
+        type: "text",
+        placeholder: "localhost",
+      },
+      { key: "port", label: "Proxy Port", type: "number", placeholder: "3001" },
+      {
+        key: "kosHost",
+        label: "kOS Host",
+        type: "text",
+        placeholder: "localhost",
+      },
+      {
+        key: "kosPort",
+        label: "kOS Port",
+        type: "number",
+        placeholder: "5410",
+      },
+    ];
+  }
+
+  getConfig(): KosComputeConfig {
+    return { ...this.cfg };
+  }
+
+  configure(config: Record<string, unknown>): void {
+    this.cfg = {
+      host: typeof config.host === "string" ? config.host : this.cfg.host,
+      port:
+        typeof config.port === "number"
+          ? config.port
+          : Number(config.port) || this.cfg.port,
+      kosHost:
+        typeof config.kosHost === "string" ? config.kosHost : this.cfg.kosHost,
+      kosPort:
+        typeof config.kosPort === "number"
+          ? config.kosPort
+          : Number(config.kosPort) || this.cfg.kosPort,
+    };
+    this.saveConfig();
+    // Config change invalidates all existing sessions — next executeScript
+    // opens fresh ones against the new endpoint.
+    this.disconnect();
+  }
+
+  // ── Public widget API ─────────────────────────────────────────────────
+
+  /**
+   * Run a script on the named CPU and resolve with its parsed [KOSDATA]
+   * object. Calls to the same CPU are serialised by a per-session FIFO
+   * queue; calls to different CPUs run in parallel. Rejects if no
+   * [KOSDATA] arrives within the call timeout or the session dies.
+   */
+  executeScript(
+    cpu: string,
+    script: string,
+    args: KosScriptArg[],
+  ): Promise<KosData> {
+    const session = this.getOrCreateSession(cpu);
+    return session.enqueue(script, args);
+  }
+
+  // ── Internals ─────────────────────────────────────────────────────────
+
+  private getOrCreateSession(cpu: string): KosComputeSession {
+    let session = this.sessions.get(cpu);
+    if (session) return session;
+    session = new KosComputeSession({
+      cpu,
+      proxyHost: this.cfg.host,
+      proxyPort: this.cfg.port,
+      kosHost: this.cfg.kosHost,
+      kosPort: this.cfg.kosPort,
+      callTimeoutMs: this.callTimeoutMs,
+      onStatusChange: () => this.recomputeStatus(),
+    });
+    this.sessions.set(cpu, session);
+    this.recomputeStatus();
+    return session;
+  }
+
+  private recomputeStatus(): void {
+    if (this.sessions.size === 0) {
+      this.setStatus("disconnected");
+      return;
+    }
+    const states = [...this.sessions.values()].map((s) => s.status);
+    if (states.some((s) => s === "connected")) {
+      this.setStatus("connected");
+    } else if (states.some((s) => s === "reconnecting")) {
+      this.setStatus("reconnecting");
+    } else {
+      this.setStatus("disconnected");
+    }
+  }
+
+  private setStatus(status: DataSourceStatus): void {
+    if (status === this.status) return;
+    this.status = status;
+    this.statusListeners.forEach((cb) => {
+      cb(status);
+    });
+  }
+
+  private loadConfig(): KosComputeConfig {
+    try {
+      const stored = globalThis.localStorage?.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Partial<KosComputeConfig>;
+        return { ...DEFAULT_CONFIG, ...parsed };
+      }
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_CONFIG };
+  }
+
+  private saveConfig(): void {
+    try {
+      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(this.cfg));
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Per-CPU session
+// ---------------------------------------------------------------------------
+
+interface SessionInit {
+  cpu: string;
+  proxyHost: string;
+  proxyPort: number;
+  kosHost: string;
+  kosPort: number;
+  callTimeoutMs: number;
+  onStatusChange: () => void;
+}
+
+interface PendingCall {
+  script: string;
+  args: KosScriptArg[];
+  resolve: (data: KosData) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout> | null;
+}
+
+type SessionState = "menu" | "repl" | "closed";
+
+export class KosComputeSession {
+  status: DataSourceStatus = "disconnected";
+
+  private readonly init: SessionInit;
+  private ws: WebSocket | null = null;
+  private state: SessionState = "menu";
+  private menuBuffer = "";
+  private replBuffer = "";
+  private readonly queue: PendingCall[] = [];
+  private inFlight: PendingCall | null = null;
+
+  constructor(init: SessionInit) {
+    this.init = init;
+  }
+
+  enqueue(script: string, args: KosScriptArg[]): Promise<KosData> {
+    return new Promise<KosData>((resolve, reject) => {
+      const call: PendingCall = { script, args, resolve, reject, timer: null };
+      this.queue.push(call);
+      this.ensureOpen();
+      this.drain();
+    });
+  }
+
+  close(): void {
+    this.failAll(new Error("session closed"));
+    try {
+      this.ws?.close();
+    } catch {
+      /* already closed */
+    }
+    this.ws = null;
+    this.state = "closed";
+    this.setStatus("disconnected");
+  }
+
+  private ensureOpen(): void {
+    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) return;
+    const url = `ws://${this.init.proxyHost}:${this.init.proxyPort}/kos?host=${encodeURIComponent(this.init.kosHost)}&port=${this.init.kosPort}`;
+    const ws = new WebSocket(url);
+    this.ws = ws;
+    this.state = "menu";
+    this.menuBuffer = "";
+    this.replBuffer = "";
+    this.setStatus("reconnecting");
+
+    ws.addEventListener("open", () => {
+      // Stays "reconnecting" until menu auto-select completes.
+    });
+    ws.addEventListener("message", (e) => {
+      const text =
+        typeof (e as MessageEvent).data === "string"
+          ? (e as MessageEvent).data
+          : String((e as MessageEvent).data);
+      this.onMessage(text);
+    });
+    ws.addEventListener("close", () => {
+      this.onClose();
+    });
+    ws.addEventListener("error", () => {
+      logger.warn(`[kos-compute] websocket error on CPU=${this.init.cpu}`);
+    });
+  }
+
+  private onMessage(text: string): void {
+    if (this.state === "menu") {
+      this.handleMenuText(text);
+      return;
+    }
+    if (this.state === "repl") {
+      this.handleReplText(text);
+    }
+  }
+
+  private handleMenuText(text: string): void {
+    if (parseListChanged(text)) this.menuBuffer = "";
+    this.menuBuffer += text;
+    const menu = parseKosMenu(this.menuBuffer);
+    if (menu === null) return;
+    const cpu = menu.cpus.find((c) => c.tagname === this.init.cpu);
+    if (!cpu) return;
+    this.ws?.send(`${cpu.number}\n`);
+    this.state = "repl";
+    this.menuBuffer = "";
+    this.replBuffer = "";
+    this.setStatus("connected");
+    this.drain();
+  }
+
+  private handleReplText(text: string): void {
+    if (parseListChanged(text)) {
+      // CPU list changed — we need to re-select. Active inFlight fails since
+      // the REPL is gone.
+      this.state = "menu";
+      this.menuBuffer = text;
+      this.replBuffer = "";
+      this.setStatus("reconnecting");
+      if (this.inFlight) {
+        this.fail(this.inFlight, new Error("CPU list changed mid-call"));
+        this.inFlight = null;
+      }
+      // Try to auto-select on the same chunk in case it carried the new menu.
+      const menu = parseKosMenu(this.menuBuffer);
+      if (menu !== null) this.handleMenuText("");
+      return;
+    }
+    if (!this.inFlight) return;
+    this.replBuffer += text;
+    const data = parseKosData(this.replBuffer);
+    if (data === null) return;
+    const call = this.inFlight;
+    this.inFlight = null;
+    if (call.timer) clearTimeout(call.timer);
+    call.resolve(data);
+    this.replBuffer = "";
+    this.drain();
+  }
+
+  private onClose(): void {
+    this.failAll(new Error("session disconnected"));
+    this.ws = null;
+    this.state = "closed";
+    this.setStatus("disconnected");
+  }
+
+  private drain(): void {
+    if (this.state !== "repl") return;
+    if (this.inFlight) return;
+    const next = this.queue.shift();
+    if (!next) return;
+    this.inFlight = next;
+    this.replBuffer = "";
+    const argStr = next.args.map(formatArg).join(", ");
+    this.ws?.send(`RUN ${next.script}(${argStr}).\n`);
+    next.timer = setTimeout(() => {
+      if (this.inFlight !== next) return;
+      this.inFlight = null;
+      this.fail(
+        next,
+        new Error(`kOS script "${next.script}" timed out awaiting [KOSDATA]`),
+      );
+      // Move to the next queued call even though this one timed out — one
+      // bad script shouldn't wedge the rest.
+      this.drain();
+    }, this.init.callTimeoutMs);
+  }
+
+  private fail(call: PendingCall, err: Error): void {
+    if (call.timer) clearTimeout(call.timer);
+    call.reject(err);
+  }
+
+  private failAll(err: Error): void {
+    if (this.inFlight) {
+      this.fail(this.inFlight, err);
+      this.inFlight = null;
+    }
+    for (const call of this.queue.splice(0)) this.fail(call, err);
+  }
+
+  private setStatus(status: DataSourceStatus): void {
+    if (status === this.status) return;
+    this.status = status;
+    this.init.onStatusChange();
+  }
+}
+
+function formatArg(arg: KosScriptArg): string {
+  if (typeof arg === "number") return String(arg);
+  if (typeof arg === "boolean") return arg ? "true" : "false";
+  // String — escape embedded quotes for kOS's double-quoted string literal.
+  return `"${arg.replace(/"/g, '""')}"`;
+}
+
+registerDataSource(new KosComputeDataSource());

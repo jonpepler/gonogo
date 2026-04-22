@@ -1,0 +1,179 @@
+import { getDataSource } from "@gonogo/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { KosData, KosScriptArg } from "../kos/kos-data-parser";
+
+/**
+ * Widget-level arg: carries the type discriminant so config UIs can pick an
+ * appropriate editor. "telemetry" args are resolved to a concrete number at
+ * dispatch time by reading from the Telemachus data source (task 7).
+ */
+export type KosWidgetArg =
+  | { type: "number"; value: number }
+  | { type: "string"; value: string }
+  | { type: "boolean"; value: boolean }
+  | { type: "telemetry"; key: string };
+
+export interface UseKosWidgetOptions {
+  /** Name of the kOS CPU to target (tagname). */
+  cpu: string;
+  /** Name of the .ks script to run. */
+  script: string;
+  /** Widget-level args, resolved to concrete values at dispatch time. */
+  args: KosWidgetArg[];
+  /** "command" runs on explicit dispatch(); "interval" polls automatically. */
+  mode: "command" | "interval";
+  /** Required when mode === "interval". */
+  intervalMs?: number;
+  /** Data source id. Defaults to "kos-compute". */
+  sourceId?: string;
+  /**
+   * Id of the data source to resolve `{ type: "telemetry" }` args against.
+   * Defaults to "data" (the BufferedDataSource wrapping Telemachus).
+   */
+  telemetrySourceId?: string;
+}
+
+export interface UseKosWidgetResult {
+  /** Most recent successful parse; persists across later failed runs. */
+  data: KosData | null;
+  /** Most recent error; cleared by the next successful run. */
+  error: Error | null;
+  /** True while a script is in flight. */
+  running: boolean;
+  /** Date.now() of the most recent successful run, or null. */
+  lastGoodAt: number | null;
+  /** Command-mode: explicitly trigger a run. No-op in interval mode. */
+  dispatch: () => void;
+}
+
+interface KosExecutor {
+  executeScript(
+    cpu: string,
+    script: string,
+    args: KosScriptArg[],
+  ): Promise<KosData>;
+}
+
+interface TelemetryReader {
+  getLatestValue(key: string): unknown;
+}
+
+function coerceTelemetry(value: unknown): KosScriptArg {
+  if (
+    typeof value === "number" ||
+    typeof value === "string" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+  // Undefined / null / complex types: fall back to 0 rather than failing the
+  // dispatch. Widgets that depend on telemetry should gate their own UI on
+  // data availability before dispatching.
+  return 0;
+}
+
+function resolveArg(
+  arg: KosWidgetArg,
+  telemetry: TelemetryReader | undefined,
+): KosScriptArg {
+  if (arg.type === "telemetry") {
+    return coerceTelemetry(telemetry?.getLatestValue(arg.key));
+  }
+  return arg.value;
+}
+
+function resolveArgs(
+  args: KosWidgetArg[],
+  telemetry: TelemetryReader | undefined,
+): KosScriptArg[] {
+  return args.map((a) => resolveArg(a, telemetry));
+}
+
+export function useKosWidget(opts: UseKosWidgetOptions): UseKosWidgetResult {
+  const sourceId = opts.sourceId ?? "kos-compute";
+  const telemetrySourceId = opts.telemetrySourceId ?? "data";
+  const [data, setData] = useState<KosData | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [running, setRunning] = useState(false);
+  const [lastGoodAt, setLastGoodAt] = useState<number | null>(null);
+
+  // Guard against overlapping dispatches and against state updates after
+  // unmount. Both are refs so React renders don't reset the guard.
+  const pendingRef = useRef(false);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Resolve args fresh on each dispatch so telemetry values (task 7) reflect
+  // the current tick, not the tick the widget mounted on.
+  const argsRef = useRef(opts.args);
+  argsRef.current = opts.args;
+  const cpuRef = useRef(opts.cpu);
+  cpuRef.current = opts.cpu;
+  const scriptRef = useRef(opts.script);
+  scriptRef.current = opts.script;
+
+  const dispatch = useCallback(() => {
+    if (pendingRef.current) return;
+    const source = getDataSource(sourceId) as unknown as
+      | KosExecutor
+      | undefined;
+    if (!source || typeof source.executeScript !== "function") {
+      setError(
+        new Error(`kOS compute data source "${sourceId}" is not registered`),
+      );
+      return;
+    }
+    pendingRef.current = true;
+    setRunning(true);
+    const telemetry = getDataSource(telemetrySourceId) as unknown as
+      | TelemetryReader
+      | undefined;
+    source
+      .executeScript(
+        cpuRef.current,
+        scriptRef.current,
+        resolveArgs(argsRef.current, telemetry),
+      )
+      .then((result) => {
+        if (!mountedRef.current) return;
+        setData(result);
+        setError(null);
+        setLastGoodAt(Date.now());
+      })
+      .catch((err: unknown) => {
+        if (!mountedRef.current) return;
+        setError(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => {
+        pendingRef.current = false;
+        if (mountedRef.current) setRunning(false);
+      });
+  }, [sourceId, telemetrySourceId]);
+
+  // Interval mode: fire immediately on mount, then every intervalMs. The
+  // dispatch() guard (pendingRef) makes overlapping ticks skip silently, so
+  // a slow script can't buffer a backlog of RUNs.
+  const intervalMs = opts.intervalMs;
+  const mode = opts.mode;
+  useEffect(() => {
+    if (mode !== "interval") return;
+    if (!intervalMs || intervalMs <= 0) return;
+    dispatch();
+    const id = setInterval(() => {
+      dispatch();
+    }, intervalMs);
+    return () => {
+      clearInterval(id);
+    };
+  }, [mode, intervalMs, dispatch]);
+
+  return useMemo(
+    () => ({ data, error, running, lastGoodAt, dispatch }),
+    [data, error, running, lastGoodAt, dispatch],
+  );
+}

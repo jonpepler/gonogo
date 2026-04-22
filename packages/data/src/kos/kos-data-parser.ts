@@ -1,0 +1,61 @@
+/**
+ * Parser for the `[KOSDATA] k=v;k=v [/KOSDATA]` wire format that kOS widget
+ * scripts MUST emit on stdout. Pure function, no I/O.
+ *
+ * The input is any chunk of kOS terminal output — the parser locates the
+ * marker pair, parses the key/value body, and returns an object. Text
+ * outside the markers (REPL prompt, RUN echo, stray PRINTs) is ignored.
+ *
+ * If the chunk contains multiple `[KOSDATA] … [/KOSDATA]` blocks, the last
+ * one wins. That matches the intended contract: scripts emit exactly one,
+ * so if we see more than one the later one is always newer.
+ */
+
+export type KosDataValue = number | boolean | string;
+export type KosData = Record<string, KosDataValue>;
+
+/** Runtime-resolved arg value passed to a kOS compute data source. */
+export type KosScriptArg = number | string | boolean;
+
+const BLOCK_RE = /\[KOSDATA\]([\s\S]*?)\[\/KOSDATA\]/g;
+
+/**
+ * Returns the parsed key/value object from the last `[KOSDATA]` block in
+ * `text`, or null if no complete block is present.
+ */
+export function parseKosData(text: string): KosData | null {
+  let lastBody: string | null = null;
+  // Reset lastIndex each call — BLOCK_RE is module-scoped.
+  BLOCK_RE.lastIndex = 0;
+  let match = BLOCK_RE.exec(text);
+  while (match !== null) {
+    lastBody = match[1];
+    match = BLOCK_RE.exec(text);
+  }
+  if (lastBody === null) return null;
+  return parseBody(lastBody);
+}
+
+function parseBody(body: string): KosData {
+  const out: KosData = {};
+  for (const raw of body.split(";")) {
+    const eq = raw.indexOf("=");
+    if (eq === -1) continue;
+    const key = raw.slice(0, eq).trim();
+    if (key === "") continue;
+    const value = raw.slice(eq + 1).trim();
+    out[key] = coerce(value);
+  }
+  return out;
+}
+
+function coerce(value: string): KosDataValue {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  // Must accept things like "-1.5", "3e-2", "0". Rejects "NaN" (ambiguous —
+  // we'd rather surface it as a string so the widget can decide).
+  if (value !== "" && /^-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)) {
+    return Number(value);
+  }
+  return value;
+}

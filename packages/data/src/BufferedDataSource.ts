@@ -237,6 +237,15 @@ export class BufferedDataSource implements DataSource {
   }
 
   /**
+   * Latest single emitted value for a key, or undefined if none seen yet.
+   * Synchronous — used where widgets need a snapshot without subscribing
+   * (e.g. resolving telemetry args at kOS script dispatch time).
+   */
+  getLatestValue(key: string): unknown | undefined {
+    return this.lastEmittedValue.get(key);
+  }
+
+  /**
    * Latest N samples for a key from the in-memory ring buffer. Synchronous
    * — useful for the graph widget's first paint before any async query
    * completes. May return fewer samples than requested, including zero.

@@ -21,6 +21,8 @@ export { FogMaskStore } from "./fog/FogMaskStore";
 export * from "./hooks/useDataSchema";
 export * from "./hooks/useDataSeries";
 export * from "./hooks/useFlight";
+export * from "./hooks/useKosWidget";
+export * from "./kos/kos-data-parser";
 export { debugFlight } from "./logger";
 export { registerBuiltinDerivedKeys } from "./schema/builtinDerivedKeys";
 export { enrichKey, TELEMACHUS_META } from "./schema/telemachusMeta";

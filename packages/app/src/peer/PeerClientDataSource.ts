@@ -24,6 +24,10 @@ export class PeerClientDataSource implements DataSource {
   private statusListeners = new Set<(status: DataSourceStatus) => void>();
   private seenKeys = new Set<string>();
   private cachedSchema: DataKeyMeta[] = [];
+  // Latest value per key so synchronous snapshot readers (e.g. useKosWidget
+  // resolving a `{ type: "telemetry" }` arg at dispatch time) see the same
+  // freshness stations already get via subscribe callbacks.
+  private lastValues = new Map<string, unknown>();
   status: DataSourceStatus = "disconnected";
 
   constructor(
@@ -41,6 +45,7 @@ export class PeerClientDataSource implements DataSource {
           subscriberCount: this.subscribers.get(key)?.size ?? 0,
         });
       }
+      this.lastValues.set(key, value);
       this.subscribers.get(key)?.forEach((cb) => {
         cb(value);
       });
@@ -78,6 +83,15 @@ export class PeerClientDataSource implements DataSource {
 
   schema(): DataKey[] {
     return this.cachedSchema;
+  }
+
+  /**
+   * Synchronous snapshot of the most recent value for a key, or undefined
+   * if none has arrived yet. Mirrors BufferedDataSource.getLatestValue so
+   * consumers like useKosWidget work identically on main and station.
+   */
+  getLatestValue(key: string): unknown | undefined {
+    return this.lastValues.get(key);
   }
   configSchema(): ConfigField[] {
     return [];

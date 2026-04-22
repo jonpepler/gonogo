@@ -158,4 +158,30 @@ describe("PeerClientDataSource", () => {
       group: "Position",
     });
   });
+
+  it("getLatestValue returns undefined before any data, then the most recent value", () => {
+    const fake = makeFakeClient();
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+
+    // Nothing seen yet — readers that snapshot synchronously (useKosWidget
+    // resolving a telemetry arg at dispatch time) get undefined.
+    expect(source.getLatestValue("v.altitude")).toBeUndefined();
+
+    fake.emitData("data", "v.altitude", 1000, 5000);
+    expect(source.getLatestValue("v.altitude")).toBe(1000);
+
+    fake.emitData("data", "v.altitude", 2500, 5500);
+    expect(source.getLatestValue("v.altitude")).toBe(2500);
+
+    // Unrelated key isn't polluted.
+    expect(source.getLatestValue("v.lat")).toBeUndefined();
+  });
+
+  it("ignores samples from a different sourceId when caching latest values", () => {
+    const fake = makeFakeClient();
+    const source = new PeerClientDataSource("data", "Data", fake.service);
+
+    fake.emitData("other-source", "v.altitude", 999, 5000);
+    expect(source.getLatestValue("v.altitude")).toBeUndefined();
+  });
 });

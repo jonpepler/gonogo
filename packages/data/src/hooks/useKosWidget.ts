@@ -77,7 +77,13 @@ function resolveArg(
   telemetry: TelemetryReader | undefined,
 ): KosScriptArg {
   if (arg.type === "telemetry") {
-    return coerceTelemetry(telemetry?.getLatestValue(arg.key));
+    // Guard on method existence, not just the source — the optional chain
+    // only handled `telemetry` being undefined. A PeerClientDataSource is
+    // truthy but doesn't always implement getLatestValue.
+    if (typeof telemetry?.getLatestValue !== "function") {
+      return coerceTelemetry(undefined);
+    }
+    return coerceTelemetry(telemetry.getLatestValue(arg.key));
   }
   return arg.value;
 }

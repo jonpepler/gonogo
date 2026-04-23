@@ -42,6 +42,7 @@ import {
   StationNameEditor,
   useStationName,
 } from "../stationIdentity";
+import { FullscreenFab } from "../components/FullscreenFab";
 import { LogsFab } from "../logs/LogsFab";
 import { OcislyStreamSource } from "../streamSources/ocisly";
 
@@ -259,6 +260,7 @@ export function StationScreen() {
                           <SerialFab />
                           <SaveProfilesFab bottom={204} />
                           <LogsFab bottom={264} />
+                          <FullscreenFab bottom={324} />
                         </FabClusterProvider>
                         <StationNameChip>
                           <StationNameEditor compact />

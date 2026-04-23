@@ -18,6 +18,7 @@ import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { SignalLossIndicator } from "../components/SignalLossIndicator";
+import { FullscreenFab } from "../components/FullscreenFab";
 import { StationLinkFab } from "../components/StationLinkFab";
 import { LogsFab } from "../logs/LogsFab";
 import { GoNoGoHostProvider, GoNoGoHostService } from "../goNoGo";
@@ -761,6 +762,7 @@ export function MainScreen() {
                       <StationLinkFab />
                       <SaveProfilesFab />
                       <LogsFab />
+                      <FullscreenFab />
                     </FabClusterProvider>
                     <SignalLossIndicator />
                     <PushedDashboardOverlay />

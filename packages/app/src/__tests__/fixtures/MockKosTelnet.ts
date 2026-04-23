@@ -223,7 +223,13 @@ export class MockKosTelnet {
 // Per-session socket
 // ──────────────────────────────────────────────────────────────────────
 
+// Matches either form:
+//   RUN scriptName(arg1, arg2).
+//   RUNPATH("path/to/script.ks", arg1, arg2).
+// The production data source emits RUNPATH; RUN is kept here for existing
+// tests that exercise the bare-name form.
 const RUN_RE = /^RUN\s+(\S+?)\s*\(([^)]*)\)\s*\.\s*$/i;
+const RUNPATH_RE = /^RUNPATH\s*\(\s*"([^"]+)"\s*(?:,\s*(.*?))?\s*\)\s*\.\s*$/i;
 
 export class MockKosTelnetSocket {
   static readonly CONNECTING = 0;
@@ -302,13 +308,19 @@ export class MockKosTelnetSocket {
       return;
     }
     if (this.mode === "repl") {
-      const m = RUN_RE.exec(line);
-      if (m) {
-        this.server.handleRun(this, m[1], m[2]);
+      const run = RUN_RE.exec(line);
+      if (run) {
+        this.server.handleRun(this, run[1], run[2]);
+        return;
+      }
+      const runPath = RUNPATH_RE.exec(line);
+      if (runPath) {
+        this.server.handleRun(this, runPath[1], runPath[2] ?? "");
+        return;
       }
       // Non-RUN lines at the REPL are ignored by the mock (real kOS would
       // interpret them as commands, but the compute data source only sends
-      // RUN; mirroring that keeps the mock honest).
+      // RUN / RUNPATH; mirroring that keeps the mock honest).
     }
   }
 

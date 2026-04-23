@@ -382,8 +382,15 @@ export class KosComputeSession {
     if (!next) return;
     this.inFlight = next;
     this.replBuffer = "";
-    const argStr = next.args.map(formatArg).join(", ");
-    this.ws?.send(`RUN ${next.script}(${argStr}).\n`);
+    // RUNPATH accepts arbitrary paths (slashes, .ks extension) and is the
+    // recommended form in current kOS. `RUN foo(...)` still works for a
+    // bare filename but the parser chokes on paths like "boot/test.ks"
+    // because the slash and dot aren't valid inside an identifier.
+    const argList = [
+      JSON.stringify(next.script),
+      ...next.args.map(formatArg),
+    ].join(", ");
+    this.ws?.send(`RUNPATH(${argList}).\n`);
     next.timer = setTimeout(() => {
       if (this.inFlight !== next) return;
       this.inFlight = null;

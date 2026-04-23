@@ -223,7 +223,7 @@ export function KosWidgetConfigComponent({
         </AddButton>
         <FieldHint>
           Args are passed positionally to the script:{" "}
-          <code>RUN script(a, b, …).</code>
+          <code>RUNPATH("script", a, b, …).</code>
         </FieldHint>
       </Field>
 

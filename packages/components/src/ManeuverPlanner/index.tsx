@@ -49,6 +49,13 @@ interface ManeuverPlannerConfig {
 // bindings (commit from a physical button) can be added later.
 const maneuverActions = [] as const satisfies readonly ActionDefinition[];
 
+// Telemachus occasionally sends null / NaN for an orbit value that KSP
+// hasn't computed yet (landed vessel, fresh scene load). Treat those as
+// "not yet arrived" rather than propagating them into the math.
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
 const PRESETS: Array<{
   id: PresetId;
   label: string;
@@ -154,6 +161,8 @@ function ManeuverPlannerComponent({
   const targetLanLive = useDataValue("data", "tar.o.lan");
   const lan = useDataValue("data", "o.lan");
 
+  const period = useDataValue("data", "o.period");
+
   const nodes = useManeuverNodes();
   const vesselDeltaV = useVesselDeltaV();
   const execute = useExecuteAction("data");
@@ -161,21 +170,32 @@ function ManeuverPlannerComponent({
   const principia = physicsMode === "n_body";
   const body = getBody(bodyName ?? refBody ?? "");
 
-  // μ from live vis-viva. Required by every preset; if any input is missing
-  // we can't plan, so bail the whole widget to the "waiting for telemetry"
-  // path rather than mis-computing.
-  const mu =
-    orbitalSpeed !== undefined && radius !== undefined && sma !== undefined
-      ? gravParameterFromState(orbitalSpeed, radius, sma)
-      : 0;
+  // μ from live telemetry. Primary: vis-viva (v²·a·r / (2a−r)). Fallback:
+  // Kepler's 3rd (4π²a³/T²), useful when orbital speed / radius are still
+  // ramping up at scene load. Both pure telemetry — no body-registry μ.
+  const mu = useMemo(() => {
+    const viaVisViva =
+      isFiniteNumber(orbitalSpeed) &&
+      isFiniteNumber(radius) &&
+      isFiniteNumber(sma) &&
+      orbitalSpeed > 0 &&
+      sma > 0
+        ? gravParameterFromState(orbitalSpeed, radius, sma)
+        : 0;
+    if (viaVisViva > 0) return viaVisViva;
+    if (isFiniteNumber(period) && isFiniteNumber(sma) && period > 0) {
+      return (4 * Math.PI * Math.PI * sma ** 3) / (period * period);
+    }
+    return 0;
+  }, [orbitalSpeed, radius, sma, period]);
 
   const currentOrbit: CurrentOrbit | null =
-    sma !== undefined &&
-    ecc !== undefined &&
-    ApR !== undefined &&
-    PeR !== undefined &&
-    timeToAp !== undefined &&
-    timeToPe !== undefined
+    isFiniteNumber(sma) &&
+    isFiniteNumber(ecc) &&
+    isFiniteNumber(ApR) &&
+    isFiniteNumber(PeR) &&
+    isFiniteNumber(timeToAp) &&
+    isFiniteNumber(timeToPe)
       ? { sma, eccentricity: ecc, ApR, PeR, timeToAp, timeToPe }
       : null;
 
@@ -366,7 +386,24 @@ function ManeuverPlannerComponent({
   }
 
   const selectedPreset = PRESETS.find((p) => p.id === preset);
-  const waiting = !currentOrbit || currentUT === undefined || mu <= 0;
+
+  // Per-field "is this telemetry ready?" map. Feeds the diagnostic
+  // waiting panel — a generic "Waiting for telemetry…" with no detail
+  // left us blind the first time it triggered, and real Telemachus
+  // data can land values as null / NaN mid-scene-load that wouldn't
+  // look "missing" to a simple `=== undefined` check.
+  const telemetryStatus: Array<{ label: string; ok: boolean }> = [
+    { label: "o.sma", ok: isFiniteNumber(sma) },
+    { label: "o.eccentricity", ok: isFiniteNumber(ecc) },
+    { label: "o.ApR / o.PeR", ok: isFiniteNumber(ApR) && isFiniteNumber(PeR) },
+    {
+      label: "o.timeToAp / o.timeToPe",
+      ok: isFiniteNumber(timeToAp) && isFiniteNumber(timeToPe),
+    },
+    { label: "t.universalTime", ok: isFiniteNumber(currentUT) },
+    { label: "μ (orbitalSpeed×radius or period)", ok: mu > 0 },
+  ];
+  const waiting = telemetryStatus.some((s) => !s.ok);
 
   return (
     <Panel>
@@ -510,7 +547,17 @@ function ManeuverPlannerComponent({
       </Section>
 
       {waiting ? (
-        <Empty>Waiting for telemetry…</Empty>
+        <WaitingPanel>
+          <SectionTitle>Waiting for telemetry</SectionTitle>
+          <StatusList>
+            {telemetryStatus.map((s) => (
+              <StatusRow key={s.label}>
+                <StatusDot $ok={s.ok}>{s.ok ? "✓" : "·"}</StatusDot>
+                <StatusLabel>{s.label}</StatusLabel>
+              </StatusRow>
+            ))}
+          </StatusList>
+        </WaitingPanel>
       ) : (
         plan && (
           <PreviewSection>
@@ -797,6 +844,42 @@ const Empty = styled.div`
   color: #555;
   font-size: 11px;
   padding: 4px 0;
+`;
+
+const WaitingPanel = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: #0f0f0f;
+  border: 1px solid #1f1f1f;
+  border-radius: 2px;
+`;
+
+const StatusList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const StatusRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const StatusDot = styled.span<{ $ok: boolean }>`
+  width: 12px;
+  text-align: center;
+  color: ${({ $ok }) => ($ok ? "#5f5" : "#a66")};
+  font-family: monospace;
+  font-size: 11px;
+`;
+
+const StatusLabel = styled.span`
+  font-family: monospace;
+  font-size: 11px;
+  color: #888;
 `;
 
 const NodeList = styled.ul`

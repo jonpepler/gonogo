@@ -3,6 +3,16 @@ import { logger, registerStreamSource } from "@gonogo/core";
 import type { DataConnection, MediaConnection, Peer } from "peerjs";
 import { peerHostService } from "../peer/PeerHostService";
 
+const cameraLog = logger.tag("camera");
+const streamLog = logger.tag("peer:stream");
+
+/**
+ * Maximum time we'll wait for the data-connection to settle during connect().
+ * Past this the source goes to "error" so the UI stops sitting on orange
+ * "connecting" forever — the live-test symptom on at least one station.
+ */
+const CONNECT_TIMEOUT_MS = 15_000;
+
 type ProxyOut =
   | { type: "hello"; proxyVersion: string }
   | { type: "cameras"; cameras: string[] }
@@ -79,12 +89,15 @@ export class OcislyStreamSource implements StreamSource {
     this.setStatus("reconnecting");
     const gen = ++this.connectGeneration;
     const isStale = () => gen !== this.connectGeneration;
+    const startedAt = Date.now();
+    cameraLog.debug("connect: begin", { generation: gen });
 
     try {
       const peerId = await this.opts.proxyPeerIdProvider();
       if (isStale()) return;
       this.proxyPeerId = peerId;
       this.opts.onProxyPeerIdResolved?.(peerId);
+      cameraLog.debug("connect: proxyPeerId resolved", { peerId });
 
       const peer = await this.opts.peerProvider();
       if (isStale()) return;
@@ -103,14 +116,28 @@ export class OcislyStreamSource implements StreamSource {
 
       await new Promise<void>((resolve, reject) => {
         let settled = false;
+        const timeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(
+            new Error(
+              `data connection did not open within ${CONNECT_TIMEOUT_MS}ms`,
+            ),
+          );
+        }, CONNECT_TIMEOUT_MS);
         conn.on("open", () => {
           if (settled) return;
           settled = true;
+          clearTimeout(timeout);
+          cameraLog.debug("connect: data connection open", {
+            elapsedMs: Date.now() - startedAt,
+          });
           resolve();
         });
         conn.on("error", (err: Error) => {
           if (settled) return;
           settled = true;
+          clearTimeout(timeout);
           reject(err);
         });
       });
@@ -120,6 +147,7 @@ export class OcislyStreamSource implements StreamSource {
         this.handleMessage(raw as ProxyOut);
       });
       conn.on("close", () => {
+        cameraLog.info("data connection closed");
         this.setStatus("disconnected");
         this.dataConnection = null;
       });
@@ -132,9 +160,11 @@ export class OcislyStreamSource implements StreamSource {
       }, this.opts.listPollMs ?? 2000);
     } catch (err) {
       if (isStale()) return;
+      const elapsedMs = Date.now() - startedAt;
       logger.error(
         "[ocisly] connect failed",
         err instanceof Error ? err : new Error(String(err)),
+        { elapsedMs },
       );
       this.setStatus("error");
     }
@@ -286,12 +316,39 @@ export class OcislyStreamSource implements StreamSource {
     }
     sub.call = call;
     call.answer();
+
+    // Surface ICE / connection state changes on the underlying RTCPeerConnection.
+    // "Stuck on orange" and "cutting out" live-test bugs both present as
+    // invisible ICE state transitions (checking→failed, or disconnected
+    // drifts), so log every transition at camera/peer:stream tags.
+    const pc = (call as MediaConnection & { peerConnection?: RTCPeerConnection })
+      .peerConnection;
+    if (pc) {
+      const logState = (label: string, value: string) => {
+        streamLog.debug(`${label}: ${value}`, { cameraId });
+      };
+      pc.addEventListener("iceconnectionstatechange", () => {
+        logState("iceConnectionState", pc.iceConnectionState);
+        if (pc.iceConnectionState === "failed") {
+          cameraLog.warn(`ICE failed for ${cameraId}`);
+        }
+      });
+      pc.addEventListener("connectionstatechange", () => {
+        logState("connectionState", pc.connectionState);
+      });
+      pc.addEventListener("icegatheringstatechange", () => {
+        logState("iceGatheringState", pc.iceGatheringState);
+      });
+    }
+
     call.on("stream", (stream: MediaStream) => {
+      cameraLog.info(`stream received for ${cameraId}`);
       sub.stream = stream;
       for (const p of sub.pending) p(stream);
       sub.pending = [];
     });
     call.on("close", () => {
+      cameraLog.info(`media call closed for ${cameraId}`);
       sub.stream = null;
       sub.call = null;
     });

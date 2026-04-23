@@ -10,10 +10,14 @@
  * from live telemetry with `gravParameterFromState(v, r, a)` — the
  * vis-viva equation gives an exact answer from any point on the orbit.
  *
- * Scope: V1 presets burn at a named apsis (apo / peri). Arbitrary-UT burns
- * need orbit propagation to find state at the burn point — that's a
- * follow-up, trajectory.ts already has the primitive (`patchStateAt`).
+ * Frame convention: ΔV components are in Telemachus's maneuver-node frame
+ * — prograde along velocity, radial along +r̂ (outward from body), normal
+ * perpendicular to the orbital plane. The projected-orbit math handles
+ * arbitrary flight-path angle; plane change from a non-zero normal is
+ * carried through but not reflected in the projected in-plane shape.
  */
+
+import { eccentricToTrueAnomaly, solveKepler } from "./trajectory";
 
 /** Orbit snapshot taken from Telemachus `o.*` keys. All distances in metres. */
 export interface CurrentOrbit {
@@ -93,35 +97,47 @@ function periodAt(mu: number, sma: number): number {
 }
 
 /**
- * Shape of the post-burn orbit given the burn happens at an apsis (γ = 0
- * before the burn). Handles prograde + radial in-plane; normal tilts the
- * plane but doesn't reshape it, so we ignore it for projected-orbit
- * purposes (the widget shows plane-change notes separately).
+ * Shape of the post-burn orbit given an in-plane state at the burn point.
+ * Decomposes the pre-burn velocity into horizontal + radial components
+ * using the flight-path angle, adds the ΔV (prograde along velocity +
+ * radial along +r̂), then derives the new sma/ecc from specific energy
+ * and angular momentum. Normal components are the caller's responsibility
+ * — they tilt the plane without reshaping the in-plane orbit.
+ *
+ * Returns null when the burn puts the vessel on an escape / parabolic
+ * trajectory (non-negative specific energy) — V1 previews only support
+ * elliptic post-burn orbits.
  */
-function projectAtApsis(
-  apsisR: number,
-  currentSma: number,
+function projectBurn(
+  r: number,
+  vPre: number,
+  gamma: number,
   mu: number,
   prograde: number,
   radial: number,
 ): ProjectedOrbit | null {
-  // Pre-burn speed at the apsis (γ = 0 by definition at an apsis).
-  const vPre = speedAt(mu, apsisR, currentSma);
-  const vProg = vPre + prograde;
-  const vInPlane = Math.hypot(vProg, radial);
-  if (!Number.isFinite(vInPlane)) return null;
+  // Pre-burn velocity in (horizontal, radial) frame. "Horizontal" is in
+  // the orbital plane, perpendicular to the radius vector.
+  const cosG = Math.cos(gamma);
+  const sinG = Math.sin(gamma);
 
-  // Specific orbital energy → new sma.
-  const epsilon = (vInPlane * vInPlane) / 2 - mu / apsisR;
-  if (epsilon >= 0) return null; // escaped / parabolic — out of scope for V1
+  // Prograde ΔV lies along the pre-burn velocity direction (cosG, sinG).
+  // Radial ΔV lies along +r̂ = (0, 1) in the (h, r) frame.
+  const vH = vPre * cosG + prograde * cosG;
+  const vR = vPre * sinG + prograde * sinG + radial;
+
+  const vMag = Math.hypot(vH, vR);
+  if (!Number.isFinite(vMag)) return null;
+
+  const epsilon = (vMag * vMag) / 2 - mu / r;
+  if (epsilon >= 0) return null;
   const newSma = -mu / (2 * epsilon);
 
-  // Specific angular momentum uses the horizontal component of velocity.
-  // gamma from horizontal = atan2(radial, vProg); horizontal speed = cos(gamma)·|v|.
-  const gamma = Math.atan2(radial, vProg);
-  const h = apsisR * vInPlane * Math.cos(gamma);
-  const eSquared = 1 + (2 * epsilon * h * h) / (mu * mu);
-  const newEcc = Math.sqrt(Math.max(0, eSquared));
+  // Angular momentum per unit mass = r × v; only the horizontal velocity
+  // component contributes.
+  const h = r * vH;
+  const e2 = 1 + (2 * epsilon * h * h) / (mu * mu);
+  const newEcc = Math.sqrt(Math.max(0, e2));
 
   return {
     sma: newSma,
@@ -130,6 +146,47 @@ function projectAtApsis(
     PeR: newSma * (1 - newEcc),
     period: periodAt(mu, newSma),
   };
+}
+
+/**
+ * Analytically propagate a point on a Keplerian orbit to an arbitrary UT.
+ * Returns scalar in-plane state at the target UT — enough to feed
+ * `projectBurn`. Does not attempt SOI transitions; burns that cross a
+ * patch boundary need `trajectory.patchStateAt` on the right patch
+ * instead.
+ */
+export function stateAtUT(
+  current: CurrentOrbit,
+  currentTrueAnomalyDeg: number,
+  mu: number,
+  currentUT: number,
+  targetUT: number,
+): { r: number; speed: number; flightPathAngle: number } {
+  const a = current.sma;
+  const e = current.eccentricity;
+
+  // Current true anomaly → eccentric anomaly.
+  const nu0 = (currentTrueAnomalyDeg * Math.PI) / 180;
+  const E0 = 2 * Math.atan2(
+    Math.sqrt(1 - e) * Math.sin(nu0 / 2),
+    Math.sqrt(1 + e) * Math.cos(nu0 / 2),
+  );
+  // Mean anomaly propagates linearly with time.
+  const M0 = E0 - e * Math.sin(E0);
+  const n = Math.sqrt(mu / (a * a * a));
+  const M = M0 + n * (targetUT - currentUT);
+
+  const E = solveKepler(M, e);
+  const nu = eccentricToTrueAnomaly(E, e);
+
+  const r = a * (1 - e * Math.cos(E));
+  const speed = Math.sqrt(mu * (2 / r - 1 / a));
+  // γ from local horizontal: tan(γ) = e·sin(ν) / (1 + e·cos(ν)).
+  const flightPathAngle = Math.atan2(
+    e * Math.sin(nu),
+    1 + e * Math.cos(nu),
+  );
+  return { r, speed, flightPathAngle };
 }
 
 // ---------------------------------------------------------------------------
@@ -210,9 +267,66 @@ export function customAtApsis(
 ): ManeuverPlan {
   const r = apsis === "apo" ? current.ApR : current.PeR;
   const dt = apsis === "apo" ? current.timeToAp : current.timeToPe;
-  const projected = projectAtApsis(r, current.sma, mu, prograde, radial);
+  // At an apsis γ = 0 by definition — velocity is perpendicular to radius.
+  const vPre = speedAt(mu, r, current.sma);
+  const projected = projectBurn(r, vPre, 0, mu, prograde, radial);
   return {
     ut: currentUT + dt,
+    prograde,
+    normal,
+    radial,
+    requiredDeltaV: Math.hypot(prograde, normal, radial),
+    projected,
+  };
+}
+
+/**
+ * Arbitrary ΔV at an arbitrary UT. Propagates the current orbit to the
+ * burn point with `stateAtUT` so the projected shape reflects the real
+ * flight-path angle at that point (unlike the apsis presets which assume
+ * γ = 0). `currentTrueAnomalyDeg` is Telemachus's `o.trueAnomaly` at
+ * `currentUT`.
+ *
+ * If `burnUT <= currentUT`, projected is null — we can't plan a burn in
+ * the past.
+ */
+export function customAtUT(
+  current: CurrentOrbit,
+  currentTrueAnomalyDeg: number,
+  mu: number,
+  currentUT: number,
+  burnUT: number,
+  prograde: number,
+  normal: number,
+  radial: number,
+): ManeuverPlan {
+  if (burnUT <= currentUT) {
+    return {
+      ut: burnUT,
+      prograde,
+      normal,
+      radial,
+      requiredDeltaV: Math.hypot(prograde, normal, radial),
+      projected: null,
+    };
+  }
+  const { r, speed, flightPathAngle } = stateAtUT(
+    current,
+    currentTrueAnomalyDeg,
+    mu,
+    currentUT,
+    burnUT,
+  );
+  const projected = projectBurn(
+    r,
+    speed,
+    flightPathAngle,
+    mu,
+    prograde,
+    radial,
+  );
+  return {
+    ut: burnUT,
     prograde,
     normal,
     radial,

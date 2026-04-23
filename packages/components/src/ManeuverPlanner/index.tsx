@@ -4,6 +4,7 @@ import {
   circularizeAtPeri,
   type CurrentOrbit,
   customAtApsis,
+  customAtUT,
   formatDistance,
   formatDuration,
   getBody,
@@ -31,7 +32,8 @@ type PresetId =
   | "circularize-apo"
   | "circularize-peri"
   | "custom-apo"
-  | "custom-peri";
+  | "custom-peri"
+  | "custom-ut";
 
 interface ManeuverPlannerConfig {
   defaultPreset?: PresetId;
@@ -71,6 +73,13 @@ const PRESETS: Array<{
     description: "Set your own prograde / normal / radial ΔV at next peri.",
     needsCustomInput: true,
   },
+  {
+    id: "custom-ut",
+    label: "Custom burn at UT",
+    description:
+      "Schedule a ΔV at an arbitrary time from now. Projection reflects real flight-path angle at the burn point.",
+    needsCustomInput: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -86,6 +95,9 @@ function ManeuverPlannerComponent({
   const [prograde, setPrograde] = useState(0);
   const [normal, setNormal] = useState(0);
   const [radial, setRadial] = useState(0);
+  // "Burn in N seconds" input for the custom-ut preset. Default 60s so the
+  // UI always has a sensible future UT even before the user touches it.
+  const [burnInSeconds, setBurnInSeconds] = useState(60);
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -157,8 +169,30 @@ function ManeuverPlannerComponent({
           normal,
           radial,
         );
+      case "custom-ut":
+        if (trueAnomaly === undefined) return null;
+        return customAtUT(
+          currentOrbit,
+          trueAnomaly,
+          mu,
+          currentUT,
+          currentUT + Math.max(0, burnInSeconds),
+          prograde,
+          normal,
+          radial,
+        );
     }
-  }, [currentOrbit, mu, currentUT, preset, prograde, normal, radial]);
+  }, [
+    currentOrbit,
+    mu,
+    currentUT,
+    preset,
+    prograde,
+    normal,
+    radial,
+    burnInSeconds,
+    trueAnomaly,
+  ]);
 
   const feasible =
     plan === null || vesselDeltaV.totalVac === 0
@@ -258,6 +292,14 @@ function ManeuverPlannerComponent({
         )}
         {selectedPreset?.needsCustomInput && (
           <CustomInputs>
+            {preset === "custom-ut" && (
+              <LabeledInput
+                label="Burn in"
+                value={burnInSeconds}
+                onChange={setBurnInSeconds}
+                suffix="s"
+              />
+            )}
             <LabeledInput
               label="Prograde"
               value={prograde}
@@ -442,10 +484,12 @@ function LabeledInput({
   label,
   value,
   onChange,
+  suffix = "m/s",
 }: {
   label: string;
   value: number;
   onChange: (next: number) => void;
+  suffix?: string;
 }) {
   return (
     <InputRow>
@@ -459,7 +503,7 @@ function LabeledInput({
           onChange(Number.isFinite(n) ? n : 0);
         }}
       />
-      <InputSuffix>m/s</InputSuffix>
+      <InputSuffix>{suffix}</InputSuffix>
     </InputRow>
   );
 }

@@ -4,7 +4,9 @@ import {
   circularizeAtPeri,
   type CurrentOrbit,
   customAtApsis,
+  customAtUT,
   gravParameterFromState,
+  stateAtUT,
 } from "./maneuver";
 
 // Kerbin's gravitational parameter (m³/s²).
@@ -175,5 +177,134 @@ describe("customAtApsis", () => {
       0,
     );
     expect(plan.projected).toBeNull();
+  });
+});
+
+describe("stateAtUT", () => {
+  it("recovers the current state when dt = 0", () => {
+    // True anomaly 0 = at periapsis on the elliptic orbit.
+    const s = stateAtUT(KERBIN_ELLIPTIC, 0, KERBIN_MU, 0, 0);
+    expect(s.r).toBeCloseTo(KERBIN_ELLIPTIC.PeR, -1);
+    // At periapsis γ = 0.
+    expect(s.flightPathAngle).toBeCloseTo(0, 6);
+  });
+
+  it("returns to the same state after one full period", () => {
+    const a = KERBIN_ELLIPTIC.sma;
+    const period = 2 * Math.PI * Math.sqrt((a * a * a) / KERBIN_MU);
+    const at0 = stateAtUT(KERBIN_ELLIPTIC, 30, KERBIN_MU, 0, 0);
+    const at1 = stateAtUT(KERBIN_ELLIPTIC, 30, KERBIN_MU, 0, period);
+    expect(at1.r).toBeCloseTo(at0.r, -1);
+    expect(at1.speed).toBeCloseTo(at0.speed, -1);
+    expect(at1.flightPathAngle).toBeCloseTo(at0.flightPathAngle, 4);
+  });
+
+  it("returns constant r / speed and γ=0 on a circular orbit", () => {
+    const s0 = stateAtUT(KERBIN_100KM_CIRCULAR, 0, KERBIN_MU, 0, 0);
+    const s1 = stateAtUT(KERBIN_100KM_CIRCULAR, 0, KERBIN_MU, 0, 500);
+    expect(s1.r).toBeCloseTo(s0.r, -1);
+    expect(s1.speed).toBeCloseTo(s0.speed, -1);
+    expect(s1.flightPathAngle).toBeCloseTo(0, 6);
+  });
+
+  it("reaches apoapsis r when propagated by timeToAp from periapsis", () => {
+    // True anomaly 0° = periapsis. Half a period later we're at apoapsis.
+    const a = KERBIN_ELLIPTIC.sma;
+    const halfPeriod = Math.PI * Math.sqrt((a * a * a) / KERBIN_MU);
+    const s = stateAtUT(KERBIN_ELLIPTIC, 0, KERBIN_MU, 0, halfPeriod);
+    expect(s.r).toBeCloseTo(KERBIN_ELLIPTIC.ApR, -1);
+    expect(s.flightPathAngle).toBeCloseTo(0, 4);
+  });
+});
+
+describe("customAtUT", () => {
+  it("is a no-op for zero ΔV at any future UT", () => {
+    const plan = customAtUT(
+      KERBIN_ELLIPTIC,
+      30,
+      KERBIN_MU,
+      0,
+      800,
+      0,
+      0,
+      0,
+    );
+    expect(plan.projected).not.toBeNull();
+    expect(plan.projected?.sma).toBeCloseTo(KERBIN_ELLIPTIC.sma, -2);
+    expect(plan.projected?.eccentricity).toBeCloseTo(
+      KERBIN_ELLIPTIC.eccentricity,
+      4,
+    );
+  });
+
+  it("matches customAtApsis when burnUT lands on the next apoapsis", () => {
+    const currentUT = 1000;
+    // Start at periapsis (trueAnomaly = 0). Apoapsis is half a period later.
+    const a = KERBIN_ELLIPTIC.sma;
+    const halfPeriod = Math.PI * Math.sqrt((a * a * a) / KERBIN_MU);
+    const orbit: CurrentOrbit = { ...KERBIN_ELLIPTIC, timeToAp: halfPeriod };
+    const apoPlan = customAtApsis(
+      orbit,
+      KERBIN_MU,
+      currentUT,
+      "apo",
+      -100,
+      0,
+      0,
+    );
+    const utPlan = customAtUT(
+      orbit,
+      0,
+      KERBIN_MU,
+      currentUT,
+      currentUT + halfPeriod,
+      -100,
+      0,
+      0,
+    );
+    expect(utPlan.ut).toBe(apoPlan.ut);
+    expect(utPlan.projected?.ApR).toBeCloseTo(apoPlan.projected?.ApR ?? 0, -1);
+    expect(utPlan.projected?.PeR).toBeCloseTo(apoPlan.projected?.PeR ?? 0, -1);
+    expect(utPlan.projected?.eccentricity).toBeCloseTo(
+      apoPlan.projected?.eccentricity ?? 0,
+      4,
+    );
+  });
+
+  it("yields a non-zero flight-path-angle projection mid-orbit", () => {
+    // Partway between peri and apo: γ is non-zero, so the in-plane math
+    // exercises the full projectBurn (not just the apsis shortcut).
+    const a = KERBIN_ELLIPTIC.sma;
+    const quarterPeriod =
+      (Math.PI / 2) * Math.sqrt((a * a * a) / KERBIN_MU);
+    const plan = customAtUT(
+      KERBIN_ELLIPTIC,
+      0,
+      KERBIN_MU,
+      0,
+      quarterPeriod,
+      50,
+      0,
+      0,
+    );
+    expect(plan.projected).not.toBeNull();
+    // Prograde boost away from an apsis raises sma.
+    expect(plan.projected?.sma).toBeGreaterThan(KERBIN_ELLIPTIC.sma);
+  });
+
+  it("refuses to plan burns in the past", () => {
+    const plan = customAtUT(
+      KERBIN_ELLIPTIC,
+      0,
+      KERBIN_MU,
+      1000,
+      500,
+      100,
+      0,
+      0,
+    );
+    expect(plan.projected).toBeNull();
+    expect(plan.ut).toBe(500);
+    expect(plan.requiredDeltaV).toBe(100);
   });
 });

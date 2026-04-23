@@ -43,6 +43,8 @@ export interface ProjectedOrbit {
   PeR: number;
   /** Seconds. */
   period: number;
+  /** Degrees. Present for plane-change presets; omitted otherwise. */
+  inclination?: number;
 }
 
 export interface ManeuverPlan {
@@ -332,5 +334,137 @@ export function customAtUT(
     radial,
     requiredDeltaV: Math.hypot(prograde, normal, radial),
     projected,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Plane-change presets
+// ---------------------------------------------------------------------------
+
+/**
+ * True anomaly of the ascending / descending node for the current orbit,
+ * both in degrees in [0, 360). `argumentOfPeriapsis` is the angle from the
+ * ascending node to periapsis, so the AN itself sits at ν = -argPe and
+ * the DN at ν = 180° - argPe (mod 360°).
+ */
+function nodeAnomalies(
+  argumentOfPeriapsisDeg: number,
+): { an: number; dn: number } {
+  const mod360 = (x: number) => ((x % 360) + 360) % 360;
+  return {
+    an: mod360(-argumentOfPeriapsisDeg),
+    dn: mod360(180 - argumentOfPeriapsisDeg),
+  };
+}
+
+/**
+ * Time from `currentTrueAnomalyDeg` forward to `targetTrueAnomalyDeg` on
+ * the same orbit, in seconds. Always returns a non-negative value — if
+ * the target is "behind" us, we wait for the next pass.
+ */
+function timeToTrueAnomaly(
+  current: CurrentOrbit,
+  currentTrueAnomalyDeg: number,
+  targetTrueAnomalyDeg: number,
+  mu: number,
+): number {
+  const a = current.sma;
+  const e = current.eccentricity;
+  const n = Math.sqrt(mu / (a * a * a));
+  const period = (2 * Math.PI) / n;
+
+  const toM = (trueAnomalyDeg: number) => {
+    const nu = (trueAnomalyDeg * Math.PI) / 180;
+    const E = 2 * Math.atan2(
+      Math.sqrt(1 - e) * Math.sin(nu / 2),
+      Math.sqrt(1 + e) * Math.cos(nu / 2),
+    );
+    return E - e * Math.sin(E);
+  };
+
+  const dM = toM(targetTrueAnomalyDeg) - toM(currentTrueAnomalyDeg);
+  let dt = dM / n;
+  // Wrap forward if the target has already passed this orbit.
+  while (dt < 0) dt += period;
+  return dt;
+}
+
+/**
+ * Match a target inclination by burning normal at the next ascending or
+ * descending node (whichever is sooner). Preserves the in-plane orbit
+ * shape — we only rotate the plane around the node line, which is the
+ * cheapest kind of inclination change.
+ *
+ * `currentInclinationDeg` / `targetInclinationDeg` are absolute
+ * inclinations from the body's equator (matching `o.inclination`). The
+ * result's `normal` is signed: positive at an AN burn increases
+ * inclination, negative decreases it — and vice-versa at the DN, so
+ * "where are we?" is folded into the sign for us here.
+ */
+export function matchInclination(
+  current: CurrentOrbit,
+  currentTrueAnomalyDeg: number,
+  currentArgumentOfPeriapsisDeg: number,
+  currentInclinationDeg: number,
+  mu: number,
+  currentUT: number,
+  targetInclinationDeg: number,
+): ManeuverPlan {
+  const nodes = nodeAnomalies(currentArgumentOfPeriapsisDeg);
+  const dtAN = timeToTrueAnomaly(
+    current,
+    currentTrueAnomalyDeg,
+    nodes.an,
+    mu,
+  );
+  const dtDN = timeToTrueAnomaly(
+    current,
+    currentTrueAnomalyDeg,
+    nodes.dn,
+    mu,
+  );
+
+  // Burn at whichever node arrives first. At AN a +normal burn rotates
+  // the orbit's angular-momentum vector northward → higher inclination;
+  // at DN the geometry is mirrored, so the sign flips.
+  const useAN = dtAN <= dtDN;
+  const dt = useAN ? dtAN : dtDN;
+  const nodeDirection = useAN ? 1 : -1;
+
+  const burnUT = currentUT + dt;
+  const state = stateAtUT(
+    current,
+    currentTrueAnomalyDeg,
+    mu,
+    currentUT,
+    burnUT,
+  );
+
+  // Cheap plane-change formula: normal ΔV magnitude is 2·v_h·sin(Δi/2),
+  // where v_h is the velocity component in the plane perpendicular to
+  // the radius (i.e. horizontal). At a node γ is approximately zero for
+  // circular-ish orbits, but we include the cos(γ) correction for
+  // eccentric cases.
+  const deltaIRad =
+    ((targetInclinationDeg - currentInclinationDeg) * Math.PI) / 180;
+  const vHorizontal = state.speed * Math.cos(state.flightPathAngle);
+  const magnitude = 2 * vHorizontal * Math.sin(Math.abs(deltaIRad) / 2);
+  const normal =
+    nodeDirection * Math.sign(deltaIRad) * magnitude;
+
+  return {
+    ut: burnUT,
+    prograde: 0,
+    normal,
+    radial: 0,
+    requiredDeltaV: Math.abs(normal),
+    projected: {
+      sma: current.sma,
+      eccentricity: current.eccentricity,
+      ApR: current.ApR,
+      PeR: current.PeR,
+      period: periodAt(mu, current.sma),
+      inclination: targetInclinationDeg,
+    },
   };
 }

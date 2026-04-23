@@ -6,6 +6,7 @@ import {
   customAtApsis,
   customAtUT,
   gravParameterFromState,
+  matchInclination,
   stateAtUT,
 } from "./maneuver";
 
@@ -306,5 +307,87 @@ describe("customAtUT", () => {
     expect(plan.projected).toBeNull();
     expect(plan.ut).toBe(500);
     expect(plan.requiredDeltaV).toBe(100);
+  });
+});
+
+describe("matchInclination", () => {
+  it("requires ~zero ΔV when the target equals the current inclination", () => {
+    const plan = matchInclination(
+      KERBIN_100KM_CIRCULAR,
+      0,    // ν
+      0,    // argPe (AN at ν = 0)
+      45,   // current inc
+      KERBIN_MU,
+      0,
+      45,   // same target
+    );
+    expect(Math.abs(plan.normal)).toBeLessThan(1e-6);
+    expect(plan.prograde).toBe(0);
+    expect(plan.radial).toBe(0);
+    expect(plan.projected?.inclination).toBe(45);
+  });
+
+  it("matches the textbook pure-inclination formula on a circular orbit", () => {
+    // 100 km Kerbin circular: v ≈ sqrt(μ/r)
+    const r = KERBIN_100KM_CIRCULAR.sma;
+    const v = Math.sqrt(KERBIN_MU / r);
+    const deltaIRad = (30 * Math.PI) / 180;
+    const expected = 2 * v * Math.sin(deltaIRad / 2);
+
+    const plan = matchInclination(
+      KERBIN_100KM_CIRCULAR,
+      0,
+      0,
+      0,   // current inc
+      KERBIN_MU,
+      0,
+      30,  // target +30°
+    );
+    expect(Math.abs(plan.normal)).toBeCloseTo(expected, 0);
+    expect(plan.projected?.inclination).toBe(30);
+  });
+
+  it("reverses the normal sign when the target inclination is lower", () => {
+    const planUp = matchInclination(
+      KERBIN_100KM_CIRCULAR,
+      0,
+      0,
+      0,
+      KERBIN_MU,
+      0,
+      30,
+    );
+    const planDown = matchInclination(
+      KERBIN_100KM_CIRCULAR,
+      0,
+      0,
+      30,
+      KERBIN_MU,
+      0,
+      0,
+    );
+    // Same geometry → same magnitude, opposite sign.
+    expect(Math.abs(planUp.normal + planDown.normal)).toBeLessThan(1e-6);
+  });
+
+  it("schedules the burn at the nearer of AN / DN", () => {
+    // argPe = 0 → AN at ν = 0, DN at ν = 180. Current ν just past AN →
+    // DN is nearer.
+    const plan = matchInclination(
+      KERBIN_100KM_CIRCULAR,
+      10, // current ν just past AN
+      0,  // argPe
+      0,
+      KERBIN_MU,
+      1000,
+      10,
+    );
+    // ν needs to reach 180° (DN). On a circular orbit with period T,
+    // that takes roughly (170°/360°)·T seconds.
+    const period = 2 * Math.PI * Math.sqrt(
+      (KERBIN_100KM_CIRCULAR.sma ** 3) / KERBIN_MU,
+    );
+    const expectedDt = (170 / 360) * period;
+    expect(plan.ut - 1000).toBeCloseTo(expectedDt, -1);
   });
 });

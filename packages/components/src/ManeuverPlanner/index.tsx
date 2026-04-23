@@ -10,6 +10,7 @@ import {
   getBody,
   gravParameterFromState,
   type ManeuverPlan,
+  matchInclination,
   registerComponent,
   useDataValue,
   useExecuteAction,
@@ -33,7 +34,9 @@ type PresetId =
   | "circularize-peri"
   | "custom-apo"
   | "custom-peri"
-  | "custom-ut";
+  | "custom-ut"
+  | "match-inclination"
+  | "match-target-inclination";
 
 interface ManeuverPlannerConfig {
   defaultPreset?: PresetId;
@@ -80,6 +83,20 @@ const PRESETS: Array<{
       "Schedule a ΔV at an arbitrary time from now. Projection reflects real flight-path angle at the burn point.",
     needsCustomInput: true,
   },
+  {
+    id: "match-inclination",
+    label: "Match inclination",
+    description:
+      "Rotate the orbital plane to a target inclination at the next AN / DN.",
+    needsCustomInput: true,
+  },
+  {
+    id: "match-target-inclination",
+    label: "Match target inclination",
+    description:
+      "Rotate to match the current target's inclination. Needs a target selected in-game.",
+    needsCustomInput: false,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -98,6 +115,8 @@ function ManeuverPlannerComponent({
   // "Burn in N seconds" input for the custom-ut preset. Default 60s so the
   // UI always has a sensible future UT even before the user touches it.
   const [burnInSeconds, setBurnInSeconds] = useState(60);
+  // Target inclination for the match-inclination preset (°).
+  const [targetInclination, setTargetInclination] = useState(0);
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +135,9 @@ function ManeuverPlannerComponent({
   const physicsMode = useDataValue("data", "a.physicsMode");
   const refBody = useDataValue("data", "o.referenceBody");
   const bodyName = useDataValue("data", "v.body");
+  const inclination = useDataValue("data", "o.inclination");
+  const targetName = useDataValue("data", "tar.name");
+  const targetInclinationLive = useDataValue("data", "tar.o.inclination");
 
   const nodes = useManeuverNodes();
   const vesselDeltaV = useVesselDeltaV();
@@ -181,6 +203,39 @@ function ManeuverPlannerComponent({
           normal,
           radial,
         );
+      case "match-inclination":
+        if (
+          trueAnomaly === undefined ||
+          argPe === undefined ||
+          inclination === undefined
+        )
+          return null;
+        return matchInclination(
+          currentOrbit,
+          trueAnomaly,
+          argPe,
+          inclination,
+          mu,
+          currentUT,
+          targetInclination,
+        );
+      case "match-target-inclination":
+        if (
+          trueAnomaly === undefined ||
+          argPe === undefined ||
+          inclination === undefined ||
+          targetInclinationLive === undefined
+        )
+          return null;
+        return matchInclination(
+          currentOrbit,
+          trueAnomaly,
+          argPe,
+          inclination,
+          mu,
+          currentUT,
+          targetInclinationLive,
+        );
     }
   }, [
     currentOrbit,
@@ -192,6 +247,10 @@ function ManeuverPlannerComponent({
     radial,
     burnInSeconds,
     trueAnomaly,
+    argPe,
+    inclination,
+    targetInclination,
+    targetInclinationLive,
   ]);
 
   const feasible =
@@ -290,32 +349,49 @@ function ManeuverPlannerComponent({
         {selectedPreset?.description && (
           <PresetDesc>{selectedPreset.description}</PresetDesc>
         )}
-        {selectedPreset?.needsCustomInput && (
-          <CustomInputs>
-            {preset === "custom-ut" && (
+        {selectedPreset?.needsCustomInput &&
+          (preset === "match-inclination" ? (
+            <CustomInputs>
               <LabeledInput
-                label="Burn in"
-                value={burnInSeconds}
-                onChange={setBurnInSeconds}
-                suffix="s"
+                label="Target inc"
+                value={targetInclination}
+                onChange={setTargetInclination}
+                suffix="°"
               />
-            )}
-            <LabeledInput
-              label="Prograde"
-              value={prograde}
-              onChange={setPrograde}
-            />
-            <LabeledInput
-              label="Normal"
-              value={normal}
-              onChange={setNormal}
-            />
-            <LabeledInput
-              label="Radial"
-              value={radial}
-              onChange={setRadial}
-            />
-          </CustomInputs>
+            </CustomInputs>
+          ) : (
+            <CustomInputs>
+              {preset === "custom-ut" && (
+                <LabeledInput
+                  label="Burn in"
+                  value={burnInSeconds}
+                  onChange={setBurnInSeconds}
+                  suffix="s"
+                />
+              )}
+              <LabeledInput
+                label="Prograde"
+                value={prograde}
+                onChange={setPrograde}
+              />
+              <LabeledInput
+                label="Normal"
+                value={normal}
+                onChange={setNormal}
+              />
+              <LabeledInput
+                label="Radial"
+                value={radial}
+                onChange={setRadial}
+              />
+            </CustomInputs>
+          ))}
+        {preset === "match-target-inclination" && (
+          <PresetDesc>
+            {targetName
+              ? `Target: ${targetName} (${(targetInclinationLive ?? 0).toFixed(1)}°)`
+              : "No target selected in-game."}
+          </PresetDesc>
         )}
       </Section>
 
@@ -365,6 +441,15 @@ function ManeuverPlannerComponent({
 
                   <Label>New T</Label>
                   <Value>{formatDuration(plan.projected.period)}</Value>
+
+                  {plan.projected.inclination !== undefined && (
+                    <>
+                      <Label>New Inc</Label>
+                      <Value>
+                        {plan.projected.inclination.toFixed(2)}°
+                      </Value>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -526,6 +611,7 @@ registerComponent<ManeuverPlannerConfig>({
     "o.ApR",
     "o.PeR",
     "o.argumentOfPeriapsis",
+    "o.inclination",
     "o.trueAnomaly",
     "o.timeToAp",
     "o.timeToPe",
@@ -537,6 +623,8 @@ registerComponent<ManeuverPlannerConfig>({
     "a.physicsMode",
     "v.body",
     "dv.stages",
+    "tar.name",
+    "tar.o.inclination",
   ],
   behaviors: [],
   defaultConfig: { defaultPreset: "circularize-apo" },

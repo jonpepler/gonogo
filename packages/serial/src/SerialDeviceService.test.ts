@@ -95,10 +95,10 @@ describe("SerialDeviceService", () => {
     vi.advanceTimersByTime(5);
     const frame = transport.lastFrame as string;
     expect(typeof frame).toBe("string");
-    const lines = frame.split("\n");
+    // text-buffer renders as a flat 21×8 buffer (no row separators).
     // Keys are sorted — ALT first, THR second.
-    expect(lines[0].startsWith("ALT 1")).toBe(true);
-    expect(lines[1].startsWith("THR 2")).toBe(true);
+    expect(frame.slice(0, 21).startsWith("ALT 1")).toBe(true);
+    expect(frame.slice(21, 42).startsWith("THR 2")).toBe(true);
   });
 
   it("merges sequential action returns into one frame", () => {
@@ -113,9 +113,9 @@ describe("SerialDeviceService", () => {
     const second = transport.lastFrame as string;
 
     // Second frame retains ALT from the merged state and adds THR.
-    expect(first.split("\n")[0].startsWith("ALT 1")).toBe(true);
-    expect(second.split("\n")[0].startsWith("ALT 1")).toBe(true);
-    expect(second.split("\n")[1].startsWith("THR 2")).toBe(true);
+    expect(first.slice(0, 21).startsWith("ALT 1")).toBe(true);
+    expect(second.slice(0, 21).startsWith("ALT 1")).toBe(true);
+    expect(second.slice(21, 42).startsWith("THR 2")).toBe(true);
   });
 
   it("ignores non-object action returns", () => {
@@ -350,5 +350,121 @@ describe("SerialDeviceService — json-state schema updates", () => {
     });
     const type = svc.getDeviceType(BARE_JSON_TYPE.id);
     expect(type?.renderStyleId).toBeUndefined();
+  });
+});
+
+describe("SerialDeviceService autoReconnect", () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("adopts a previously-authorised port that matches by VID/PID", async () => {
+    const { MockWebSerial } = await import("./mocks/mockWebSerial");
+    const { WebSerialTransport } = await import(
+      "./transports/WebSerialTransport"
+    );
+
+    const mock = new MockWebSerial();
+    mock.install({ force: true });
+    try {
+      mock.createPort({
+        info: { usbVendorId: 0x1234, usbProductId: 0x5678 },
+      });
+
+      const storage = memoryStorage();
+      const svc = new SerialDeviceService({
+        screenKey: "test",
+        storage,
+        transportFactory: (instance, deviceType) =>
+          new WebSerialTransport({
+            id: instance.id,
+            deviceType,
+            baudRate: instance.baudRate,
+            filters: instance.filters,
+          }),
+      });
+      for (const d of svc.getDevices()) await svc.removeDevice(d.id);
+      for (const t of svc.getDeviceTypes()) await svc.removeDeviceType(t.id);
+
+      svc.upsertDeviceType(TYPE);
+      svc.addDevice({
+        id: "hw1",
+        name: "Hardware",
+        typeId: TYPE.id,
+        transport: "web-serial",
+        portInfo: { vendorId: 0x1234, productId: 0x5678 },
+      });
+
+      expect(svc.getStatus("hw1")).toBe("disconnected");
+      await svc.autoReconnect();
+      expect(svc.getStatus("hw1")).toBe("connected");
+
+      await svc.destroy();
+    } finally {
+      mock.restore();
+    }
+  });
+
+  it("does not adopt when two ports match (ambiguous)", async () => {
+    const { MockWebSerial } = await import("./mocks/mockWebSerial");
+    const { WebSerialTransport } = await import(
+      "./transports/WebSerialTransport"
+    );
+
+    const mock = new MockWebSerial();
+    mock.install({ force: true });
+    try {
+      mock.createPort({
+        info: { usbVendorId: 0xaaaa, usbProductId: 0xbbbb },
+      });
+      mock.createPort({
+        info: { usbVendorId: 0xaaaa, usbProductId: 0xbbbb },
+      });
+
+      const storage = memoryStorage();
+      const svc = new SerialDeviceService({
+        screenKey: "test",
+        storage,
+        transportFactory: (instance, deviceType) =>
+          new WebSerialTransport({
+            id: instance.id,
+            deviceType,
+            baudRate: instance.baudRate,
+            filters: instance.filters,
+          }),
+      });
+      for (const d of svc.getDevices()) await svc.removeDevice(d.id);
+      for (const t of svc.getDeviceTypes()) await svc.removeDeviceType(t.id);
+
+      svc.upsertDeviceType(TYPE);
+      svc.addDevice({
+        id: "hw2",
+        name: "Hardware",
+        typeId: TYPE.id,
+        transport: "web-serial",
+        portInfo: { vendorId: 0xaaaa, productId: 0xbbbb },
+      });
+
+      await svc.autoReconnect();
+      // Ambiguous match — current-functionality fallback of leaving the
+      // device disconnected so the user picks explicitly.
+      expect(svc.getStatus("hw2")).toBe("disconnected");
+      await svc.destroy();
+    } finally {
+      mock.restore();
+    }
+  });
+
+  it("is a no-op when navigator.serial is absent", async () => {
+    const svc = await makeService();
+    svc.upsertDeviceType(TYPE);
+    svc.addDevice({
+      id: "v1",
+      name: "Virtual",
+      typeId: TYPE.id,
+      transport: "virtual",
+    });
+    await expect(svc.autoReconnect()).resolves.toBeUndefined();
+    await svc.destroy();
   });
 });

@@ -216,6 +216,85 @@ export class SerialDeviceService {
     const managed = this.managed.get(deviceId);
     if (!managed) return;
     await managed.transport.connect();
+    this.capturePortInfo(managed);
+  }
+
+  /**
+   * Try to reopen previously-authorised Web Serial ports without prompting
+   * the user. For each saved web-serial device, match the navigator-held
+   * port list by VID/PID; if we find exactly one match and the device
+   * isn't already connected, adopt it. Ambiguous matches (two identical
+   * devices plugged in) are left alone so the user can pick explicitly.
+   *
+   * Safe to call on any screen — no-op if the browser doesn't expose
+   * `navigator.serial.getPorts`.
+   */
+  async autoReconnect(): Promise<void> {
+    const serial = (
+      globalThis as {
+        navigator?: {
+          serial?: {
+            getPorts?: () => Promise<SerialPort[]>;
+          };
+        };
+      }
+    ).navigator?.serial;
+    if (!serial?.getPorts) return;
+    let ports: SerialPort[];
+    try {
+      ports = await serial.getPorts();
+    } catch (err) {
+      logger.warn("[SerialDeviceService] getPorts failed", {
+        err: String(err),
+      });
+      return;
+    }
+
+    for (const managed of this.managed.values()) {
+      if (managed.instance.transport !== "web-serial") continue;
+      if (managed.transport.status === "connected") continue;
+      const info = managed.instance.portInfo;
+      if (!info?.vendorId) continue;
+
+      const candidates = ports.filter((port) => {
+        const pInfo = port.getInfo();
+        return (
+          pInfo.usbVendorId === info.vendorId &&
+          pInfo.usbProductId === info.productId
+        );
+      });
+      if (candidates.length !== 1) continue;
+
+      const adopt = (
+        managed.transport as DeviceTransport & {
+          connect?: (opts?: { port?: SerialPort }) => Promise<void>;
+        }
+      ).connect;
+      if (typeof adopt !== "function") continue;
+      try {
+        await adopt.call(managed.transport, { port: candidates[0] });
+        this.capturePortInfo(managed);
+      } catch (err) {
+        logger.warn(
+          `[SerialDeviceService] auto-reconnect failed for ${managed.instance.id}`,
+          { err: String(err) },
+        );
+      }
+    }
+  }
+
+  private capturePortInfo(managed: ManagedDevice): void {
+    const transport = managed.transport as DeviceTransport & {
+      getPortInfo?: () => { vendorId?: number; productId?: number } | null;
+    };
+    const info = transport.getPortInfo?.();
+    if (!info?.vendorId) return;
+    const prev = managed.instance.portInfo;
+    if (prev?.vendorId === info.vendorId && prev.productId === info.productId)
+      return;
+    managed.instance = { ...managed.instance, portInfo: info };
+    this.saveDevices();
+    this.emitDevicesChange();
   }
 
   async disconnect(deviceId: string): Promise<void> {

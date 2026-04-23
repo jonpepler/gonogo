@@ -51,11 +51,24 @@ export class WebSerialTransport implements DeviceTransport {
     this.filters = opts.filters;
   }
 
-  async connect(): Promise<void> {
+  /**
+   * Exposed so SerialDeviceService can persist the VID/PID after a successful
+   * connect — auto-reconnect on the next load needs it to match against
+   * `navigator.serial.getPorts()`.
+   */
+  getPortInfo(): { vendorId?: number; productId?: number } | null {
+    const info = this.port?.getInfo();
+    if (!info) return null;
+    return { vendorId: info.usbVendorId, productId: info.usbProductId };
+  }
+
+  async connect(options?: { port?: SerialPort }): Promise<void> {
     try {
-      const port = await navigator.serial.requestPort({
-        filters: this.filters,
-      });
+      const port =
+        options?.port ??
+        (await navigator.serial.requestPort({
+          filters: this.filters,
+        }));
       await port.open({
         baudRate: this.baudRate,
         dataBits: 8,

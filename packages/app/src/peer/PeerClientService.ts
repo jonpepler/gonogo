@@ -2,6 +2,7 @@ import { debugPeer, logger } from "@gonogo/core";
 import Peer, { type DataConnection } from "peerjs";
 import { loadIceServers } from "./iceServers";
 import type { PeerMessage, PeerSchemaSource } from "./protocol";
+import { getStationPeerId } from "./stationPeerId";
 
 export type ConnStatus =
   | "idle"
@@ -16,6 +17,11 @@ const DEFAULT_RETRY_TIMEOUT_MS = 5 * 60 * 1000;
 export interface PeerClientOptions {
   retryIntervalMs?: number;
   retryTimeoutMs?: number;
+  /**
+   * Explicit PeerJS id for this station. Defaults to the persistent
+   * localStorage-backed id from `getStationPeerId()`. Override for tests.
+   */
+  peerId?: string;
 }
 
 export class PeerClientService {
@@ -27,6 +33,7 @@ export class PeerClientService {
   private retryStart: number | null = null;
   private readonly retryIntervalMs: number;
   private readonly retryTimeoutMs: number;
+  private readonly stationPeerId: string;
 
   private dataListeners = new Set<
     (sourceId: string, key: string, value: unknown, t: number) => void
@@ -74,9 +81,11 @@ export class PeerClientService {
   constructor({
     retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS,
     retryTimeoutMs = DEFAULT_RETRY_TIMEOUT_MS,
+    peerId,
   }: PeerClientOptions = {}) {
     this.retryIntervalMs = retryIntervalMs;
     this.retryTimeoutMs = retryTimeoutMs;
+    this.stationPeerId = peerId ?? getStationPeerId();
   }
 
   connect(hostPeerId: string) {
@@ -92,7 +101,7 @@ export class PeerClientService {
     this.emitConnStatus("connecting");
     const iceServers = loadIceServers();
     this.peer = new Peer(
-      undefined as unknown as string,
+      this.stationPeerId,
       iceServers.length > 0 ? { config: { iceServers } } : undefined,
     );
     this.peer.on("open", () => {

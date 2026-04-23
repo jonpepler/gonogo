@@ -115,6 +115,9 @@ function ManeuverPlannerComponent({
   // "Burn in N seconds" input for the custom-ut preset. Default 60s so the
   // UI always has a sensible future UT even before the user touches it.
   const [burnInSeconds, setBurnInSeconds] = useState(60);
+  // "relative" → burnInSeconds from now; "absolute" → burnAtUT as entered.
+  const [utMode, setUtMode] = useState<"relative" | "absolute">("relative");
+  const [burnAtUT, setBurnAtUT] = useState(0);
   // Target inclination for the match-inclination preset (°).
   const [targetInclination, setTargetInclination] = useState(0);
   const [committing, setCommitting] = useState(false);
@@ -191,18 +194,23 @@ function ManeuverPlannerComponent({
           normal,
           radial,
         );
-      case "custom-ut":
+      case "custom-ut": {
         if (trueAnomaly === undefined) return null;
+        const burnUT =
+          utMode === "absolute"
+            ? burnAtUT
+            : currentUT + Math.max(0, burnInSeconds);
         return customAtUT(
           currentOrbit,
           trueAnomaly,
           mu,
           currentUT,
-          currentUT + Math.max(0, burnInSeconds),
+          burnUT,
           prograde,
           normal,
           radial,
         );
+      }
       case "match-inclination":
         if (
           trueAnomaly === undefined ||
@@ -246,6 +254,8 @@ function ManeuverPlannerComponent({
     normal,
     radial,
     burnInSeconds,
+    utMode,
+    burnAtUT,
     trueAnomaly,
     argPe,
     inclination,
@@ -362,12 +372,46 @@ function ManeuverPlannerComponent({
           ) : (
             <CustomInputs>
               {preset === "custom-ut" && (
-                <LabeledInput
-                  label="Burn in"
-                  value={burnInSeconds}
-                  onChange={setBurnInSeconds}
-                  suffix="s"
-                />
+                <>
+                  <UTModeRow>
+                    <UTModeButton
+                      $active={utMode === "relative"}
+                      type="button"
+                      onClick={() => setUtMode("relative")}
+                    >
+                      burn in
+                    </UTModeButton>
+                    <UTModeButton
+                      $active={utMode === "absolute"}
+                      type="button"
+                      onClick={() => {
+                        // Seed the absolute field with "now + 60s" the first
+                        // time the user flips modes, so they don't see a 0.
+                        if (burnAtUT === 0 && currentUT !== undefined) {
+                          setBurnAtUT(currentUT + 60);
+                        }
+                        setUtMode("absolute");
+                      }}
+                    >
+                      at UT
+                    </UTModeButton>
+                  </UTModeRow>
+                  {utMode === "relative" ? (
+                    <LabeledInput
+                      label="Burn in"
+                      value={burnInSeconds}
+                      onChange={setBurnInSeconds}
+                      suffix="s"
+                    />
+                  ) : (
+                    <LabeledInput
+                      label="At UT"
+                      value={burnAtUT}
+                      onChange={setBurnAtUT}
+                      suffix=""
+                    />
+                  )}
+                </>
               )}
               <LabeledInput
                 label="Prograde"
@@ -767,6 +811,24 @@ const CustomInputs = styled.div`
   flex-direction: column;
   gap: 4px;
   padding-top: 4px;
+`;
+
+const UTModeRow = styled.div`
+  display: flex;
+  gap: 4px;
+`;
+
+const UTModeButton = styled.button<{ $active: boolean }>`
+  background: ${({ $active }) => ($active ? "#2e5a2e" : "#1a1a1a")};
+  border: 1px solid ${({ $active }) => ($active ? "#3e7a3e" : "#2a2a2a")};
+  color: ${({ $active }) => ($active ? "#cfe" : "#888")};
+  font-family: monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 `;
 
 const InputRow = styled.label`

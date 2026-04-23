@@ -29,6 +29,19 @@ const MENU_HEADER = "Vessel Name (CPU tagname)";
 const GARBLED_INPUT = "Garbled selection. Try again.";
 
 /**
+ * Text patterns that indicate the kOS side of the session has ended, even
+ * though our WebSocket / peer tunnel may still be open. When we see one we
+ * surface a disconnect to the user the same way a real `close` event would,
+ * so terminals don't sit looking "live" when they're actually orphaned.
+ */
+const SESSION_END_SENTINELS: readonly string[] = [
+  "Connection closed by foreign host",
+  "Connection to localhost closed",
+  "Connection to kos closed",
+  "[connection closed]",
+];
+
+/**
  * Fixed PTY width. We never send a width change to the proxy — width
  * changes during the kOS CPU menu (the most fragile moment in the
  * terminal's lifecycle) re-paint the menu and garble it, breaking both
@@ -133,9 +146,29 @@ function KosTerminalComponent({
         term.writeln("\x1b[32mConnected to kOS proxy\x1b[0m");
       });
 
+      // Latch so we only surface a sentinel-driven close once per session —
+      // kOS keeps streaming bytes after printing the "Connection closed"
+      // line (boot banners, menu redraws) and we don't want to spam
+      // "[session ended]" for every follow-up chunk.
+      let sessionEnded = false;
+
       ws.addEventListener("message", ({ data }) => {
         const text = typeof data === "string" ? data : String(data);
         term.write(text);
+
+        if (
+          !sessionEnded &&
+          SESSION_END_SENTINELS.some((s) => text.includes(s))
+        ) {
+          sessionEnded = true;
+          term.writeln("\r\n\x1b[33m[session ended]\x1b[0m");
+          try {
+            ws.close();
+          } catch {
+            // transport may already be closing; close() triggers the close
+            // handler which shows [connection closed] as before.
+          }
+        }
 
         if (cpuName !== undefined) {
           // Garbled input: reset so we auto-select on the next menu appearance

@@ -289,6 +289,49 @@ describe("KosTerminal", () => {
     await waitFor(() => expect(received).toContain("1\n"));
   });
 
+  it("surfaces a session-ended notice when kOS prints a connection-closed sentinel", async () => {
+    const events: string[] = [];
+    server.use(
+      kosProxyWs.addEventListener("connection", ({ client }) => {
+        client.addEventListener("close", () => events.push("closed"));
+        // kOS-side telnet dropping the session while the WS stays open.
+        client.send("\r\nConnection closed by foreign host.\r\n");
+      }),
+    );
+
+    render(<KosTerminalComponent config={DEFAULT_CONFIG} />);
+
+    await waitFor(() => {
+      expect(termSpies.writeln).toHaveBeenCalledWith(
+        expect.stringContaining("[session ended]"),
+      );
+    });
+    // The sentinel-driven close should have triggered an explicit ws.close(),
+    // which the MSW server observes.
+    await waitFor(() => expect(events).toContain("closed"));
+  });
+
+  it("does not fire the session-ended notice twice for follow-up chunks", async () => {
+    server.use(
+      kosProxyWs.addEventListener("connection", ({ client }) => {
+        client.send("\r\nConnection closed by foreign host.\r\n");
+        client.send("Connection closed by foreign host.\r\n"); // repeat
+      }),
+    );
+
+    render(<KosTerminalComponent config={DEFAULT_CONFIG} />);
+
+    await waitFor(() => {
+      expect(termSpies.writeln).toHaveBeenCalledWith(
+        expect.stringContaining("[session ended]"),
+      );
+    });
+    const endedCalls = vi
+      .mocked(termSpies.writeln)
+      .mock.calls.filter((c) => String(c[0]).includes("[session ended]"));
+    expect(endedCalls.length).toBe(1);
+  });
+
   it("closes the WebSocket when the component unmounts", async () => {
     const events: string[] = [];
     server.use(

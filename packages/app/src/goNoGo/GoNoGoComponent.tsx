@@ -169,10 +169,12 @@ function StationView() {
     toggleVote: (payload) => {
       if (payload.kind === "button" && payload.value !== true) return;
       handleVoteToggle();
+      return { Status: vote === "go" ? "NO-GO" : "GO" };
     },
     abort: (payload) => {
       if (payload.kind === "button" && payload.value !== true) return;
       handleAbort();
+      return { Status: "ABORTING" };
     },
   });
 

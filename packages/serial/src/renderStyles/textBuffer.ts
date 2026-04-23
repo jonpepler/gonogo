@@ -1,3 +1,4 @@
+import { logger } from "@gonogo/core";
 import { registerSerialRenderStyle } from "../registry";
 import type { DeviceRenderStyle } from "../types";
 
@@ -55,7 +56,8 @@ export const textBuffer: DeviceRenderStyle = {
     while (lines.length < height) {
       lines.push(" ".repeat(width));
     }
-    return lines.join("\n");
+    logger.info(lines.join(""));
+    return `${lines.join("")}\n`;
   },
 };
 

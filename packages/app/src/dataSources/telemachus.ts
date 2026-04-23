@@ -177,6 +177,7 @@ const TELEMACHUS_KEYS: DataKey[] = [
   { key: "tar.o.period" },
   { key: "tar.o.relativeVelocity" },
   { key: "tar.o.orbitingBody" },
+  { key: "tar.o.lan" },
 ];
 
 // ---------------------------------------------------------------------------

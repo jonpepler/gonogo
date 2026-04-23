@@ -7,6 +7,7 @@ import {
   customAtUT,
   gravParameterFromState,
   matchInclination,
+  matchTargetPlane,
   stateAtUT,
 } from "./maneuver";
 
@@ -389,5 +390,66 @@ describe("matchInclination", () => {
     );
     const expectedDt = (170 / 360) * period;
     expect(plan.ut - 1000).toBeCloseTo(expectedDt, -1);
+  });
+});
+
+describe("matchTargetPlane", () => {
+  it("requires ~zero ΔV when the target plane equals the current plane", () => {
+    const plan = matchTargetPlane(
+      KERBIN_100KM_CIRCULAR,
+      45,  // ν
+      20,  // argPe
+      30,  // inc
+      50,  // LAN
+      30,  // target inc (same)
+      50,  // target LAN (same)
+      KERBIN_MU,
+      0,
+    );
+    expect(Math.abs(plan.normal)).toBeLessThan(1e-6);
+    expect(plan.requiredDeltaV).toBeLessThan(1e-6);
+  });
+
+  it("reduces to pure inclination change when LAN matches", () => {
+    // Same LAN → the relative-plane intersection is our own AN/DN line,
+    // so matchTargetPlane should produce the same ΔV as matchInclination.
+    const targetInc = 30;
+    const tp = matchTargetPlane(
+      KERBIN_100KM_CIRCULAR,
+      10,
+      0,
+      0,
+      0,
+      targetInc,
+      0,
+      KERBIN_MU,
+      0,
+    );
+    const mi = matchInclination(
+      KERBIN_100KM_CIRCULAR,
+      10,
+      0,
+      0,
+      KERBIN_MU,
+      0,
+      targetInc,
+    );
+    expect(Math.abs(tp.normal)).toBeCloseTo(Math.abs(mi.normal), 0);
+  });
+
+  it("produces a non-zero ΔV when only LAN differs", () => {
+    const plan = matchTargetPlane(
+      KERBIN_100KM_CIRCULAR,
+      0,
+      0,
+      10, // non-zero inc so the LAN distinction matters geometrically
+      0,
+      10,
+      45, // LAN shifted 45° → relative plane differs
+      KERBIN_MU,
+      0,
+    );
+    expect(plan.requiredDeltaV).toBeGreaterThan(0);
+    expect(plan.projected?.inclination).toBe(10);
   });
 });

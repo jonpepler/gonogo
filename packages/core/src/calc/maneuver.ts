@@ -468,3 +468,88 @@ export function matchInclination(
     },
   };
 }
+
+/**
+ * Match the full orbital plane of a target — both inclination AND LAN.
+ * Burns at the intersection line of the two planes, which in general
+ * is NOT the current orbit's equatorial AN/DN. Uses the relative
+ * angular-momentum geometry:
+ *
+ *   cos(θ_rel) = cos(i₁)·cos(i₂) + sin(i₁)·sin(i₂)·cos(Ω₂ − Ω₁)
+ *
+ * and the standard spherical-trig formula for the argument of latitude
+ * `u₁` on orbit 1 where it crosses orbit 2's plane. ΔV = 2·v_h·sin(θ_rel/2),
+ * applied normal.
+ *
+ * Result's projected inclination is the target's — after a pure plane
+ * change at the node, we lie in orbit 2's plane exactly.
+ */
+export function matchTargetPlane(
+  current: CurrentOrbit,
+  currentTrueAnomalyDeg: number,
+  currentArgumentOfPeriapsisDeg: number,
+  currentInclinationDeg: number,
+  currentLanDeg: number,
+  targetInclinationDeg: number,
+  targetLanDeg: number,
+  mu: number,
+  currentUT: number,
+): ManeuverPlan {
+  const i1 = (currentInclinationDeg * Math.PI) / 180;
+  const i2 = (targetInclinationDeg * Math.PI) / 180;
+  const dOmega = ((targetLanDeg - currentLanDeg) * Math.PI) / 180;
+
+  const cosRel =
+    Math.cos(i1) * Math.cos(i2) +
+    Math.sin(i1) * Math.sin(i2) * Math.cos(dOmega);
+  const relIncRad = Math.acos(Math.max(-1, Math.min(1, cosRel)));
+
+  // Argument of latitude on orbit 1 where it crosses orbit 2's plane
+  // going "up" relative to orbit 2. Standard spherical trig — see any
+  // orbital-mechanics reference on relative AN / DN between two orbits.
+  const u1Rad = Math.atan2(
+    Math.sin(i2) * Math.sin(dOmega),
+    Math.cos(i1) * Math.sin(i2) * Math.cos(dOmega) -
+      Math.sin(i1) * Math.cos(i2),
+  );
+  const u1Deg = ((u1Rad * 180) / Math.PI + 360) % 360;
+  // argPe is the angle from our AN to periapsis, so true anomaly at the
+  // relative node is u₁ − argPe.
+  const nuAN = ((u1Deg - currentArgumentOfPeriapsisDeg) % 360 + 360) % 360;
+  const nuDN = (nuAN + 180) % 360;
+
+  const dtAN = timeToTrueAnomaly(current, currentTrueAnomalyDeg, nuAN, mu);
+  const dtDN = timeToTrueAnomaly(current, currentTrueAnomalyDeg, nuDN, mu);
+  const useAN = dtAN <= dtDN;
+  const dt = useAN ? dtAN : dtDN;
+  const nodeDirection = useAN ? 1 : -1;
+
+  const burnUT = currentUT + dt;
+  const state = stateAtUT(
+    current,
+    currentTrueAnomalyDeg,
+    mu,
+    currentUT,
+    burnUT,
+  );
+
+  const vHorizontal = state.speed * Math.cos(state.flightPathAngle);
+  const magnitude = 2 * vHorizontal * Math.sin(relIncRad / 2);
+  const normal = nodeDirection * magnitude;
+
+  return {
+    ut: burnUT,
+    prograde: 0,
+    normal,
+    radial: 0,
+    requiredDeltaV: Math.abs(normal),
+    projected: {
+      sma: current.sma,
+      eccentricity: current.eccentricity,
+      ApR: current.ApR,
+      PeR: current.PeR,
+      period: periodAt(mu, current.sma),
+      inclination: targetInclinationDeg,
+    },
+  };
+}

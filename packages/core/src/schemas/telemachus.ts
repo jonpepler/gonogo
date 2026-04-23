@@ -294,4 +294,5 @@ export interface TelemaachusSchema {
   "tar.o.period": number;
   "tar.o.relativeVelocity": number;
   "tar.o.orbitingBody": string;
+  "tar.o.lan": number;
 }

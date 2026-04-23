@@ -11,6 +11,7 @@ import {
   gravParameterFromState,
   type ManeuverPlan,
   matchInclination,
+  matchTargetPlane,
   registerComponent,
   useDataValue,
   useExecuteAction,
@@ -36,7 +37,8 @@ type PresetId =
   | "custom-peri"
   | "custom-ut"
   | "match-inclination"
-  | "match-target-inclination";
+  | "match-target-inclination"
+  | "match-target-plane";
 
 interface ManeuverPlannerConfig {
   defaultPreset?: PresetId;
@@ -97,6 +99,13 @@ const PRESETS: Array<{
       "Rotate to match the current target's inclination. Needs a target selected in-game.",
     needsCustomInput: false,
   },
+  {
+    id: "match-target-plane",
+    label: "Match target plane",
+    description:
+      "Full plane match — both inclination and LAN — at the relative-plane intersection. Needs a target.",
+    needsCustomInput: false,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -141,6 +150,8 @@ function ManeuverPlannerComponent({
   const inclination = useDataValue("data", "o.inclination");
   const targetName = useDataValue("data", "tar.name");
   const targetInclinationLive = useDataValue("data", "tar.o.inclination");
+  const targetLanLive = useDataValue("data", "tar.o.lan");
+  const lan = useDataValue("data", "o.lan");
 
   const nodes = useManeuverNodes();
   const vesselDeltaV = useVesselDeltaV();
@@ -244,6 +255,27 @@ function ManeuverPlannerComponent({
           currentUT,
           targetInclinationLive,
         );
+      case "match-target-plane":
+        if (
+          trueAnomaly === undefined ||
+          argPe === undefined ||
+          inclination === undefined ||
+          lan === undefined ||
+          targetInclinationLive === undefined ||
+          targetLanLive === undefined
+        )
+          return null;
+        return matchTargetPlane(
+          currentOrbit,
+          trueAnomaly,
+          argPe,
+          inclination,
+          lan,
+          targetInclinationLive,
+          targetLanLive,
+          mu,
+          currentUT,
+        );
     }
   }, [
     currentOrbit,
@@ -261,6 +293,8 @@ function ManeuverPlannerComponent({
     inclination,
     targetInclination,
     targetInclinationLive,
+    targetLanLive,
+    lan,
   ]);
 
   const feasible =
@@ -435,6 +469,13 @@ function ManeuverPlannerComponent({
             {targetName
               ? `Target: ${targetName} (${(targetInclinationLive ?? 0).toFixed(1)}°)`
               : "No target selected in-game."}
+          </PresetDesc>
+        )}
+        {preset === "match-target-plane" && (
+          <PresetDesc>
+            {targetName && targetLanLive !== undefined
+              ? `Target: ${targetName} — i=${(targetInclinationLive ?? 0).toFixed(1)}° Ω=${targetLanLive.toFixed(1)}°`
+              : "No target selected in-game (or target LAN unavailable)."}
           </PresetDesc>
         )}
       </Section>
@@ -656,6 +697,7 @@ registerComponent<ManeuverPlannerConfig>({
     "o.PeR",
     "o.argumentOfPeriapsis",
     "o.inclination",
+    "o.lan",
     "o.trueAnomaly",
     "o.timeToAp",
     "o.timeToPe",
@@ -669,6 +711,7 @@ registerComponent<ManeuverPlannerConfig>({
     "dv.stages",
     "tar.name",
     "tar.o.inclination",
+    "tar.o.lan",
   ],
   behaviors: [],
   defaultConfig: { defaultPreset: "circularize-apo" },

@@ -1,3 +1,4 @@
+export * from "./maneuver";
 export { mapClamped } from "./map";
 export {
   buildBodyRotation,

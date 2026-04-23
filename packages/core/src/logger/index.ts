@@ -1,4 +1,6 @@
-import type { LogContext, Logger, LogLevel } from "./types";
+import { LogRingBuffer } from "./ringBuffer";
+import { tagRegistry } from "./tags";
+import type { LogContext, LogEntry, Logger, LogLevel, TaggedLogger } from "./types";
 
 function defaultEnabled(): boolean {
   // Suppress output in test runs so unit + integration suites stay quiet.
@@ -50,10 +52,16 @@ function defaultLevel(): LogLevel {
 export class ConsoleLogger implements Logger {
   private enabled: boolean;
   private level: LogLevel;
+  private readonly buffer: LogRingBuffer;
 
-  constructor(opts?: { enabled?: boolean; level?: LogLevel }) {
+  constructor(opts?: {
+    enabled?: boolean;
+    level?: LogLevel;
+    bufferCapacity?: number;
+  }) {
     this.enabled = opts?.enabled ?? defaultEnabled();
     this.level = opts?.level ?? defaultLevel();
+    this.buffer = new LogRingBuffer(opts?.bufferCapacity);
   }
 
   setEnabled(value: boolean): void {
@@ -72,30 +80,81 @@ export class ConsoleLogger implements Logger {
     return this.level;
   }
 
-  private log(
+  /** Snapshot of the in-memory ring buffer (oldest first). */
+  getBuffer(): readonly LogEntry[] {
+    return this.buffer.snapshot();
+  }
+
+  /** Serialises the buffer as a pretty-printed JSON array for download. */
+  exportLogs(): string {
+    return JSON.stringify(this.buffer.snapshot(), null, 2);
+  }
+
+  clearBuffer(): void {
+    this.buffer.clear();
+  }
+
+  tag(name: string): TaggedLogger {
+    return {
+      debug: (message, context) => this.emit("debug", message, context, undefined, name),
+      info: (message, context) => this.emit("info", message, context, undefined, name),
+      warn: (message, context) => this.emit("warn", message, context, undefined, name),
+      error: (message, error, context) =>
+        this.emit("error", message, context, error, name),
+    };
+  }
+
+  debug(message: string, context?: LogContext) {
+    this.emit("debug", message, context);
+  }
+
+  info(message: string, context?: LogContext) {
+    this.emit("info", message, context);
+  }
+
+  warn(message: string, context?: LogContext) {
+    this.emit("warn", message, context);
+  }
+
+  error(message: string, error?: Error, context?: LogContext) {
+    this.emit("error", message, context, error);
+  }
+
+  private emit(
     level: LogLevel,
     message: string,
-    context?: LogContext,
+    context: LogContext | undefined,
     error?: Error,
+    tag?: string,
   ) {
     if (!this.enabled) return;
+
+    // Tag gating: debug on a tagged logger only prints if the tag is
+    // enabled. info/warn/error always pass — a tag is for opt-in verbose
+    // tracing, not for hiding operational messages.
+    if (tag && level === "debug") {
+      if (!tagRegistry.isEnabled(tag)) return;
+    }
+
+    // Level floor still applies to everything.
     if (LEVEL_ORDER[level] < LEVEL_ORDER[this.level]) return;
-    const entry = {
+
+    const entry: LogEntry = {
       level,
-      message,
+      message: tag ? `[${tag}] ${message}` : message,
       timestamp: new Date().toISOString(),
+      tag,
       context,
       error: error
-        ? {
-            name: error.name,
-            message: error.message,
-            stack: error.stack,
-          }
+        ? { name: error.name, message: error.message, stack: error.stack }
         : undefined,
     };
 
-    const output = JSON.stringify(entry);
+    // Always buffer — the export is richer than the console stream so
+    // operators can retroactively inspect tag-gated entries.
+    this.buffer.push(entry);
 
+    const output = JSON.stringify(entry);
     switch (level) {
       case "debug":
       case "info":
@@ -109,49 +168,23 @@ export class ConsoleLogger implements Logger {
         break;
     }
   }
-
-  debug(message: string, context?: LogContext) {
-    this.log("debug", message, context);
-  }
-
-  info(message: string, context?: LogContext) {
-    this.log("info", message, context);
-  }
-
-  warn(message: string, context?: LogContext) {
-    this.log("warn", message, context);
-  }
-
-  error(message: string, error?: Error, context?: LogContext) {
-    this.log("error", message, context, error);
-  }
 }
 
 export const logger = new ConsoleLogger();
 export { AppError } from "./AppError";
 export { ErrorBoundary } from "./ErrorBoundary";
+export { tagRegistry } from "./tags";
+export { LogRingBuffer } from "./ringBuffer";
+export type { TaggedLogger, LogEntry } from "./types";
 
 /**
- * Flag-gated debug logger for tracing peer / data-source plumbing without
- * flooding normal console output. Activate by running
- * `localStorage.setItem('DEBUG_PEER', '1')` in the browser devtools, then
- * reloading. The flag is resolved once on first call and cached — this runs
- * in the per-message hot path (hundreds of times per second), so each call
- * past the first is a single boolean check.
+ * Back-compat wrapper around the new tag system. `debugPeer("foo", ctx)`
+ * behaves the same as `logger.tag("peer").debug("foo", ctx)` but stays
+ * honouring the legacy `DEBUG_PEER=1` flag so existing docs still work.
  */
-let debugPeerEnabled: boolean | null = null;
-export function debugPeer(tag: string, context?: LogContext) {
-  if (debugPeerEnabled === null) {
-    try {
-      debugPeerEnabled =
-        typeof localStorage !== "undefined" &&
-        localStorage.getItem("DEBUG_PEER") === "1";
-    } catch {
-      debugPeerEnabled = false;
-    }
-  }
-  if (!debugPeerEnabled) return;
-  logger.debug(`[peer] ${tag}`, context);
+const peerLogger = logger.tag("peer");
+export function debugPeer(message: string, context?: LogContext) {
+  peerLogger.debug(message, context);
 }
 
 import { handleError as genericHandleError } from "./error-handler";

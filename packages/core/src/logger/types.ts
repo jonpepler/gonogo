@@ -11,8 +11,16 @@ export interface LogEntry {
   level: LogLevel;
   message: string;
   timestamp: string;
+  tag?: string;
   context?: LogContext;
-  error?: Error;
+  error?: { name: string; message: string; stack?: string };
+}
+
+export interface TaggedLogger {
+  debug(message: string, context?: LogContext): void;
+  info(message: string, context?: LogContext): void;
+  warn(message: string, context?: LogContext): void;
+  error(message: string, error?: Error, context?: LogContext): void;
 }
 
 export interface Logger {
@@ -20,4 +28,6 @@ export interface Logger {
   info(message: string, context?: LogContext): void;
   warn(message: string, context?: LogContext): void;
   error(message: string, error?: Error, context?: LogContext): void;
+  /** Returns a sub-logger whose entries are gated on the given tag. */
+  tag(name: string): TaggedLogger;
 }

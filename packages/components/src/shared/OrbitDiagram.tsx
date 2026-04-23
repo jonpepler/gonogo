@@ -3,6 +3,25 @@ import styled from "styled-components";
 
 export type OrbitDiagramVariant = "full" | "mini";
 
+/**
+ * A second orbit drawn on the same frame as the main one, dashed and in a
+ * contrasting colour. Used for maneuver-planner previews ("what will the
+ * orbit become after this burn?") without forcing callers to mount two
+ * diagrams side by side.
+ */
+export interface ProjectedOrbit {
+  sma: number;
+  ecc: number;
+  apoapsis: number;
+  periapsis: number;
+  /**
+   * Optional — argument of periapsis of the projected orbit. Defaults to
+   * the main orbit's argPe, which is correct for burns at an apsis (the
+   * line of apsides is preserved).
+   */
+  argPe?: number;
+}
+
 export interface OrbitDiagramProps {
   /** Semi-major axis (distance units matching apoapsis/periapsis). */
   sma: number;
@@ -26,6 +45,12 @@ export interface OrbitDiagramProps {
   variant?: OrbitDiagramVariant;
   /** Show Ap/Pe dots (labels only rendered in "full" variant). Default: true. */
   showMarkers?: boolean;
+  /**
+   * Optional projected orbit drawn dashed behind the current one. Pass
+   * `null` (or omit) to skip. The viewBox grows to contain the larger of
+   * the two apoapses so the overlay never clips.
+   */
+  projected?: ProjectedOrbit | null;
 }
 
 // Per-variant styling knobs. Kept here so the two call sites don't diverge.
@@ -62,6 +87,7 @@ export function OrbitDiagram({
   bodyColor,
   variant = "full",
   showMarkers = true,
+  projected = null,
 }: Readonly<OrbitDiagramProps>) {
   const cfg = variantConfig[variant];
 
@@ -69,24 +95,35 @@ export function OrbitDiagram({
   const b = sma * Math.sqrt(Math.max(0, 1 - ecc * ecc));
   const c = sma * ecc;
 
-  // Scale reference: mini fits the full ellipse, full leaves square padding around apoapsis
-  const scaleRef = apoapsis;
+  // Projected orbit geometry (optional overlay)
+  const projB = projected
+    ? projected.sma *
+      Math.sqrt(Math.max(0, 1 - projected.ecc * projected.ecc))
+    : 0;
+  const projC = projected ? projected.sma * projected.ecc : 0;
+  const projArgPe = projected?.argPe ?? argPe;
+
+  // Scale reference: expand to contain whichever orbit reaches furthest.
+  const scaleRef = Math.max(apoapsis, projected?.apoapsis ?? 0);
   const padding = scaleRef * cfg.padding;
   const strokeW = scaleRef * cfg.strokeW;
   const dotR = scaleRef * cfg.dotR;
 
-  // Viewbox: full = square centred on focus; mini = tight rectangle hugging the ellipse
+  // Viewbox sizing considers both orbits so the projected overlay never clips.
+  const vbApo = Math.max(apoapsis, projected?.apoapsis ?? 0);
+  const vbPeri = Math.max(periapsis, projected?.periapsis ?? 0);
+  const vbB = Math.max(b, projB);
   const vb =
     variant === "full"
       ? (() => {
-          const half = apoapsis + padding;
+          const half = vbApo + padding;
           return { x: -half, y: -half, w: 2 * half, h: 2 * half };
         })()
       : {
-          x: -(apoapsis + padding),
-          y: -(b + padding),
-          w: apoapsis + periapsis + 2 * padding,
-          h: 2 * (b + padding),
+          x: -(vbApo + padding),
+          y: -(vbB + padding),
+          w: vbApo + vbPeri + 2 * padding,
+          h: 2 * (vbB + padding),
         };
 
   // Body disc uses real radius when known, capped for mini so the body doesn't dominate
@@ -111,6 +148,24 @@ export function OrbitDiagram({
       role="img"
       aria-label="Orbital diagram"
     >
+      {/* Projected orbit (behind) — dashed, amber to contrast with the
+          green "current" trajectory. Drawn before the current orbit so
+          the live trajectory stays visually dominant. */}
+      {projected && (
+        <g transform={`rotate(${-projArgPe})`}>
+          <ellipse
+            cx={-projC}
+            cy={0}
+            rx={projected.sma}
+            ry={projB}
+            fill="none"
+            stroke="rgba(255,180,40,0.75)"
+            strokeWidth={strokeW}
+            strokeDasharray={`${strokeW * 4} ${strokeW * 3}`}
+          />
+        </g>
+      )}
+
       {/* Trajectory first so the body overdraws it at the focus */}
       <g transform={`rotate(${-argPe})`}>
         <ellipse

@@ -121,6 +121,7 @@ import {
   type DataSource,
   registerDataSource,
 } from "@gonogo/core";
+import { PeerBroadcastingDataSource } from "../peer/PeerBroadcastingDataSource";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
 import { PeerClientService } from "../peer/PeerClientService";
 import { PeerHostService } from "../peer/PeerHostService";
@@ -213,6 +214,51 @@ describe("kOS execute tunnel (station → host → kos-compute)", () => {
     await expect(source.executeScript("datastream", "bad", [])).rejects.toThrow(
       /kOS boom: script not found/,
     );
+  });
+
+  it("routes through a PeerBroadcastingDataSource wrapper (prod path)", async () => {
+    // Regression: on the main screen every source — including kos-compute —
+    // is replaced in the registry by a PeerBroadcastingDataSource wrapper.
+    // The wrapper must forward executeScript or the host rejects every
+    // station's kos-execute-request with "not registered on main screen".
+    const executeScript = vi.fn(async (_cpu, _script, _args) => ({ dv: 42 }));
+    const realSource = {
+      id: "kos-compute",
+      name: "kOS Compute",
+      status: "connected",
+      affectedBySignalLoss: false,
+      connect: async () => {},
+      disconnect: () => {},
+      schema: () => [],
+      subscribe: () => () => {},
+      onStatusChange: () => () => {},
+      execute: async () => {},
+      configSchema: () => [],
+      configure: () => {},
+      getConfig: () => ({}),
+      executeScript,
+    } as unknown as DataSource;
+
+    const host = new PeerHostService();
+    host.start();
+    await Promise.resolve();
+
+    // Wrap exactly the way PeerHostProvider does on the main screen.
+    registerDataSource(new PeerBroadcastingDataSource(realSource, host));
+
+    const client = new PeerClientService();
+    client.connect(host.peerId ?? "");
+    for (let i = 0; i < 6; i++) await Promise.resolve();
+
+    const source = new PeerClientDataSource(
+      "kos-compute",
+      "kOS Compute",
+      client,
+    );
+
+    const result = await source.executeScript("datastream", "deltav", [2]);
+    expect(result).toEqual({ dv: 42 });
+    expect(executeScript).toHaveBeenCalledWith("datastream", "deltav", [2]);
   });
 
   it("errors if the host has no kos-compute registered", async () => {

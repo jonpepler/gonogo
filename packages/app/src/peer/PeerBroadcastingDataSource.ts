@@ -32,6 +32,18 @@ type CollectionAware = {
   ) => () => void;
 };
 
+type ExecuteScriptAware = {
+  executeScript: (
+    cpu: string,
+    script: string,
+    args: Array<number | string | boolean>,
+  ) => Promise<Record<string, unknown>>;
+};
+
+type LatestValueAware = {
+  getLatestValue: (key: string) => unknown;
+};
+
 function hasSubscribeSamples(
   source: DataSource,
 ): source is DataSource & SampleAware {
@@ -52,6 +64,22 @@ function hasSubscribeCollection(
   return (
     typeof (source as Partial<CollectionAware>).subscribeCollection ===
     "function"
+  );
+}
+
+function hasExecuteScript(
+  source: DataSource,
+): source is DataSource & ExecuteScriptAware {
+  return (
+    typeof (source as Partial<ExecuteScriptAware>).executeScript === "function"
+  );
+}
+
+function hasGetLatestValue(
+  source: DataSource,
+): source is DataSource & LatestValueAware {
+  return (
+    typeof (source as Partial<LatestValueAware>).getLatestValue === "function"
   );
 }
 
@@ -176,6 +204,20 @@ export class PeerBroadcastingDataSource implements DataSource {
       return this.real.queryRange(key, from, to);
     }
     return { t: [], v: [] };
+  }
+
+  // Conditional getters so `typeof wrapper.executeScript === "function"`
+  // reflects whether the wrapped source actually supports the method — the
+  // host's kos-execute-request handler (and useKosWidget on main) both gate
+  // on that exact check.
+  get executeScript(): ExecuteScriptAware["executeScript"] | undefined {
+    if (!hasExecuteScript(this.real)) return undefined;
+    return this.real.executeScript.bind(this.real);
+  }
+
+  get getLatestValue(): LatestValueAware["getLatestValue"] | undefined {
+    if (!hasGetLatestValue(this.real)) return undefined;
+    return this.real.getLatestValue.bind(this.real);
   }
 
   subscribeCollection(

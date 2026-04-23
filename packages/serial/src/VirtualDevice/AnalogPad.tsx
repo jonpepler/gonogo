@@ -3,23 +3,25 @@ import styled from "styled-components";
 
 interface Props {
   label: string;
-  value: number;
   onChange: (value: number) => void;
   onRelease?: () => void;
 }
 
 /**
- * 1-D horizontal slider that emits normalised -1..1 values on drag and
- * returns to centre on release (so analog inputs auto-zero when unheld).
+ * 1-D horizontal spring-loaded slider. Emits normalised -1..1 values on
+ * drag and snaps back to centre on release, so analog inputs auto-zero
+ * when unheld.
+ *
+ * The thumb position has no external authority — it only exists while
+ * the user is dragging — so the component owns it in local state. An
+ * earlier version took a `value` prop that was hardcoded by the parent
+ * and never updated, which left the thumb visually pinned at centre
+ * while the drag events quietly fired underneath.
  */
-export function AnalogPad({
-  label,
-  value,
-  onChange,
-  onRelease,
-}: Readonly<Props>) {
+export function AnalogPad({ label, onChange, onRelease }: Readonly<Props>) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [pos, setPos] = useState(0);
 
   const updateFromPointer = useCallback(
     (clientX: number) => {
@@ -28,7 +30,9 @@ export function AnalogPad({
       const rect = el.getBoundingClientRect();
       const raw = (clientX - rect.left) / rect.width;
       const clamped = Math.max(0, Math.min(1, raw));
-      onChange(clamped * 2 - 1);
+      const normalised = clamped * 2 - 1;
+      setPos(normalised);
+      onChange(normalised);
     },
     [onChange],
   );
@@ -41,6 +45,7 @@ export function AnalogPad({
     };
     const handleUp = () => {
       setDragging(false);
+      setPos(0);
       onRelease?.();
     };
 
@@ -52,7 +57,7 @@ export function AnalogPad({
     };
   }, [dragging, updateFromPointer, onRelease]);
 
-  const thumbLeft = `${((value + 1) / 2) * 100}%`;
+  const thumbLeft = `${((pos + 1) / 2) * 100}%`;
 
   return (
     <Wrap>
@@ -67,7 +72,7 @@ export function AnalogPad({
         <Centre />
         <Thumb style={{ left: thumbLeft }} $active={dragging} />
       </Track>
-      <Value>{value.toFixed(2)}</Value>
+      <Value>{pos.toFixed(2)}</Value>
     </Wrap>
   );
 }

@@ -69,7 +69,6 @@ function VirtualDeviceComponent({
             <AnalogPad
               key={input.id}
               label={input.name}
-              value={0}
               onChange={(v) => virtual?.inject(input.id, v)}
               onRelease={() => virtual?.inject(input.id, 0)}
             />

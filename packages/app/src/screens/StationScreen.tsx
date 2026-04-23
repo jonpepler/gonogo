@@ -42,6 +42,7 @@ import {
   StationNameEditor,
   useStationName,
 } from "../stationIdentity";
+import { LogsFab } from "../logs/LogsFab";
 import { OcislyStreamSource } from "../streamSources/ocisly";
 
 const HOST_ID_KEY = "gonogo-station-host-id";
@@ -81,6 +82,12 @@ export function StationScreen() {
       dispatcher.dispose();
     };
   }, [serialService, dashboard.getItems]);
+
+  useEffect(() => {
+    // Reopen previously-authorised serial ports (no user prompt). Covers the
+    // "auto-reconnect on station refresh" live-test bug.
+    void serialService.autoReconnect();
+  }, [serialService]);
 
   function attemptConnect(hostId: string) {
     const trimmed = hostId.trim().toUpperCase();
@@ -251,6 +258,7 @@ export function StationScreen() {
                           <FlightsFab />
                           <SerialFab />
                           <SaveProfilesFab bottom={204} />
+                          <LogsFab bottom={264} />
                         </FabClusterProvider>
                         <StationNameChip>
                           <StationNameEditor compact />

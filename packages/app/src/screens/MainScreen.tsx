@@ -19,6 +19,7 @@ import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { StationLinkFab } from "../components/StationLinkFab";
+import { LogsFab } from "../logs/LogsFab";
 import { GoNoGoHostProvider, GoNoGoHostService } from "../goNoGo";
 import { peerHostService } from "../peer/PeerHostService";
 import { PushedDashboardOverlay } from "../pushToMain/PushedDashboardOverlay";
@@ -704,6 +705,12 @@ export function MainScreen() {
   }, [serialService, dashboard.getItems]);
 
   useEffect(() => {
+    // Auto-reopen previously-authorised serial ports on load. Silent no-op
+    // on browsers without Web Serial, or when there are no saved devices.
+    void serialService.autoReconnect();
+  }, [serialService]);
+
+  useEffect(() => {
     const sources = getDataSources();
     sources.forEach((s) => {
       void s.connect();
@@ -753,6 +760,7 @@ export function MainScreen() {
                       <SerialFab />
                       <StationLinkFab />
                       <SaveProfilesFab />
+                      <LogsFab />
                     </FabClusterProvider>
                     <SignalLossIndicator />
                     <PushedDashboardOverlay />

@@ -163,7 +163,12 @@ export function stateAtUT(
   mu: number,
   currentUT: number,
   targetUT: number,
-): { r: number; speed: number; flightPathAngle: number } {
+): {
+  r: number;
+  speed: number;
+  flightPathAngle: number;
+  trueAnomalyDeg: number;
+} {
   const a = current.sma;
   const e = current.eccentricity;
 
@@ -188,7 +193,12 @@ export function stateAtUT(
     e * Math.sin(nu),
     1 + e * Math.cos(nu),
   );
-  return { r, speed, flightPathAngle };
+  return {
+    r,
+    speed,
+    flightPathAngle,
+    trueAnomalyDeg: ((nu * 180) / Math.PI + 360) % 360,
+  };
 }
 
 // ---------------------------------------------------------------------------

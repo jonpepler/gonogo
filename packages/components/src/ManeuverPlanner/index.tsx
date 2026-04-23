@@ -5,6 +5,7 @@ import {
   type CurrentOrbit,
   customAtApsis,
   customAtUT,
+  stateAtUT,
   formatDistance,
   formatDuration,
   getBody,
@@ -302,6 +303,34 @@ function ManeuverPlannerComponent({
       ? null
       : vesselDeltaV.totalVac >= plan.requiredDeltaV;
 
+  // True anomaly at the burn, for drag-handle placement on the preview.
+  // Apsis presets are exact (0° / 180°); custom-ut re-uses our propagator.
+  const burnTrueAnomaly: number | null = useMemo(() => {
+    if (!currentOrbit || currentUT === undefined || mu <= 0) return null;
+    if (preset === "custom-apo") return 180;
+    if (preset === "custom-peri") return 0;
+    if (preset === "custom-ut") {
+      if (trueAnomaly === undefined) return null;
+      const burnUT =
+        utMode === "absolute"
+          ? burnAtUT
+          : currentUT + Math.max(0, burnInSeconds);
+      if (burnUT <= currentUT) return null;
+      return stateAtUT(currentOrbit, trueAnomaly, mu, currentUT, burnUT)
+        .trueAnomalyDeg;
+    }
+    return null;
+  }, [
+    preset,
+    currentOrbit,
+    currentUT,
+    mu,
+    trueAnomaly,
+    utMode,
+    burnAtUT,
+    burnInSeconds,
+  ]);
+
   async function handleCommit() {
     if (!plan) return;
     if (principia) return;
@@ -563,6 +592,20 @@ function ManeuverPlannerComponent({
                           ecc: plan.projected.eccentricity,
                           apoapsis: plan.projected.ApR,
                           periapsis: plan.projected.PeR,
+                        }
+                      : null
+                  }
+                  maneuverHandles={
+                    burnTrueAnomaly !== null &&
+                    (preset === "custom-apo" ||
+                      preset === "custom-peri" ||
+                      preset === "custom-ut")
+                      ? {
+                          burnTrueAnomaly,
+                          prograde,
+                          radial,
+                          onPrograde: setPrograde,
+                          onRadial: setRadial,
                         }
                       : null
                   }
@@ -950,7 +993,7 @@ const FeasibilityChip = styled.span<{ $ok: boolean }>`
 `;
 
 const DiagramWrap = styled.div`
-  height: 110px;
+  height: 180px;
   flex-shrink: 0;
   display: flex;
 `;

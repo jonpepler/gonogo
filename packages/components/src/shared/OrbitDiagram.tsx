@@ -1,4 +1,5 @@
 import { orbitalToCartesian, trueAnomalyToRadius } from "@gonogo/core";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 
 export type OrbitDiagramVariant = "full" | "mini";
@@ -20,6 +21,27 @@ export interface ProjectedOrbit {
    * line of apsides is preserved).
    */
   argPe?: number;
+}
+
+/**
+ * Interactive maneuver handles rendered at the burn point. Prograde +
+ * radial ΔV are draggable along their axes; normal is out-of-plane so
+ * we can't meaningfully render it in a 2-D diagram — the call site
+ * keeps a numeric input for that.
+ *
+ * The prograde axis is the tangent to the orbit (perpendicular-to-radius
+ * approximation — exact at apsides, within a few degrees off-apsis for
+ * low-eccentricity orbits, good enough for visual preview).
+ */
+export interface ManeuverHandleProps {
+  /** Where on the current orbit the burn happens, true anomaly in degrees. */
+  burnTrueAnomaly: number;
+  prograde: number;
+  radial: number;
+  onPrograde: (v: number) => void;
+  onRadial: (v: number) => void;
+  /** Map m/s → orbital-distance units. Default auto-scales to apoapsis. */
+  scale?: number;
 }
 
 export interface OrbitDiagramProps {
@@ -51,6 +73,8 @@ export interface OrbitDiagramProps {
    * the two apoapses so the overlay never clips.
    */
   projected?: ProjectedOrbit | null;
+  /** Interactive prograde/radial drag handles at the burn point. */
+  maneuverHandles?: ManeuverHandleProps | null;
 }
 
 // Per-variant styling knobs. Kept here so the two call sites don't diverge.
@@ -88,6 +112,7 @@ export function OrbitDiagram({
   variant = "full",
   showMarkers = true,
   projected = null,
+  maneuverHandles = null,
 }: Readonly<OrbitDiagramProps>) {
   const cfg = variantConfig[variant];
 
@@ -218,8 +243,203 @@ export function OrbitDiagram({
 
         {/* Vessel — SVG y-flipped relative to orbital frame */}
         <circle cx={vx} cy={-vy} r={dotR * cfg.vesselDotScale} fill="#00ff88" />
+
+        {maneuverHandles && (
+          <ManeuverHandles
+            {...maneuverHandles}
+            sma={sma}
+            ecc={ecc}
+            dotR={dotR}
+            strokeW={strokeW}
+            scaleRef={scaleRef}
+          />
+        )}
       </g>
     </DiagramSvg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Maneuver handles — rendered inside the rotated <g> above so callers feed
+// positions in the orbital plane (periapsis on +x, +y north) and we handle
+// the SVG y-flip at the edges.
+// ---------------------------------------------------------------------------
+
+interface InternalHandleProps extends ManeuverHandleProps {
+  sma: number;
+  ecc: number;
+  dotR: number;
+  strokeW: number;
+  scaleRef: number;
+}
+
+function ManeuverHandles({
+  burnTrueAnomaly,
+  prograde,
+  radial,
+  onPrograde,
+  onRadial,
+  scale,
+  sma,
+  ecc,
+  dotR,
+  strokeW,
+  scaleRef,
+}: Readonly<InternalHandleProps>) {
+  const nuRad = (burnTrueAnomaly * Math.PI) / 180;
+  // Exact burn position on the current ellipse.
+  const burnRadius = trueAnomalyToRadius(sma, ecc, burnTrueAnomaly);
+  const { x: burnX, y: burnY } = orbitalToCartesian(burnRadius, burnTrueAnomaly);
+
+  // Prograde direction ≈ tangent to the orbit (perpendicular to radius,
+  // CCW). Exact at apsides; off by γ otherwise — close enough for a
+  // drag gesture whose precision comes from the numeric readout.
+  const progX = -Math.sin(nuRad);
+  const progY = Math.cos(nuRad);
+  // Radial direction = along +r̂ from body centre.
+  const radX = Math.cos(nuRad);
+  const radY = Math.sin(nuRad);
+
+  // Default scale: 500 m/s extends ~25% of apoapsis. Tweakable via prop.
+  const effectiveScale = scale ?? (scaleRef * 0.25) / 500;
+
+  return (
+    <g>
+      <circle cx={burnX} cy={-burnY} r={dotR * 0.8} fill="#ff5a8a" />
+      <HandleAxis
+        burnX={burnX}
+        burnY={burnY}
+        axisX={progX}
+        axisY={progY}
+        value={prograde}
+        onChange={onPrograde}
+        scale={effectiveScale}
+        color="#7cf"
+        label="P"
+        dotR={dotR}
+        strokeW={strokeW}
+      />
+      <HandleAxis
+        burnX={burnX}
+        burnY={burnY}
+        axisX={radX}
+        axisY={radY}
+        value={radial}
+        onChange={onRadial}
+        scale={effectiveScale}
+        color="#f9c26b"
+        label="R"
+        dotR={dotR}
+        strokeW={strokeW}
+      />
+    </g>
+  );
+}
+
+interface HandleAxisProps {
+  burnX: number;
+  burnY: number;
+  axisX: number;
+  axisY: number;
+  value: number;
+  onChange: (v: number) => void;
+  scale: number;
+  color: string;
+  label: string;
+  dotR: number;
+  strokeW: number;
+}
+
+function HandleAxis({
+  burnX,
+  burnY,
+  axisX,
+  axisY,
+  value,
+  onChange,
+  scale,
+  color,
+  label,
+  dotR,
+  strokeW,
+}: Readonly<HandleAxisProps>) {
+  const [dragging, setDragging] = useState(false);
+  const groupRef = useRef<SVGGElement>(null);
+
+  const tipX = burnX + axisX * value * scale;
+  const tipY = burnY + axisY * value * scale;
+
+  const project = useCallback(
+    (clientX: number, clientY: number) => {
+      const g = groupRef.current;
+      if (!g) return;
+      const svg = g.ownerSVGElement;
+      if (!svg) return;
+      const pt = svg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      const ctm = g.getScreenCTM();
+      if (!ctm) return;
+      const local = pt.matrixTransform(ctm.inverse());
+      // local is in the rotated group's coords, where +y points down.
+      // Flip back to orbital (+y up) then project.
+      const orbX = local.x;
+      const orbY = -local.y;
+      const along = (orbX - burnX) * axisX + (orbY - burnY) * axisY;
+      onChange(along / scale);
+    },
+    [burnX, burnY, axisX, axisY, scale, onChange],
+  );
+
+  useEffect(() => {
+    if (!dragging) return;
+    const handleMove = (e: PointerEvent) => {
+      project(e.clientX, e.clientY);
+    };
+    const handleUp = () => setDragging(false);
+    globalThis.addEventListener("pointermove", handleMove);
+    globalThis.addEventListener("pointerup", handleUp);
+    return () => {
+      globalThis.removeEventListener("pointermove", handleMove);
+      globalThis.removeEventListener("pointerup", handleUp);
+    };
+  }, [dragging, project]);
+
+  return (
+    <g ref={groupRef}>
+      <line
+        x1={burnX}
+        y1={-burnY}
+        x2={tipX}
+        y2={-tipY}
+        stroke={color}
+        strokeWidth={strokeW}
+        strokeLinecap="round"
+      />
+      <circle
+        cx={tipX}
+        cy={-tipY}
+        r={dotR * 1.4}
+        fill={color}
+        style={{ cursor: "grab", touchAction: "none" }}
+        onPointerDown={(e) => {
+          (e.currentTarget as SVGCircleElement).setPointerCapture(e.pointerId);
+          setDragging(true);
+          project(e.clientX, e.clientY);
+        }}
+      />
+      <text
+        x={tipX + axisX * dotR * 3}
+        y={-(tipY + axisY * dotR * 3)}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={color}
+        fontSize={dotR * 2.5}
+        style={{ pointerEvents: "none", userSelect: "none" }}
+      >
+        {label}
+      </text>
+    </g>
   );
 }
 

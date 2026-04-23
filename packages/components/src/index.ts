@@ -10,5 +10,6 @@ export * from "./FuelStatus";
 export * from "./Graph";
 export * from "./KosTerminal";
 export * from "./KosWidget";
+export * from "./ManeuverPlanner";
 export * from "./MapView";
 export * from "./OrbitView";

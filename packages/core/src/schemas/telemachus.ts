@@ -271,6 +271,10 @@ export interface TelemaachusSchema {
   // actual stage count rather than an arbitrary cap.
   "dv.stageCount": number;
   "dv.stages": StageInfo[];
+  "dv.totalDVVac": number;
+  "dv.totalDVASL": number;
+  "dv.totalDVActual": number;
+  "dv.totalBurnTime": number;
   [key: IndexedKey<"dv.stageFuelMass">]: number;
 
   // --- comm.* — CommNet signal state ---

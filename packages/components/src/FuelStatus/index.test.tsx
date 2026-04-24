@@ -15,6 +15,10 @@ const FUEL_KEYS: DataKey[] = [
   { key: "v.currentStage" },
   { key: "dv.stageCount" },
   { key: "dv.stages" },
+  { key: "dv.totalDVVac" },
+  { key: "dv.totalDVASL" },
+  { key: "dv.totalDVActual" },
+  { key: "dv.totalBurnTime" },
   { key: "r.resource[LiquidFuel]" },
   { key: "r.resourceMax[LiquidFuel]" },
   { key: "r.resourceCurrent[LiquidFuel]" },
@@ -149,10 +153,60 @@ describe("FuelStatusComponent", () => {
     });
 
     // StageLabel spans render as leaf elements with text content like
-    // "  Stage 0" (inactive) or "▶ Stage 1" (active).
+    // "  S0" (inactive) or "▶ S1" (active).
     const stageTexts = Array.from(container.querySelectorAll("span"))
       .map((el) => el.textContent ?? "")
-      .filter((t) => /^[▶ ] Stage \d$/.test(t));
-    expect(stageTexts).toEqual(["  Stage 2", "▶ Stage 1", "  Stage 0"]);
+      .filter((t) => /^[▶ ] S\d$/.test(t));
+    expect(stageTexts).toEqual(["  S2", "▶ S1", "  S0"]);
+  });
+
+  it("displays totals and per-stage ΔV for the selected reference mode", () => {
+    const { queryByText, container } = render(
+      <FuelStatusComponent config={{ deltaVMode: "vac" }} id="fuel-test" />,
+    );
+
+    act(() => {
+      primeFlight();
+      source.emit("v.currentStage", 1);
+      source.emit("dv.stageCount", 2);
+      source.emit("dv.totalDVVac", 4200);
+      source.emit("dv.totalDVASL", 3800);
+      source.emit("dv.totalDVActual", 3900);
+      source.emit("dv.totalBurnTime", 125);
+      source.emit("dv.stages", [
+        {
+          ...makeStage(1, 4400),
+          deltaVVac: 2500,
+          deltaVASL: 2100,
+          deltaVActual: 2300,
+          TWRVac: 1.45,
+          TWRASL: 1.2,
+          TWRActual: 1.3,
+          burnTime: 72,
+        },
+        {
+          ...makeStage(0, 1200),
+          deltaVVac: 1700,
+          deltaVASL: 1500,
+          deltaVActual: 1600,
+          TWRVac: 1.9,
+          TWRASL: 1.6,
+          TWRActual: 1.75,
+          burnTime: 53,
+        },
+      ]);
+    });
+
+    // Totals row reports vacuum ΔV (mode="vac") and total burn duration.
+    expect(queryByText("4200 m/s")).not.toBeNull();
+    expect(queryByText("VAC")).not.toBeNull();
+    expect(queryByText("2m 5s")).not.toBeNull();
+
+    // Per-stage ΔV picks the vacuum column.
+    const stageValueTexts = Array.from(container.querySelectorAll("span")).map(
+      (el) => el.textContent ?? "",
+    );
+    expect(stageValueTexts).toContain("2500 m/s");
+    expect(stageValueTexts).toContain("1700 m/s");
   });
 });

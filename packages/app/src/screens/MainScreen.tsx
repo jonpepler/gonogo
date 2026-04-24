@@ -31,6 +31,7 @@ import {
   SaveProfilesFab,
   useActiveProfile,
 } from "../saveProfiles";
+import { SettingsFab, SettingsProvider, SettingsService } from "../settings";
 import { DEMO_CONFIG } from "./demoConfig";
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,7 @@ export function MainScreen() {
     () => new SerialDeviceService({ screenKey: "main" }),
   );
   const [saveProfileService] = useState(() => new SaveProfileService());
+  const [settingsService] = useState(() => new SettingsService());
   const [fogMaskStore] = useState(() => new FogMaskStore());
   // GoNoGoHostService lives for the app's lifetime. Intentionally no dispose
   // cleanup — StrictMode's simulated unmount would run it and leave the
@@ -91,47 +93,50 @@ export function MainScreen() {
 
   return (
     <ScreenProvider value="main">
-      <SaveProfileProvider service={saveProfileService}>
-        <GoNoGoHostProvider service={goNoGoHost}>
-          <PushHostProvider service={pushHost}>
-            <ScopedFogMaskCache store={fogMaskStore}>
-              <SerialDeviceProvider service={serialService}>
-                <OverlayProvider
-                  addItem={dashboard.addItem}
-                  updateItemConfig={dashboard.updateItemConfig}
-                >
-                  <Layout as="main" aria-label="Mission control">
-                    <Dashboard
-                      items={dashboard.items}
-                      layouts={dashboard.layouts}
-                      currentLayouts={dashboard.currentLayouts}
-                      breakpoint={dashboard.breakpoint}
-                      onLayoutChange={dashboard.handleLayoutChange}
-                      onBreakpointChange={dashboard.handleBreakpointChange}
-                      updateItemConfig={dashboard.updateItemConfig}
-                      updateItemMappings={dashboard.updateItemMappings}
-                      removeItem={dashboard.removeItem}
-                    />
-                    <FabClusterProvider>
-                      <ComponentOverlay
+      <SettingsProvider service={settingsService}>
+        <SaveProfileProvider service={saveProfileService}>
+          <GoNoGoHostProvider service={goNoGoHost}>
+            <PushHostProvider service={pushHost}>
+              <ScopedFogMaskCache store={fogMaskStore}>
+                <SerialDeviceProvider service={serialService}>
+                  <OverlayProvider
+                    addItem={dashboard.addItem}
+                    updateItemConfig={dashboard.updateItemConfig}
+                  >
+                    <Layout as="main" aria-label="Mission control">
+                      <Dashboard
+                        items={dashboard.items}
+                        layouts={dashboard.layouts}
                         currentLayouts={dashboard.currentLayouts}
+                        breakpoint={dashboard.breakpoint}
+                        onLayoutChange={dashboard.handleLayoutChange}
+                        onBreakpointChange={dashboard.handleBreakpointChange}
+                        updateItemConfig={dashboard.updateItemConfig}
+                        updateItemMappings={dashboard.updateItemMappings}
+                        removeItem={dashboard.removeItem}
                       />
-                      <FlightsFab />
-                      <SerialFab />
-                      <StationLinkFab />
-                      <SaveProfilesFab />
-                      <LogsFab />
-                      <FullscreenFab />
-                    </FabClusterProvider>
-                    <SignalLossIndicator />
-                    <PushedDashboardOverlay />
-                  </Layout>
-                </OverlayProvider>
-              </SerialDeviceProvider>
-            </ScopedFogMaskCache>
-          </PushHostProvider>
-        </GoNoGoHostProvider>
-      </SaveProfileProvider>
+                      <FabClusterProvider>
+                        <ComponentOverlay
+                          currentLayouts={dashboard.currentLayouts}
+                        />
+                        <FlightsFab />
+                        <SerialFab />
+                        <StationLinkFab />
+                        <SaveProfilesFab />
+                        <LogsFab />
+                        <FullscreenFab />
+                        <SettingsFab bottom={444} />
+                      </FabClusterProvider>
+                      <SignalLossIndicator />
+                      <PushedDashboardOverlay />
+                    </Layout>
+                  </OverlayProvider>
+                </SerialDeviceProvider>
+              </ScopedFogMaskCache>
+            </PushHostProvider>
+          </GoNoGoHostProvider>
+        </SaveProfileProvider>
+      </SettingsProvider>
     </ScreenProvider>
   );
 }

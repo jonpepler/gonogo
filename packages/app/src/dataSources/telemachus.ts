@@ -147,6 +147,10 @@ const TELEMACHUS_KEYS: DataKey[] = [
   // the field they want (fuelMass, deltaVVac, etc.) client-side.
   { key: "dv.stageCount" },
   { key: "dv.stages" },
+  { key: "dv.totalDVVac" },
+  { key: "dv.totalDVASL" },
+  { key: "dv.totalDVActual" },
+  { key: "dv.totalBurnTime" },
   // Trajectory prediction: full patch list + maneuver nodes (complex objects),
   // physics-mode flag for Principia detection, landing prediction.
   { key: "o.orbitPatches" },

@@ -223,11 +223,7 @@ function StationView() {
  */
 const MILESTONES = new Set([10, 5, 3, 2, 1, 0]);
 
-export function CountdownAnnouncer({
-  secondsLeft,
-}: {
-  secondsLeft: number;
-}) {
+export function CountdownAnnouncer({ secondsLeft }: { secondsLeft: number }) {
   const [message, setMessage] = useState("");
   const lastMilestoneRef = useRef<number | null>(null);
 

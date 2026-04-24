@@ -40,6 +40,12 @@ import {
   useActiveProfile,
 } from "../saveProfiles";
 import {
+  SettingsFab,
+  SettingsProvider,
+  SettingsService,
+  useStationWakeLock,
+} from "../settings";
+import {
   ScopedStationIdentity,
   StationNameEditor,
   useStationName,
@@ -73,6 +79,7 @@ export function StationScreen() {
     () => new SerialDeviceService({ screenKey: "station" }),
   );
   const [saveProfileService] = useState(() => new SaveProfileService());
+  const [settingsService] = useState(() => new SettingsService());
   const [fogMaskStore] = useState(() => new FogMaskStore());
   const unsubsRef = useRef<Array<() => void>>([]);
   const schemaHandledRef = useRef(false);
@@ -189,97 +196,116 @@ export function StationScreen() {
   if (!connected) {
     return (
       <ScreenProvider value="station">
-        <SaveProfileProvider service={saveProfileService}>
-          <ScopedStationIdentity>
-            <ConnectLayout as="main" aria-label="Connect to mission control">
-              <ConnectBox>
-                <h1>Connect to Mission Control</h1>
-                <p>Enter the 4-character host ID shown on the main screen.</p>
-                <Row>
-                  <HostInput
-                    value={hostInput}
-                    onChange={(e) => setHostInput(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && attemptConnect(hostInput)
-                    }
-                    placeholder="e.g. AB3K"
-                    maxLength={8}
-                    autoFocus
-                  />
-                  <ConnectButton
-                    onClick={() => attemptConnect(hostInput)}
-                    disabled={connStatus === "connecting"}
-                  >
-                    {connStatus === "connecting" ? "Connecting…" : "Connect"}
-                  </ConnectButton>
-                </Row>
-                <NameRow>
-                  <StationNameEditor />
-                </NameRow>
-                {connStatus === "disconnected" && (
-                  <ErrorMsg>
-                    Connection lost. Check the host ID and try again.
-                  </ErrorMsg>
-                )}
-              </ConnectBox>
-            </ConnectLayout>
-          </ScopedStationIdentity>
-        </SaveProfileProvider>
+        <SettingsProvider service={settingsService}>
+          <SaveProfileProvider service={saveProfileService}>
+            <ScopedStationIdentity>
+              <ConnectLayout as="main" aria-label="Connect to mission control">
+                <ConnectBox>
+                  <h1>Connect to Mission Control</h1>
+                  <p>Enter the 4-character host ID shown on the main screen.</p>
+                  <Row>
+                    <HostInput
+                      value={hostInput}
+                      onChange={(e) => setHostInput(e.target.value)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && attemptConnect(hostInput)
+                      }
+                      placeholder="e.g. AB3K"
+                      maxLength={8}
+                      autoFocus
+                    />
+                    <ConnectButton
+                      onClick={() => attemptConnect(hostInput)}
+                      disabled={connStatus === "connecting"}
+                    >
+                      {connStatus === "connecting" ? "Connecting…" : "Connect"}
+                    </ConnectButton>
+                  </Row>
+                  <NameRow>
+                    <StationNameEditor />
+                  </NameRow>
+                  {connStatus === "disconnected" && (
+                    <ErrorMsg>
+                      Connection lost. Check the host ID and try again.
+                    </ErrorMsg>
+                  )}
+                </ConnectBox>
+              </ConnectLayout>
+            </ScopedStationIdentity>
+          </SaveProfileProvider>
+        </SettingsProvider>
       </ScreenProvider>
     );
   }
 
   return (
     <ScreenProvider value="station">
-      <SaveProfileProvider service={saveProfileService}>
-        <ScopedStationIdentity>
-          <StationInfoBroadcaster client={client} />
-          <PeerClientProvider client={client}>
-            <PushClientProvider>
-              <ScopedFogMaskCache store={fogMaskStore}>
-                <KosProxyContext.Provider value={kosProxy}>
-                  <SerialDeviceProvider service={serialService}>
-                    <OverlayProvider
-                      addItem={dashboard.addItem}
-                      updateItemConfig={dashboard.updateItemConfig}
-                    >
-                      <Layout as="main" aria-label="Station dashboard">
-                        <Dashboard
-                          items={dashboard.items}
-                          layouts={dashboard.layouts}
-                          currentLayouts={dashboard.currentLayouts}
-                          breakpoint={dashboard.breakpoint}
-                          onLayoutChange={dashboard.handleLayoutChange}
-                          onBreakpointChange={dashboard.handleBreakpointChange}
-                          updateItemConfig={dashboard.updateItemConfig}
-                          updateItemMappings={dashboard.updateItemMappings}
-                          removeItem={dashboard.removeItem}
-                        />
-                        <FabClusterProvider>
-                          <ComponentOverlay
+      <SettingsProvider service={settingsService}>
+        <StationWakeLockBridge />
+        <SaveProfileProvider service={saveProfileService}>
+          <ScopedStationIdentity>
+            <StationInfoBroadcaster client={client} />
+            <PeerClientProvider client={client}>
+              <PushClientProvider>
+                <ScopedFogMaskCache store={fogMaskStore}>
+                  <KosProxyContext.Provider value={kosProxy}>
+                    <SerialDeviceProvider service={serialService}>
+                      <OverlayProvider
+                        addItem={dashboard.addItem}
+                        updateItemConfig={dashboard.updateItemConfig}
+                      >
+                        <Layout as="main" aria-label="Station dashboard">
+                          <Dashboard
+                            items={dashboard.items}
+                            layouts={dashboard.layouts}
                             currentLayouts={dashboard.currentLayouts}
+                            breakpoint={dashboard.breakpoint}
+                            onLayoutChange={dashboard.handleLayoutChange}
+                            onBreakpointChange={
+                              dashboard.handleBreakpointChange
+                            }
+                            updateItemConfig={dashboard.updateItemConfig}
+                            updateItemMappings={dashboard.updateItemMappings}
+                            removeItem={dashboard.removeItem}
                           />
-                          <FlightsFab />
-                          <SerialFab />
-                          <SaveProfilesFab bottom={204} />
-                          <LogsFab bottom={264} />
-                          <FullscreenFab bottom={324} />
-                        </FabClusterProvider>
-                        <StationNameChip>
-                          <StationNameEditor compact />
-                        </StationNameChip>
-                        <SignalLossIndicator />
-                      </Layout>
-                    </OverlayProvider>
-                  </SerialDeviceProvider>
-                </KosProxyContext.Provider>
-              </ScopedFogMaskCache>
-            </PushClientProvider>
-          </PeerClientProvider>
-        </ScopedStationIdentity>
-      </SaveProfileProvider>
+                          <FabClusterProvider>
+                            <ComponentOverlay
+                              currentLayouts={dashboard.currentLayouts}
+                            />
+                            <FlightsFab />
+                            <SerialFab />
+                            <SaveProfilesFab bottom={204} />
+                            <LogsFab bottom={264} />
+                            <FullscreenFab bottom={324} />
+                            <SettingsFab bottom={384} />
+                          </FabClusterProvider>
+                          <StationNameChip>
+                            <StationNameEditor compact />
+                          </StationNameChip>
+                          <SignalLossIndicator />
+                        </Layout>
+                      </OverlayProvider>
+                    </SerialDeviceProvider>
+                  </KosProxyContext.Provider>
+                </ScopedFogMaskCache>
+              </PushClientProvider>
+            </PeerClientProvider>
+          </ScopedStationIdentity>
+        </SaveProfileProvider>
+      </SettingsProvider>
     </ScreenProvider>
   );
+}
+
+/**
+ * Mounted inside the SettingsProvider (and only under the connected branch)
+ * so `useStationWakeLock` can resolve the setting via context. Exists as a
+ * component rather than a top-level hook call because the provider that
+ * supplies the context is defined inside this same screen.
+ */
+function StationWakeLockBridge() {
+  useStationWakeLock(true);
+  return null;
 }
 
 function ScopedFogMaskCache({

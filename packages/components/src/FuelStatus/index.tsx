@@ -1,13 +1,47 @@
-import type { ComponentProps } from "@gonogo/core";
+import type {
+  ComponentProps,
+  ConfigComponentProps,
+  StageInfo,
+} from "@gonogo/core";
 import { registerComponent, useDataValue } from "@gonogo/core";
-import { Panel, PanelSubtitle, PanelTitle } from "@gonogo/ui";
+import {
+  ConfigForm,
+  Field,
+  FieldHint,
+  FieldLabel,
+  Panel,
+  PanelSubtitle,
+  PanelTitle,
+  PrimaryButton,
+  Select,
+} from "@gonogo/ui";
+import { useState } from "react";
 import styled from "styled-components";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-// Empty config for now — kept so future toggles (resource visibility, stage
-// stack hide/show, etc.) can slot in without changing the registration.
-type FuelStatusConfig = Record<string, never>;
+type DeltaVMode = "vac" | "actual" | "asl";
+
+interface FuelStatusConfig {
+  /**
+   * Which ΔV / TWR column to display from `dv.stages`. Defaults to "actual",
+   * i.e. the value under current atmospheric conditions. "vac" is what you
+   * want for reference values; "asl" for ascent planning.
+   */
+  deltaVMode?: DeltaVMode;
+}
+
+const DELTA_V_MODE_LABELS: Record<DeltaVMode, string> = {
+  actual: "Current atmosphere",
+  vac: "Vacuum",
+  asl: "Sea level",
+};
+
+const DELTA_V_MODE_SHORT: Record<DeltaVMode, string> = {
+  actual: "ACT",
+  vac: "VAC",
+  asl: "ASL",
+};
 
 // ── Resource catalogue ────────────────────────────────────────────────────────
 
@@ -61,11 +95,40 @@ function useResourceReading(def: ResourceDef): { value: number; max: number } {
     : { value: stage, max: stageMax };
 }
 
+function pickDeltaV(s: StageInfo, mode: DeltaVMode): number {
+  switch (mode) {
+    case "vac":
+      return s.deltaVVac;
+    case "asl":
+      return s.deltaVASL;
+    default:
+      return s.deltaVActual;
+  }
+}
+
+function pickTWR(s: StageInfo, mode: DeltaVMode): number {
+  switch (mode) {
+    case "vac":
+      return s.TWRVac;
+    case "asl":
+      return s.TWRASL;
+    default:
+      return s.TWRActual;
+  }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-function FuelStatusComponent(_: Readonly<ComponentProps<FuelStatusConfig>>) {
+function FuelStatusComponent({
+  config,
+}: Readonly<ComponentProps<FuelStatusConfig>>) {
+  const mode: DeltaVMode = config?.deltaVMode ?? "actual";
   const currentStage = useDataValue("data", "v.currentStage");
   const stageCount = useDataValue("data", "dv.stageCount");
+  const totalDVVac = useDataValue("data", "dv.totalDVVac");
+  const totalDVASL = useDataValue("data", "dv.totalDVASL");
+  const totalDVActual = useDataValue("data", "dv.totalDVActual");
+  const totalBurnTime = useDataValue("data", "dv.totalBurnTime");
 
   // Hooks unrolled explicitly — Rules of Hooks forbids hook calls inside any
   // loop or `.map` callback (even ones that happen to iterate a constant
@@ -88,16 +151,39 @@ function FuelStatusComponent(_: Readonly<ComponentProps<FuelStatusConfig>>) {
   // count, no hardcoded cap, no hook-per-stage. Entries arrive high → low
   // (stage 3 first, stage 0 last) matching the stack-top-down render order.
   const stages = useDataValue("data", "dv.stages") ?? [];
-  const maxStageMass = Math.max(...stages.map((s) => s.fuelMass), 0.001);
+  const maxStageDv = Math.max(...stages.map((s) => pickDeltaV(s, mode)), 0.001);
+
+  const totalDv =
+    mode === "vac" ? totalDVVac : mode === "asl" ? totalDVASL : totalDVActual;
 
   return (
     <Panel>
-      <PanelTitle>FUEL</PanelTitle>
+      <PanelTitle>FUEL · ΔV</PanelTitle>
       {currentStage !== undefined && (
         <PanelSubtitle>
           Stage {currentStage}
           {stageCount !== undefined && ` / ${Math.max(stageCount - 1, 0)}`}
         </PanelSubtitle>
+      )}
+
+      {(totalDv !== undefined || totalBurnTime !== undefined) && (
+        <TotalsRow>
+          <TotalsBlock>
+            <TotalsLabel>Total ΔV</TotalsLabel>
+            <TotalsValue>
+              {totalDv !== undefined ? `${totalDv.toFixed(0)} m/s` : "—"}
+              <TotalsModeTag>{DELTA_V_MODE_SHORT[mode]}</TotalsModeTag>
+            </TotalsValue>
+          </TotalsBlock>
+          <TotalsBlock>
+            <TotalsLabel>Total burn</TotalsLabel>
+            <TotalsValue>
+              {totalBurnTime !== undefined
+                ? formatDuration(totalBurnTime)
+                : "—"}
+            </TotalsValue>
+          </TotalsBlock>
+        </TotalsRow>
       )}
 
       <ResourceList>
@@ -127,26 +213,70 @@ function FuelStatusComponent(_: Readonly<ComponentProps<FuelStatusConfig>>) {
 
       {stages.length > 0 && (
         <StageStack>
-          <StageHeader>Stages · fuel mass (kg)</StageHeader>
-          {stages.map((s) => (
-            <StageRow key={s.stage} $active={s.stage === currentStage}>
-              <StageLabel>
-                {s.stage === currentStage ? "▶ " : "  "}Stage {s.stage}
-              </StageLabel>
-              <Bar>
-                <BarFill
-                  style={{
-                    width: `${clampPct((s.fuelMass / maxStageMass) * 100)}%`,
-                    background: s.stage === currentStage ? "#ffb74d" : "#555",
-                  }}
-                />
-              </Bar>
-              <StageReadout>{formatKg(s.fuelMass)}</StageReadout>
-            </StageRow>
-          ))}
+          <StageHeader>
+            Stages · ΔV ({DELTA_V_MODE_SHORT[mode]}) · burn · TWR
+          </StageHeader>
+          {stages.map((s) => {
+            const dv = pickDeltaV(s, mode);
+            const twr = pickTWR(s, mode);
+            const active = s.stage === currentStage;
+            return (
+              <StageRow key={s.stage} $active={active}>
+                <StageLabel>
+                  {active ? "▶ " : "  "}S{s.stage}
+                </StageLabel>
+                <Bar>
+                  <BarFill
+                    style={{
+                      width: `${clampPct((dv / maxStageDv) * 100)}%`,
+                      background: active ? "#ffb74d" : "#555",
+                    }}
+                  />
+                </Bar>
+                <StageReadout>
+                  <StageDv>{dv.toFixed(0)} m/s</StageDv>
+                  <StageMeta>
+                    {formatDuration(s.burnTime)} · TWR {twr.toFixed(2)}
+                  </StageMeta>
+                </StageReadout>
+              </StageRow>
+            );
+          })}
         </StageStack>
       )}
     </Panel>
+  );
+}
+
+// ── Config component ──────────────────────────────────────────────────────────
+
+function FuelStatusConfigComponent({
+  config,
+  onSave,
+}: Readonly<ConfigComponentProps<FuelStatusConfig>>) {
+  const [mode, setMode] = useState<DeltaVMode>(config?.deltaVMode ?? "actual");
+  return (
+    <ConfigForm>
+      <Field>
+        <FieldLabel htmlFor="fuel-dv-mode">ΔV reference</FieldLabel>
+        <Select
+          id="fuel-dv-mode"
+          value={mode}
+          onChange={(e) => setMode(e.target.value as DeltaVMode)}
+        >
+          <option value="actual">{DELTA_V_MODE_LABELS.actual}</option>
+          <option value="vac">{DELTA_V_MODE_LABELS.vac}</option>
+          <option value="asl">{DELTA_V_MODE_LABELS.asl}</option>
+        </Select>
+        <FieldHint>
+          "Current atmosphere" matches live conditions — what you'll actually
+          burn. Switch to vacuum for planning headroom.
+        </FieldHint>
+      </Field>
+      <PrimaryButton onClick={() => onSave({ deltaVMode: mode })}>
+        Save
+      </PrimaryButton>
+    </ConfigForm>
   );
 }
 
@@ -165,10 +295,14 @@ function formatAmount(value: number): string {
   return value.toFixed(2);
 }
 
-/** `dv.stageFuelMass[n]` is in kg. Display as kg under 1t, t above. */
-function formatKg(kg: number): string {
-  if (kg >= 1000) return `${(kg / 1000).toFixed(2)} t`;
-  return `${kg.toFixed(0)} kg`;
+function formatDuration(s: number): string {
+  if (!Number.isFinite(s) || s <= 0) return "0s";
+  if (s < 60) return `${s.toFixed(0)}s`;
+  const m = Math.floor(s / 60);
+  const sec = Math.round(s - m * 60);
+  if (m < 60) return `${m}m ${sec}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m - h * 60}m`;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -219,6 +353,46 @@ const BarFill = styled.div`
   transition: width 120ms linear;
 `;
 
+const TotalsRow = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 2px;
+`;
+
+const TotalsBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const TotalsLabel = styled.span`
+  color: #555;
+  font-family: monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+`;
+
+const TotalsValue = styled.span`
+  color: #ffcc80;
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+`;
+
+const TotalsModeTag = styled.span`
+  color: #666;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+`;
+
 const StageStack = styled.div`
   margin-top: 10px;
   padding-top: 6px;
@@ -238,7 +412,7 @@ const StageHeader = styled.div`
 
 const StageRow = styled.div<{ $active?: boolean }>`
   display: grid;
-  grid-template-columns: 5em 1fr auto;
+  grid-template-columns: 3.5em 1fr auto;
   align-items: center;
   gap: 8px;
   font-size: 11px;
@@ -255,21 +429,37 @@ const StageReadout = styled.span`
   font-family: monospace;
   font-size: 10px;
   white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+`;
+
+const StageDv = styled.span``;
+
+const StageMeta = styled.span`
+  color: #555;
+  font-size: 9px;
 `;
 
 // ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<FuelStatusConfig>({
   id: "fuel-status",
-  name: "Fuel Status",
+  name: "Fuel & ΔV",
   description:
-    "Current-stage fuel, oxidiser, RCS monopropellant, xenon, and electric charge bars, plus a per-stage fuel-mass stack.",
-  tags: ["telemetry", "fuel"],
+    "Resource bars for LF/Ox/RCS/Xe/Power, total ΔV + burn time, and a per-stage stack with ΔV, burn time, and TWR. ΔV reference is configurable (vac / ASL / current atmosphere).",
+  tags: ["telemetry", "fuel", "delta-v"],
   defaultSize: { w: 8, h: 14 },
   component: FuelStatusComponent,
+  configComponent: FuelStatusConfigComponent,
   dataRequirements: [
     "v.currentStage",
     "dv.stageCount",
+    "dv.totalDVVac",
+    "dv.totalDVASL",
+    "dv.totalDVActual",
+    "dv.totalBurnTime",
     "r.resource[LiquidFuel]",
     "r.resourceMax[LiquidFuel]",
     "r.resourceCurrent[LiquidFuel]",
@@ -292,7 +482,7 @@ registerComponent<FuelStatusConfig>({
     "r.resourceCurrentMax[ElectricCharge]",
     "dv.stages",
   ],
-  defaultConfig: {},
+  defaultConfig: { deltaVMode: "actual" },
   actions: [],
   pushable: true,
 });

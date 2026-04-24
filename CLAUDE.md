@@ -30,6 +30,10 @@ packages/
 
 ---
 
+## Commits
+
+Do not add a `Co-Authored-By: Claude …` (or any other Claude/Anthropic attribution) trailer to commit messages in this repo. Write the commit message as if a human authored it.
+
 ## Commands
 
 ```bash

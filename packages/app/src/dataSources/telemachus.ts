@@ -50,6 +50,9 @@ const TELEMACHUS_KEYS: DataKey[] = [
   { key: "v.splashed" },
   { key: "v.landedAt" },
   { key: "v.isEVA" },
+  { key: "v.crew" },
+  { key: "v.crewCount" },
+  { key: "v.crewCapacity" },
   { key: "v.angleToPrograde" },
   // Action group state
   { key: "v.sasValue" },

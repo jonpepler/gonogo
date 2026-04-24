@@ -148,6 +148,9 @@ export interface TelemaachusSchema {
   "v.landedAt": string;
   "v.isEVA": boolean;
   "v.angleToPrograde": number;
+  "v.crew": string[];
+  "v.crewCount": number;
+  "v.crewCapacity": number;
 
   // Action group state (read)
   "v.sasValue": boolean;

@@ -4,6 +4,7 @@
 export * from "./ActionGroup";
 export * from "./CameraFeed";
 export * from "./CommSignal";
+export * from "./CrewManifest";
 export * from "./CurrentOrbit";
 export * from "./DataSourceStatus";
 export * from "./DistanceToTarget";

@@ -102,6 +102,9 @@ export const TELEMACHUS_META: Record<string, MetaEntry> = {
     unit: "°",
     group: "State",
   },
+  "v.crew": { label: "Crew (names)", unit: "raw", group: "Crew" },
+  "v.crewCount": { label: "Crew aboard", unit: "raw", group: "Crew" },
+  "v.crewCapacity": { label: "Crew capacity", unit: "raw", group: "Crew" },
 
   // --- Action groups ---
   "v.sasValue": { label: "SAS", unit: "bool", group: "Actions" },

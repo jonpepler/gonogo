@@ -1,11 +1,11 @@
 export {
-  MissionProfilesService,
-  type MissionProfile,
-} from "./MissionProfilesService";
-export {
   MissionProfilesProvider,
-  useMissionProfilesService,
   useMissionProfiles,
+  useMissionProfilesService,
 } from "./MissionProfilesContext";
 export { MissionProfilesFab } from "./MissionProfilesFab";
 export { MissionProfilesModal } from "./MissionProfilesModal";
+export {
+  type MissionProfile,
+  MissionProfilesService,
+} from "./MissionProfilesService";

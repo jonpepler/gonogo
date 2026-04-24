@@ -21,6 +21,11 @@ import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { StationLinkFab } from "../components/StationLinkFab";
 import { GoNoGoHostProvider, GoNoGoHostService } from "../goNoGo";
 import { LogsFab } from "../logs/LogsFab";
+import {
+  MissionProfilesFab,
+  MissionProfilesProvider,
+  MissionProfilesService,
+} from "../missionProfiles";
 import { peerHostService } from "../peer/PeerHostService";
 import { PushedDashboardOverlay } from "../pushToMain/PushedDashboardOverlay";
 import { PushHostProvider } from "../pushToMain/PushHostContext";
@@ -31,11 +36,6 @@ import {
   SaveProfilesFab,
   useActiveProfile,
 } from "../saveProfiles";
-import {
-  MissionProfilesFab,
-  MissionProfilesProvider,
-  MissionProfilesService,
-} from "../missionProfiles";
 import { SettingsFab, SettingsProvider, SettingsService } from "../settings";
 import { DEMO_CONFIG } from "./demoConfig";
 
@@ -53,9 +53,7 @@ export function MainScreen() {
   );
   const [saveProfileService] = useState(() => new SaveProfileService());
   const [settingsService] = useState(() => new SettingsService());
-  const [missionProfiles] = useState(
-    () => new MissionProfilesService("main"),
-  );
+  const [missionProfiles] = useState(() => new MissionProfilesService("main"));
   const [fogMaskStore] = useState(() => new FogMaskStore());
   // GoNoGoHostService lives for the app's lifetime. Intentionally no dispose
   // cleanup — StrictMode's simulated unmount would run it and leave the
@@ -102,58 +100,58 @@ export function MainScreen() {
   return (
     <ScreenProvider value="main">
       <SettingsProvider service={settingsService}>
-      <MissionProfilesProvider service={missionProfiles}>
-        <SaveProfileProvider service={saveProfileService}>
-          <GoNoGoHostProvider service={goNoGoHost}>
-            <PushHostProvider service={pushHost}>
-              <ScopedFogMaskCache store={fogMaskStore}>
-                <SerialDeviceProvider service={serialService}>
-                  <OverlayProvider
-                    addItem={dashboard.addItem}
-                    updateItemConfig={dashboard.updateItemConfig}
-                  >
-                    <Layout as="main" aria-label="Mission control">
-                      <Dashboard
-                        items={dashboard.items}
-                        layouts={dashboard.layouts}
-                        currentLayouts={dashboard.currentLayouts}
-                        breakpoint={dashboard.breakpoint}
-                        onLayoutChange={dashboard.handleLayoutChange}
-                        onBreakpointChange={dashboard.handleBreakpointChange}
-                        updateItemConfig={dashboard.updateItemConfig}
-                        updateItemMappings={dashboard.updateItemMappings}
-                        removeItem={dashboard.removeItem}
-                      />
-                      <FabClusterProvider>
-                        <ComponentOverlay
+        <MissionProfilesProvider service={missionProfiles}>
+          <SaveProfileProvider service={saveProfileService}>
+            <GoNoGoHostProvider service={goNoGoHost}>
+              <PushHostProvider service={pushHost}>
+                <ScopedFogMaskCache store={fogMaskStore}>
+                  <SerialDeviceProvider service={serialService}>
+                    <OverlayProvider
+                      addItem={dashboard.addItem}
+                      updateItemConfig={dashboard.updateItemConfig}
+                    >
+                      <Layout as="main" aria-label="Mission control">
+                        <Dashboard
+                          items={dashboard.items}
+                          layouts={dashboard.layouts}
                           currentLayouts={dashboard.currentLayouts}
+                          breakpoint={dashboard.breakpoint}
+                          onLayoutChange={dashboard.handleLayoutChange}
+                          onBreakpointChange={dashboard.handleBreakpointChange}
+                          updateItemConfig={dashboard.updateItemConfig}
+                          updateItemMappings={dashboard.updateItemMappings}
+                          removeItem={dashboard.removeItem}
                         />
-                        <FlightsFab />
-                        <SerialFab />
-                        <StationLinkFab />
-                        <SaveProfilesFab />
-                        <LogsFab />
-                        <FullscreenFab />
-                        <SettingsFab bottom={444} />
-                        <MissionProfilesFab
-                          bottom={504}
-                          currentItems={dashboard.items}
-                          currentLayouts={dashboard.layouts}
-                          onLoad={(p) =>
-                            dashboard.replaceState(p.items, p.layouts)
-                          }
-                        />
-                      </FabClusterProvider>
-                      <SignalLossIndicator />
-                      <PushedDashboardOverlay />
-                    </Layout>
-                  </OverlayProvider>
-                </SerialDeviceProvider>
-              </ScopedFogMaskCache>
-            </PushHostProvider>
-          </GoNoGoHostProvider>
-        </SaveProfileProvider>
-      </MissionProfilesProvider>
+                        <FabClusterProvider>
+                          <ComponentOverlay
+                            currentLayouts={dashboard.currentLayouts}
+                          />
+                          <FlightsFab />
+                          <SerialFab />
+                          <StationLinkFab />
+                          <SaveProfilesFab />
+                          <LogsFab />
+                          <FullscreenFab />
+                          <SettingsFab bottom={444} />
+                          <MissionProfilesFab
+                            bottom={504}
+                            currentItems={dashboard.items}
+                            currentLayouts={dashboard.layouts}
+                            onLoad={(p) =>
+                              dashboard.replaceState(p.items, p.layouts)
+                            }
+                          />
+                        </FabClusterProvider>
+                        <SignalLossIndicator />
+                        <PushedDashboardOverlay />
+                      </Layout>
+                    </OverlayProvider>
+                  </SerialDeviceProvider>
+                </ScopedFogMaskCache>
+              </PushHostProvider>
+            </GoNoGoHostProvider>
+          </SaveProfileProvider>
+        </MissionProfilesProvider>
       </SettingsProvider>
     </ScreenProvider>
   );

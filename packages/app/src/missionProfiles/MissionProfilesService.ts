@@ -57,11 +57,7 @@ export class MissionProfilesService {
     return this.profiles.find((p) => p.id === id);
   }
 
-  save(
-    name: string,
-    items: DashboardItem[],
-    layouts: Layouts,
-  ): MissionProfile {
+  save(name: string, items: DashboardItem[], layouts: Layouts): MissionProfile {
     const trimmed = name.trim() || "Untitled profile";
     const profile: MissionProfile = {
       id: generateId(),

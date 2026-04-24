@@ -1,9 +1,10 @@
 import { getDataSource } from "@gonogo/core";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import type { BufferedDataSource } from "../BufferedDataSource";
 import { useFlight } from "../hooks/useFlight";
 import type { FlightRecord } from "../types";
+import { FlightGraph } from "./FlightGraph";
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleString();
@@ -29,6 +30,7 @@ export function FlightsManager() {
   const [flights, setFlights] = useState<FlightRecord[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [expandedFlightId, setExpandedFlightId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const src = getSource();
@@ -77,32 +79,63 @@ export function FlightsManager() {
         <tbody>
           {flights.map((f) => {
             const isCurrent = f.id === currentFlight?.id;
+            const isExpanded = expandedFlightId === f.id;
             return (
-              <Tr key={f.id} $current={isCurrent}>
-                <Td>
-                  {f.vesselName || "—"}
-                  {isCurrent && <CurrentBadge>current</CurrentBadge>}
-                </Td>
-                <Td>{formatDate(f.launchedAt)}</Td>
-                <Td>{formatDuration(f.launchedAt, f.lastSampleAt)}</Td>
-                <Td>{f.sampleCount.toLocaleString()}</Td>
-                <Td>
-                  {confirmDeleteId === f.id ? (
-                    <ConfirmRow>
-                      <DangerButton onClick={() => void handleDelete(f.id)}>
-                        Delete
-                      </DangerButton>
-                      <CancelButton onClick={() => setConfirmDeleteId(null)}>
-                        Cancel
-                      </CancelButton>
-                    </ConfirmRow>
-                  ) : (
-                    <DeleteButton onClick={() => setConfirmDeleteId(f.id)}>
-                      ×
-                    </DeleteButton>
-                  )}
-                </Td>
-              </Tr>
+              <Fragment key={f.id}>
+                <Tr $current={isCurrent}>
+                  <Td>
+                    {f.vesselName || "—"}
+                    {isCurrent && <CurrentBadge>current</CurrentBadge>}
+                  </Td>
+                  <Td>{formatDate(f.launchedAt)}</Td>
+                  <Td>{formatDuration(f.launchedAt, f.lastSampleAt)}</Td>
+                  <Td>{f.sampleCount.toLocaleString()}</Td>
+                  <Td>
+                    <RowActions>
+                      <GraphButton
+                        type="button"
+                        $open={isExpanded}
+                        onClick={() =>
+                          setExpandedFlightId(isExpanded ? null : f.id)
+                        }
+                        aria-label={
+                          isExpanded ? "Close graph" : "Graph this flight"
+                        }
+                        aria-expanded={isExpanded}
+                      >
+                        {isExpanded ? "− graph" : "＋ graph"}
+                      </GraphButton>
+                      {confirmDeleteId === f.id ? (
+                        <ConfirmRow>
+                          <DangerButton onClick={() => void handleDelete(f.id)}>
+                            Delete
+                          </DangerButton>
+                          <CancelButton
+                            onClick={() => setConfirmDeleteId(null)}
+                          >
+                            Cancel
+                          </CancelButton>
+                        </ConfirmRow>
+                      ) : (
+                        <DeleteButton onClick={() => setConfirmDeleteId(f.id)}>
+                          ×
+                        </DeleteButton>
+                      )}
+                    </RowActions>
+                  </Td>
+                </Tr>
+                {isExpanded && (
+                  <Tr $current={false}>
+                    <Td colSpan={5} style={{ padding: 0 }}>
+                      <FlightGraph
+                        flightId={f.id}
+                        launchedAt={f.launchedAt}
+                        lastSampleAt={f.lastSampleAt}
+                      />
+                    </Td>
+                  </Tr>
+                )}
+              </Fragment>
             );
           })}
         </tbody>
@@ -134,8 +167,35 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 500px;
-  max-height: 60vh;
-  overflow: hidden;
+  /* Graph panels expand in-place, so let the whole thing scroll rather than
+     clipping the chart. */
+  max-height: 80vh;
+  overflow: auto;
+`;
+
+const RowActions = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const GraphButton = styled.button<{ $open: boolean }>`
+  background: ${({ $open }) => ($open ? "#1a2a1a" : "none")};
+  border: 1px solid ${({ $open }) => ($open ? "#2e5a2e" : "#333")};
+  color: ${({ $open }) => ($open ? "#cfe" : "#999")};
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+
+  @media (hover: hover) {
+    &:hover {
+      border-color: #2e5a2e;
+      color: #cfe;
+    }
+  }
 `;
 
 const Table = styled.table`

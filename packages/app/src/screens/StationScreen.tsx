@@ -27,6 +27,11 @@ import { useDashboardState } from "../components/Dashboard/useDashboardState";
 import { FullscreenFab } from "../components/FullscreenFab";
 import { SignalLossIndicator } from "../components/SignalLossIndicator";
 import { LogsFab } from "../logs/LogsFab";
+import {
+  MissionProfilesFab,
+  MissionProfilesProvider,
+  MissionProfilesService,
+} from "../missionProfiles";
 import { KosPeerConnection } from "../peer/KosPeerConnection";
 import { PeerClientProvider } from "../peer/PeerClientContext";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
@@ -39,11 +44,6 @@ import {
   SaveProfilesFab,
   useActiveProfile,
 } from "../saveProfiles";
-import {
-  MissionProfilesFab,
-  MissionProfilesProvider,
-  MissionProfilesService,
-} from "../missionProfiles";
 import {
   SettingsFab,
   SettingsProvider,
@@ -205,44 +205,51 @@ export function StationScreen() {
     return (
       <ScreenProvider value="station">
         <SettingsProvider service={settingsService}>
-        <MissionProfilesProvider service={missionProfiles}>
-          <SaveProfileProvider service={saveProfileService}>
-            <ScopedStationIdentity>
-              <ConnectLayout as="main" aria-label="Connect to mission control">
-                <ConnectBox>
-                  <h1>Connect to Mission Control</h1>
-                  <p>Enter the 4-character host ID shown on the main screen.</p>
-                  <Row>
-                    <HostInput
-                      value={hostInput}
-                      onChange={(e) => setHostInput(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && attemptConnect(hostInput)
-                      }
-                      placeholder="e.g. AB3K"
-                      maxLength={8}
-                      autoFocus
-                    />
-                    <ConnectButton
-                      onClick={() => attemptConnect(hostInput)}
-                      disabled={connStatus === "connecting"}
-                    >
-                      {connStatus === "connecting" ? "Connecting…" : "Connect"}
-                    </ConnectButton>
-                  </Row>
-                  <NameRow>
-                    <StationNameEditor />
-                  </NameRow>
-                  {connStatus === "disconnected" && (
-                    <ErrorMsg>
-                      Connection lost. Check the host ID and try again.
-                    </ErrorMsg>
-                  )}
-                </ConnectBox>
-              </ConnectLayout>
-            </ScopedStationIdentity>
-          </SaveProfileProvider>
-        </MissionProfilesProvider>
+          <MissionProfilesProvider service={missionProfiles}>
+            <SaveProfileProvider service={saveProfileService}>
+              <ScopedStationIdentity>
+                <ConnectLayout
+                  as="main"
+                  aria-label="Connect to mission control"
+                >
+                  <ConnectBox>
+                    <h1>Connect to Mission Control</h1>
+                    <p>
+                      Enter the 4-character host ID shown on the main screen.
+                    </p>
+                    <Row>
+                      <HostInput
+                        value={hostInput}
+                        onChange={(e) => setHostInput(e.target.value)}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && attemptConnect(hostInput)
+                        }
+                        placeholder="e.g. AB3K"
+                        maxLength={8}
+                        autoFocus
+                      />
+                      <ConnectButton
+                        onClick={() => attemptConnect(hostInput)}
+                        disabled={connStatus === "connecting"}
+                      >
+                        {connStatus === "connecting"
+                          ? "Connecting…"
+                          : "Connect"}
+                      </ConnectButton>
+                    </Row>
+                    <NameRow>
+                      <StationNameEditor />
+                    </NameRow>
+                    {connStatus === "disconnected" && (
+                      <ErrorMsg>
+                        Connection lost. Check the host ID and try again.
+                      </ErrorMsg>
+                    )}
+                  </ConnectBox>
+                </ConnectLayout>
+              </ScopedStationIdentity>
+            </SaveProfileProvider>
+          </MissionProfilesProvider>
         </SettingsProvider>
       </ScreenProvider>
     );

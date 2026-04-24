@@ -195,6 +195,13 @@ const TELEMACHUS_KEYS: DataKey[] = [
   { key: "tar.o.relativeVelocity" },
   { key: "tar.o.orbitingBody" },
   { key: "tar.o.lan" },
+  // Docking alignment — angles + in-plane distances. Stock KSP; valid
+  // when the vessel is oriented for a docking approach.
+  { key: "dock.ax" },
+  { key: "dock.ay" },
+  { key: "dock.az" },
+  { key: "dock.x" },
+  { key: "dock.y" },
 ];
 
 // ---------------------------------------------------------------------------

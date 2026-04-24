@@ -135,14 +135,14 @@ describe("CurrentOrbitComponent", () => {
 // ---------------------------------------------------------------------------
 describe("DistanceToTargetComponent", () => {
   it('shows "No target set in KSP" when tar.name is not yet received', () => {
-    render(<DistanceToTargetComponent />);
+    render(<DistanceToTargetComponent config={{}} id="tar" />);
     expect(screen.getByText("No target set in KSP")).toBeInTheDocument();
   });
 
   it("shows target name and distance when telemetry arrives", async () => {
     setupTelemetry({ "tar.name": "Mun", "tar.distance": 12_000_000 });
     await telemachusSource.connect();
-    render(<DistanceToTargetComponent />);
+    render(<DistanceToTargetComponent config={{}} id="tar" />);
     await waitFor(() => expect(screen.getByText("Mun")).toBeInTheDocument());
     // formatDistance(12_000_000) = '12.00 Mm'
     await waitFor(() =>
@@ -153,7 +153,7 @@ describe("DistanceToTargetComponent", () => {
   it("shows target name with dash when distance is unavailable", async () => {
     setupTelemetry({ "tar.name": "Duna" });
     await telemachusSource.connect();
-    render(<DistanceToTargetComponent />);
+    render(<DistanceToTargetComponent config={{}} id="tar" />);
     await waitFor(() => expect(screen.getByText("Duna")).toBeInTheDocument());
     expect(screen.getByText("—")).toBeInTheDocument();
   });

@@ -40,6 +40,11 @@ import {
   useActiveProfile,
 } from "../saveProfiles";
 import {
+  MissionProfilesFab,
+  MissionProfilesProvider,
+  MissionProfilesService,
+} from "../missionProfiles";
+import {
   SettingsFab,
   SettingsProvider,
   SettingsService,
@@ -80,6 +85,9 @@ export function StationScreen() {
   );
   const [saveProfileService] = useState(() => new SaveProfileService());
   const [settingsService] = useState(() => new SettingsService());
+  const [missionProfiles] = useState(
+    () => new MissionProfilesService("station"),
+  );
   const [fogMaskStore] = useState(() => new FogMaskStore());
   const unsubsRef = useRef<Array<() => void>>([]);
   const schemaHandledRef = useRef(false);
@@ -197,6 +205,7 @@ export function StationScreen() {
     return (
       <ScreenProvider value="station">
         <SettingsProvider service={settingsService}>
+        <MissionProfilesProvider service={missionProfiles}>
           <SaveProfileProvider service={saveProfileService}>
             <ScopedStationIdentity>
               <ConnectLayout as="main" aria-label="Connect to mission control">
@@ -233,6 +242,7 @@ export function StationScreen() {
               </ConnectLayout>
             </ScopedStationIdentity>
           </SaveProfileProvider>
+        </MissionProfilesProvider>
         </SettingsProvider>
       </ScreenProvider>
     );
@@ -278,6 +288,14 @@ export function StationScreen() {
                             <LogsFab bottom={264} />
                             <FullscreenFab bottom={324} />
                             <SettingsFab bottom={384} />
+                            <MissionProfilesFab
+                              bottom={444}
+                              currentItems={dashboard.items}
+                              currentLayouts={dashboard.layouts}
+                              onLoad={(p) =>
+                                dashboard.replaceState(p.items, p.layouts)
+                              }
+                            />
                           </FabClusterProvider>
                           <StationNameChip>
                             <StationNameEditor compact />

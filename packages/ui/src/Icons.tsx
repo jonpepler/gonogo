@@ -68,6 +68,27 @@ export function BroadcastIcon(props: Readonly<IconProps>) {
   );
 }
 
+export function LayersIcon(props: Readonly<IconProps>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <polygon points="12 3 3 8 12 13 21 8 12 3" />
+      <polyline points="3 14 12 19 21 14" />
+      <polyline points="3 11 12 16 21 11" />
+    </svg>
+  );
+}
+
 export function SettingsIcon(props: Readonly<IconProps>) {
   return (
     <svg

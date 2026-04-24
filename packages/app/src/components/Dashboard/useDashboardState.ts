@@ -70,6 +70,8 @@ export interface DashboardState {
   subscribeItems: (cb: (items: DashboardItem[]) => void) => () => void;
   /** Always returns the latest items without going through React render. */
   getItems: () => readonly DashboardItem[];
+  /** Replace items + layouts wholesale (mission-profile load). */
+  replaceState: (items: DashboardItem[], layouts: Layouts) => void;
 }
 
 export function useDashboardState(
@@ -188,6 +190,21 @@ export function useDashboardState(
 
   const getItems = useCallback(() => itemsRef.current, []);
 
+  /**
+   * Replace items + layouts wholesale. Used by the mission-profile loader
+   * so a profile swap snaps the dashboard to a saved state in one tick.
+   * Loses in-flight drag/resize state by design — callers should warn the
+   * user that unsaved changes are discarded.
+   */
+  const replaceState = useCallback(
+    (nextItems: DashboardItem[], nextLayouts: Layouts) => {
+      setItemsInner(nextItems);
+      setLayouts(nextLayouts);
+      setCurrentLayouts(nextLayouts);
+    },
+    [],
+  );
+
   return {
     items,
     layouts,
@@ -201,5 +218,6 @@ export function useDashboardState(
     updateItemMappings,
     subscribeItems,
     getItems,
+    replaceState,
   };
 }

@@ -31,6 +31,11 @@ import {
   SaveProfilesFab,
   useActiveProfile,
 } from "../saveProfiles";
+import {
+  MissionProfilesFab,
+  MissionProfilesProvider,
+  MissionProfilesService,
+} from "../missionProfiles";
 import { SettingsFab, SettingsProvider, SettingsService } from "../settings";
 import { DEMO_CONFIG } from "./demoConfig";
 
@@ -48,6 +53,9 @@ export function MainScreen() {
   );
   const [saveProfileService] = useState(() => new SaveProfileService());
   const [settingsService] = useState(() => new SettingsService());
+  const [missionProfiles] = useState(
+    () => new MissionProfilesService("main"),
+  );
   const [fogMaskStore] = useState(() => new FogMaskStore());
   // GoNoGoHostService lives for the app's lifetime. Intentionally no dispose
   // cleanup — StrictMode's simulated unmount would run it and leave the
@@ -94,6 +102,7 @@ export function MainScreen() {
   return (
     <ScreenProvider value="main">
       <SettingsProvider service={settingsService}>
+      <MissionProfilesProvider service={missionProfiles}>
         <SaveProfileProvider service={saveProfileService}>
           <GoNoGoHostProvider service={goNoGoHost}>
             <PushHostProvider service={pushHost}>
@@ -126,6 +135,14 @@ export function MainScreen() {
                         <LogsFab />
                         <FullscreenFab />
                         <SettingsFab bottom={444} />
+                        <MissionProfilesFab
+                          bottom={504}
+                          currentItems={dashboard.items}
+                          currentLayouts={dashboard.layouts}
+                          onLoad={(p) =>
+                            dashboard.replaceState(p.items, p.layouts)
+                          }
+                        />
                       </FabClusterProvider>
                       <SignalLossIndicator />
                       <PushedDashboardOverlay />
@@ -136,6 +153,7 @@ export function MainScreen() {
             </PushHostProvider>
           </GoNoGoHostProvider>
         </SaveProfileProvider>
+      </MissionProfilesProvider>
       </SettingsProvider>
     </ScreenProvider>
   );

@@ -277,6 +277,22 @@ export interface TelemaachusSchema {
   "dv.totalBurnTime": number;
   [key: IndexedKey<"dv.stageFuelMass">]: number;
 
+  // --- therm.* — Thermal monitoring (WIP upstream) ---
+  // Aggregate "hottest of" readouts. Telemachus picks the single hottest
+  // part / engine each tick; we don't get per-part coverage here.
+  "therm.hottestPartTemp": number;
+  "therm.hottestPartTempKelvin": number;
+  "therm.hottestPartMaxTemp": number;
+  "therm.hottestPartTempRatio": number;
+  "therm.hottestPartName": string;
+  "therm.hottestEngineTemp": number;
+  "therm.hottestEngineMaxTemp": number;
+  "therm.hottestEngineTempRatio": number;
+  "therm.anyEnginesOverheating": boolean;
+  "therm.heatShieldTemp": number;
+  "therm.heatShieldTempCelsius": number;
+  "therm.heatShieldFlux": number;
+
   // --- comm.* — CommNet signal state ---
   // Telemachus Reborn reads these straight from stock `Vessel.Connection`
   // (CommNet). RemoteTech is not supported. `signalDelay` is always 0 on

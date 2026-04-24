@@ -31,7 +31,12 @@ import {
   PRESETS,
   type PresetId,
 } from "./presets";
-import { FeasibilityChip } from "./styles";
+import {
+  FeasibilityBanner,
+  FeasibilityBannerBody,
+  FeasibilityBannerTitle,
+  FeasibilityChip,
+} from "./styles";
 
 // Actions are stubbed at [] for now — the widget is mouse-driven. Hardware
 // bindings (commit from a physical button) can be added later.
@@ -580,6 +585,20 @@ function ManeuverPlannerComponent({
                 Normal component tilts the plane; projection shows in-plane
                 shape only.
               </Note>
+            )}
+
+            {feasible === false && plan && (
+              <FeasibilityBanner role="alert">
+                <FeasibilityBannerTitle>
+                  ΔV shortfall — commit disabled
+                </FeasibilityBannerTitle>
+                <FeasibilityBannerBody>
+                  Required {plan.requiredDeltaV.toFixed(0)} m/s · available{" "}
+                  {vesselDeltaV.totalVac.toFixed(0)} m/s ·{" "}
+                  {(plan.requiredDeltaV - vesselDeltaV.totalVac).toFixed(0)} m/s
+                  short.
+                </FeasibilityBannerBody>
+              </FeasibilityBanner>
             )}
 
             {error && <ErrorLine>{error}</ErrorLine>}

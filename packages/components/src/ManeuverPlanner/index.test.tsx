@@ -135,4 +135,46 @@ describe("ManeuverPlannerComponent", () => {
     // Node list contains a Delete button per-node.
     expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
   });
+
+  it("raises a role=alert shortfall banner and disables Add node when ΔV is insufficient", () => {
+    render(<ManeuverPlannerComponent id="mnv" config={{}} />);
+    act(() => {
+      emitFullOrbit(source);
+      // Highly eccentric orbit with non-trivial circularise cost, paired with
+      // a tiny vessel ΔV budget — the planner should refuse the commit.
+      source.emit("o.ApR", 1_000_000);
+      source.emit("o.PeR", 700_000);
+      source.emit("o.eccentricity", 0.1765);
+      source.emit("dv.stages", [
+        {
+          stage: 0,
+          stageMass: 1000,
+          dryMass: 500,
+          fuelMass: 500,
+          startMass: 1000,
+          endMass: 500,
+          burnTime: 10,
+          deltaVVac: 25, // far less than circularisation needs
+          deltaVASL: 25,
+          deltaVActual: 25,
+          TWRVac: 1,
+          TWRASL: 1,
+          TWRActual: 1,
+          ispVac: 300,
+          ispASL: 300,
+          ispActual: 300,
+          thrustVac: 1,
+          thrustASL: 1,
+          thrustActual: 1,
+        },
+      ]);
+    });
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toMatch(/shortfall/i);
+    expect(alert.textContent).toMatch(/short\.?$/i);
+
+    const addBtn = screen.getByRole("button", { name: /add node/i });
+    expect(addBtn).toBeDisabled();
+  });
 });

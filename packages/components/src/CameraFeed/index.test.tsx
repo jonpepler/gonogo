@@ -100,16 +100,19 @@ describe("CameraFeedComponent", () => {
     clearStreamRegistry();
   });
 
-  it("renders a placeholder (no video) when the stream list is empty", () => {
+  it("shows the 'no cameras' placeholder when the source is connected but has no streams", async () => {
     const source = makeSource("ocisly");
+    source.status = "connected";
     registerStreamSource(source);
 
     const { container } = renderFeed();
-    // With zero streams there is no selected camera → no <video>, only a
-    // placeholder. The exact copy depends on useStream's last-seen status;
-    // the invariant worth locking in is "no camera video mounted".
     expect(container.querySelector("video")).toBeNull();
-    expect(container.textContent?.length ?? 0).toBeGreaterThan(0);
+    // useStream tracks source status even without a selected stream, so
+    // CameraFeed falls through to the 'no cameras active' fallback rather
+    // than showing the proxy-disconnected copy.
+    await waitFor(() => {
+      expect(container.textContent).toContain("No cameras active");
+    });
   });
 
   it("renders the video + overlay once a stream is announced and selected", async () => {

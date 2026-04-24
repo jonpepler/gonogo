@@ -94,6 +94,26 @@ describe("useStream", () => {
     unmount();
   });
 
+  it("tracks source status even when streamId is null", async () => {
+    const source = makeSource("ocisly");
+    source.status = "connected";
+    registerStreamSource(source);
+
+    const { result } = renderHook(() => useStream("ocisly", null));
+    // Initial render picks up the source's current status.
+    await waitFor(() => {
+      expect(result.current.status).toBe("connected");
+    });
+
+    // Status changes continue to propagate without a streamId.
+    act(() => {
+      source.setStatus("reconnecting");
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe("reconnecting");
+    });
+  });
+
   it("re-subscribes when the streamId changes", async () => {
     const source = makeSource("ocisly");
     registerStreamSource(source);

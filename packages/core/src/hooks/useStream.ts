@@ -14,9 +14,9 @@ export interface UseStreamResult {
  * Station screen (M7+): the same hook will route through PeerJS just like
  * `useDataValue` does for scalar values.
  *
- * Returns `{ stream: null, status: 'disconnected' }` while resolving or if the
- * source isn't registered — consumers render a `<video srcObject>` and rely on
- * the browser's normal readyState handling.
+ * `status` always reflects the source's current state when the source is
+ * registered — even if `streamId` is null — so "no stream selected" can be
+ * distinguished from "proxy down" by callers that render different placeholders.
  */
 export function useStream(
   sourceId: string,
@@ -26,10 +26,6 @@ export function useStream(
   const [status, setStatus] = useState<DataSourceStatus>("disconnected");
 
   useEffect(() => {
-    if (!streamId) {
-      setStream(null);
-      return;
-    }
     const source = getStreamSource(sourceId);
     if (!source) {
       setStream(null);
@@ -40,9 +36,20 @@ export function useStream(
     let cancelled = false;
     setStatus(source.status);
 
+    // Always track status, regardless of whether we have a streamId to
+    // subscribe to. Widgets with no selected stream still need to know
+    // whether the source is alive.
     const unsubStatus = source.onStatusChange((next) => {
       if (!cancelled) setStatus(next);
     });
+
+    if (!streamId) {
+      setStream(null);
+      return () => {
+        cancelled = true;
+        unsubStatus();
+      };
+    }
 
     void source.subscribe(streamId).then((s) => {
       if (cancelled) {

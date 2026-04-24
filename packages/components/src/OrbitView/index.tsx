@@ -103,7 +103,6 @@ registerComponent<OrbitViewConfig>({
     "o.argumentOfPeriapsis",
     "v.body",
   ],
-  behaviors: [],
   defaultConfig: { showMarkers: true },
   actions: orbitViewActions,
   pushable: true,

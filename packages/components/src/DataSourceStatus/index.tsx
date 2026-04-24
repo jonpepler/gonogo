@@ -188,7 +188,6 @@ registerComponent({
   defaultSize: { w: 12, h: 10 },
   component: DataSourceStatusComponent,
   dataRequirements: [],
-  behaviors: [],
   defaultConfig: {},
 });
 

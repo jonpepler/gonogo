@@ -100,7 +100,6 @@ registerComponent<KosWidgetConfig>({
   component: KosWidgetComponent,
   configComponent: KosWidgetConfigComponent,
   dataRequirements: [],
-  behaviors: [],
   defaultConfig: {
     cpu: "",
     script: "",

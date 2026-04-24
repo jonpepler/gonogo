@@ -215,7 +215,6 @@ registerComponent<ActionGroupConfig>({
   component: ActionGroupComponent,
   configComponent: ActionGroupConfigComponent,
   dataRequirements: [],
-  behaviors: [],
   defaultConfig: { actionGroupId: "AG1" },
   actions: actionGroupActions,
 });

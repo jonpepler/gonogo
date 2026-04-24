@@ -748,7 +748,6 @@ registerComponent<MapViewConfig>({
     "n.pitch",
     "n.heading",
   ],
-  behaviors: [],
   defaultConfig: {
     trajectoryLength: 2000,
     showPrediction: true,

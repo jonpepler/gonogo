@@ -800,7 +800,6 @@ registerComponent<ManeuverPlannerConfig>({
     "tar.o.inclination",
     "tar.o.lan",
   ],
-  behaviors: [],
   defaultConfig: { defaultPreset: "circularize-apo" },
   actions: maneuverActions,
   pushable: true,

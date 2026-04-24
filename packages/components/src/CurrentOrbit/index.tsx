@@ -154,7 +154,6 @@ registerComponent<CurrentOrbitConfig>({
     "o.referenceBody",
     "v.body",
   ],
-  behaviors: [],
   defaultConfig: { showDiagram: true },
   actions: currentOrbitActions,
   pushable: true,

@@ -292,7 +292,6 @@ registerComponent<KosTerminalConfig>({
   openConfigOnAdd: true,
   component: KosTerminalComponent,
   dataRequirements: [],
-  behaviors: [],
   defaultConfig: {
     proxyHost: "localhost",
     proxyPort: 3001,

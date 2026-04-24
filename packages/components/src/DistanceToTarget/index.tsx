@@ -34,7 +34,6 @@ registerComponent({
   defaultSize: { w: 6, h: 9 },
   component: DistanceToTargetComponent,
   dataRequirements: ["tar.distance", "tar.name"],
-  behaviors: [],
   defaultConfig: {},
   pushable: true,
 });

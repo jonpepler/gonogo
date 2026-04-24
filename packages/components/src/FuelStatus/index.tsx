@@ -292,7 +292,6 @@ registerComponent<FuelStatusConfig>({
     "r.resourceCurrentMax[ElectricCharge]",
     "dv.stages",
   ],
-  behaviors: [],
   defaultConfig: {},
   actions: [],
   pushable: true,

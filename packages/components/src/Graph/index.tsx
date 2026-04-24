@@ -460,7 +460,6 @@ registerComponent<GraphConfig>({
   configComponent: GraphConfigComponent,
   openConfigOnAdd: true,
   dataRequirements: [],
-  behaviors: [],
   defaultConfig: { series: [], windowSec: 300 },
   actions: [],
   pushable: true,

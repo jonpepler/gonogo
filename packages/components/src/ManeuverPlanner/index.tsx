@@ -17,104 +17,25 @@ import {
   useDataValue,
   useExecuteAction,
 } from "@gonogo/core";
-import {
-  type ParsedManeuverNode,
-  useManeuverNodes,
-  useVesselDeltaV,
-} from "@gonogo/data";
+import { useManeuverNodes, useVesselDeltaV } from "@gonogo/data";
 import { Button, Panel, PanelSubtitle, PanelTitle } from "@gonogo/ui";
 import { useMemo, useState } from "react";
 import styled from "styled-components";
 import { OrbitDiagram } from "../shared/OrbitDiagram";
-
-// ---------------------------------------------------------------------------
-// Config + types
-// ---------------------------------------------------------------------------
-
-type PresetId =
-  | "circularize-apo"
-  | "circularize-peri"
-  | "custom-apo"
-  | "custom-peri"
-  | "custom-ut"
-  | "match-inclination"
-  | "match-target-inclination"
-  | "match-target-plane";
-
-interface ManeuverPlannerConfig {
-  defaultPreset?: PresetId;
-}
+import { LabeledInput } from "./LabeledInput";
+import { NodeRow } from "./NodeRow";
+import { PresetPicker } from "./PresetPicker";
+import {
+  isFiniteNumber,
+  type ManeuverPlannerConfig,
+  PRESETS,
+  type PresetId,
+} from "./presets";
+import { FeasibilityChip } from "./styles";
 
 // Actions are stubbed at [] for now — the widget is mouse-driven. Hardware
 // bindings (commit from a physical button) can be added later.
 const maneuverActions = [] as const satisfies readonly ActionDefinition[];
-
-// Telemachus occasionally sends null / NaN for an orbit value that KSP
-// hasn't computed yet (landed vessel, fresh scene load). Treat those as
-// "not yet arrived" rather than propagating them into the math.
-function isFiniteNumber(v: unknown): v is number {
-  return typeof v === "number" && Number.isFinite(v);
-}
-
-const PRESETS: Array<{
-  id: PresetId;
-  label: string;
-  description: string;
-  needsCustomInput: boolean;
-}> = [
-  {
-    id: "circularize-apo",
-    label: "Circularise at Apoapsis",
-    description: "Prograde burn at apo to flatten eccentricity.",
-    needsCustomInput: false,
-  },
-  {
-    id: "circularize-peri",
-    label: "Circularise at Periapsis",
-    description: "Brake at peri to flatten eccentricity.",
-    needsCustomInput: false,
-  },
-  {
-    id: "custom-apo",
-    label: "Custom burn at Apoapsis",
-    description: "Set your own prograde / normal / radial ΔV at next apo.",
-    needsCustomInput: true,
-  },
-  {
-    id: "custom-peri",
-    label: "Custom burn at Periapsis",
-    description: "Set your own prograde / normal / radial ΔV at next peri.",
-    needsCustomInput: true,
-  },
-  {
-    id: "custom-ut",
-    label: "Custom burn at UT",
-    description:
-      "Schedule a ΔV at an arbitrary time from now. Projection reflects real flight-path angle at the burn point.",
-    needsCustomInput: true,
-  },
-  {
-    id: "match-inclination",
-    label: "Match inclination",
-    description:
-      "Rotate the orbital plane to a target inclination at the next AN / DN.",
-    needsCustomInput: true,
-  },
-  {
-    id: "match-target-inclination",
-    label: "Match target inclination",
-    description:
-      "Rotate to match the current target's inclination. Needs a target selected in-game.",
-    needsCustomInput: false,
-  },
-  {
-    id: "match-target-plane",
-    label: "Match target plane",
-    description:
-      "Full plane match — both inclination and LAN — at the relative-plane intersection. Needs a target.",
-    needsCustomInput: false,
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -679,93 +600,6 @@ function ManeuverPlannerComponent({
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function NodeRow({
-  node,
-  currentUT,
-  availableDv,
-  onDelete,
-}: {
-  node: ParsedManeuverNode;
-  currentUT: number | undefined;
-  availableDv: number;
-  onDelete: () => void;
-}) {
-  const timeTo = currentUT !== undefined ? node.UT - currentUT : null;
-  const feasible =
-    availableDv === 0 ? null : availableDv >= node.deltaVMagnitude;
-  return (
-    <NodeLi>
-      <NodeMain>
-        <NodePrimary>
-          {node.deltaVMagnitude.toFixed(0)} m/s
-          {feasible === false && (
-            <FeasibilityChip $ok={false}>SHORT</FeasibilityChip>
-          )}
-        </NodePrimary>
-        <NodeMeta>
-          burn in {timeTo === null ? "—" : formatDuration(timeTo)}
-        </NodeMeta>
-      </NodeMain>
-      <DeleteButton type="button" onClick={onDelete} aria-label="Delete node">
-        ✕
-      </DeleteButton>
-    </NodeLi>
-  );
-}
-
-function PresetPicker({
-  value,
-  onChange,
-}: {
-  value: PresetId;
-  onChange: (next: PresetId) => void;
-}) {
-  return (
-    <PresetSelect
-      value={value}
-      onChange={(e) => onChange(e.target.value as PresetId)}
-    >
-      {PRESETS.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.label}
-        </option>
-      ))}
-    </PresetSelect>
-  );
-}
-
-function LabeledInput({
-  label,
-  value,
-  onChange,
-  suffix = "m/s",
-}: {
-  label: string;
-  value: number;
-  onChange: (next: number) => void;
-  suffix?: string;
-}) {
-  return (
-    <InputRow>
-      <InputLabel>{label}</InputLabel>
-      <InputField
-        type="number"
-        value={value}
-        step={1}
-        onChange={(e) => {
-          const n = Number.parseFloat(e.target.value);
-          onChange(Number.isFinite(n) ? n : 0);
-        }}
-      />
-      <InputSuffix>{suffix}</InputSuffix>
-    </InputRow>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
 
@@ -887,54 +721,6 @@ const NodeList = styled.ul`
   gap: 2px;
 `;
 
-const NodeLi = styled.li`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 6px;
-  background: #141414;
-  border: 1px solid #222;
-  border-radius: 2px;
-`;
-
-const NodeMain = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-`;
-
-const NodePrimary = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #ccc;
-`;
-
-const NodeMeta = styled.div`
-  font-size: 10px;
-  color: #666;
-  letter-spacing: 0.04em;
-`;
-
-const DeleteButton = styled.button`
-  background: transparent;
-  border: 1px solid #3a2222;
-  color: #a66;
-  font-family: monospace;
-  font-size: 11px;
-  width: 22px;
-  height: 22px;
-  border-radius: 2px;
-  cursor: pointer;
-  &:hover {
-    background: #2a1111;
-    color: #f88;
-  }
-`;
-
 const ClearAllRow = styled.div`
   display: flex;
   justify-content: flex-end;
@@ -952,17 +738,6 @@ const GhostLink = styled.button`
   &:hover {
     color: #aaa;
   }
-`;
-
-const PresetSelect = styled.select`
-  width: 100%;
-  background: #141414;
-  border: 1px solid #2a2a2a;
-  color: #ccc;
-  font-family: monospace;
-  font-size: 12px;
-  padding: 4px 6px;
-  border-radius: 2px;
 `;
 
 const PresetDesc = styled.div`
@@ -994,36 +769,6 @@ const UTModeButton = styled.button<{ $active: boolean }>`
   cursor: pointer;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-`;
-
-const InputRow = styled.label`
-  display: grid;
-  grid-template-columns: 5em 1fr 2.5em;
-  align-items: center;
-  gap: 8px;
-`;
-
-const InputLabel = styled.span`
-  font-size: 11px;
-  color: #888;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-`;
-
-const InputField = styled.input`
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  color: #ccc;
-  font-family: monospace;
-  font-size: 12px;
-  padding: 4px 6px;
-  border-radius: 2px;
-  text-align: right;
-`;
-
-const InputSuffix = styled.span`
-  font-size: 10px;
-  color: #555;
 `;
 
 const PreviewSection = styled.section`
@@ -1059,16 +804,6 @@ const Value = styled.span<{ $accent?: "ap" | "pe" }>`
   font-size: 13px;
   color: ${({ $accent }) => ($accent ? accentColor[$accent] : "#ccc")};
   letter-spacing: 0.03em;
-`;
-
-const FeasibilityChip = styled.span<{ $ok: boolean }>`
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: ${({ $ok }) => ($ok ? "#1f3a1f" : "#3a1a1a")};
-  border: 1px solid ${({ $ok }) => ($ok ? "#2e5a2e" : "#5a2a2a")};
-  color: ${({ $ok }) => ($ok ? "#cfe" : "#fbb")};
-  letter-spacing: 0.08em;
 `;
 
 const DiagramWrap = styled.div`

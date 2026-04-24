@@ -321,8 +321,9 @@ export class OcislyStreamSource implements StreamSource {
     // "Stuck on orange" and "cutting out" live-test bugs both present as
     // invisible ICE state transitions (checking→failed, or disconnected
     // drifts), so log every transition at camera/peer:stream tags.
-    const pc = (call as MediaConnection & { peerConnection?: RTCPeerConnection })
-      .peerConnection;
+    const pc = (
+      call as MediaConnection & { peerConnection?: RTCPeerConnection }
+    ).peerConnection;
     if (pc) {
       const logState = (label: string, value: string) => {
         streamLog.debug(`${label}: ${value}`, { cameraId });

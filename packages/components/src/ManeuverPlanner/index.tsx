@@ -1,11 +1,10 @@
 import type { ActionDefinition, ComponentProps } from "@gonogo/core";
 import {
+  type CurrentOrbit,
   circularizeAtApo,
   circularizeAtPeri,
-  type CurrentOrbit,
   customAtApsis,
   customAtUT,
-  stateAtUT,
   formatDistance,
   formatDuration,
   getBody,
@@ -14,6 +13,7 @@ import {
   matchInclination,
   matchTargetPlane,
   registerComponent,
+  stateAtUT,
   useDataValue,
   useExecuteAction,
 } from "@gonogo/core";
@@ -585,16 +585,12 @@ function ManeuverPlannerComponent({
                 <>
                   <Label>New Ap</Label>
                   <Value $accent="ap">
-                    {formatDistance(
-                      plan.projected.ApR - (body?.radius ?? 0),
-                    )}
+                    {formatDistance(plan.projected.ApR - (body?.radius ?? 0))}
                   </Value>
 
                   <Label>New Pe</Label>
                   <Value $accent="pe">
-                    {formatDistance(
-                      plan.projected.PeR - (body?.radius ?? 0),
-                    )}
+                    {formatDistance(plan.projected.PeR - (body?.radius ?? 0))}
                   </Value>
 
                   <Label>New Ecc</Label>
@@ -606,9 +602,7 @@ function ManeuverPlannerComponent({
                   {plan.projected.inclination !== undefined && (
                     <>
                       <Label>New Inc</Label>
-                      <Value>
-                        {plan.projected.inclination.toFixed(2)}°
-                      </Value>
+                      <Value>{plan.projected.inclination.toFixed(2)}°</Value>
                     </>
                   )}
                 </>
@@ -700,13 +694,16 @@ function NodeRow({
   onDelete: () => void;
 }) {
   const timeTo = currentUT !== undefined ? node.UT - currentUT : null;
-  const feasible = availableDv === 0 ? null : availableDv >= node.deltaVMagnitude;
+  const feasible =
+    availableDv === 0 ? null : availableDv >= node.deltaVMagnitude;
   return (
     <NodeLi>
       <NodeMain>
         <NodePrimary>
           {node.deltaVMagnitude.toFixed(0)} m/s
-          {feasible === false && <FeasibilityChip $ok={false}>SHORT</FeasibilityChip>}
+          {feasible === false && (
+            <FeasibilityChip $ok={false}>SHORT</FeasibilityChip>
+          )}
         </NodePrimary>
         <NodeMeta>
           burn in {timeTo === null ? "—" : formatDuration(timeTo)}

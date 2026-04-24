@@ -1,14 +1,9 @@
-import type {
-  ConfigField,
-  DataKey,
-  DataSource,
-  DataSourceStatus,
-  OrbitPatch,
-} from "@gonogo/core";
+import type { DataKey, OrbitPatch } from "@gonogo/core";
 import {
   clearBodies,
   clearRegistry,
   DashboardItemContext,
+  MockDataSource,
   registerDataSource,
   registerStockBodies,
 } from "@gonogo/core";
@@ -17,66 +12,6 @@ import { act, cleanup, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MapViewComponent } from "./index";
-
-class MockSource implements DataSource {
-  readonly id = "mock";
-  readonly name = "Mock";
-  status: DataSourceStatus = "disconnected";
-  private readonly subs = new Map<string, Set<(v: unknown) => void>>();
-  private readonly statusSubs = new Set<(s: DataSourceStatus) => void>();
-  private readonly keys: DataKey[];
-
-  constructor(keys: DataKey[]) {
-    this.keys = keys;
-  }
-
-  async connect(): Promise<void> {
-    this.status = "connected";
-    this.statusSubs.forEach((cb) => {
-      cb("connected");
-    });
-  }
-  disconnect(): void {
-    this.status = "disconnected";
-    this.statusSubs.forEach((cb) => {
-      cb("disconnected");
-    });
-  }
-  schema(): DataKey[] {
-    return this.keys;
-  }
-  subscribe(key: string, cb: (v: unknown) => void): () => void {
-    let bucket = this.subs.get(key);
-    if (!bucket) {
-      bucket = new Set();
-      this.subs.set(key, bucket);
-    }
-    bucket.add(cb);
-    return () => {
-      bucket?.delete(cb);
-    };
-  }
-  onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
-    this.statusSubs.add(cb);
-    return () => {
-      this.statusSubs.delete(cb);
-    };
-  }
-  async execute(): Promise<void> {}
-  configSchema(): ConfigField[] {
-    return [];
-  }
-  configure(): void {}
-  getConfig(): Record<string, unknown> {
-    return {};
-  }
-
-  emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => {
-      cb(value);
-    });
-  }
-}
 
 const MAPVIEW_KEYS: DataKey[] = [
   { key: "v.name" },
@@ -122,7 +57,7 @@ function kerbinCircularPatch(overrides: Partial<OrbitPatch> = {}): OrbitPatch {
 }
 
 describe("MapViewComponent", () => {
-  let source: MockSource;
+  let source: MockDataSource;
   let buffered: BufferedDataSource;
 
   beforeEach(async () => {
@@ -152,7 +87,7 @@ describe("MapViewComponent", () => {
       },
     );
 
-    source = new MockSource(MAPVIEW_KEYS);
+    source = new MockDataSource({ keys: MAPVIEW_KEYS });
     buffered = new BufferedDataSource({ source, store: new MemoryStore() });
     registerDataSource(buffered);
     await buffered.connect();

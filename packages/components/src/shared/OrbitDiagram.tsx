@@ -122,8 +122,7 @@ export function OrbitDiagram({
 
   // Projected orbit geometry (optional overlay)
   const projB = projected
-    ? projected.sma *
-      Math.sqrt(Math.max(0, 1 - projected.ecc * projected.ecc))
+    ? projected.sma * Math.sqrt(Math.max(0, 1 - projected.ecc * projected.ecc))
     : 0;
   const projC = projected ? projected.sma * projected.ecc : 0;
   const projArgPe = projected?.argPe ?? argPe;
@@ -289,7 +288,10 @@ function ManeuverHandles({
   const nuRad = (burnTrueAnomaly * Math.PI) / 180;
   // Exact burn position on the current ellipse.
   const burnRadius = trueAnomalyToRadius(sma, ecc, burnTrueAnomaly);
-  const { x: burnX, y: burnY } = orbitalToCartesian(burnRadius, burnTrueAnomaly);
+  const { x: burnX, y: burnY } = orbitalToCartesian(
+    burnRadius,
+    burnTrueAnomaly,
+  );
 
   // Prograde direction ≈ tangent to the orbit (perpendicular to radius,
   // CCW). Exact at apsides; off by γ otherwise — close enough for a

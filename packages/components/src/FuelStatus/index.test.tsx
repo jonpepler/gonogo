@@ -1,74 +1,13 @@
-import type {
-  ConfigField,
-  DataKey,
-  DataSource,
-  DataSourceStatus,
+import type { DataKey } from "@gonogo/core";
+import {
+  clearRegistry,
+  MockDataSource,
+  registerDataSource,
 } from "@gonogo/core";
-import { clearRegistry, registerDataSource } from "@gonogo/core";
 import { BufferedDataSource, MemoryStore } from "@gonogo/data";
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FuelStatusComponent } from "./index";
-
-class MockSource implements DataSource {
-  readonly id = "mock";
-  readonly name = "Mock";
-  status: DataSourceStatus = "disconnected";
-  private readonly subs = new Map<string, Set<(v: unknown) => void>>();
-  private readonly statusSubs = new Set<(s: DataSourceStatus) => void>();
-  private readonly keys: DataKey[];
-
-  constructor(keys: DataKey[]) {
-    this.keys = keys;
-  }
-
-  async connect(): Promise<void> {
-    this.status = "connected";
-    this.statusSubs.forEach((cb) => {
-      cb("connected");
-    });
-  }
-  disconnect(): void {
-    this.status = "disconnected";
-    this.statusSubs.forEach((cb) => {
-      cb("disconnected");
-    });
-  }
-  schema(): DataKey[] {
-    return this.keys;
-  }
-  subscribe(key: string, cb: (v: unknown) => void): () => void {
-    let bucket = this.subs.get(key);
-    if (!bucket) {
-      bucket = new Set();
-      this.subs.set(key, bucket);
-    }
-    bucket.add(cb);
-    return () => {
-      bucket?.delete(cb);
-    };
-  }
-  onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
-    this.statusSubs.add(cb);
-    return () => {
-      this.statusSubs.delete(cb);
-    };
-  }
-  async execute(): Promise<void> {}
-  configSchema(): ConfigField[] {
-    return [];
-  }
-  configure(): void {}
-  getConfig(): Record<string, unknown> {
-    return {};
-  }
-
-  emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => {
-      cb(value);
-    });
-  }
-}
 
 const FUEL_KEYS: DataKey[] = [
   { key: "v.name" },
@@ -125,12 +64,12 @@ function makeStage(stage: number, fuelMass: number): Record<string, number> {
 }
 
 describe("FuelStatusComponent", () => {
-  let source: MockSource;
+  let source: MockDataSource;
   let buffered: BufferedDataSource;
 
   beforeEach(async () => {
     clearRegistry();
-    source = new MockSource(FUEL_KEYS);
+    source = new MockDataSource({ keys: FUEL_KEYS });
     buffered = new BufferedDataSource({ source, store: new MemoryStore() });
     registerDataSource(buffered);
     await buffered.connect();

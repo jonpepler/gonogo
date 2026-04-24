@@ -21,12 +21,8 @@
  *   - A value arrives at the subscriber with a different type than was emitted
  */
 
-import type {
-  ConfigField,
-  DataKey,
-  DataSource,
-  DataSourceStatus,
-} from "@gonogo/core";
+import type { DataKey } from "@gonogo/core";
+import { MockDataSource } from "@gonogo/core";
 import { BufferedDataSource, MemoryStore } from "@gonogo/data";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PeerBroadcastingDataSource } from "../peer/PeerBroadcastingDataSource";
@@ -37,75 +33,16 @@ import type { PeerMessage } from "../peer/protocol";
 // Fakes
 // ---------------------------------------------------------------------------
 
-/** Minimal Telemachus-shaped fake — subscribe + emit, nothing else. */
-class MockTelemachus implements DataSource {
-  readonly id = "telemachus";
-  readonly name = "Mock Telemachus";
-  status: DataSourceStatus = "disconnected";
-  // Matches the real TelemachusDataSource so BufferedDataSource's signal-loss
-  // gate logic is exercised end-to-end.
-  affectedBySignalLoss = true;
-
-  private readonly subs = new Map<string, Set<(v: unknown) => void>>();
-  private readonly statusSubs = new Set<(s: DataSourceStatus) => void>();
-  private readonly keys: DataKey[];
-
-  constructor(keys: DataKey[]) {
-    this.keys = keys;
-  }
-
-  async connect(): Promise<void> {
-    this.status = "connected";
-    this.statusSubs.forEach((cb) => {
-      cb("connected");
-    });
-  }
-
-  disconnect(): void {
-    this.status = "disconnected";
-    this.statusSubs.forEach((cb) => {
-      cb("disconnected");
-    });
-  }
-
-  schema(): DataKey[] {
-    return this.keys;
-  }
-
-  subscribe(key: string, cb: (v: unknown) => void): () => void {
-    let bucket = this.subs.get(key);
-    if (!bucket) {
-      bucket = new Set();
-      this.subs.set(key, bucket);
-    }
-    bucket.add(cb);
-    return () => {
-      bucket?.delete(cb);
-    };
-  }
-
-  onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
-    this.statusSubs.add(cb);
-    return () => {
-      this.statusSubs.delete(cb);
-    };
-  }
-
-  async execute(): Promise<void> {}
-  configSchema(): ConfigField[] {
-    return [];
-  }
-  configure(): void {}
-  getConfig(): Record<string, unknown> {
-    return {};
-  }
-
-  /** Test helper — drive a value to all live subscribers for `key`. */
-  emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => {
-      cb(value);
-    });
-  }
+// Minimal Telemachus-shaped fake — built from the shared MockDataSource
+// fixture. `affectedBySignalLoss: true` mirrors the real TelemachusDataSource
+// so BufferedDataSource's signal-loss gate is exercised end-to-end.
+function makeMockTelemachus(keys: DataKey[]): MockDataSource {
+  return new MockDataSource({
+    id: "telemachus",
+    name: "Mock Telemachus",
+    keys,
+    affectedBySignalLoss: true,
+  });
 }
 
 /** Fake PeerHostService — captures broadcasts for the relay to forward. */
@@ -176,7 +113,7 @@ const TELEMACHUS_KEYS: DataKey[] = [
 ];
 
 function setup() {
-  const telemachus = new MockTelemachus(TELEMACHUS_KEYS);
+  const telemachus = makeMockTelemachus(TELEMACHUS_KEYS);
   const buffered = new BufferedDataSource({
     source: telemachus,
     store: new MemoryStore(),
@@ -199,7 +136,7 @@ function setup() {
 }
 
 /** Prime flight detection so BufferedDataSource fans out samples. */
-function primeFlight(tm: MockTelemachus) {
+function primeFlight(tm: MockDataSource) {
   tm.emit("v.name", "Kerbal X");
   tm.emit("v.missionTime", 0);
 }

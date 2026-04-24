@@ -1,72 +1,14 @@
-import type {
-  ConfigField,
-  DataKey,
-  DataSource,
-  DataSourceStatus,
+import {
+  clearRegistry,
+  MockDataSource,
+  registerDataSource,
 } from "@gonogo/core";
-import { clearRegistry, registerDataSource } from "@gonogo/core";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BufferedDataSource } from "../BufferedDataSource";
 import { MemoryStore } from "../storage/MemoryStore";
 import type { SeriesRange } from "../types";
 import { useDataSeries } from "./useDataSeries";
-
-class MockSource implements DataSource {
-  readonly id = "mock";
-  readonly name = "Mock";
-  status: DataSourceStatus = "disconnected";
-  private readonly subs = new Map<string, Set<(v: unknown) => void>>();
-  private readonly statusSubs = new Set<(s: DataSourceStatus) => void>();
-  private readonly keys: DataKey[] = [
-    { key: "v.name" },
-    { key: "v.missionTime" },
-    { key: "v.altitude" },
-  ];
-  async connect(): Promise<void> {
-    this.status = "connected";
-    this.statusSubs.forEach((cb) => {
-      cb("connected");
-    });
-  }
-  disconnect(): void {
-    this.status = "disconnected";
-    this.statusSubs.forEach((cb) => {
-      cb("disconnected");
-    });
-  }
-  schema(): DataKey[] {
-    return this.keys;
-  }
-  subscribe(key: string, cb: (v: unknown) => void): () => void {
-    let b = this.subs.get(key);
-    if (!b) {
-      b = new Set();
-      this.subs.set(key, b);
-    }
-    b.add(cb);
-    return () => b?.delete(cb);
-  }
-  onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
-    this.statusSubs.add(cb);
-    return () => {
-      this.statusSubs.delete(cb);
-    };
-  }
-  async execute(): Promise<void> {}
-  configSchema(): ConfigField[] {
-    return [];
-  }
-  configure(): void {}
-  getConfig(): Record<string, unknown> {
-    return {};
-  }
-  emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => {
-      cb(value);
-    });
-  }
-}
 
 function Probe({ onRender }: { onRender: (range: SeriesRange) => void }) {
   const range = useDataSeries("data", "v.altitude", 60);
@@ -75,14 +17,20 @@ function Probe({ onRender }: { onRender: (range: SeriesRange) => void }) {
 }
 
 describe("useDataSeries", () => {
-  let mock: MockSource;
+  let mock: MockDataSource;
   let store: MemoryStore;
   let clock: number;
   let buffered: BufferedDataSource;
 
   beforeEach(async () => {
     clearRegistry();
-    mock = new MockSource();
+    mock = new MockDataSource({
+      keys: [
+        { key: "v.name" },
+        { key: "v.missionTime" },
+        { key: "v.altitude" },
+      ],
+    });
     store = new MemoryStore();
     // Offset 10s into the past so small clock advances in the tests still
     // land inside the hook's [now - windowMs, now] backfill window (the

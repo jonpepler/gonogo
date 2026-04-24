@@ -19,4 +19,5 @@ export * from "./registry";
 export * from "./schemas/telemachus";
 export * from "./stock-bodies";
 export * from "./streamRegistry";
+export * from "./testing/MockDataSource";
 export * from "./types";

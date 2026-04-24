@@ -38,10 +38,8 @@ export function useDataValue<T = unknown>(
 
 // Implementation (not part of the public API surface)
 export function useDataValue(dataSourceId: string, key: string): unknown {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const valueRef = useRef<unknown>(undefined);
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       const source = getDataSource(dataSourceId);
@@ -69,9 +67,7 @@ export function useDataValue(dataSourceId: string, key: string): unknown {
     [dataSourceId, key],
   );
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const getSnapshot = useCallback(() => valueRef.current, []);
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

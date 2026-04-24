@@ -101,10 +101,7 @@ export class TagRegistry {
     const base = tag.split(":")[0];
     const flag = LEGACY_FLAGS[base];
     if (!flag) return false;
-    return (
-      readLocalStorage(flag) === "1" ||
-      readEnv(flag) === "1"
-    );
+    return readLocalStorage(flag) === "1" || readEnv(flag) === "1";
   }
 }
 

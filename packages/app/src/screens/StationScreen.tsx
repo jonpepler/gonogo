@@ -24,7 +24,9 @@ import {
 import type { DashboardConfig } from "../components/Dashboard";
 import { Dashboard } from "../components/Dashboard";
 import { useDashboardState } from "../components/Dashboard/useDashboardState";
+import { FullscreenFab } from "../components/FullscreenFab";
 import { SignalLossIndicator } from "../components/SignalLossIndicator";
+import { LogsFab } from "../logs/LogsFab";
 import { KosPeerConnection } from "../peer/KosPeerConnection";
 import { PeerClientProvider } from "../peer/PeerClientContext";
 import { PeerClientDataSource } from "../peer/PeerClientDataSource";
@@ -42,8 +44,6 @@ import {
   StationNameEditor,
   useStationName,
 } from "../stationIdentity";
-import { FullscreenFab } from "../components/FullscreenFab";
-import { LogsFab } from "../logs/LogsFab";
 import { OcislyStreamSource } from "../streamSources/ocisly";
 
 const HOST_ID_KEY = "gonogo-station-host-id";

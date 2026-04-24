@@ -1,6 +1,12 @@
 import { LogRingBuffer } from "./ringBuffer";
 import { tagRegistry } from "./tags";
-import type { LogContext, LogEntry, Logger, LogLevel, TaggedLogger } from "./types";
+import type {
+  LogContext,
+  LogEntry,
+  Logger,
+  LogLevel,
+  TaggedLogger,
+} from "./types";
 
 function defaultEnabled(): boolean {
   // Suppress output in test runs so unit + integration suites stay quiet.
@@ -96,9 +102,12 @@ export class ConsoleLogger implements Logger {
 
   tag(name: string): TaggedLogger {
     return {
-      debug: (message, context) => this.emit("debug", message, context, undefined, name),
-      info: (message, context) => this.emit("info", message, context, undefined, name),
-      warn: (message, context) => this.emit("warn", message, context, undefined, name),
+      debug: (message, context) =>
+        this.emit("debug", message, context, undefined, name),
+      info: (message, context) =>
+        this.emit("info", message, context, undefined, name),
+      warn: (message, context) =>
+        this.emit("warn", message, context, undefined, name),
       error: (message, error, context) =>
         this.emit("error", message, context, error, name),
     };
@@ -173,9 +182,9 @@ export class ConsoleLogger implements Logger {
 export const logger = new ConsoleLogger();
 export { AppError } from "./AppError";
 export { ErrorBoundary } from "./ErrorBoundary";
-export { tagRegistry } from "./tags";
 export { LogRingBuffer } from "./ringBuffer";
-export type { TaggedLogger, LogEntry } from "./types";
+export { tagRegistry } from "./tags";
+export type { LogEntry, TaggedLogger } from "./types";
 
 /**
  * Back-compat wrapper around the new tag system. `debugPeer("foo", ctx)`

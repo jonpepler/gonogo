@@ -1,60 +1,12 @@
-import type {
-  ConfigField,
-  DataKey,
-  DataSource,
-  DataSourceStatus,
-  ManeuverNode,
+import type { ManeuverNode } from "@gonogo/core";
+import {
+  clearRegistry,
+  MockDataSource,
+  registerDataSource,
 } from "@gonogo/core";
-import { clearRegistry, registerDataSource } from "@gonogo/core";
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useManeuverNodes } from "./useManeuverNodes";
-
-class MockSource implements DataSource {
-  readonly id = "data";
-  readonly name = "Mock";
-  status: DataSourceStatus = "disconnected";
-  private readonly subs = new Map<string, Set<(v: unknown) => void>>();
-  private readonly statusSubs = new Set<(s: DataSourceStatus) => void>();
-  async connect(): Promise<void> {
-    this.status = "connected";
-    this.statusSubs.forEach((cb) => {
-      cb("connected");
-    });
-  }
-  disconnect(): void {}
-  schema(): DataKey[] {
-    return [{ key: "o.maneuverNodes" }];
-  }
-  subscribe(key: string, cb: (v: unknown) => void): () => void {
-    let b = this.subs.get(key);
-    if (!b) {
-      b = new Set();
-      this.subs.set(key, b);
-    }
-    b.add(cb);
-    return () => b?.delete(cb);
-  }
-  onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
-    this.statusSubs.add(cb);
-    return () => {
-      this.statusSubs.delete(cb);
-    };
-  }
-  async execute(): Promise<void> {}
-  configSchema(): ConfigField[] {
-    return [];
-  }
-  configure(): void {}
-  getConfig(): Record<string, unknown> {
-    return {};
-  }
-  emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => {
-      cb(value);
-    });
-  }
-}
 
 function fakeNode(
   partial: Partial<ManeuverNode> & {
@@ -91,11 +43,14 @@ function Probe({
 }
 
 describe("useManeuverNodes", () => {
-  let mock: MockSource;
+  let mock: MockDataSource;
 
   beforeEach(() => {
     clearRegistry();
-    mock = new MockSource();
+    mock = new MockDataSource({
+      id: "data",
+      keys: [{ key: "o.maneuverNodes" }],
+    });
     registerDataSource(mock);
     void mock.connect();
   });

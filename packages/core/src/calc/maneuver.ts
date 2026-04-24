@@ -174,10 +174,12 @@ export function stateAtUT(
 
   // Current true anomaly → eccentric anomaly.
   const nu0 = (currentTrueAnomalyDeg * Math.PI) / 180;
-  const E0 = 2 * Math.atan2(
-    Math.sqrt(1 - e) * Math.sin(nu0 / 2),
-    Math.sqrt(1 + e) * Math.cos(nu0 / 2),
-  );
+  const E0 =
+    2 *
+    Math.atan2(
+      Math.sqrt(1 - e) * Math.sin(nu0 / 2),
+      Math.sqrt(1 + e) * Math.cos(nu0 / 2),
+    );
   // Mean anomaly propagates linearly with time.
   const M0 = E0 - e * Math.sin(E0);
   const n = Math.sqrt(mu / (a * a * a));
@@ -189,10 +191,7 @@ export function stateAtUT(
   const r = a * (1 - e * Math.cos(E));
   const speed = Math.sqrt(mu * (2 / r - 1 / a));
   // γ from local horizontal: tan(γ) = e·sin(ν) / (1 + e·cos(ν)).
-  const flightPathAngle = Math.atan2(
-    e * Math.sin(nu),
-    1 + e * Math.cos(nu),
-  );
+  const flightPathAngle = Math.atan2(e * Math.sin(nu), 1 + e * Math.cos(nu));
   return {
     r,
     speed,
@@ -357,9 +356,10 @@ export function customAtUT(
  * ascending node to periapsis, so the AN itself sits at ν = -argPe and
  * the DN at ν = 180° - argPe (mod 360°).
  */
-function nodeAnomalies(
-  argumentOfPeriapsisDeg: number,
-): { an: number; dn: number } {
+function nodeAnomalies(argumentOfPeriapsisDeg: number): {
+  an: number;
+  dn: number;
+} {
   const mod360 = (x: number) => ((x % 360) + 360) % 360;
   return {
     an: mod360(-argumentOfPeriapsisDeg),
@@ -385,10 +385,12 @@ function timeToTrueAnomaly(
 
   const toM = (trueAnomalyDeg: number) => {
     const nu = (trueAnomalyDeg * Math.PI) / 180;
-    const E = 2 * Math.atan2(
-      Math.sqrt(1 - e) * Math.sin(nu / 2),
-      Math.sqrt(1 + e) * Math.cos(nu / 2),
-    );
+    const E =
+      2 *
+      Math.atan2(
+        Math.sqrt(1 - e) * Math.sin(nu / 2),
+        Math.sqrt(1 + e) * Math.cos(nu / 2),
+      );
     return E - e * Math.sin(E);
   };
 
@@ -421,18 +423,8 @@ export function matchInclination(
   targetInclinationDeg: number,
 ): ManeuverPlan {
   const nodes = nodeAnomalies(currentArgumentOfPeriapsisDeg);
-  const dtAN = timeToTrueAnomaly(
-    current,
-    currentTrueAnomalyDeg,
-    nodes.an,
-    mu,
-  );
-  const dtDN = timeToTrueAnomaly(
-    current,
-    currentTrueAnomalyDeg,
-    nodes.dn,
-    mu,
-  );
+  const dtAN = timeToTrueAnomaly(current, currentTrueAnomalyDeg, nodes.an, mu);
+  const dtDN = timeToTrueAnomaly(current, currentTrueAnomalyDeg, nodes.dn, mu);
 
   // Burn at whichever node arrives first. At AN a +normal burn rotates
   // the orbit's angular-momentum vector northward → higher inclination;
@@ -459,8 +451,7 @@ export function matchInclination(
     ((targetInclinationDeg - currentInclinationDeg) * Math.PI) / 180;
   const vHorizontal = state.speed * Math.cos(state.flightPathAngle);
   const magnitude = 2 * vHorizontal * Math.sin(Math.abs(deltaIRad) / 2);
-  const normal =
-    nodeDirection * Math.sign(deltaIRad) * magnitude;
+  const normal = nodeDirection * Math.sign(deltaIRad) * magnitude;
 
   return {
     ut: burnUT,
@@ -525,7 +516,7 @@ export function matchTargetPlane(
   const u1Deg = ((u1Rad * 180) / Math.PI + 360) % 360;
   // argPe is the angle from our AN to periapsis, so true anomaly at the
   // relative node is u₁ − argPe.
-  const nuAN = ((u1Deg - currentArgumentOfPeriapsisDeg) % 360 + 360) % 360;
+  const nuAN = (((u1Deg - currentArgumentOfPeriapsisDeg) % 360) + 360) % 360;
   const nuDN = (nuAN + 180) % 360;
 
   const dtAN = timeToTrueAnomaly(current, currentTrueAnomalyDeg, nuAN, mu);

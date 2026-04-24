@@ -1,84 +1,9 @@
-import type {
-  ConfigField,
-  DataKey,
-  DataSource,
-  DataSourceStatus,
-} from "@gonogo/core";
+import type { DataKey } from "@gonogo/core";
+import { MockDataSource } from "@gonogo/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BufferedDataSource } from "./BufferedDataSource";
 import { clearDerivedKeys, registerDerivedKey } from "./derive";
 import { MemoryStore } from "./storage/MemoryStore";
-
-/**
- * Minimal in-memory data source for tests. Lets us drive arbitrary samples
- * without MSW/WS setup.
- */
-class MockSource implements DataSource {
-  readonly id = "mock";
-  readonly name = "Mock";
-  status: DataSourceStatus = "disconnected";
-
-  private readonly subs = new Map<string, Set<(v: unknown) => void>>();
-  private readonly statusSubs = new Set<(s: DataSourceStatus) => void>();
-  private readonly keys: DataKey[];
-
-  constructor(keys: DataKey[]) {
-    this.keys = keys;
-  }
-
-  async connect(): Promise<void> {
-    this.status = "connected";
-    this.statusSubs.forEach((cb) => {
-      cb("connected");
-    });
-  }
-
-  disconnect(): void {
-    this.status = "disconnected";
-    this.statusSubs.forEach((cb) => {
-      cb("disconnected");
-    });
-  }
-
-  schema(): DataKey[] {
-    return this.keys;
-  }
-
-  subscribe(key: string, cb: (v: unknown) => void): () => void {
-    let bucket = this.subs.get(key);
-    if (!bucket) {
-      bucket = new Set();
-      this.subs.set(key, bucket);
-    }
-    bucket.add(cb);
-    return () => {
-      bucket?.delete(cb);
-    };
-  }
-
-  onStatusChange(cb: (s: DataSourceStatus) => void): () => void {
-    this.statusSubs.add(cb);
-    return () => {
-      this.statusSubs.delete(cb);
-    };
-  }
-
-  async execute(_action: string): Promise<void> {}
-  configSchema(): ConfigField[] {
-    return [];
-  }
-  configure(_config: Record<string, unknown>): void {}
-  getConfig(): Record<string, unknown> {
-    return {};
-  }
-
-  // Test-side helper — drive a value to all subscribers of `key`.
-  emit(key: string, value: unknown): void {
-    this.subs.get(key)?.forEach((cb) => {
-      cb(value);
-    });
-  }
-}
 
 const MOCK_KEYS: DataKey[] = [
   { key: "v.name" },
@@ -88,13 +13,13 @@ const MOCK_KEYS: DataKey[] = [
 ];
 
 describe("BufferedDataSource", () => {
-  let source: MockSource;
+  let source: MockDataSource;
   let store: MemoryStore;
   let buffered: BufferedDataSource;
   let clock = 1000;
 
   beforeEach(async () => {
-    source = new MockSource(MOCK_KEYS);
+    source = new MockDataSource({ keys: MOCK_KEYS });
     store = new MemoryStore();
     clock = 1000;
     buffered = new BufferedDataSource({
@@ -335,11 +260,13 @@ describe("BufferedDataSource", () => {
 
   it("schema() falls back to key-as-label for keys absent from telemachusMeta", () => {
     // Use a mock source that includes a key with no metadata entry.
-    const unknownSource = new MockSource([
-      { key: "v.name" },
-      { key: "v.missionTime" },
-      { key: "totally.unknown.key" },
-    ]);
+    const unknownSource = new MockDataSource({
+      keys: [
+        { key: "v.name" },
+        { key: "v.missionTime" },
+        { key: "totally.unknown.key" },
+      ],
+    });
     const buf = new BufferedDataSource({
       source: unknownSource,
       store: new MemoryStore(),
@@ -354,7 +281,7 @@ describe("BufferedDataSource", () => {
 });
 
 describe("BufferedDataSource — derived keys", () => {
-  let source: MockSource;
+  let source: MockDataSource;
   let store: MemoryStore;
   let buffered: BufferedDataSource;
   let clock = 1000;
@@ -367,7 +294,7 @@ describe("BufferedDataSource — derived keys", () => {
 
   beforeEach(async () => {
     clearDerivedKeys();
-    source = new MockSource(KEYS_WITH_ALTITUDE);
+    source = new MockDataSource({ keys: KEYS_WITH_ALTITUDE });
     store = new MemoryStore();
     clock = 1000;
     buffered = new BufferedDataSource({
@@ -547,16 +474,16 @@ const GATED_KEYS: DataKey[] = [
 ];
 
 describe("BufferedDataSource — affectedBySignalLoss gate", () => {
-  let source: MockSource & { affectedBySignalLoss?: boolean };
+  let source: MockDataSource;
   let store: MemoryStore;
   let buffered: BufferedDataSource;
   let clock = 1000;
 
   beforeEach(async () => {
-    source = new MockSource(GATED_KEYS) as MockSource & {
-      affectedBySignalLoss?: boolean;
-    };
-    source.affectedBySignalLoss = true;
+    source = new MockDataSource({
+      keys: GATED_KEYS,
+      affectedBySignalLoss: true,
+    });
     store = new MemoryStore();
     clock = 1000;
     buffered = new BufferedDataSource({ source, store, now: () => clock });

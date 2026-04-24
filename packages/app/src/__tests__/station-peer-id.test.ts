@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  clearStationPeerId,
-  getStationPeerId,
-} from "../peer/stationPeerId";
+import { clearStationPeerId, getStationPeerId } from "../peer/stationPeerId";
 
 function makeStorage(): Storage {
   const store = new Map<string, string>();

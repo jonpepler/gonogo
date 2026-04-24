@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  type CurrentOrbit,
   circularizeAtApo,
   circularizeAtPeri,
-  type CurrentOrbit,
   customAtApsis,
   customAtUT,
   gravParameterFromState,
@@ -103,15 +103,7 @@ describe("circularizeAtPeri", () => {
 
 describe("customAtApsis", () => {
   it("produces an unchanged orbit for a zero-ΔV plan", () => {
-    const plan = customAtApsis(
-      KERBIN_ELLIPTIC,
-      KERBIN_MU,
-      0,
-      "apo",
-      0,
-      0,
-      0,
-    );
+    const plan = customAtApsis(KERBIN_ELLIPTIC, KERBIN_MU, 0, "apo", 0, 0, 0);
     expect(plan.requiredDeltaV).toBe(0);
     expect(plan.projected?.ApR).toBeCloseTo(KERBIN_ELLIPTIC.ApR, -2);
     expect(plan.projected?.PeR).toBeCloseTo(KERBIN_ELLIPTIC.PeR, -2);
@@ -122,15 +114,7 @@ describe("customAtApsis", () => {
   });
 
   it("retrograde at apoapsis lowers periapsis", () => {
-    const plan = customAtApsis(
-      KERBIN_ELLIPTIC,
-      KERBIN_MU,
-      0,
-      "apo",
-      -50,
-      0,
-      0,
-    );
+    const plan = customAtApsis(KERBIN_ELLIPTIC, KERBIN_MU, 0, "apo", -50, 0, 0);
     expect(plan.projected?.PeR).toBeLessThan(KERBIN_ELLIPTIC.PeR);
     // Apoapsis unchanged — the burn happens AT apoapsis, and prograde burns
     // at apoapsis change only the opposite apsis.
@@ -152,15 +136,7 @@ describe("customAtApsis", () => {
   });
 
   it("carries normal component through but doesn't reshape in-plane orbit", () => {
-    const plan = customAtApsis(
-      KERBIN_ELLIPTIC,
-      KERBIN_MU,
-      0,
-      "apo",
-      0,
-      120,
-      0,
-    );
+    const plan = customAtApsis(KERBIN_ELLIPTIC, KERBIN_MU, 0, "apo", 0, 120, 0);
     expect(plan.normal).toBe(120);
     expect(plan.requiredDeltaV).toBeCloseTo(120, 5);
     expect(plan.projected?.ApR).toBeCloseTo(KERBIN_ELLIPTIC.ApR, -1);
@@ -221,16 +197,7 @@ describe("stateAtUT", () => {
 
 describe("customAtUT", () => {
   it("is a no-op for zero ΔV at any future UT", () => {
-    const plan = customAtUT(
-      KERBIN_ELLIPTIC,
-      30,
-      KERBIN_MU,
-      0,
-      800,
-      0,
-      0,
-      0,
-    );
+    const plan = customAtUT(KERBIN_ELLIPTIC, 30, KERBIN_MU, 0, 800, 0, 0, 0);
     expect(plan.projected).not.toBeNull();
     expect(plan.projected?.sma).toBeCloseTo(KERBIN_ELLIPTIC.sma, -2);
     expect(plan.projected?.eccentricity).toBeCloseTo(
@@ -277,8 +244,7 @@ describe("customAtUT", () => {
     // Partway between peri and apo: γ is non-zero, so the in-plane math
     // exercises the full projectBurn (not just the apsis shortcut).
     const a = KERBIN_ELLIPTIC.sma;
-    const quarterPeriod =
-      (Math.PI / 2) * Math.sqrt((a * a * a) / KERBIN_MU);
+    const quarterPeriod = (Math.PI / 2) * Math.sqrt((a * a * a) / KERBIN_MU);
     const plan = customAtUT(
       KERBIN_ELLIPTIC,
       0,
@@ -315,12 +281,12 @@ describe("matchInclination", () => {
   it("requires ~zero ΔV when the target equals the current inclination", () => {
     const plan = matchInclination(
       KERBIN_100KM_CIRCULAR,
-      0,    // ν
-      0,    // argPe (AN at ν = 0)
-      45,   // current inc
+      0, // ν
+      0, // argPe (AN at ν = 0)
+      45, // current inc
       KERBIN_MU,
       0,
-      45,   // same target
+      45, // same target
     );
     expect(Math.abs(plan.normal)).toBeLessThan(1e-6);
     expect(plan.prograde).toBe(0);
@@ -339,10 +305,10 @@ describe("matchInclination", () => {
       KERBIN_100KM_CIRCULAR,
       0,
       0,
-      0,   // current inc
+      0, // current inc
       KERBIN_MU,
       0,
-      30,  // target +30°
+      30, // target +30°
     );
     expect(Math.abs(plan.normal)).toBeCloseTo(expected, 0);
     expect(plan.projected?.inclination).toBe(30);
@@ -377,7 +343,7 @@ describe("matchInclination", () => {
     const plan = matchInclination(
       KERBIN_100KM_CIRCULAR,
       10, // current ν just past AN
-      0,  // argPe
+      0, // argPe
       0,
       KERBIN_MU,
       1000,
@@ -385,9 +351,8 @@ describe("matchInclination", () => {
     );
     // ν needs to reach 180° (DN). On a circular orbit with period T,
     // that takes roughly (170°/360°)·T seconds.
-    const period = 2 * Math.PI * Math.sqrt(
-      (KERBIN_100KM_CIRCULAR.sma ** 3) / KERBIN_MU,
-    );
+    const period =
+      2 * Math.PI * Math.sqrt(KERBIN_100KM_CIRCULAR.sma ** 3 / KERBIN_MU);
     const expectedDt = (170 / 360) * period;
     expect(plan.ut - 1000).toBeCloseTo(expectedDt, -1);
   });
@@ -397,12 +362,12 @@ describe("matchTargetPlane", () => {
   it("requires ~zero ΔV when the target plane equals the current plane", () => {
     const plan = matchTargetPlane(
       KERBIN_100KM_CIRCULAR,
-      45,  // ν
-      20,  // argPe
-      30,  // inc
-      50,  // LAN
-      30,  // target inc (same)
-      50,  // target LAN (same)
+      45, // ν
+      20, // argPe
+      30, // inc
+      50, // LAN
+      30, // target inc (same)
+      50, // target LAN (same)
       KERBIN_MU,
       0,
     );

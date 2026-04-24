@@ -41,7 +41,9 @@ type Mode = "all" | "none" | "list";
 
 function readTags(): { mode: Mode; tags: Set<string> } {
   const raw =
-    typeof localStorage !== "undefined" ? localStorage.getItem(LOG_TAGS_KEY) : null;
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem(LOG_TAGS_KEY)
+      : null;
   if (!raw?.trim()) return { mode: "none", tags: new Set() };
   if (raw.trim() === "*") return { mode: "all", tags: new Set() };
   return {

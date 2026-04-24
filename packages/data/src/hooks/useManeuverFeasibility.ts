@@ -1,8 +1,5 @@
 import { useMemo } from "react";
-import {
-  type ParsedManeuverNode,
-  useManeuverNodes,
-} from "./useManeuverNodes";
+import { type ParsedManeuverNode, useManeuverNodes } from "./useManeuverNodes";
 import { useVesselDeltaV } from "./useVesselDeltaV";
 
 /** One row of the feasibility verdict — a planned node plus whether we can pull it off. */

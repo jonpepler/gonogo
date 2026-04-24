@@ -4,8 +4,8 @@ import type { ComponentDefinition, DataSource, ThemeDefinition } from "./types";
 // ComponentType is contravariant in props, so neither unknown nor never would work.
 // TConfig is checked at the call site (registerComponent / registerDataSource);
 // the internal Map just needs to hold anything.
-export type AnyDef = ComponentDefinition; // eslint-disable-line @typescript-eslint/no-explicit-any
-export type AnySource = DataSource; // eslint-disable-line @typescript-eslint/no-explicit-any
+export type AnyDef = ComponentDefinition;
+export type AnySource = DataSource;
 
 const components = new Map<string, AnyDef>();
 const dataSources = new Map<string, AnySource>();

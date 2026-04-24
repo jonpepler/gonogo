@@ -92,9 +92,6 @@ describe("CameraFeedComponent", () => {
   beforeEach(() => {
     clearRegistry();
     clearStreamRegistry();
-    // jsdom's HTMLMediaElement.play returns undefined; the widget does
-    // video.play().catch(...) — stub a resolved Promise so the chain succeeds.
-    HTMLMediaElement.prototype.play = () => Promise.resolve();
   });
 
   afterEach(() => {

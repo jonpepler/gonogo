@@ -180,7 +180,12 @@ function StationView() {
 
   if (launched) {
     return (
-      <BigButton $variant="abort" onClick={handleAbort}>
+      <BigButton
+        $variant="abort"
+        onClick={handleAbort}
+        role="alert"
+        aria-live="assertive"
+      >
         <ButtonLabel>ABORT</ButtonLabel>
         {abortNotice && (
           <AbortNotice>Aborted by {abortNotice.stationName}</AbortNotice>
@@ -197,12 +202,47 @@ function StationView() {
     <BigButton
       $variant={vote === "go" ? "go" : "nogo"}
       onClick={handleVoteToggle}
+      role="status"
+      aria-live="polite"
     >
       <ButtonLabel>{vote === "go" ? "GO" : "NO-GO"}</ButtonLabel>
       {secondsLeft !== null && (
-        <CountdownOverlay>T − {secondsLeft.toFixed(1)} s</CountdownOverlay>
+        <CountdownOverlay role="timer" aria-label="Countdown">
+          T − {secondsLeft.toFixed(1)} s
+        </CountdownOverlay>
       )}
+      {secondsLeft !== null && <CountdownAnnouncer secondsLeft={secondsLeft} />}
     </BigButton>
+  );
+}
+
+/**
+ * Announces countdown milestones to assistive tech without flooding the
+ * screen reader every tick. Fires polite announcements at T-10, T-5, T-3,
+ * T-2, T-1, and T-0.
+ */
+const MILESTONES = new Set([10, 5, 3, 2, 1, 0]);
+
+export function CountdownAnnouncer({
+  secondsLeft,
+}: {
+  secondsLeft: number;
+}) {
+  const [message, setMessage] = useState("");
+  const lastMilestoneRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const whole = Math.ceil(secondsLeft);
+    if (!MILESTONES.has(whole)) return;
+    if (lastMilestoneRef.current === whole) return;
+    lastMilestoneRef.current = whole;
+    setMessage(whole === 0 ? "T zero" : `T minus ${whole}`);
+  }, [secondsLeft]);
+
+  return (
+    <span className="sr-only" role="status" aria-live="polite">
+      {message}
+    </span>
   );
 }
 
@@ -258,17 +298,32 @@ function MainView({ config }: { config: GoNoGoWidgetConfig | undefined }) {
         </HeaderRight>
       </MainHeader>
       {countdown && (
-        <CountdownBanner>T − {secondsLeft?.toFixed(1)} s</CountdownBanner>
+        <>
+          <CountdownBanner role="timer" aria-label="Countdown">
+            T − {secondsLeft?.toFixed(1)} s
+          </CountdownBanner>
+          {secondsLeft !== null && (
+            <CountdownAnnouncer secondsLeft={secondsLeft} />
+          )}
+        </>
       )}
       {abort && (
-        <AbortBanner>ABORT — triggered by {abort.stationName}</AbortBanner>
+        <AbortBanner role="alert">
+          ABORT — triggered by {abort.stationName}
+        </AbortBanner>
       )}
       <Grid>
         {stations.length === 0 && <Empty>No stations connected</Empty>}
         {stations.map((s) => {
           const cellState = deriveCellState(s, launched, abort);
           return (
-            <Cell key={s.peerId} $state={cellState}>
+            <Cell
+              key={s.peerId}
+              $state={cellState}
+              role="status"
+              aria-live="polite"
+              aria-label={`${s.name}: ${cellLabel(cellState)}`}
+            >
               <CellName>{s.name}</CellName>
               <CellStatus>{cellLabel(cellState)}</CellStatus>
             </Cell>

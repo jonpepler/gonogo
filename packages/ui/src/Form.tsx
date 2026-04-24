@@ -22,7 +22,7 @@ export const FieldRow = styled.div`
 `;
 
 export const FieldLabel = styled.label`
-  font-size: 11px;
+  font-size: var(--font-size-sm, 11px);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -46,13 +46,27 @@ const inputBase = `
   border-radius: 3px;
   color: #ccc;
   font-family: monospace;
-  font-size: 13px;
+  font-size: var(--font-size-base, 13px);
   padding: 6px 8px;
-  outline: none;
   box-sizing: border-box;
 
   &:focus {
-    border-color: #555;
+    /* #00ff88 on #1a1a1a ≈ 11.4:1 — well clear of WCAG 1.4.11's 3:1 minimum
+       for non-text UI components. The previous #555 border was ~1.4:1. */
+    border-color: #00ff88;
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: 2px;
+  }
+
+  @media (pointer: coarse) {
+    min-height: 44px;
+    padding: 10px 12px;
+    /* 16px prevents iOS Safari from auto-zooming on focus. */
+    font-size: 16px;
   }
 `;
 

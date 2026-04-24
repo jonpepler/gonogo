@@ -307,8 +307,17 @@ const SearchInput = styled.input`
   font-family: monospace;
   font-size: 13px;
   padding: 10px 16px;
-  outline: none;
   flex-shrink: 0;
+
+  &:focus {
+    outline: none;
+    border-bottom-color: #00ff88;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: -2px;
+  }
 
   &::placeholder {
     color: #333;

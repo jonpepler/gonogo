@@ -7,7 +7,7 @@ export const Button = styled.button`
   border-radius: 3px;
   color: #aaa;
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--font-size-sm, 11px);
   font-weight: 600;
   letter-spacing: 0.1em;
   padding: 5px 12px;
@@ -15,9 +15,11 @@ export const Button = styled.button`
   text-transform: uppercase;
   transition: border-color 0.1s, color 0.1s;
 
-  &:hover {
-    border-color: #555;
-    color: #ddd;
+  @media (hover: hover) {
+    &:hover {
+      border-color: #555;
+      color: #ddd;
+    }
   }
   &:active {
     background: #222;
@@ -25,6 +27,10 @@ export const Button = styled.button`
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+  @media (pointer: coarse) {
+    min-height: 44px;
+    padding: 8px 14px;
   }
 `;
 
@@ -35,10 +41,12 @@ export const PrimaryButton = styled(Button)`
   color: #00cc66;
   align-self: flex-end;
 
-  &:hover {
-    background: #1f4a1f;
-    border-color: #3a7a3a;
-    color: #00ff88;
+  @media (hover: hover) {
+    &:hover {
+      background: #1f4a1f;
+      border-color: #3a7a3a;
+      color: #00ff88;
+    }
   }
 `;
 
@@ -46,11 +54,15 @@ export const PrimaryButton = styled(Button)`
 export const GhostButton = styled(Button)`
   background: none;
   border-color: #333;
-  color: #666;
+  /* #999 on the #050505 app background clears WCAG AA 4.5:1 (≈6.1:1);
+     #666 (the previous value) was ~3.5:1 and failed. */
+  color: #999;
 
-  &:hover {
-    border-color: #555;
-    color: #aaa;
+  @media (hover: hover) {
+    &:hover {
+      border-color: #555;
+      color: #ddd;
+    }
   }
 `;
 
@@ -60,16 +72,25 @@ export const IconButton = styled.button`
   border: none;
   cursor: pointer;
   color: #555;
-  font-size: 13px;
+  font-size: var(--font-size-base, 13px);
   line-height: 1;
   padding: 2px 4px;
   transition: color 0.1s;
 
-  &:hover {
-    color: #aaa;
+  @media (hover: hover) {
+    &:hover {
+      color: #aaa;
+    }
   }
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+  @media (pointer: coarse) {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 `;

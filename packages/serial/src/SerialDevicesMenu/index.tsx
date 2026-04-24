@@ -8,6 +8,7 @@ import {
   useSerialDeviceTypes,
 } from "../SerialDeviceContext";
 import type { DeviceInstance, DeviceType } from "../types";
+import { isWebSerialSupported } from "../webSerialSupport";
 import { DeviceEditor } from "./DeviceEditor";
 import { DeviceTypeEditor } from "./DeviceTypeEditor";
 
@@ -55,6 +56,13 @@ function DevicesTab() {
 
   return (
     <List>
+      {!isWebSerialSupported() && (
+        <WebSerialUnavailableBanner role="status">
+          Web Serial is not available in this browser. Virtual devices still
+          work; real USB hardware needs a Chromium-based browser on desktop or
+          Android.
+        </WebSerialUnavailableBanner>
+      )}
       <Toolbar>
         <Heading>Registered devices ({devices.length})</Heading>
         <Button
@@ -225,6 +233,17 @@ const Empty = styled.div`
   color: #555;
   font-size: 12px;
   padding: 8px 0;
+`;
+
+const WebSerialUnavailableBanner = styled.div`
+  background: #2a2414;
+  border: 1px solid #5a4a1a;
+  border-radius: 4px;
+  color: #e6c85a;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
 `;
 
 const Row = styled.div`

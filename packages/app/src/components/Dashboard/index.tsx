@@ -59,6 +59,11 @@ const COLS = { lg: 36, md: 30, sm: 18, xs: 12, xxs: 6, xxxs: 2 };
 const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
 const ROW_HEIGHT = 25; // px per grid unit
 
+// Drag/resize is unreliable on touch and the 18px drag handle is too small
+// anyway. Lock the layout on phone breakpoints — per-breakpoint layouts
+// authored on desktop are authoritative at these widths.
+const TOUCH_LOCKED_BREAKPOINTS = new Set(["sm", "xs", "xxs"]);
+
 // ---------------------------------------------------------------------------
 // Dashboard — fully controlled. State lives in `useDashboardState` (called
 // by the owning screen) so external consumers like the Phase 4 InputDispatcher
@@ -88,6 +93,8 @@ export function Dashboard({
   updateItemMappings,
   removeItem,
 }: Readonly<DashboardProps>) {
+  const touchLocked = TOUCH_LOCKED_BREAKPOINTS.has(breakpoint);
+
   return (
     <ResponsiveGridLayout
       className="dashboard-grid"
@@ -98,6 +105,8 @@ export function Dashboard({
       margin={[8, 8]}
       containerPadding={[0, 0]}
       draggableHandle=".drag-handle"
+      isDraggable={!touchLocked}
+      isResizable={!touchLocked}
       onLayoutChange={onLayoutChange}
       onBreakpointChange={onBreakpointChange}
     >
@@ -116,7 +125,11 @@ export function Dashboard({
 
         return (
           <GridCell key={item.i}>
-            <CellHeader className="drag-handle" title="Drag to reposition">
+            <CellHeader
+              className="drag-handle"
+              title={touchLocked ? undefined : "Drag to reposition"}
+              $locked={touchLocked}
+            >
               {(hasConfig || hasActions) && (
                 <GearWrapper>
                   <GearButton
@@ -441,10 +454,10 @@ const GridCell = styled.div`
   overflow: hidden;
 `;
 
-const CellHeader = styled.div`
+const CellHeader = styled.div<{ $locked?: boolean }>`
   height: 18px;
   background: #111;
-  cursor: grab;
+  cursor: ${({ $locked }) => ($locked ? "default" : "grab")};
   flex-shrink: 0;
   border-radius: 2px 2px 0 0;
   display: flex;
@@ -452,12 +465,14 @@ const CellHeader = styled.div`
   justify-content: flex-end;
   padding: 0 4px;
 
-  &:hover {
-    background: #1a1a1a;
+  @media (hover: hover) {
+    &:hover {
+      background: #1a1a1a;
+    }
   }
 
   &:active {
-    cursor: grabbing;
+    cursor: ${({ $locked }) => ($locked ? "default" : "grabbing")};
   }
 `;
 

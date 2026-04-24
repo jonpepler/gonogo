@@ -5,6 +5,27 @@ import type { DashboardConfig, DashboardItem } from "./index";
 
 const COLS_KEYS = ["lg", "md", "sm", "xs", "xxs", "xxxs"] as const;
 
+// Must match BREAKPOINTS in Dashboard/index.tsx. Duplicated here so the initial
+// render picks the correct breakpoint before ResponsiveGridLayout has a chance
+// to fire onBreakpointChange — avoids a one-frame flash of desktop layout on
+// phones.
+const INITIAL_BREAKPOINTS: ReadonlyArray<readonly [string, number]> = [
+  ["lg", 1200],
+  ["md", 996],
+  ["sm", 768],
+  ["xs", 480],
+  ["xxs", 0],
+];
+
+function initialBreakpoint(): string {
+  if (typeof window === "undefined") return "lg";
+  const w = window.innerWidth;
+  for (const [name, min] of INITIAL_BREAKPOINTS) {
+    if (w >= min) return name;
+  }
+  return "xxs";
+}
+
 interface PersistedState {
   items: DashboardItem[];
   layouts: Layouts;
@@ -69,7 +90,7 @@ export function useDashboardState(
   const [currentLayouts, setCurrentLayouts] = useState<Layouts>(
     saved?.layouts ?? initial.layouts,
   );
-  const [breakpoint, setBreakpoint] = useState<string>("lg");
+  const [breakpoint, setBreakpoint] = useState<string>(initialBreakpoint);
 
   const itemsRef = useRef(items);
   itemsRef.current = items;

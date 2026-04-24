@@ -166,9 +166,10 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
     viewMode,
     setViewMode,
     interactionRef,
-    onMouseDown,
-    onMouseMove,
-    onMouseUp,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
   } = useCamera(containerSize);
 
   useActionInput<MapViewActions>({
@@ -640,10 +641,10 @@ function MapViewComponent({ config }: Readonly<ComponentProps<MapViewConfig>>) {
               ? { width: containerSize.w, height: containerSize.h }
               : undefined
           }
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseUp}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
         >
           <BaseCanvas ref={baseRef} />
           <OverlayCanvas ref={overlayRef} />

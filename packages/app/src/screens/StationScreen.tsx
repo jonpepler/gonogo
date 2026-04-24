@@ -56,6 +56,9 @@ const DEFAULT_CONFIG: DashboardConfig = {
 };
 
 export function StationScreen() {
+  useEffect(() => {
+    document.title = "gonogo — Station";
+  }, []);
   const [connected, setConnected] = useState(false);
   const [connStatus, setConnStatus] = useState<ConnStatus>("idle");
   const [hostInput, setHostInput] = useState(
@@ -188,7 +191,7 @@ export function StationScreen() {
       <ScreenProvider value="station">
         <SaveProfileProvider service={saveProfileService}>
           <ScopedStationIdentity>
-            <ConnectLayout>
+            <ConnectLayout as="main" aria-label="Connect to mission control">
               <ConnectBox>
                 <h1>Connect to Mission Control</h1>
                 <p>Enter the 4-character host ID shown on the main screen.</p>
@@ -240,7 +243,7 @@ export function StationScreen() {
                       addItem={dashboard.addItem}
                       updateItemConfig={dashboard.updateItemConfig}
                     >
-                      <Layout>
+                      <Layout as="main" aria-label="Station dashboard">
                         <Dashboard
                           items={dashboard.items}
                           layouts={dashboard.layouts}
@@ -299,6 +302,8 @@ const ConnectLayout = styled.div`
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: #050505;
 `;
 
@@ -379,6 +384,10 @@ const ErrorMsg = styled.p`
 
 const Layout = styled.div`
   padding: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(24px + env(safe-area-inset-left, 0px));
+  padding-right: calc(24px + env(safe-area-inset-right, 0px));
   background: #050505;
   min-height: 100vh;
 `;

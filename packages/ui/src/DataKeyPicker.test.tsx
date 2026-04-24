@@ -47,7 +47,7 @@ describe("DataKeyPicker", () => {
     render(
       <DataKeyPicker keys={KEYS} value={null} onChange={() => undefined} />,
     );
-    openDropdown(screen.getByRole("textbox"));
+    openDropdown(screen.getByRole("combobox"));
     expect(screen.getByText("Position")).toBeInTheDocument();
     expect(screen.getByText("Velocity")).toBeInTheDocument();
   });
@@ -56,7 +56,7 @@ describe("DataKeyPicker", () => {
     render(
       <DataKeyPicker keys={KEYS} value={null} onChange={() => undefined} />,
     );
-    const input = screen.getByRole("textbox");
+    const input = screen.getByRole("combobox");
     openDropdown(input);
     fireEvent.change(input, { target: { value: "alt" } });
     expect(screen.getByText("Altitude")).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe("DataKeyPicker", () => {
   it("Enter with no arrow navigation selects first filtered result", () => {
     const onChange = vi.fn();
     render(<DataKeyPicker keys={KEYS} value={null} onChange={onChange} />);
-    const input = screen.getByRole("textbox");
+    const input = screen.getByRole("combobox");
     openDropdown(input);
     fireEvent.change(input, { target: { value: "alt" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -77,7 +77,7 @@ describe("DataKeyPicker", () => {
   it("ArrowDown + Enter selects the highlighted item", () => {
     const onChange = vi.fn();
     render(<DataKeyPicker keys={KEYS} value={null} onChange={onChange} />);
-    const input = screen.getByRole("textbox");
+    const input = screen.getByRole("combobox");
     openDropdown(input);
     // First item in flat sorted order: Position group = Altitude, Latitude; Velocity = Mach, Surface speed
     fireEvent.keyDown(input, { key: "ArrowDown" });
@@ -92,7 +92,7 @@ describe("DataKeyPicker", () => {
     render(
       <DataKeyPicker keys={KEYS} value={null} onChange={() => undefined} />,
     );
-    const input = screen.getByRole("textbox");
+    const input = screen.getByRole("combobox");
     openDropdown(input);
     expect(screen.getByText("Position")).toBeInTheDocument();
     fireEvent.keyDown(input, { key: "Escape" });
@@ -102,8 +102,8 @@ describe("DataKeyPicker", () => {
   it("clicking an item calls onChange once with the key", () => {
     const onChange = vi.fn();
     render(<DataKeyPicker keys={KEYS} value={null} onChange={onChange} />);
-    openDropdown(screen.getByRole("textbox"));
-    fireEvent.mouseDown(screen.getByText("Altitude"));
+    openDropdown(screen.getByRole("combobox"));
+    fireEvent.pointerDown(screen.getByText("Altitude"));
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("v.altitude");
   });
@@ -127,9 +127,43 @@ describe("DataKeyPicker", () => {
     render(
       <DataKeyPicker keys={KEYS} value={null} onChange={() => undefined} />,
     );
-    const input = screen.getByRole("textbox");
+    const input = screen.getByRole("combobox");
     openDropdown(input);
     fireEvent.change(input, { target: { value: "xyzzy" } });
     expect(screen.getByText("No matches")).toBeInTheDocument();
+  });
+
+  it("initially closed — aria-expanded=false and no listbox in DOM", () => {
+    render(
+      <DataKeyPicker keys={KEYS} value={null} onChange={() => undefined} />,
+    );
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("opening sets aria-expanded=true and mounts the listbox", () => {
+    render(
+      <DataKeyPicker keys={KEYS} value={null} onChange={() => undefined} />,
+    );
+    const input = screen.getByRole("combobox");
+    openDropdown(input);
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+  });
+
+  it("ArrowDown sets aria-activedescendant to the highlighted option", () => {
+    render(
+      <DataKeyPicker keys={KEYS} value={null} onChange={() => undefined} />,
+    );
+    const input = screen.getByRole("combobox");
+    openDropdown(input);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    const active = input.getAttribute("aria-activedescendant");
+    expect(active).toBeTruthy();
+    const opt = document.getElementById(active ?? "");
+    expect(opt?.getAttribute("role")).toBe("option");
+    expect(opt?.getAttribute("aria-selected")).toBe("true");
   });
 });

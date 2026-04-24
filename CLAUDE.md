@@ -175,6 +175,22 @@ Basic, reusable UI elements (toggles, inputs, buttons, tags, etc.) belong in `@g
 
 ---
 
+## Accessibility
+
+Baseline expectations for every new or modified component. Targets WCAG 2.1 AA; see the [ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/patterns/) for the canonical widget patterns.
+
+- Interactive elements are real `<button>` / `<a>` / `<input>` — never `<div onClick>`.
+- Every form input has an associated `<label htmlFor>` or is wrapped in a `<label>`.
+- Icon-only buttons get an `aria-label`; decorative SVGs get `aria-hidden="true"`.
+- Components are fully operable by keyboard. For custom widgets, follow the APG pattern (tablist arrow nav, combobox + listbox, etc.).
+- Keyboard focus is visible: use `:focus-visible { outline: 2px solid #00ff88; outline-offset: 2px; }`. Never strip `outline` without a replacement.
+- Wrap mission-state changes (e.g. GO/NO-GO transitions) in `role="status" aria-live="polite"`. Reserve `role="alert"` / `aria-live="assertive"` for events that must interrupt (ABORT). Don't live-region streaming telemetry — it floods screen readers.
+- Respect `prefers-reduced-motion` on any new animation — the global reset in `packages/app/src/styles/global.css` damps transitions, but indefinite CSS animations (e.g. pulses) need an explicit `@media (prefers-reduced-motion: no-preference)` guard.
+- Colour contrast: 4.5:1 for normal text, 3:1 for large text and non-text UI (focus rings, borders).
+- Component tests should include a `jest-axe` smoke assertion (`await axe(container)` → `toHaveNoViolations()`).
+
+---
+
 ## Serial Input Platform
 
 `@gonogo/serial` is the per-screen serial input layer. It lets a user plug a physical (or virtual) device into a screen, declare its button/analog inputs, and map those inputs onto dashboard-component **actions**.

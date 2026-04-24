@@ -30,6 +30,12 @@ const SwitchLabel = styled.label`
   gap: 6px;
   cursor: pointer;
   user-select: none;
+
+  @media (pointer: coarse) {
+    /* Expand tap target to 44px tall without enlarging the visual track. */
+    min-height: 44px;
+    padding: 0 6px;
+  }
 `;
 
 const SwitchInput = styled.input`
@@ -63,7 +69,7 @@ const SwitchThumb = styled.div<{ $checked: boolean }>`
 
 const SwitchText = styled.span`
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--font-size-sm, 11px);
   color: #888;
   letter-spacing: 0.08em;
   text-transform: uppercase;

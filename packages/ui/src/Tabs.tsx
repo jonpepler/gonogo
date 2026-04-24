@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
+import { useCallback, useRef } from "react";
 import styled from "styled-components";
 
 export interface TabDescriptor {
@@ -15,22 +16,69 @@ export interface TabsProps {
 
 export function Tabs({ tabs, activeId, onChange }: Readonly<TabsProps>) {
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  const activateByIndex = useCallback(
+    (idx: number) => {
+      const clamped = ((idx % tabs.length) + tabs.length) % tabs.length;
+      const next = tabs[clamped];
+      if (!next) return;
+      onChange(next.id);
+      buttonRefs.current.get(next.id)?.focus();
+    },
+    [tabs, onChange],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLButtonElement>) => {
+      const currentIdx = tabs.findIndex((t) => t.id === active?.id);
+      if (currentIdx < 0) return;
+      switch (e.key) {
+        case "ArrowRight":
+          e.preventDefault();
+          activateByIndex(currentIdx + 1);
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          activateByIndex(currentIdx - 1);
+          break;
+        case "Home":
+          e.preventDefault();
+          activateByIndex(0);
+          break;
+        case "End":
+          e.preventDefault();
+          activateByIndex(tabs.length - 1);
+          break;
+      }
+    },
+    [tabs, active?.id, activateByIndex],
+  );
 
   return (
     <TabsRoot>
       <TabBar role="tablist">
-        {tabs.map((tab) => (
-          <TabButton
-            key={tab.id}
-            role="tab"
-            type="button"
-            aria-selected={tab.id === active?.id}
-            $active={tab.id === active?.id}
-            onClick={() => onChange(tab.id)}
-          >
-            {tab.label}
-          </TabButton>
-        ))}
+        {tabs.map((tab) => {
+          const isActive = tab.id === active?.id;
+          return (
+            <TabButton
+              key={tab.id}
+              ref={(el) => {
+                if (el) buttonRefs.current.set(tab.id, el);
+                else buttonRefs.current.delete(tab.id);
+              }}
+              role="tab"
+              type="button"
+              aria-selected={isActive}
+              tabIndex={isActive ? 0 : -1}
+              $active={isActive}
+              onClick={() => onChange(tab.id)}
+              onKeyDown={handleKeyDown}
+            >
+              {tab.label}
+            </TabButton>
+          );
+        })}
       </TabBar>
       <TabPanel role="tabpanel">{active?.content}</TabPanel>
     </TabsRoot>
@@ -55,7 +103,7 @@ const TabButton = styled.button<{ $active: boolean }>`
   color: ${({ $active }) => ($active ? "#ccc" : "#555")};
   cursor: pointer;
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--font-size-sm, 11px);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -64,8 +112,20 @@ const TabButton = styled.button<{ $active: boolean }>`
     ${({ $active }) => ($active ? "#00cc66" : "transparent")};
   margin-bottom: -1px;
 
-  &:hover {
-    color: #aaa;
+  @media (hover: hover) {
+    &:hover {
+      color: #aaa;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: -2px;
+  }
+
+  @media (pointer: coarse) {
+    min-height: 44px;
+    padding: 8px 14px;
   }
 `;
 

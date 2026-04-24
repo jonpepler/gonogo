@@ -131,7 +131,10 @@ function ModalDialog({ entry, onClose }: Readonly<ModalDialogProps>) {
   return (
     <>
       {createPortal(
-        <Backdrop onClick={onClose} role="presentation">
+        // Backdrop is interactive (click-to-close) so it can't also declare
+        // role="presentation" — the two contradict. Keyboard users close via
+        // the dialog's Escape handler instead of clicking the backdrop.
+        <Backdrop onClick={onClose}>
           <Dialog
             ref={dialogRef}
             role="dialog"
@@ -174,7 +177,7 @@ const Dialog = styled.div`
   background: #111;
   border: 1px solid #333;
   border-radius: 6px;
-  min-width: 320px;
+  min-width: min(320px, 100vw - 16px);
   max-width: 560px;
   width: 90vw;
   max-height: 80vh;
@@ -211,13 +214,24 @@ const CloseButton = styled.button`
   line-height: 1;
   padding: 2px 4px;
 
-  &:hover {
-    color: #aaa;
+  @media (hover: hover) {
+    &:hover {
+      color: #aaa;
+    }
+  }
+  @media (pointer: coarse) {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 `;
 
 const DialogBody = styled.div`
   padding: 16px;
   overflow-y: auto;
+  /* iOS Safari momentum scrolling inside the dialog. */
+  -webkit-overflow-scrolling: touch;
   flex: 1;
 `;

@@ -188,7 +188,10 @@ describe("ActionGroup component", () => {
     await waitFor(() =>
       expect(screen.getByText("Precision Control")).toBeInTheDocument(),
     );
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    // The rename handle has role="button" too; assert only the toggle is absent.
+    expect(
+      screen.queryByRole("button", { name: /toggle/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("clears state to unknown when the connection drops", async () => {

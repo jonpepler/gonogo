@@ -195,15 +195,21 @@ const MomentaryButton = styled.button`
   user-select: none;
   touch-action: none;
 
-  &:hover {
-    background: #222;
-    border-color: #7cf;
+  @media (hover: hover) {
+    &:hover {
+      background: #222;
+      border-color: #7cf;
+    }
   }
 
   &:active {
     background: #003f6e;
     border-color: #7cf;
     color: #7cf;
+  }
+
+  @media (pointer: coarse) {
+    min-height: 44px;
   }
 `;
 

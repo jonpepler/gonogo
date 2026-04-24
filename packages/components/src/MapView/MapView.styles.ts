@@ -35,6 +35,7 @@ export const CanvasContainer = styled.div`
   border-radius: 2px;
   overflow: hidden;
   cursor: grab;
+  touch-action: none;
 
   &:active {
     cursor: grabbing;

@@ -55,7 +55,7 @@ const Pill = styled.div<{ $severity: Exclude<SignalState, "connected"> }>`
   border-radius: 999px;
   color: ${({ $severity }) => SEVERITY_COLOR[$severity]};
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--font-size-sm, 11px);
   letter-spacing: 0.12em;
   pointer-events: none;
   box-shadow: 0 0 12px rgba(255, 59, 48, 0.35);
@@ -66,7 +66,11 @@ const Dot = styled.span<{ $severity: Exclude<SignalState, "connected"> }>`
   height: 8px;
   border-radius: 50%;
   background: ${({ $severity }) => SEVERITY_COLOR[$severity]};
-  animation: signal-pulse 1.2s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: signal-pulse 1.2s ease-in-out infinite;
+  }
+
   @keyframes signal-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.35; }

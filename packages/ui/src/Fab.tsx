@@ -37,8 +37,8 @@ export function Fab({ bottom, children, ...rest }: Readonly<FabProps>) {
 
 const StyledFab = styled.button<{ $visible: boolean; $bottom: number }>`
   position: fixed;
-  bottom: ${({ $bottom }) => $bottom}px;
-  right: 24px;
+  bottom: calc(${({ $bottom }) => $bottom}px + env(safe-area-inset-bottom, 0px));
+  right: calc(24px + env(safe-area-inset-right, 0px));
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -60,13 +60,20 @@ const StyledFab = styled.button<{ $visible: boolean; $bottom: number }>`
     opacity 0.18s ease,
     border-color 0.15s;
 
-  &:hover {
-    background: #222;
-    border-color: #7cf;
-    transform: scale(1.05);
+  @media (hover: hover) {
+    &:hover {
+      background: #222;
+      border-color: #7cf;
+      transform: scale(1.05);
+    }
   }
 
   &:active {
     transform: scale(0.97);
+  }
+
+  @media (pointer: coarse) {
+    width: 48px;
+    height: 48px;
   }
 `;

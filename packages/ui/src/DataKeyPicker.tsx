@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import styled from "styled-components";
 
 export interface KeyOption {
@@ -38,6 +45,10 @@ export function DataKeyPicker({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const listboxId = useId();
+  const optionIdPrefix = useId();
+  const optionId = (key: string) => `${optionIdPrefix}-${key}`;
 
   const selectedOption = keys.find((k) => k.key === value);
 
@@ -108,14 +119,16 @@ export function DataKeyPicker({
 
   useEffect(() => {
     if (!open) return;
-    const onMouseDown = (e: MouseEvent) => {
+    const onOutside = (e: PointerEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) closePicker();
     };
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
+    document.addEventListener("pointerdown", onOutside);
+    return () => document.removeEventListener("pointerdown", onOutside);
   }, [open, closePicker]);
 
   const displayValue = open ? query : (selectedOption?.label ?? value ?? "");
+  const activeOption =
+    open && activeIndex >= 0 ? flatOptions[activeIndex] : undefined;
 
   return (
     <Container ref={containerRef}>
@@ -130,6 +143,13 @@ export function DataKeyPicker({
           setActiveIndex(-1);
         }}
         onKeyDown={handleKeyDown}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          activeOption ? optionId(activeOption.key) : undefined
+        }
       />
       {clearable && value && !open && (
         <ClearButton
@@ -143,7 +163,7 @@ export function DataKeyPicker({
         </ClearButton>
       )}
       {open && (
-        <Dropdown>
+        <Dropdown role="listbox" id={listboxId}>
           {flatOptions.length === 0 ? (
             <EmptyState>No matches</EmptyState>
           ) : (
@@ -152,12 +172,18 @@ export function DataKeyPicker({
                 <GroupHeader>{group}</GroupHeader>
                 {items.map((opt) => {
                   const globalIdx = flatOptions.indexOf(opt);
+                  const isActive = globalIdx === activeIndex;
                   return (
                     <DropdownItem
                       key={opt.key}
-                      $active={globalIdx === activeIndex}
+                      id={optionId(opt.key)}
+                      role="option"
+                      aria-selected={isActive}
+                      $active={isActive}
                       $selected={opt.key === value}
-                      onMouseDown={(e) => {
+                      onPointerDown={(e) => {
+                        // Prevent the input from losing focus (and triggering
+                        // the outside-click dismiss) before the selection runs.
                         e.preventDefault();
                         selectOption(opt.key);
                       }}
@@ -188,14 +214,19 @@ const PickerInput = styled.input<{ $hasValue: boolean }>`
   border-radius: 3px;
   color: ${({ $hasValue }) => ($hasValue ? "#ccc" : "#888")};
   font-family: monospace;
-  font-size: 13px;
+  font-size: var(--font-size-base, 13px);
   padding: 6px 8px;
-  outline: none;
   box-sizing: border-box;
   width: 100%;
 
   &:focus {
     border-color: #555;
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: 2px;
   }
 
   &::placeholder {

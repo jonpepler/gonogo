@@ -38,6 +38,9 @@ import { DEMO_CONFIG } from "./demoConfig";
 // ---------------------------------------------------------------------------
 
 export function MainScreen() {
+  useEffect(() => {
+    document.title = "gonogo — Main";
+  }, []);
   const dashboard = useDashboardState("gonogo:dashboard:main", DEMO_CONFIG);
   const [serialService] = useState(
     () => new SerialDeviceService({ screenKey: "main" }),
@@ -97,7 +100,7 @@ export function MainScreen() {
                   addItem={dashboard.addItem}
                   updateItemConfig={dashboard.updateItemConfig}
                 >
-                  <Layout>
+                  <Layout as="main" aria-label="Mission control">
                     <Dashboard
                       items={dashboard.items}
                       layouts={dashboard.layouts}
@@ -153,6 +156,10 @@ function ScopedFogMaskCache({
 
 const Layout = styled.div`
   padding: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(24px + env(safe-area-inset-left, 0px));
+  padding-right: calc(24px + env(safe-area-inset-right, 0px));
   background: #050505;
   min-height: 100vh;
 `;

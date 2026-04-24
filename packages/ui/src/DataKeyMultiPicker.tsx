@@ -110,14 +110,19 @@ const SearchInput = styled.input`
   border-radius: 3px;
   color: #ccc;
   font-family: monospace;
-  font-size: 13px;
+  font-size: var(--font-size-base, 13px);
   padding: 6px 8px;
-  outline: none;
   box-sizing: border-box;
   width: 100%;
 
   &:focus {
     border-color: #555;
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: 2px;
   }
 
   &::placeholder {

@@ -118,7 +118,20 @@ function ActionGroupComponent({
     <Panel>
       <Header>
         <LabelArea
+          role={editing ? undefined : "button"}
+          tabIndex={editing ? undefined : 0}
           onClick={editing ? undefined : startEditing}
+          onKeyDown={
+            editing
+              ? undefined
+              : (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    startEditing();
+                  }
+                }
+          }
+          aria-label={editing ? undefined : `Rename ${currentLabel}`}
           title="Click to rename"
         >
           {editing ? (
@@ -239,6 +252,12 @@ const LabelArea = styled.div`
   flex: 1;
   min-width: 0;
   cursor: text;
+
+  &:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
 `;
 
 const GroupLabel = styled.span`

@@ -1,6 +1,7 @@
 import {
   getDataSource,
   getSettingsTabsForScreen,
+  getUplinkHandle,
   NO_TELEMETRY_HOST_MESSAGE,
   useDataSources,
   useScreen,
@@ -429,7 +430,13 @@ function SettingRow({ def }: { def: SettingDefinition }) {
  * had.
  */
 function SourceBackedRow({ def }: { def: SourceBackedSetting }) {
-  const source = getDataSource(def.sourceId);
+  // An Uplink's source is looked up first in the uplink-handle registry —
+  // where Uplink singletons register (e.g. kerbcast's `kerbcastSource` via
+  // `registerUplinkHandle("kerbcast", …)`, the ONE registry its own doc names
+  // SettingsModal as resolving through) — then the DataSource registry as a
+  // fallback for sources registered that way.
+  const source: unknown =
+    getUplinkHandle(def.sourceId) ?? getDataSource(def.sourceId);
   const value = useSyncExternalStore(
     (cb) => (source ? def.subscribe(source, cb) : () => {}),
     () => (source ? def.read(source) : false),

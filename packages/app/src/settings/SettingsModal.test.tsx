@@ -6,8 +6,10 @@ import type {
 import {
   __clearSettingsTabsForTests,
   clearRegistry,
+  clearUplinkHandles,
   registerDataSource,
   registerSettingsTab,
+  registerUplinkHandle,
   ScreenProvider,
 } from "@ksp-gonogo/core";
 import {
@@ -231,6 +233,7 @@ beforeEach(() => {
 
 afterEach(() => {
   clearRegistry();
+  clearUplinkHandles();
   __clearSettingsTabsForTests();
 });
 
@@ -810,11 +813,22 @@ describe("SettingsModal — source-backed setting row", () => {
   });
 
   it("renders the row inert (disabled) when its source is not registered", () => {
-    registerThrottleSetting(); // no registerDataSource
+    registerThrottleSetting(); // no source in either registry
     renderModal("main");
     expect(
       screen.getByRole("checkbox", { name: /throttle main render/i }),
     ).toBeDisabled();
+  });
+
+  it("resolves the source via the uplink-handle registry (kerbcast's path)", () => {
+    // kerbcast registers its source with registerUplinkHandle, NOT
+    // registerDataSource — the row must resolve there too.
+    registerUplinkHandle("throttle-src", makeThrottleSourceStub(true));
+    registerThrottleSetting();
+    renderModal("main");
+    expect(
+      screen.getByRole("checkbox", { name: /throttle main render/i }),
+    ).toBeChecked();
   });
 });
 

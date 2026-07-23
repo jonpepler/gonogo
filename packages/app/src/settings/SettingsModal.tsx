@@ -426,15 +426,12 @@ function SettingRow({ def }: { def: SettingDefinition }) {
  * (looked up by `sourceId`), read/written through the client-supplied binding
  * closures — NEVER through `SettingsService`/localStorage. When the source
  * isn't registered the row renders inert (disabled) rather than crashing —
- * same graceful-absence posture the old `getDataSource("kerbcast")`-gated tab
- * had.
+ * the same graceful-absence posture an absent-source-gated surface has.
  */
 function SourceBackedRow({ def }: { def: SourceBackedSetting }) {
   // An Uplink's source is looked up first in the uplink-handle registry —
-  // where Uplink singletons register (e.g. kerbcast's `kerbcastSource` via
-  // `registerUplinkHandle("kerbcast", …)`, the ONE registry its own doc names
-  // SettingsModal as resolving through) — then the DataSource registry as a
-  // fallback for sources registered that way.
+  // where Uplink singletons register (via `registerUplinkHandle`) — then the
+  // DataSource registry as a fallback for sources registered that way.
   const source: unknown =
     getUplinkHandle(def.sourceId) ?? getDataSource(def.sourceId);
   const value = useSyncExternalStore(

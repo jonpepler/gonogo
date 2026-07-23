@@ -710,8 +710,8 @@ describe("SettingsModal registered-tab gating", () => {
 /**
  * A source-backed setting reads/writes through a registered `DataSource`'s own
  * getter/setter/subscribe rather than localStorage — the migration path for a
- * live mod-round-trip config (e.g. kerbcast's throttle). This fake exposes the
- * throttle-shaped trio the setting's binding closures dial.
+ * live mod-round-trip config (e.g. an Uplink's render throttle). This fake
+ * exposes the throttle-shaped trio the setting's binding closures dial.
  */
 function makeThrottleSourceStub(initial = false): DataSource & {
   getValue: () => boolean;
@@ -820,8 +820,8 @@ describe("SettingsModal — source-backed setting row", () => {
     ).toBeDisabled();
   });
 
-  it("resolves the source via the uplink-handle registry (kerbcast's path)", () => {
-    // kerbcast registers its source with registerUplinkHandle, NOT
+  it("resolves the source via the uplink-handle registry (an Uplink singleton's path)", () => {
+    // An Uplink can register its source with registerUplinkHandle rather than
     // registerDataSource — the row must resolve there too.
     registerUplinkHandle("throttle-src", makeThrottleSourceStub(true));
     registerThrottleSetting();

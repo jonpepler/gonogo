@@ -225,7 +225,7 @@ namespace GonogoTelemetry
                 {
                     // Sandbox saves have no upgrade scenario module; the
                     // call throws. Surface tier 0 / max 0 so the widget
-                    // can render a "—" cell rather than crashing.
+                    // can render its null-display placeholder rather than crashing.
                     result[pair.Key] = new Dictionary<string, object>
                     {
                         ["level"] = 0,

@@ -6,7 +6,7 @@
 
 ## What landed
 
-User-visible: every widget that depends on a flying vessel (or a career-mode save) now renders normally with a dim layer + small "Vessel in flight required" / "Career or science save required" banner overlaid when the underlying preconditions aren't met. The widget's existing layout + last-good telemetry stays visible underneath — operators see the shape and last-known values dimmed to ~35% opacity rather than the previous mix of zeros, ghost lines, and "—" placeholders.
+User-visible: every widget that depends on a flying vessel (or a career-mode save) now renders normally with a dim layer + small "Vessel in flight required" / "Career or science save required" banner overlaid when the underlying preconditions aren't met. The widget's existing layout + last-good telemetry stays visible underneath: operators see the shape and last-known values dimmed to ~35% opacity rather than the previous mix of zeros, ghost lines, and em-dash placeholders.
 
 ### Plumbing
 

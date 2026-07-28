@@ -33,8 +33,8 @@ mirrors that.
 - `#7` Notes — host pushes a fresh snapshot to every newly-connected
   peer (was only broadcasting on mutation, so stations joining late
   saw an empty list).
-- `#9` Notes — distinguish "unknown key" (`[?<key>]`) from "value
-  pending" (`…`) from "null/NaN" (`—`). Uses `data.schema()` to
+- `#9` Notes: distinguish "unknown key" (`[?<key>]`) from "value
+  pending" (`…`) from "null/NaN" (an em dash). Uses `data.schema()` to
   identify typos.
 - `#21` ActionGroup — surface "Paused" / "No signal" reason chip when
   `t.isPaused` / `comm.connected` indicate the AG can't fire.

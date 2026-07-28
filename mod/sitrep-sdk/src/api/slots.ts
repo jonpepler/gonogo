@@ -317,7 +317,7 @@ export interface ActionGroupSlotContext {
   label: string;
   /** The group's current Value (boolean or numeric readout); `undefined` if unknown. */
   value: unknown;
-  /** Rendered state readout — "ON" / "OFF" / a numeric string / "—". */
+  /** Rendered state readout: "ON", "OFF", a numeric string, or the null-display placeholder. */
   stateLabel: string;
 }
 

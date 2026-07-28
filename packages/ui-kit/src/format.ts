@@ -6,8 +6,8 @@ export interface FormatNumberOptions {
 
 /**
  * Formats a telemetry number for display. `undefined` and non-finite values
- * (`NaN`, `Infinity`) — the two shapes a not-yet-arrived or sentinel reading
- * takes — render as an em dash rather than `"undefined"`/`"NaN"`.
+ * (`NaN`, `Infinity`): the two shapes a not-yet-arrived or sentinel reading
+ * takes: render as an em dash rather than `"undefined"`/`"NaN"`.
  */
 export function formatNumber(
   value: number | undefined,

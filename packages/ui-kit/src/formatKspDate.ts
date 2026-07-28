@@ -7,14 +7,14 @@ const YEAR = 426 * DAY;
 
 /**
  * Formats a KSP universal time (UT, seconds) as a compact Kerbin calendar
- * readout: `Y<year> D<day> HH:MM:SS`. UT 0 is Year 1, Day 1, 00:00:00 —
+ * readout: `Y<year> D<day> HH:MM:SS`. UT 0 is Year 1, Day 1, 00:00:00,
  * years and days are 1-based (`floor(ut / YEAR) + 1`, `floor(rem / DAY) +
  * 1`), matching `formatDuration`'s KSP-time unit sizes (day = 6h =
  * 21,600s; year = 426d = 9,201,600s). H/M/S are zero-padded to two
  * digits; year and day are not padded.
  *
- * `ut` is expected to be non-negative — KSP UT never goes negative during
- * normal play — but a stray negative value (e.g. a not-yet-initialized
+ * `ut` is expected to be non-negative, KSP UT never goes negative during
+ * normal play: but a stray negative value (e.g. a not-yet-initialized
  * feed) is clamped to the epoch (`Y1 D1 00:00:00`) rather than surfacing a
  * nonsensical `Y0`/negative-day reading. Non-finite values (`NaN`,
  * `Infinity`) render as an em dash.

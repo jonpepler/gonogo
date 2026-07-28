@@ -40,8 +40,8 @@ export interface FormatDurationOptions {
  * hasn't happened yet. Truncating means the displayed value has always
  * actually been reached. `89.9` -> `1m 29s`, not `1m 30s`.
  *
- * `undefined`-shaped sentinels aren't handled here (unlike `formatNumber`)
- * — callers pass a definite `number`; only non-finite values (`NaN`,
+ * `undefined`-shaped sentinels aren't handled here (unlike `formatNumber`),
+ * callers pass a definite `number`; only non-finite values (`NaN`,
  * `Infinity`) render as an em dash.
  */
 export function formatDuration(
@@ -61,7 +61,7 @@ export function formatDuration(
     return `${signPrefix}0s`;
   }
 
-  // Never show a unit finer than seconds outside the opts.ms sub-1s path —
+  // Never show a unit finer than seconds outside the opts.ms sub-1s path,
   // truncate away any fractional second up front.
   const totalSeconds = Math.floor(abs);
 
@@ -70,7 +70,7 @@ export function formatDuration(
   const majorValue = Math.floor(totalSeconds / major.size);
 
   if (majorIndex === TIERS.length - 1) {
-    // Already at the finest tier (seconds) — nothing smaller to pair with.
+    // Already at the finest tier (seconds): nothing smaller to pair with.
     return `${signPrefix}${majorValue}${major.symbol}`;
   }
 

@@ -20,7 +20,7 @@ describe("useStream", () => {
         <Alt />
       </TelemetryProvider>,
     );
-    expect(screen.getByText("alt:—")).toBeTruthy();
+    expect(screen.getByText(`alt:${NULL_DISPLAY}`)).toBeTruthy();
     act(() => {
       t.emit("v.alt", 123);
     });

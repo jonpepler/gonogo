@@ -27,7 +27,7 @@ describe("useTimelineStream", () => {
     const store = new TimelineStore(clock);
 
     render(<Alt store={store} />);
-    expect(screen.getByText("alt:—")).toBeTruthy(); // nothing buffered yet
+    expect(screen.getByText(`alt:${NULL_DISPLAY}`)).toBeTruthy(); // nothing buffered yet
 
     act(() => {
       store.ingest("vessel.state.altitudeAsl", point(10, 500));
@@ -35,7 +35,7 @@ describe("useTimelineStream", () => {
     });
     expect(screen.getByText("alt:500")).toBeTruthy();
 
-    // A new sample arrives but the frame hasn't advanced yet — no re-render
+    // A new sample arrives but the frame hasn't advanced yet, no re-render
     // to a value the frozen frame token wouldn't itself see.
     act(() => {
       store.ingest("vessel.state.altitudeAsl", point(20, 600));

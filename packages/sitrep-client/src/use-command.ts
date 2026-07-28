@@ -15,7 +15,10 @@ import {
   type CommsLinkLike,
   ConnectivityHistory,
 } from "./connectivity-history";
-import { useTelemetryClientOptional, useUtNow } from "./context";
+import {
+  useTelemetryClientOptional,
+  useTelemetryStoreOptional,
+} from "./context";
 import type { CommandStatus } from "./lifecycle";
 import { useLatestValue } from "./use-stream";
 
@@ -169,7 +172,20 @@ export function useCommand(command: string): UseCommandResult {
 
   const queue = useLatestValue<PendingUplinkQueueLike>("system.uplink.pending");
   const connectivity = useLatestValue<CommsLinkLike>("comms.link");
-  const nowUt = useUtNow() ?? 0;
+  // A synchronous, NON-subscribing read of the same undelayed clock
+  // `useUtNow` tracks (`ViewClock.utNowEstimate()`) — deliberately NOT
+  // `useUtNow()` itself, which subscribes to a real-wall-clock ~16ms tick
+  // for the component's whole mounted lifetime. That per-frame subscription
+  // is unnecessary here: `nowUt` only needs to be fresh AT the renders this
+  // hook already causes (a queue/connectivity change, a status transition),
+  // and the visual per-second countdown smoothing is `InFlightList`'s own
+  // `useCountdown` value-hook's job, not this hook's. Avoiding the
+  // independent real-timer subscription also avoids a real hazard it
+  // otherwise creates: under load, that timer can fire outside any test's
+  // `act()` boundary for every mounted `useCommand` caller, regardless of
+  // whether the test ever touches `inFlight`.
+  const store = useTelemetryStoreOptional();
+  const nowUt = store?.clock.utNowEstimate() ?? 0;
 
   if (connectivity) {
     connectivityHistoryRef.current.record(nowUt, connectivity.connected);
@@ -209,6 +225,18 @@ export function useCommand(command: string): UseCommandResult {
   // the render-time `inFlight` computation above so a resolved id
   // disappears from the rendered set immediately (this render) even before
   // the prune effect commits the smaller tracked-id array (next render).
+  //
+  // Deliberately NOT keyed on `nowUt`: reading `store.clock.utNowEstimate()`
+  // synchronously (see above) means `nowUt` is a fresh value on literally
+  // EVERY render, for ANY reason — keying this effect on it would refire
+  // the prune on every single render of every mounted `useCommand` caller,
+  // whether or not anything relevant changed. The render-time `inFlight`
+  // computation above already hides a resolved entry immediately using the
+  // current `nowUt`, regardless of whether this effect has caught up yet —
+  // this effect only needs to run when something that could change a
+  // resolution actually changed (`queue`, or the connectivity history via
+  // `pathConnectedDuring`'s identity), reading the latest `nowUt` off the
+  // ref at that point.
   useEffect(() => {
     setDispatchedIds((prev) => {
       const keep = prev.filter((id) => {
@@ -217,7 +245,7 @@ export function useCommand(command: string): UseCommandResult {
           queue,
           entryCacheRef.current,
           firstSeenAtRef.current,
-          nowUt,
+          nowUtRef.current,
           pathConnectedDuring,
         );
         return (
@@ -226,7 +254,7 @@ export function useCommand(command: string): UseCommandResult {
       });
       return keep.length === prev.length ? prev : keep;
     });
-  }, [queue, nowUt, pathConnectedDuring]);
+  }, [queue, pathConnectedDuring]);
 
   const send = useCallback(
     (args?: unknown, opts?: { label?: string; topic?: string }) => {

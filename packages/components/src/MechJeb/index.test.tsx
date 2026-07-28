@@ -1,8 +1,13 @@
 import { clearActionHandlers, DashboardItemContext } from "@ksp-gonogo/core";
-import { render as rtlRender, screen, waitFor } from "@ksp-gonogo/test-utils";
+import {
+  act,
+  render as rtlRender,
+  screen,
+  waitFor,
+} from "@ksp-gonogo/test-utils";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { MechJebComponent } from "./index";
@@ -127,54 +132,77 @@ describe("MechJeb in-flight indicator (useCommand().inFlight folded in)", () => 
       return sent?.requestId as string;
     });
 
-    // Echo it into the pending queue: dispatchedAt/oneWaySeconds anchor the
-    // in-flight window; validAt/deliveredAt also anchor useUtNow to 100.
-    fixture.emit(
-      "system.uplink.pending",
-      {
-        pending: [
+    // From here on, once a row is showing, `InFlightList`'s `useCountdown`
+    // keeps a real 1 Hz interval ticking for as long as it's mounted. Under
+    // real timers that tick is a live background race against this test's
+    // own remaining async steps — on a loaded machine (e.g. the full
+    // monorepo test run) the interval can fire between renders with no
+    // `act()` in scope, which is a real "not wrapped in act" bug in the
+    // TEST, not the component (see ManeuverPlanner's own
+    // `shouldAdvanceTime` countdown test for the same pattern). Fake timers
+    // make every tick happen only where we ask for it.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      // Echo it into the pending queue: dispatchedAt/oneWaySeconds anchor
+      // the in-flight window; validAt/deliveredAt also anchor useUtNow to
+      // 100.
+      act(() => {
+        fixture.emit(
+          "system.uplink.pending",
           {
-            id: requestId,
-            command: "mechjeb.executeNextNode",
-            label: "Execute next node",
-            topic: "",
-            vantage: "ksc",
-            dispatchedAt: 100,
-            oneWaySeconds: 4,
+            pending: [
+              {
+                id: requestId,
+                command: "mechjeb.executeNextNode",
+                label: "Execute next node",
+                topic: "",
+                vantage: "ksc",
+                dispatchedAt: 100,
+                oneWaySeconds: 4,
+              },
+            ],
           },
-        ],
-      },
-      { validAt: 100, deliveredAt: 100 },
-    );
+          { validAt: 100, deliveredAt: 100 },
+        );
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20);
+      });
 
-    const list = await screen.findByLabelText("Execute next node — in flight");
-    expect(list).toHaveTextContent("Execute next node");
-    expect(list).toHaveTextContent("4s");
+      const list = screen.getByLabelText("Execute next node — in flight");
+      expect(list).toHaveTextContent("Execute next node");
+      expect(list).toHaveTextContent("4s");
 
-    // Advance nowUt past the reply (dispatchedAt + 2*oneWaySeconds = 108)
-    // with the path connected throughout -> resolves ("due") and clears.
-    fixture.emit(
-      "system.uplink.pending",
-      {
-        pending: [
+      // Advance nowUt past the reply (dispatchedAt + 2*oneWaySeconds = 108)
+      // with the path connected throughout -> resolves ("due") and clears.
+      act(() => {
+        fixture.emit(
+          "system.uplink.pending",
           {
-            id: requestId,
-            command: "mechjeb.executeNextNode",
-            label: "Execute next node",
-            topic: "",
-            vantage: "ksc",
-            dispatchedAt: 100,
-            oneWaySeconds: 4,
+            pending: [
+              {
+                id: requestId,
+                command: "mechjeb.executeNextNode",
+                label: "Execute next node",
+                topic: "",
+                vantage: "ksc",
+                dispatchedAt: 100,
+                oneWaySeconds: 4,
+              },
+            ],
           },
-        ],
-      },
-      { validAt: 109, deliveredAt: 109 },
-    );
+          { validAt: 109, deliveredAt: 109 },
+        );
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20);
+      });
 
-    await waitFor(() =>
       expect(
         screen.queryByLabelText("Execute next node — in flight"),
-      ).not.toBeInTheDocument(),
-    );
+      ).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

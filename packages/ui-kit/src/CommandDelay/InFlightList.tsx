@@ -37,32 +37,49 @@ const PHASE_ARROW: Record<InFlightListItem["phase"], string> = {
 
 const ERROR_PHASES = new Set<InFlightListItem["phase"]>(["overdue", "lost"]);
 
+/** Re-seed the local countdown only on a jump this large (seconds) — the
+ * caller's own `etaSeconds` reads (e.g. `useCommand`'s synchronous
+ * `nowUt`) drift by fractions of a second on every unrelated re-render;
+ * resyncing on every one of those would fight the local tick below and
+ * tear its interval down constantly instead of letting it run. */
+const RESYNC_THRESHOLD_SECONDS = 1;
+
 /**
- * A pure, local-ticking countdown value: seeds from `etaSeconds` on every
- * change and decrements once per second between parent re-renders, so the
- * displayed number stays smooth even when the caller (e.g. `useRouteCommands`)
- * only recomputes on a slower cadence (a queue snapshot, a view-clock frame).
- * Pure in the sense the design calls for — it operates ONLY on the value
- * passed in, no data source, no clock import.
+ * A pure, local-ticking countdown value: seeds from `etaSeconds`, resyncs
+ * only on a real jump (a fresh dispatch, a phase transition), and otherwise
+ * decrements once per second on its OWN mount-once interval — so the
+ * displayed number stays smooth even when the caller only recomputes
+ * `etaSeconds` on a slower (or noisier) cadence. Pure in the sense the
+ * design calls for — it operates ONLY on the value passed in, no data
+ * source, no clock import.
  */
 export function useCountdown(etaSeconds: number | null): number | null {
   const [value, setValue] = useState(etaSeconds);
-  const lastPropRef = useRef(etaSeconds);
+  const lastSeedRef = useRef(etaSeconds);
 
   useEffect(() => {
-    if (etaSeconds !== lastPropRef.current) {
-      lastPropRef.current = etaSeconds;
+    const last = lastSeedRef.current;
+    const jumped =
+      (last === null) !== (etaSeconds === null) ||
+      (last !== null &&
+        etaSeconds !== null &&
+        Math.abs(etaSeconds - last) >= RESYNC_THRESHOLD_SECONDS);
+    if (jumped) {
+      lastSeedRef.current = etaSeconds;
       setValue(etaSeconds);
     }
   }, [etaSeconds]);
 
+  // Mount-once local tick — deliberately NOT keyed on `etaSeconds` (see
+  // `RESYNC_THRESHOLD_SECONDS`'s doc): tying this interval's lifetime to a
+  // value that drifts on every render would tear it down and recreate it
+  // constantly instead of ever letting a full second elapse.
   useEffect(() => {
-    if (etaSeconds === null) return;
     const id = setInterval(() => {
       setValue((prev) => (prev === null ? null : Math.max(0, prev - 1)));
     }, 1000);
     return () => clearInterval(id);
-  }, [etaSeconds]);
+  }, []);
 
   return value;
 }

@@ -12,14 +12,14 @@ import { CurrentOrbitComponent } from "./index";
  *
  * On a hyperbolic orbit (`ecc >= 1`) the mod's derived `vessel.state.timeToPe`
  * degrades to `null` (the elliptical kepler solver can't propagate an open
- * trajectory — `vessel-state.ts`), and the legacy Telemachus path emitted a
+ * trajectory: `vessel-state.ts`), and the legacy Telemachus path emitted a
  * `0` sentinel. The neighbouring `t-Ap`/period/Ap rows all carry an explicit
  * `hyperbolic ? NULL_DISPLAY` guard so the operator doesn't read a hyperbolic flyby as
  * an imminent event; the `t-Pe` row lacked it and its `=== undefined` check
  * missed `null`.
  *
  * FIXED (2026-07-24): `t-Pe` now carries the same guard + handles `null`. This
- * regression test pins the guarantee — a hyperbolic orbit renders the `t-Pe`
+ * regression test pins the guarantee: a hyperbolic orbit renders the `t-Pe`
  * value as an em-dash, never a `0s`/duration countdown.
  */
 const VESSEL_STATE_INPUTS = [
@@ -29,7 +29,7 @@ const VESSEL_STATE_INPUTS = [
   "system.bodies",
 ];
 
-describe("CurrentOrbit — O1: t-Pe shows an em-dash on a hyperbolic orbit", () => {
+describe("CurrentOrbit: O1, t-Pe shows the null-display placeholder on a hyperbolic orbit", () => {
   it("renders t-Pe as NULL_DISPLAY (never a countdown) when ecc >= 1", async () => {
     registerStockBodies();
     const stream = setupStreamFixture({

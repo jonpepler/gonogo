@@ -175,7 +175,7 @@ function PresetTargetDescription({ api, telemetry }: PresetInputProps) {
     return (
       <PresetDesc>
         {targetName && targetLanLive !== undefined
-          ? `Target: ${targetName} — i=${(targetInclinationLive ?? 0).toFixed(1)}° Ω=${targetLanLive.toFixed(1)}°`
+          ? `Target: ${targetName}, i=${(targetInclinationLive ?? 0).toFixed(1)}° Ω=${targetLanLive.toFixed(1)}°`
           : "No target selected in-game (or target LAN unavailable)."}
       </PresetDesc>
     );
@@ -192,7 +192,7 @@ function PresetTargetDescription({ api, telemetry }: PresetInputProps) {
     );
     return (
       <PresetDesc>
-        Target: {targetName} — PeA{" "}
+        Target: {targetName}, PeA{" "}
         {targetPeA === undefined
           ? NULL_DISPLAY
           : `${(targetPeA / 1000).toFixed(1)} km`}

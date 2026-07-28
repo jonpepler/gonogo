@@ -13,14 +13,14 @@ import { MissionBanner } from "./MissionBanner";
 
 /**
  * Mounts a real `TelemetryProvider` (`TelemetryClient` + `TimelineStore`
- * over a `StubTransport`) around a genuine, live `ViewClock` — the same
+ * over a `StubTransport`) around a genuine, live `ViewClock`, the same
  * shape `__tests__/flight-outcome-banner.test.tsx` uses. `MissionBanner`
  * doesn't declare any `dataRequirements`, so there's no topic for a test to
  * `transport.emit` through (`StubTransport.emit` gates delivery on the
  * topic actually being subscribed, and nothing subscribes here). Feeding
- * the clock directly via `clock.observeSample(validAt, deliveredAt)` — the
+ * the clock directly via `clock.observeSample(validAt, deliveredAt)`: the
  * exact call `TimelineStore.ingest` makes on every sample, for every topic,
- * regardless of who's listening — is the correct low-level equivalent of
+ * regardless of who's listening: is the correct low-level equivalent of
  * "a UT-bearing sample landed on the wire", without inventing an unrelated
  * fake topic just to route one through.
  */
@@ -40,7 +40,7 @@ function setupTelemetryStream() {
 
   return {
     // Advances the live view clock as if a sample valid at `ut` had just
-    // been delivered "now" — mirrors what `TimelineStore.ingest` does for
+    // been delivered "now": mirrors what `TimelineStore.ingest` does for
     // every incoming sample.
     advanceTo: (ut: number) => clock.observeSample(ut, ut),
     Provider,

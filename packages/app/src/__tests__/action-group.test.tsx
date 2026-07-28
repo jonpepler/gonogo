@@ -29,16 +29,16 @@ function withItemContext(instanceId: string, children: ReactNode) {
 }
 
 /**
- * ActionGroup's READ path is the canonical `vessel.control` stream now — its
- * legacy `useTelemetry("data", group.value)` shim is gone — so these
+ * ActionGroup's READ path is the canonical `vessel.control` stream now, its
+ * legacy `useTelemetry("data", group.value)` shim is gone, so these
  * integration tests drive the group's state through a real
  * `TelemetryProvider` + `TimelineStore` pipeline.
  *
  * The legacy `fakeTelemachus` fixture is still mounted alongside, because the
  * WRITE path is unchanged: `useExecuteAction("data")` still fires `f.ag1` at
  * the `DataSource` (`vessel.control.setActionGroup` isn't in `carriedChannels`
- * here, so `mapCommand` deliberately falls back to legacy). That split — reads
- * off the stream, writes still legacy — is exactly the widget's real shape at
+ * here, so `mapCommand` deliberately falls back to legacy). That split; reads
+ * off the stream, writes still legacy: is exactly the widget's real shape at
  * this point in the migration, so the test mirrors it rather than faking
  * either half.
  */
@@ -201,9 +201,9 @@ describe("ActionGroup component", () => {
    * BEHAVIOUR DELTA, asserted rather than quietly dropped. This used to assert
    * the pill cleared to NULL_DISPLAY when the legacy `DataSource` disconnected. Now that
    * the widget reads the canonical stream, it HOLDS the last-known value
-   * instead — the documented M2 semantic delta (`useTelemetry`'s own doc
+   * instead: the documented M2 semantic delta (`useTelemetry`'s own doc
    * comment: "the legacy path clears to `undefined` when the DataSource status
-   * leaves connected; the new streamed path does not — a TelemetryClient holds
+   * leaves connected; the new streamed path does not, a TelemetryClient holds
    * the last-known value... a defensible, documented gap, not a silent
    * regression"). Staleness is meant to surface via `useStreamStatus`, which
    * this widget does not yet adopt.
@@ -318,7 +318,7 @@ describe("ActionGroup component", () => {
     await waitFor(() =>
       expect(screen.getByText("Precision Control")).toBeInTheDocument(),
     );
-    // No bell — without a toggle action there's nothing for the alarm to
+    // No bell: without a toggle action there's nothing for the alarm to
     // dispatch, so the affordance is suppressed.
     expect(
       screen.queryByRole("button", { name: /set alarm to fire/i }),

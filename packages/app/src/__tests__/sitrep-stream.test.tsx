@@ -16,14 +16,14 @@ import { SitrepTelemetryProvider } from "../telemetry/SitrepTelemetryProvider";
  * CARRIED, MAPPED topic read from the streaming pipeline instead of the legacy
  * Telemachus `DataSource`.
  *
- * Nothing internal is mocked — the REAL `SitrepTelemetryProvider`, a REAL
+ * Nothing internal is mocked, the REAL `SitrepTelemetryProvider`, a REAL
  * `TelemetryClient`/`TimelineStore`, the REAL `useDataValue` shim and a REAL
  * registered legacy source all run. The transport injected here is a REAL
  * `StubTransport` (the SDK's scriptable in-memory `Transport`, not a spy).
  *
  * The LIVE `WebSocketTransport` is exercised two ways: over the MSW WebSocket
- * boundary in `packages/sitrep-client/src/websocket-transport.test.ts`, and —
- * end-to-end inside this very provider — in `sitrep-stream-wire.test.tsx`,
+ * boundary in `packages/sitrep-client/src/websocket-transport.test.ts`, and:
+ * end-to-end inside this very provider: in `sitrep-stream-wire.test.tsx`,
  * where the provider builds its own real `WebSocketTransport` and MSW's `ws`
  * interceptor (installed in `server.listen()`, after the app's
  * `installDomStubs` no-op WebSocket) carries a frame all the way to a widget
@@ -76,7 +76,7 @@ function Throttle() {
   );
 }
 
-describe("SitrepTelemetryProvider — enabled-prop stream mount", () => {
+describe("SitrepTelemetryProvider: enabled-prop stream mount", () => {
   it("a carried topic reads from the stream pipeline, not the legacy DataSource", async () => {
     const transport = new StubTransport();
     const legacy = makeLegacySource();
@@ -94,12 +94,12 @@ describe("SitrepTelemetryProvider — enabled-prop stream mount", () => {
       </SitrepTelemetryProvider>,
     );
 
-    expect(screen.getByText("throttle:—")).toBeTruthy();
+    expect(screen.getByText(`throttle:${NULL_DISPLAY}`)).toBeTruthy();
 
-    // A legacy emit must NOT surface — the topic is carried, so it routes to
+    // A legacy emit must NOT surface, the topic is carried, so it routes to
     // the stream and bypasses legacy entirely.
     act(() => legacy.emit("f.throttle", 0.4));
-    expect(screen.getByText("throttle:—")).toBeTruthy();
+    expect(screen.getByText(`throttle:${NULL_DISPLAY}`)).toBeTruthy();
 
     // The value that DOES surface comes off the stream.
     act(() => transport.emit("vessel.control", { throttle: 0.75 }));
@@ -116,7 +116,7 @@ describe("SitrepTelemetryProvider — enabled-prop stream mount", () => {
       </SitrepTelemetryProvider>,
     );
 
-    expect(screen.getByText("throttle:—")).toBeTruthy();
+    expect(screen.getByText(`throttle:${NULL_DISPLAY}`)).toBeTruthy();
     act(() => legacy.emit("f.throttle", 0.4));
     expect(screen.getByText("throttle:0.4")).toBeTruthy();
   });

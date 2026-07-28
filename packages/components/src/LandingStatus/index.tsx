@@ -45,11 +45,11 @@ import { deriveHazardVerdict } from "./hazardVerdict";
 import { solveSuicideBurn } from "./solveLanding";
 import { TouchdownReticle } from "./TouchdownReticle";
 
-// Empty config — kept for forward-compat with the old widget's config slot.
+// Empty config: kept for forward-compat with the old widget's config slot.
 type LandingStatusConfig = Record<string, never>;
 
 /**
- * Props for `landing-status.badges` — the widget's BROAD escape-hatch slot,
+ * Props for `landing-status.badges`: the widget's BROAD escape-hatch slot,
  * rendered in the header row next to the title. Preserved verbatim from the
  * predecessor so existing augment bindings keep working across the reboot.
  */
@@ -142,8 +142,8 @@ function StackedField({
   );
 }
 
-/** Native per-topic stream status (same helper OrbitView/DistanceToTarget use)
- * — `"disconnected"` when no `TelemetryProvider` is mounted. Bound to
+/** Native per-topic stream status (same helper OrbitView/DistanceToTarget use),
+ * `"disconnected"` when no `TelemetryProvider` is mounted. Bound to
  * `vessel.surface`, the lowest-point burn datum the widget actually shows. */
 function useStreamStatusOptional(topic: string): StreamStatusValue {
   const client = useTelemetryClientOptional();
@@ -258,7 +258,7 @@ function LandingStatusComponent({
   const streamStatus = useStreamStatusOptional("vessel.surface");
 
   // The mod-side atmosphere-aware estimate (terminal-velocity model) is present
-  // when the vessel.landing channel carries a terminal velocity — only in an
+  // when the vessel.landing channel carries a terminal velocity, only in an
   // atmosphere while the relevance gate is open.
   const atmosphereAware = landing?.terminalVelocity != null;
   const board = deriveBoard({
@@ -267,7 +267,7 @@ function LandingStatusComponent({
     atmosphereAware,
   });
 
-  // Descent-rate trend — a bounded history of vertical speed, so a developing
+  // Descent-rate trend: a bounded history of vertical speed, so a developing
   // over-speed reads as a trend not a single tick. Appended after render.
   const [descentHistory, setDescentHistory] = useState<number[]>([]);
   const currentVs = flight?.verticalSpeed;
@@ -292,7 +292,7 @@ function LandingStatusComponent({
   // rail come in together at a comfortable width; below that, plain readouts.
   const showScope = width >= 6;
   const showRail = showScope;
-  // The reticle is the centerpiece — shown once terrain was sampled (predicted
+  // The reticle is the centerpiece, shown once terrain was sampled (predicted
   // point or the sub-vessel fallback) and there's width to make it prominent.
   const showReticle = width >= 10 && landing?.sampleSource != null;
   const hazardVerdict = deriveHazardVerdict({
@@ -306,7 +306,7 @@ function LandingStatusComponent({
   // solved descent at a wide size; elsewhere fall back to the plain, always-
   // valid velocity/height readouts. Once landed we KEEP the spatial scope (the
   // plots showing the vessel now AT the site) even though the burn solution has
-  // gone idle — a "touchdown confirmed" view, not a blank panel.
+  // gone idle: a "touchdown confirmed" view, not a blank panel.
   const scopeShown = (board === "vacuum-solved" || landed) && showScope;
 
   // ── Section fragments (composed into the layout below) ─────────────────────
@@ -662,8 +662,8 @@ function LandingStatusComponent({
                     {twrGaugeEl}
                   </div>
                 </div>
-                {/* Two equal, ALIGNED altimetry squares in a shared row — same
-                    top, size, baseline — bleeding to the right edge. */}
+                {/* Two equal, ALIGNED altimetry squares in a shared row, same
+                    top, size, baseline: bleeding to the right edge. */}
                 <div style={{ display: "flex", gap: "6px", padding: "8px 0" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <SectionTitle>Touchdown site</SectionTitle>

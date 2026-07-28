@@ -356,7 +356,7 @@ function ShortfallBanner({
   return (
     <FeasibilityBanner role="status" aria-live="polite">
       <FeasibilityBannerTitle>
-        ΔV shortfall — can't add node
+        ΔV shortfall: can't add node
       </FeasibilityBannerTitle>
       <FeasibilityBannerBody>
         Required {requiredDeltaV.toFixed(0)} m/s · available{" "}

@@ -111,3 +111,70 @@ describe("MechJeb command widget", () => {
     expect(await axe(view.container)).toHaveNoViolations();
   });
 });
+
+describe("MechJeb in-flight indicator (useCommand().inFlight folded in)", () => {
+  it("appears on dispatch, shows a countdown, and clears once the command resolves", async () => {
+    const { fixture } = renderMechJeb();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /execute next node/i }),
+    );
+    const requestId = await waitFor(() => {
+      const sent = fixture.transport.sentCommands.find(
+        (c) => c.command === "mechjeb.executeNextNode",
+      );
+      expect(sent).toBeDefined();
+      return sent?.requestId as string;
+    });
+
+    // Echo it into the pending queue: dispatchedAt/oneWaySeconds anchor the
+    // in-flight window; validAt/deliveredAt also anchor useUtNow to 100.
+    fixture.emit(
+      "system.uplink.pending",
+      {
+        pending: [
+          {
+            id: requestId,
+            command: "mechjeb.executeNextNode",
+            label: "Execute next node",
+            topic: "",
+            vantage: "ksc",
+            dispatchedAt: 100,
+            oneWaySeconds: 4,
+          },
+        ],
+      },
+      { validAt: 100, deliveredAt: 100 },
+    );
+
+    const list = await screen.findByLabelText("Execute next node — in flight");
+    expect(list).toHaveTextContent("Execute next node");
+    expect(list).toHaveTextContent("4s");
+
+    // Advance nowUt past the reply (dispatchedAt + 2*oneWaySeconds = 108)
+    // with the path connected throughout -> resolves ("due") and clears.
+    fixture.emit(
+      "system.uplink.pending",
+      {
+        pending: [
+          {
+            id: requestId,
+            command: "mechjeb.executeNextNode",
+            label: "Execute next node",
+            topic: "",
+            vantage: "ksc",
+            dispatchedAt: 100,
+            oneWaySeconds: 4,
+          },
+        ],
+      },
+      { validAt: 109, deliveredAt: 109 },
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText("Execute next node — in flight"),
+      ).not.toBeInTheDocument(),
+    );
+  });
+});

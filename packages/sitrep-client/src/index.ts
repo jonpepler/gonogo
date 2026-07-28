@@ -2,6 +2,20 @@ export { isTopicCarried } from "./carried-channels";
 export { LOSS_MARGIN, TelemetryClient } from "./client";
 export type { Clock } from "./clock";
 export { RealTimeClock } from "./clock";
+export type {
+  CommsDelayLike,
+  DelayMode,
+  InFlightCommand,
+  PathConnectedDuring,
+  PendingEntry,
+  PredictedPhase,
+} from "./command-delay";
+export {
+  classifyRetained,
+  currentMode,
+  deriveInFlight,
+  latchForward,
+} from "./command-delay";
 export {
   dispatchActiveCommand,
   getActiveCarriedChannels,

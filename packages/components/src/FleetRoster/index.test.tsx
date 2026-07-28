@@ -160,12 +160,22 @@ describe("FleetRosterComponent", () => {
     expect(screen.getByText(/3 nominal/)).toBeInTheDocument();
   });
 
-  it("shows an empty state when no vessels are tracked", async () => {
+  it("shows a genuinely-empty state once a real empty roster has arrived", async () => {
     renderWidget();
     emit([]);
     await waitFor(() => {
       expect(screen.getByText("No vessels tracked.")).toBeInTheDocument();
     });
+  });
+
+  it("shows a not-available state before any roster has ever arrived, distinct from a genuinely empty fleet", () => {
+    renderWidget();
+    // No emit() at all — nothing has ever come off the source, so this must
+    // not be conflated with the confirmed-zero-vessels case above.
+    expect(
+      screen.getByText("Fleet data not available yet."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No vessels tracked.")).not.toBeInTheDocument();
   });
 
   it("has no axe violations", async () => {

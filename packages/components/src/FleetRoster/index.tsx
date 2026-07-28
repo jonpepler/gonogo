@@ -60,8 +60,19 @@ interface FleetVessel {
   updates?: FleetUpdate[];
 }
 
-function useFleet(): FleetVessel[] {
-  return useRaw<FleetVessel[]>("fleet.vessels") ?? [];
+/**
+ * `undefined` means the topic has never delivered a sample — either nothing
+ * is mounted to carry `fleet.vessels` yet, or the game hasn't produced one.
+ * That is a DIFFERENT fact from "the fleet genuinely has zero vessels"
+ * (a real, non-empty sample whose array happens to be `[]`), so the two must
+ * not be collapsed into the same `[]` the way this hook used to (`?? []`) —
+ * that silently asserted "no vessels" any time nothing was wired up at all.
+ * Callers read `known` to tell the two apart; `vessels` is always an array
+ * for convenience once that check has been made.
+ */
+function useFleet(): { known: boolean; vessels: FleetVessel[] } {
+  const raw = useRaw<FleetVessel[]>("fleet.vessels");
+  return { known: raw !== undefined, vessels: raw ?? [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -114,7 +125,7 @@ const ROW_HEIGHT = 25;
 function FleetRosterComponent({
   w,
 }: Readonly<ComponentProps<FleetRosterConfig>>) {
-  const vessels = useFleet();
+  const { known, vessels } = useFleet();
   const status = fleetStatus(vessels);
   const cols = w ?? 8;
   // Below the width threshold the Body column and the per-vessel update lines
@@ -140,7 +151,9 @@ function FleetRosterComponent({
       </HeaderRow>
 
       {total === 0 ? (
-        <EmptyState>No vessels tracked.</EmptyState>
+        <EmptyState>
+          {known ? "No vessels tracked." : "Fleet data not available yet."}
+        </EmptyState>
       ) : (
         <TableScroll>
           <ColumnHead $compact={compact}>

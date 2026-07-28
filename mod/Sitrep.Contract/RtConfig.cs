@@ -265,6 +265,7 @@ public static class RtConfig
                 typeof(KerbalismResource),
                 typeof(KerbalismHabitat),
                 typeof(KerbalismProcessEntry),
+                typeof(KerbalismGreenhouseEntry),
                 typeof(KerbalismLifeSupport),
                 typeof(KerbalismCrewRule),
                 typeof(KerbalismCrewEntry),

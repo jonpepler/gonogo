@@ -103,6 +103,47 @@ public class KerbalismProcessEntry
     public bool? Broken { get; set; }
 }
 
+/// <summary>
+/// One active Greenhouse part's growing state, field-for-field against
+/// Kerbalism's own <c>Greenhouse.Data</c> class (src/Kerbalism/Modules/Greenhouse.cs)
+/// plus the part's own (non-persistent) config constants. <c>Greenhouse.Data</c>
+/// itself carries exactly three fields — <c>Natural</c>, <c>Artificial</c>, <c>Issue</c> —
+/// there is no growth fraction or harvest countdown anywhere in the module; Food
+/// is produced continuously via a ResourceRecipe, not a discrete harvest event.
+/// <c>Natural</c>/<c>Artificial</c> are NOT meaningfully summed: the lighting gate is
+/// <c>natural + artificial &gt;= light_tolerance</c>, so the lamp only ever needs to cover
+/// the shortfall, not double the total — present both, never a combined figure.
+/// </summary>
+[SitrepContract]
+#if NETSTANDARD2_0
+[TsInterface]
+#endif
+public class KerbalismGreenhouseEntry
+{
+    /// <summary>The resource this greenhouse produces (stock: "Food").</summary>
+    public string? CropResource { get; set; }
+    /// <summary>Derived continuous production rate, units/s (crop_size * crop_rate when active and lit; 0 when blocked).</summary>
+    public double? FoodRatePerSec { get; set; }
+    /// <summary>Natural light flux reaching the greenhouse, W/m^2 (<c>Greenhouse.Data.natural</c>).</summary>
+    public double? Natural { get; set; }
+    /// <summary>Supplemental lamp light flux, W/m^2 (<c>Greenhouse.Data.artificial</c>).</summary>
+    public double? Artificial { get; set; }
+    /// <summary>Persisted on/off KSPField — the player's own toggle, independent of whether it is currently producing.</summary>
+    public bool? Active { get; set; }
+    /// <summary>Blocking reason string (<c>Greenhouse.Data.issue</c>), e.g. the localized "insufficient lighting". Empty when growing normally.</summary>
+    public string? Issue { get; set; }
+    /// <summary>Part config: max lamp EC draw, units/s (<c>ec_rate</c>).</summary>
+    public double? EcRateMaxPerSec { get; set; }
+    /// <summary>Derived actual lamp EC draw this tick, units/s (0 when lamps are off or fully unlit by the sun).</summary>
+    public double? LampEcDrawPerSec { get; set; }
+    /// <summary>Part config: total light flux needed to grow, W/m^2 (<c>light_tolerance</c>).</summary>
+    public double? LightToleranceWm2 { get; set; }
+    /// <summary>Part config: minimum habitat pressure fraction required (<c>pressure_tolerance</c>).</summary>
+    public double? PressureTolerance { get; set; }
+    /// <summary>Part config: max radiation tolerated, rad/s (<c>radiation_tolerance</c>).</summary>
+    public double? RadiationToleranceRadPerSec { get; set; }
+}
+
 /// <summary>Vessel life-support ledger: consumables, habitat, and the process list.</summary>
 [SitrepContract]
 #if NETSTANDARD2_0
@@ -117,6 +158,16 @@ public class KerbalismLifeSupport
     public KerbalismResource? ElectricCharge { get; set; }
     public KerbalismHabitat? Habitat { get; set; }
     public List<KerbalismProcessEntry>? Processes { get; set; }
+    /// <summary>
+    /// Active Greenhouse parts on the vessel, if any (most vessels carry none —
+    /// an empty/absent list is the normal case, not an error). NOT YET POPULATED
+    /// by <c>GonogoKerbalismUplink</c>'s capture pipeline as of this field's
+    /// addition — reflecting Kerbalism's <c>Greenhouses(Vessel)</c> API into the
+    /// wire capture is separate mod-side work. This field defines the honest
+    /// forward-looking wire shape so the widget-side augment can be built and
+    /// fixture-tested against it now.
+    /// </summary>
+    public List<KerbalismGreenhouseEntry>? Greenhouses { get; set; }
 }
 
 /// <summary>

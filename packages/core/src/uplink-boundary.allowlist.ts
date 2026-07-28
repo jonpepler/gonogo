@@ -425,6 +425,13 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // agnostic and import nothing kOS-specific.
       "packages/sitrep-client/src/command-delay.ts",
       "packages/sitrep-client/src/command-delay.test.ts",
+      // use-route-commands.ts's doc-comment cites the kOS terminal's
+      // original hand-rolled strip as the precedent it generalizes; its
+      // test fixture uses "kos/7"/"kos.run" as sample topic/command
+      // strings. Same class as command-delay.ts above — mod-agnostic,
+      // imports nothing kOS-specific.
+      "packages/sitrep-client/src/use-route-commands.ts",
+      "packages/sitrep-client/src/use-route-commands.test.tsx",
       // -- comment/doc + pending-topic mentions (no kOS coupling) --
       // FleetComms + CameraFeed doc-comments reference `KosTerminal`'s
       // in-transit-strip / command-response pattern; Comms.cs's CommsLink doc

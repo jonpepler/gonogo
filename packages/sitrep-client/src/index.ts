@@ -192,6 +192,11 @@ export {
   type Unsubscribe,
   useLateTelemetrySubscribe,
 } from "./use-late-telemetry-subscribe";
+export type {
+  PendingUplinkQueueLike,
+  UseRouteCommandsResult,
+} from "./use-route-commands";
+export { useRouteCommands } from "./use-route-commands";
 export { useLatestValue, useStream } from "./use-stream";
 export { useStreamEvent } from "./use-stream-event";
 export { useStreamStatus } from "./use-stream-status";

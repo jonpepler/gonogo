@@ -1,7 +1,7 @@
 /**
  * Orbital math utilities.
  *
- * These are pure transformation functions — they convert telemetry data
+ * These are pure transformation functions, they convert telemetry data
  * that KSP has already computed into forms useful for visualisation.
  * No physics simulation happens here.
  *
@@ -55,7 +55,7 @@ export function surfaceGravity(
  * Escape velocity from the given altitude above sea level.
  * `sqrt(2·GM / (R + h))` = circularOrbitVelocity × √2.
  * A trajectory whose speed equals this at the current radius is a
- * parabolic escape — anything above is hyperbolic.
+ * parabolic escape: anything above is hyperbolic.
  */
 export function escapeVelocity(
   body: BodyDefinition,
@@ -224,7 +224,7 @@ export function formatDistance(metres: number): string {
 }
 
 /**
- * Absolute zero expressed in degrees Celsius — the Kelvin→Celsius offset.
+ * Absolute zero expressed in degrees Celsius: the Kelvin→Celsius offset.
  * Several widgets receive part/ambient temperatures from Telemachus in Kelvin
  * and display them in Celsius; this keeps the conversion from being a bare
  * `- 273.15` magic literal sprinkled across the component library.

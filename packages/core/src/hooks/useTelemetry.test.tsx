@@ -18,7 +18,7 @@ import { clearRegistry, registerDataSource } from "../registry";
 import type { DataSource, DataSourceStatus } from "../types";
 import { useTelemetry } from "./useTelemetry";
 
-// Minimal in-memory legacy DataSource — same shape as useTelemetry.legacy-datasource.test.ts.
+// Minimal in-memory legacy DataSource: same shape as useTelemetry.legacy-datasource.test.ts.
 function makeSource(id = "data") {
   const dataListeners = new Map<string, Set<(v: unknown) => void>>();
   const statusListeners = new Set<(s: DataSourceStatus) => void>();
@@ -68,7 +68,7 @@ const ORBIT: VesselOrbitPayload = {
 
 beforeEach(() => clearRegistry());
 
-describe("useTelemetry — canonical TopicId read", () => {
+describe("useTelemetry: canonical TopicId read", () => {
   it("reads a Topic's payload straight off the mounted TimelineStore, typed as TopicPayload<T>", async () => {
     const transport = new StubTransport();
     const client = new TelemetryClient(transport);
@@ -89,7 +89,7 @@ describe("useTelemetry — canonical TopicId read", () => {
       </TelemetryProvider>,
     );
 
-    expect(screen.getByText("sma:—")).toBeTruthy();
+    expect(screen.getByText(`sma:${NULL_DISPLAY}`)).toBeTruthy();
 
     act(() => {
       transport.emit("vessel.orbit", ORBIT, {
@@ -109,7 +109,7 @@ describe("useTelemetry — canonical TopicId read", () => {
   });
 });
 
-describe("useTelemetry — legacy two-arg overload preserved", () => {
+describe("useTelemetry: legacy two-arg overload preserved", () => {
   it("still reads from a registered DataSource when given (dataSourceId, key)", () => {
     const source = makeSource();
     registerDataSource(source);

@@ -64,7 +64,7 @@ describe("defineTopicManifest", () => {
       </TelemetryProvider>,
     );
 
-    expect(screen.getByText("sma:—")).toBeTruthy();
+    expect(screen.getByText(`sma:${NULL_DISPLAY}`)).toBeTruthy();
 
     act(() => {
       transport.emit("vessel.orbit", ORBIT, {

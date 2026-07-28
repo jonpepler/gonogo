@@ -168,11 +168,11 @@ describe("formatDuration", () => {
     expect(formatDuration(61)).toBe("1m 01s");
   });
 
-  it("returns — for negative values", () => {
+  it("returns the null placeholder for negative values", () => {
     expect(formatDuration(-1)).toBe(NULL_DISPLAY);
   });
 
-  it("returns — for Infinity", () => {
+  it("returns the null placeholder for Infinity", () => {
     expect(formatDuration(Infinity)).toBe(NULL_DISPLAY);
   });
 });
@@ -196,7 +196,7 @@ describe("formatDistance", () => {
     expect(formatDistance(1.5e12)).toBe("1.50 Tm");
   });
 
-  it("returns — for Infinity", () => {
+  it("returns the null placeholder for Infinity", () => {
     expect(formatDistance(Infinity)).toBe(NULL_DISPLAY);
   });
 });

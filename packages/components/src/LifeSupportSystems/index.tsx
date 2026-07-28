@@ -4,7 +4,7 @@ import { Badge, Meter, Panel, PanelTitle } from "@ksp-gonogo/ui";
 import styled from "styled-components";
 // Side-effect import: registers the built-in `life-support.sections`
 // augment filler (the Greenhouse section) and the SlotRegistry declaration
-// merge — see that file's own doc comment. Registering it here (rather than
+// merge, see that file's own doc comment. Registering it here (rather than
 // requiring a separate package import) keeps the slot non-empty out of the
 // box, matching this widget's own "Kerbalism is the built-in source, not an
 // optional third-party Uplink" posture (unlike PowerSystems' still-unfilled
@@ -51,7 +51,7 @@ interface LifeSupportData {
   comfort: number;
   livingSpace: number;
   processes: ProcessRow[];
-  /** Active Greenhouse parts, if any — see `GreenhouseSection`'s own doc comment. */
+  /** Active Greenhouse parts, if any, see `GreenhouseSection`'s own doc comment. */
   greenhouses: GreenhouseRow[];
 }
 
@@ -81,7 +81,7 @@ interface WireProcess {
  * Map ONE live process to a display row, PROCESS-AGNOSTIC: whatever the profile
  * carries (stock Scrubber/WaterRecycler/…, ROKerbalism _PressureControlOxygen/
  * _NonRegenScrubber/_Scrubber/_VacScrubber/_AdvScrubber, or any future set) is
- * rendered as-is from the data. Deliberately NOT a fixed stock id lookup — that
+ * rendered as-is from the data. Deliberately NOT a fixed stock id lookup, that
  * dropped 4 of 5 RO processes (audit 2026-07-22, DECISIONS §RO "resource-agnostic").
  */
 function toProcessRow(p: WireProcess, index: number): ProcessRow {
@@ -104,7 +104,7 @@ interface WireGreenhouse {
 
 /**
  * Maps ONE wire greenhouse entry to the slot-props shape, defaulting an
- * absent field rather than dropping the entry — matches `consumable`'s own
+ * absent field rather than dropping the entry, matches `consumable`'s own
  * "missing key defaults to 0" convention above.
  */
 function toGreenhouseRow(g: WireGreenhouse): GreenhouseRow {
@@ -133,7 +133,7 @@ function useLifeSupport(): LifeSupportData {
     // (rides kerbalism.crew → CrewManifest death-clock meters), not a
     // vessel-level habitat value, so this vessel widget doesn't surface it.
     processes: (t?.processes ?? []).map(toProcessRow),
-    // Absent on a vessel with no greenhouse part (the common case) — the
+    // Absent on a vessel with no greenhouse part (the common case), the
     // slot's own component renders nothing for an empty list.
     greenhouses: (t?.greenhouses ?? []).map(toGreenhouseRow),
   };
@@ -167,7 +167,7 @@ function fmtAmt(n: number): string {
 }
 
 function consumableFraction(c: Consumable): number {
-  // Clamp to [0,1] — a transient amount>capacity (e.g. a tank overfill tick)
+  // Clamp to [0,1], a transient amount>capacity (e.g. a tank overfill tick)
   // would otherwise push the meter's aria-valuenow past 100.
   return c.capacity > 0 ? Math.min(1, c.amount / c.capacity) : 0;
 }
@@ -246,7 +246,7 @@ function LifeSupportSystemsComponent({
   const cols = w ?? 8;
   const rows = h ?? 13;
   // Below either threshold, compact sheds the habitat detail grid and the
-  // process grid down to a one-line summary — the consumable ledger and
+  // process grid down to a one-line summary, the consumable ledger and
   // power meter (the life-critical numbers) always stay.
   const compact = cols < 7 || rows < 9;
 
@@ -360,7 +360,7 @@ function LifeSupportSystemsComponent({
         </Section>
       )}
 
-      {/* Augment sections — e.g. the built-in Greenhouse readout — compose
+      {/* Augment sections, e.g. the built-in Greenhouse readout, compose
           here, below the process grid. A bare fragment (no extra margin)
           until something is registered into the slot, matching
           PowerSystems' `power-systems.sections` usage. */}
@@ -486,7 +486,7 @@ registerComponent<LifeSupportConfig>({
   defaultConfig: {},
   actions: [],
   requires: ["flight"],
-  // `life-support.sections` — a body section slot, below the process grid.
+  // `life-support.sections`, a body section slot, below the process grid.
   // The built-in Greenhouse readout (`./GreenhouseSection`) fills it out of
   // the box; a future non-Kerbalism life-support source can leave it empty
   // with no change here.

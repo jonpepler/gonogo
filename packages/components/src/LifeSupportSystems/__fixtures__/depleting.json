@@ -1,7 +1,7 @@
 {
   "_meta": {
     "scenario": "depleting",
-    "source": "synthesised by scaling kerbalism-fixture-baseline-crp.json — food/water down to ~25%, drain faster, scrubber broken. The legacy flat ls.* keys drive the vitest DOM snapshot (snapshots.test.tsx, via widgetDomSnapshot's ls.* reshape onto the kerbalism.lifesupport Topic). The widget reads that Topic canonically (useTelemetry, no legacy DataSource fallback under this id), so the playwright probe/visual-gate harness needs the same values delivered as a real Topic emit instead - the `_stream` block does that (probe-entry.tsx's documented StreamFixtureBlock convention, same as LaunchDirector's fixtures). Keep both in sync: this is the SAME translation twice, not two sources of truth."
+    "source": "synthesised by scaling kerbalism-fixture-baseline-crp.json, food/water down to ~25%, drain faster, scrubber broken. The legacy flat ls.* keys drive the vitest DOM snapshot (snapshots.test.tsx, via widgetDomSnapshot's ls.* reshape onto the kerbalism.lifesupport Topic). The widget reads that Topic canonically (useTelemetry, no legacy DataSource fallback under this id), so the playwright probe/visual-gate harness needs the same values delivered as a real Topic emit instead - the `_stream` block does that (probe-entry.tsx's documented StreamFixtureBlock convention, same as LaunchDirector's fixtures). Keep both in sync: this is the SAME translation twice, not two sources of truth."
   },
   "ls.food.amount": 0.35,
   "ls.food.capacity": 1.35,

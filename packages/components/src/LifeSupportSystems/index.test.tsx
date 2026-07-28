@@ -201,7 +201,7 @@ describe("LifeSupportSystemsComponent", () => {
   // WHATEVER processes the profile carries, not a fixed stock id set. Ground
   // truth from the crewed ROKerbalism capture (ro-fixtures/
   // kerbalism-fixture-ro-crewed-orbit.json, ROC-MercuryCMBDB, 5 ProcessController
-  // processes) — 4 of the 5 are RO-specific and the old hardcoded lookup dropped
+  // processes), 4 of the 5 are RO-specific and the old hardcoded lookup dropped
   // them. This asserts all five render by their real titles.
   it("renders every process the ROKerbalism profile carries (5 RO processes)", async () => {
     renderWidget();
@@ -259,7 +259,7 @@ describe("LifeSupportSystemsComponent", () => {
         ],
       });
     });
-    // All five RO process titles render — none dropped by a stock-id filter.
+    // All five RO process titles render, none dropped by a stock-id filter.
     expect(
       await screen.findByText("O2 Pressure Controller"),
     ).toBeInTheDocument();
@@ -278,7 +278,7 @@ describe("LifeSupportSystemsComponent", () => {
   // The `life-support.sections` augment slot's built-in Greenhouse filler
   // (`./GreenhouseSection`, registered as a side effect of importing
   // `./index`). Kerbalism's `Greenhouse.Data` carries exactly `natural`,
-  // `artificial`, and `issue` — no growth fraction, no harvest countdown —
+  // `artificial`, and `issue`, no growth fraction, no harvest countdown,
   // so these assertions are scoped to what the fixture/wire actually carry.
   describe("greenhouse section (life-support.sections augment)", () => {
     function emitWithGreenhouse(greenhouses: unknown[]) {
@@ -341,12 +341,12 @@ describe("LifeSupportSystemsComponent", () => {
       ]);
       expect(await screen.findByText("Greenhouse")).toBeInTheDocument();
       expect(screen.getByText("Growing")).toBeInTheDocument();
-      // Natural and artificial render as their own separate figures — never
+      // Natural and artificial render as their own separate figures, never
       // summed into one combined "total light" number.
       expect(
         screen.getByText(/Natural 1361 W\/m.*Artificial 0 W\/m/),
       ).toBeInTheDocument();
-      // No growth meter, no harvest countdown — neither concept exists in
+      // No growth meter, no harvest countdown, neither concept exists in
       // Kerbalism (see GreenhouseSection's own doc comment).
       expect(screen.queryByText(/growth/i)).toBeNull();
       expect(screen.queryByText(/harvest/i)).toBeNull();

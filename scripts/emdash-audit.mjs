@@ -1,24 +1,31 @@
 #!/usr/bin/env node
 /*
- * Emdash audit: enumerate every U+2014 (EM DASH, "—") occurrence in
+ * Emdash audit: enumerate every U+2014 (EM DASH) occurrence in
  * git-tracked files and bucket each hit so a sweep (this one or a future
  * one) can be reviewed and migrated systematically instead of ad hoc.
  *
+ * This file is a tool for hunting the character down, so it deliberately
+ * never spells the character literally: every reference below uses the
+ * escape sequence backslash-u-2014 instead, both in code and in these
+ * comments. That keeps this script itself out of its own results, and
+ * off the ratchet's radar (see packages/core/src/styleguide-emdash.test.ts).
+ *
  * Buckets:
- *   - "null-placeholder" — the sanctioned UI convention: a rendered value
- *     standing in for "no data yet" (`"—"`, `>—<`, `{"—"}` and friends —
- *     a quoted string or bare JSX text node whose content, once trimmed,
- *     is exactly one emdash). This is the ONE meaning allowed to survive;
- *     after migration these call sites should route through
- *     `@ksp-gonogo/ui-kit`'s null-display token instead of a raw literal.
- *   - "prose-comment-doc" — narration: `//`/`/*`/`*`/`///` comments,
+ *   - "null-placeholder": the sanctioned UI convention, a rendered value
+ *     standing in for "no data yet" (a bare quoted em dash string, a JSX
+ *     text node sitting directly between two tags, or a JSX expression whose
+ *     quoted content, once trimmed, is exactly one em dash and nothing
+ *     else). This is the ONE meaning allowed to survive; after migration
+ *     these call sites should route through `@ksp-gonogo/ui-kit`'s
+ *     null-display token instead of a raw literal.
+ *   - "prose-comment-doc": narration in `//`/`/*`/`*`/`///` comments,
  *     JSDoc, markdown prose, docstrings. Fix by rewriting with ordinary
  *     punctuation (comma, colon, semicolon, or a sentence break).
- *   - "string-literal-user-visible" — a quoted string / JSX text /
- *     template literal shown to a user that contains an emdash as part
+ *   - "string-literal-user-visible": a quoted string, JSX text, or
+ *     template literal shown to a user that contains an em dash as part
  *     of a longer message (not a bare null placeholder). Fix the same
  *     way as prose, but flag as a rendered-string change for review.
- *   - "other" — anything the above heuristics don't confidently place
+ *   - "other": anything the above heuristics don't confidently place
  *     (rare; read manually).
  *
  * Usage:
@@ -26,7 +33,7 @@
  *
  * With no positional args, scans every git-tracked file in the repo
  * (always skipping `__generated__/` trees). Pass one or more scan-paths
- * (file or directory prefixes, relative to repo root) to scope the scan —
+ * (file or directory prefixes, relative to repo root) to scope the scan,
  * e.g. to audit a single directory another sweep owns:
  *
  *   node scripts/emdash-audit.mjs packages/components/src/CrewManifest
@@ -44,7 +51,7 @@ import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const EMDASH = "—";
+const EMDASH = "\u2014";
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -70,7 +77,7 @@ function parseArgs(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// File discovery — git-tracked, contains an emdash, not generated
+// File discovery: git-tracked, contains an emdash, not generated
 // ---------------------------------------------------------------------------
 
 function gitTrackedFilesContainingEmdash() {
@@ -144,20 +151,21 @@ function isCommentLine(trimmed, ext) {
 // region containing a given emdash index.
 const QUOTE_SPAN_RE = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g;
 
-// Bare JSX text-node placeholder, e.g. `>—<`, tolerating whitespace:
-// <span>—</span>  or  <Val>{ready ? x : "—"}</Val> is caught by the quote
-// check instead; this one is for emdash sitting directly between tags.
-const JSX_BARE_PLACEHOLDER_RE = />\s*—\s*</;
+// Bare JSX text-node placeholder: an em dash sitting directly between
+// two tags, e.g. a <span> whose only child is the character, tolerating
+// whitespace. A ternary like `ready ? x : "<em dash>"` is caught by the
+// quote check below instead.
+const JSX_BARE_PLACEHOLDER_RE = />\s*\u2014\s*</;
 
-// HTML/JSX text content that isn't a bare placeholder, e.g.
-// `<title>gonogo — mission control</title>`. Rendered to a user, so it's
-// the same bucket as a user-visible string literal even though there's
-// no quote mark involved.
-const TAG_TEXT_RE = />([^<>]*—[^<>]*)</;
+// HTML/JSX text content that isn't a bare placeholder, e.g. an em dash
+// inside a <title>'s text. Rendered to a user, so it's the same bucket
+// as a user-visible string literal even though there's no quote mark
+// involved.
+const TAG_TEXT_RE = />([^<>]*\u2014[^<>]*)</;
 
 // Line-comment markers, keyed by extension, used to find a *trailing*
-// `// ...` (or `# ...`) comment after real code on the same line — e.g.
-// `let x = 0; // released — should be impossible by construction`.
+// `// ...` (or `# ...`) comment after real code on the same line, e.g.
+// a statement followed by a trailing comment containing an em dash.
 const SLASH_SLASH_EXTS = new Set([
   "ts",
   "tsx",
@@ -218,13 +226,14 @@ function classifyLine(line, ext, state) {
   }
 
   // A block comment can also start mid-line after real code, e.g.
-  // `const x = 1; /* trailing note — ... */`. Detect an unclosed opener.
+  // a statement followed by a `/* trailing note ... */`. Detect an
+  // unclosed opener.
   if (maybeOpenBlockComment(line, ext, state, { requireEmdashAfter: true })) {
     return "prose-comment-doc";
   }
 
   // A trailing `// ...` (or `# ...`) comment after real code, e.g.
-  // `let x = 0; // released — should be impossible by construction`.
+  // a statement followed by a trailing `//` comment.
   // Only counts if the emdash is actually inside the comment tail, not
   // in the code portion before the marker.
   const commentIdx = trailingCommentIndex(line, ext);
@@ -254,7 +263,7 @@ function classifyLine(line, ext, state) {
  * If `text` opens a block comment (`/*` or `<!--`) that isn't closed on
  * the same line, flip `state.inBlockComment` on for subsequent lines.
  * Returns true when it detected an (opened-and-unclosed) block comment
- * opener at all — used by the mid-line case to decide the bucket for the
+ * opener at all; used by the mid-line case to decide the bucket for the
  * opener line itself.
  */
 function maybeOpenBlockComment(text, ext, state, opts = {}) {
@@ -307,7 +316,7 @@ function scan({ scanPaths, excludes }) {
         maxBuffer: 1024 * 1024 * 64,
       });
     } catch {
-      // Not committed yet (staged/working-tree-only) — read from disk instead.
+      // Not committed yet (staged/working-tree-only): read from disk instead.
       text = execFileSync("cat", [join(ROOT, relPath)], { encoding: "utf8" });
     }
 

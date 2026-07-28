@@ -10,7 +10,7 @@ namespace Sitrep.Contract;
 //
 // The GonogoKerbalismUplink (mod/GonogoKerbalismUplink/) publishes these by
 // reflecting over Kerbalism's KERBALISM.API / Features / DB.Kerbal(name).rules
-// and the ProcessController PartModules — the SAME reflection the proven
+// and the ProcessController PartModules: the SAME reflection the proven
 // mod/GonogoDevTools/GonogoDevKerbalismDump.cs performs (it produced the
 // fixtures these shapes are grounded in: local_docs/kerbalism-fixtures/,
 // canonical kerbalism-fixture-baseline-crp.json).
@@ -24,11 +24,11 @@ namespace Sitrep.Contract;
 //
 // kerbalism.available is a BARE JSON boolean declared client-side
 // (mod/GonogoKerbalismUplink/client/src/topics.ts via registerBarePrimitiveTopic),
-// NOT here — same treatment as the other Uplinks' bare `<domain>.available`.
+// NOT here: same treatment as the other Uplinks' bare `<domain>.available`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// <summary>
-/// Space-weather situation for the active vessel — radiation, magnetic belts,
+/// Space-weather situation for the active vessel: radiation, magnetic belts,
 /// storm state. Mirrors <c>KERBALISM.API</c> vessel reads (<c>Radiation</c>,
 /// <c>HabitatRadiation</c>, <c>Magnetosphere</c>/<c>InnerBelt</c>/<c>OuterBelt</c>,
 /// <c>StormIncoming</c>/<c>StormInProgress</c>/<c>Blackout</c>, <c>InSunlight</c>)
@@ -44,7 +44,7 @@ public class KerbalismSpaceWeather
     /// <summary>
     /// Raw <c>API.Radiation(v)</c>, i.e. <c>VesselData.EnvRadiation</c>. Units
     /// confirmed rad/s from Kerbalism source (UI/Monitor.cs computes rad/h
-    /// display values as <c>EnvHabitatRadiation * 3600.0</c> — the same
+    /// display values as <c>EnvHabitatRadiation * 3600.0</c>: the same
     /// per-second-to-per-hour factor the client applies here).
     /// </summary>
     public double? RadiationRadPerSecond { get; set; }
@@ -143,7 +143,7 @@ public class KerbalismCrewRule
     /// <summary>
     /// Fatal accumulator threshold from Profile.rules[].fatal_threshold. Confirmed
     /// against Kerbalism source (Profile/Rule.cs ctor defaults this to 1.0; the
-    /// default profile overrides it only for the radiation rule, to 50.0 —
+    /// default profile overrides it only for the radiation rule, to 50.0,
     /// GameData/KerbalismConfig/Profiles/Default.cfg's radiation Rule block).
     /// </summary>
     public double? FatalThreshold { get; set; }
@@ -166,7 +166,7 @@ public class KerbalismCrewEntry
 
 /// <summary>
 /// Kerbalism feature toggles (auto-detected from the loaded profile). Drives the
-/// per-domain "unmodeled vs healthy" gate — under RO, <c>Reliability</c> is false.
+/// per-domain "unmodeled vs healthy" gate: under RO, <c>Reliability</c> is false.
 /// </summary>
 [SitrepContract]
 #if NETSTANDARD2_0

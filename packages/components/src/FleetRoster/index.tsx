@@ -200,9 +200,9 @@ type Tone = "go" | "info" | "warn" | "nogo" | "neutral";
 // NOTE: these are used as a single foreground color (dot fill, tag border
 // AND tag text) below, not a background fill, so "info" deliberately reads
 // off `-fg` rather than `-bg` - `--color-status-info-bg` is a near-black
-// background-fill token (#0d0d0d) that renders invisibly as foreground/
-// border/text against this widget's dark panel. go/warn/nogo's `-bg` tokens
-// happen to already be saturated enough to read fine in that same role.
+// background-fill token that renders invisibly as foreground/border/text
+// against this widget's dark panel. go/warn/nogo's `-bg` tokens happen to
+// already be saturated enough to read fine in that same role.
 const TONE_HEX: Record<Tone, string> = {
   go: "var(--color-status-go-bg)",
   info: "var(--color-status-info-fg)",

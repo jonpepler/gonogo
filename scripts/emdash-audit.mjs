@@ -46,7 +46,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -308,17 +308,11 @@ function scan({ scanPaths, excludes }) {
     if (isExcluded(relPath, excludes)) continue;
     if (!isInScope(relPath, scanPaths)) continue;
 
-    let text;
-    try {
-      text = execFileSync("git", ["show", `HEAD:${relPath}`], {
-        cwd: ROOT,
-        encoding: "utf8",
-        maxBuffer: 1024 * 1024 * 64,
-      });
-    } catch {
-      // Not committed yet (staged/working-tree-only): read from disk instead.
-      text = execFileSync("cat", [join(ROOT, relPath)], { encoding: "utf8" });
-    }
+    // Read from the working tree, not `git show HEAD:`, so uncommitted
+    // edits mid-sweep are reflected; `gitTrackedFilesContainingEmdash`
+    // above already used `git grep` (also working-tree-based), so this
+    // keeps discovery and content in sync.
+    const text = readFileSync(join(ROOT, relPath), "utf8");
 
     const ext = extOf(relPath);
     const lines = text.split("\n");

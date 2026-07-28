@@ -16,6 +16,8 @@ export {
   deriveInFlight,
   latchForward,
 } from "./command-delay";
+export type { CommsLinkLike } from "./connectivity-history";
+export { ConnectivityHistory } from "./connectivity-history";
 export {
   dispatchActiveCommand,
   getActiveCarriedChannels,

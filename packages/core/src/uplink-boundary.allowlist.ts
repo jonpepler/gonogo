@@ -432,6 +432,11 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // imports nothing kOS-specific.
       "packages/sitrep-client/src/use-route-commands.ts",
       "packages/sitrep-client/src/use-route-commands.test.tsx",
+      // connectivity-history.ts's doc-comment cites the kOS terminal's own
+      // noPath gate convention ("undefined/unknown = connected") as the
+      // precedent its own unknown-history default follows — doc-mention
+      // only, no kOS import or coupling.
+      "packages/sitrep-client/src/connectivity-history.ts",
       // -- comment/doc + pending-topic mentions (no kOS coupling) --
       // FleetComms + CameraFeed doc-comments reference `KosTerminal`'s
       // in-transit-strip / command-response pattern; Comms.cs's CommsLink doc

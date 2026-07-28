@@ -16,6 +16,7 @@ import {
   ScrollArea,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 
@@ -583,7 +584,7 @@ function AvailableRow({
 }
 
 function formatNumber(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  if (v === null || v === undefined || !Number.isFinite(v)) return NULL_DISPLAY;
   if (Math.abs(v) >= 1000)
     return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });

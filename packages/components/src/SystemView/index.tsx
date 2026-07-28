@@ -26,6 +26,7 @@ import {
   useElementSize,
   useModalSaveBar,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useMemo, useState } from "react";
 import styled from "styled-components";
 import { quantiseUt } from "../MapView/predictionThrottle";
@@ -628,7 +629,7 @@ function SystemViewComponent({
         </Body>
       ) : (
         <CompactBody>
-          <CompactValue>{parentName ?? "—"}</CompactValue>
+          <CompactValue>{parentName ?? NULL_DISPLAY}</CompactValue>
           {typeof vesselBody === "string" && vesselBody !== parentName && (
             <CompactSub>vessel · {vesselBody}</CompactSub>
           )}

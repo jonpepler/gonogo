@@ -20,6 +20,7 @@
  * come off `vessel.landing`.
  */
 
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import type { ReactNode } from "react";
 import { greatCircle } from "./geo";
 import { SiteMarker } from "./SiteMarker";
@@ -233,9 +234,10 @@ export function TouchdownReticle({
       ? "predicted"
       : sampleSource === "sub-vessel"
         ? "sub-vessel (est.)"
-        : "—";
+        : NULL_DISPLAY;
 
-  const slopeText = slopeDeg == null ? "—" : `${slopeDeg.toFixed(1)}° slope`;
+  const slopeText =
+    slopeDeg == null ? NULL_DISPLAY : `${slopeDeg.toFixed(1)}° slope`;
   const driftText =
     drift == null ? "" : `, ${Math.round(drift.distanceMeters)} m downrange`;
   const reticleLabel = `Touchdown site: ${slopeText}${driftText}${

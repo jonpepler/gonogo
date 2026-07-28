@@ -6,6 +6,7 @@ import {
 } from "@ksp-gonogo/core";
 import { StubTransport } from "@ksp-gonogo/sitrep-client";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SitrepTelemetryProvider } from "../telemetry/SitrepTelemetryProvider";
 
@@ -68,7 +69,11 @@ function makeLegacySource(id = "data") {
 function Throttle() {
   // @ts-expect-error two-arg form is type-banned; runtime shim still under test
   const throttle = useTelemetry("data", "f.throttle");
-  return <div>throttle:{throttle === undefined ? "—" : String(throttle)}</div>;
+  return (
+    <div>
+      throttle:{throttle === undefined ? NULL_DISPLAY : String(throttle)}
+    </div>
+  );
 }
 
 describe("SitrepTelemetryProvider — enabled-prop stream mount", () => {

@@ -12,6 +12,7 @@ import {
   useElementSize,
   useModalSaveBar,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { ProfileStrip } from "./ProfileStrip";
@@ -156,7 +157,7 @@ function subtitleFor(
 }
 
 function SmoothnessBadge({ verdict }: { verdict: SmoothnessVerdict | null }) {
-  if (!verdict) return <BadgePlaceholder>—</BadgePlaceholder>;
+  if (!verdict) return <BadgePlaceholder>{NULL_DISPLAY}</BadgePlaceholder>;
   return (
     <BadgeWrap $tone={verdict.badge}>
       <BadgeGrade>{verdict.badge}</BadgeGrade>

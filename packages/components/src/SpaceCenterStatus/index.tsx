@@ -16,6 +16,7 @@ import {
   ScrollArea,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 
@@ -239,7 +240,7 @@ function SpaceCenterStatusComponent({
               <TinyFundsUnit>f</TinyFundsUnit>
             </TinyFunds>
           ) : (
-            <TinyFunds>—</TinyFunds>
+            <TinyFunds>{NULL_DISPLAY}</TinyFunds>
           )}
           <TinyPad
             $occupied={padOccupied === true}
@@ -332,7 +333,7 @@ function SpaceCenterStatusComponent({
                       <TierMax>{displayMax}</TierMax>
                     </>
                   ) : (
-                    <Muted>—</Muted>
+                    <Muted>{NULL_DISPLAY}</Muted>
                   )}
                 </FacilityValue>
                 {f && f.upgradeFunds > 0 && !atMax && (
@@ -384,7 +385,9 @@ function SpaceCenterStatusComponent({
           <FooterCell title="Parts unlocked by current R&D tier">
             <FooterLabel>Parts unlocked</FooterLabel>
             <FooterValue>
-              {typeof partsAvailable === "number" ? partsAvailable : "—"}
+              {typeof partsAvailable === "number"
+                ? partsAvailable
+                : NULL_DISPLAY}
             </FooterValue>
           </FooterCell>
         </Footer>

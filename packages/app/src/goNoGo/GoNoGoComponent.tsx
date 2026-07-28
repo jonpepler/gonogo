@@ -17,6 +17,7 @@ import {
   Switch,
   useModalSaveBar,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import styled from "styled-components";
 import { usePeerClient } from "../peer/PeerClientContext";
@@ -462,7 +463,7 @@ function cellLabel(state: CellState): string {
     case "neutral":
       return "ACTIVE";
     default:
-      return "—";
+      return NULL_DISPLAY;
   }
 }
 

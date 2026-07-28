@@ -27,6 +27,7 @@ import {
   useModalSaveBar,
   VisuallyHidden,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 
@@ -592,7 +593,7 @@ function splitCamel(s: string): string {
 }
 
 function formatUnits(v: number): string {
-  if (!Number.isFinite(v)) return "—";
+  if (!Number.isFinite(v)) return NULL_DISPLAY;
   if (Math.abs(v) >= 10_000) return `${(v / 1000).toFixed(1)}k`;
   if (Math.abs(v) >= 100) return v.toFixed(0);
   return v.toFixed(1);

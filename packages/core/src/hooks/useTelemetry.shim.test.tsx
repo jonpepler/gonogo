@@ -13,6 +13,7 @@ import {
   screen,
   waitFor,
 } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { beforeEach, describe, expect, it } from "vitest";
 import { clearRegistry, registerDataSource } from "../registry";
 import type { DataSource, DataSourceStatus } from "../types";
@@ -105,7 +106,7 @@ describe("useTelemetry shim — mapped key routes to useStream when a TelemetryP
 
       function Alt() {
         const alt = useTelemetry("data", "v.altitude");
-        return <div>alt:{alt === undefined ? "—" : String(alt)}</div>;
+        return <div>alt:{alt === undefined ? NULL_DISPLAY : String(alt)}</div>;
       }
 
       render(
@@ -193,7 +194,9 @@ describe("useTelemetry shim — unmapped key falls back to the legacy DataSource
 
     function Funds() {
       const funds = useTelemetry("data", "career.funds");
-      return <div>funds:{funds === undefined ? "—" : String(funds)}</div>;
+      return (
+        <div>funds:{funds === undefined ? NULL_DISPLAY : String(funds)}</div>
+      );
     }
 
     render(
@@ -253,7 +256,9 @@ describe("useTelemetry shim — raw-field phantom fallback (M3 whole-branch revi
       function Throttle() {
         const throttle = useTelemetry("data", "f.throttle");
         return (
-          <div>throttle:{throttle === undefined ? "—" : String(throttle)}</div>
+          <div>
+            throttle:{throttle === undefined ? NULL_DISPLAY : String(throttle)}
+          </div>
         );
       }
 
@@ -295,7 +300,7 @@ describe("useTelemetry shim — raw-field phantom fallback (M3 whole-branch revi
       // to give the provider's coalesced `beginFrame()`
       // (rAF/setTimeout-scheduled) a chance to actually run first.
       //
-      // Before the fix: stays "—" forever even after any number of
+      // Before the fix: stays NULL_DISPLAY forever even after any number of
       // rerenders — a permanently-dead undefined — even though a perfectly
       // good legacy value exists. After the fix:
       // `TimelineStore.isUnresolvableField`'s raw-field branch fires and the
@@ -319,7 +324,7 @@ describe("useTelemetry gate — M3 Wave 0 carried-channels allowlist (the big-ba
 
       function Alt() {
         const alt = useTelemetry("data", "v.altitude");
-        return <div>alt:{alt === undefined ? "—" : String(alt)}</div>;
+        return <div>alt:{alt === undefined ? NULL_DISPLAY : String(alt)}</div>;
       }
 
       // No `carriedChannels` prop at all — 'v.altitude' maps to a DERIVED
@@ -350,7 +355,9 @@ describe("useTelemetry gate — M3 Wave 0 carried-channels allowlist (the big-ba
     function Throttle() {
       const throttle = useTelemetry("data", "f.throttle");
       return (
-        <div>throttle:{throttle === undefined ? "—" : String(throttle)}</div>
+        <div>
+          throttle:{throttle === undefined ? NULL_DISPLAY : String(throttle)}
+        </div>
       );
     }
 
@@ -388,7 +395,7 @@ describe("useTelemetry gate — M3 Wave 0 carried-channels allowlist (the big-ba
 
     function Alt() {
       const alt = useTelemetry("data", "v.altitude");
-      return <div>alt:{alt === undefined ? "—" : String(alt)}</div>;
+      return <div>alt:{alt === undefined ? NULL_DISPLAY : String(alt)}</div>;
     }
 
     render(
@@ -428,7 +435,7 @@ describe("useTelemetry gate — M3 Wave 0 carried-channels allowlist (the big-ba
 
       function Alt() {
         const alt = useTelemetry("data", "v.altitude");
-        return <div>alt:{alt === undefined ? "—" : String(alt)}</div>;
+        return <div>alt:{alt === undefined ? NULL_DISPLAY : String(alt)}</div>;
       }
 
       const { rerender } = render(

@@ -14,6 +14,7 @@ import {
   ScrollArea,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 
@@ -511,7 +512,7 @@ function renderSensorValues(
   parsed: SensorParseResult,
   type: SensorType,
 ): React.ReactNode {
-  if (parsed === null) return <SensorMuted>—</SensorMuted>;
+  if (parsed === null) return <SensorMuted>{NULL_DISPLAY}</SensorMuted>;
   if (parsed === "no sensors") return <SensorMuted>None installed</SensorMuted>;
   if (parsed.length === 0) return <SensorMuted>None installed</SensorMuted>;
   return aggregateByPart(parsed).map((agg) => (
@@ -578,7 +579,9 @@ function ExperimentList({
         <ExperimentRow key={e.subjectId}>
           <ExpSubject>{e.title}</ExpSubject>
           <ExpData>
-            {e.dataAmount === null ? "—" : `${e.dataAmount.toFixed(1)} mits`}
+            {e.dataAmount === null
+              ? NULL_DISPLAY
+              : `${e.dataAmount.toFixed(1)} mits`}
           </ExpData>
         </ExperimentRow>
       ))}
@@ -587,7 +590,7 @@ function ExperimentList({
 }
 
 function formatNumber(value: unknown): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  if (typeof value !== "number" || !Number.isFinite(value)) return NULL_DISPLAY;
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
   if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
   return value.toFixed(0);

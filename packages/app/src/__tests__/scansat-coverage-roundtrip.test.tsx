@@ -1,5 +1,6 @@
 import { clearRegistry, useTelemetry } from "@ksp-gonogo/core";
 import { render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { ws } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -67,7 +68,7 @@ function streamFrame(topic: string, payload: unknown): string {
 function CoverageProbe() {
   // @ts-expect-error two-arg form is type-banned; runtime shim still under test
   const pct = useTelemetry<number>("data", "scansat.coverage.Kerbin.8");
-  return <div>coverage:{pct === undefined ? "—" : String(pct)}</div>;
+  return <div>coverage:{pct === undefined ? NULL_DISPLAY : String(pct)}</div>;
 }
 
 // A static mapped control that already works today (mirrors
@@ -77,7 +78,11 @@ function CoverageProbe() {
 function ControlProbe() {
   // @ts-expect-error two-arg form is type-banned; runtime shim still under test
   const throttle = useTelemetry("data", "f.throttle");
-  return <div>throttle:{throttle === undefined ? "—" : String(throttle)}</div>;
+  return (
+    <div>
+      throttle:{throttle === undefined ? NULL_DISPLAY : String(throttle)}
+    </div>
+  );
 }
 
 async function connectAndCaptureClient(): Promise<

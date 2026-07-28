@@ -16,6 +16,8 @@
  * including bracketed resource keys like `r.resource[Oxidizer]`.
  */
 
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
+
 const TAG_RE = /\{\{\s*([a-zA-Z0-9._[\]-]+)\s*\}\}/g;
 
 export type TemplatingResolver = (key: string) => unknown;
@@ -61,9 +63,9 @@ export function renderTemplate(
 
 function formatValue(value: unknown): string {
   if (value === undefined) return "...";
-  if (value === null) return "—";
+  if (value === null) return NULL_DISPLAY;
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) return "—";
+    if (!Number.isFinite(value)) return NULL_DISPLAY;
     if (Number.isInteger(value)) return String(value);
     return value.toFixed(2);
   }
@@ -75,6 +77,6 @@ function formatValue(value: unknown): string {
   try {
     return JSON.stringify(value);
   } catch {
-    return "—";
+    return NULL_DISPLAY;
   }
 }

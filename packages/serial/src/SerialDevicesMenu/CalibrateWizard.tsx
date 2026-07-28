@@ -8,6 +8,7 @@ import {
   Select,
   Textarea,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { parseCharPosition } from "../parsers/charPosition";
@@ -291,7 +292,7 @@ export function CalibrateWizard({
                       ? live
                         ? "ON"
                         : "off"
-                      : "—"}
+                      : NULL_DISPLAY}
                 </SliceVal>
               </LivePreview>
 

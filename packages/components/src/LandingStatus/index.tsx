@@ -20,6 +20,7 @@ import {
   EmptyState,
   formatDuration,
   Grid,
+  NULL_DISPLAY,
   Panel,
   PanelBody,
   PanelSubtitle,
@@ -68,21 +69,21 @@ declare module "@ksp-gonogo/core" {
 // ── Formatting ───────────────────────────────────────────────────────────────
 
 function formatMps(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  if (v === null || v === undefined || !Number.isFinite(v)) return NULL_DISPLAY;
   if (Math.abs(v) < 10) return `${v.toFixed(2)} m/s`;
   if (Math.abs(v) < 100) return `${v.toFixed(1)} m/s`;
   return `${v.toFixed(0)} m/s`;
 }
 
 function formatMeters(m: number | null | undefined): string {
-  if (m === null || m === undefined || !Number.isFinite(m)) return "—";
+  if (m === null || m === undefined || !Number.isFinite(m)) return NULL_DISPLAY;
   if (Math.abs(m) >= 10_000) return `${(m / 1000).toFixed(1)} km`;
   if (Math.abs(m) >= 1000) return `${(m / 1000).toFixed(2)} km`;
   return `${m.toFixed(0)} m`;
 }
 
 function formatDv(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  if (v === null || v === undefined || !Number.isFinite(v)) return NULL_DISPLAY;
   return `${v.toFixed(0)} m/s`;
 }
 
@@ -354,7 +355,7 @@ function LandingStatusComponent({
         { from: 1, to: 1.5, color: "var(--color-status-warning-fg)" },
         { from: 1.5, to: 3, color: "var(--color-status-go-fg)" },
       ]}
-      valueLabel={twr == null ? "—" : twr.toFixed(2)}
+      valueLabel={twr == null ? NULL_DISPLAY : twr.toFixed(2)}
       unitLabel="TWR"
       ariaLabel={`TWR ${twr == null ? "unknown" : twr.toFixed(2)}`}
     />
@@ -386,7 +387,7 @@ function LandingStatusComponent({
       <StackedField label="Burn dV">{formatDv(requiredDv)}</StackedField>
       <StackedField label="Burn duration">
         {solution.burnDuration == null
-          ? "—"
+          ? NULL_DISPLAY
           : formatDuration(solution.burnDuration, { ms: true })}
       </StackedField>
       <StackedField label="Available dV">{formatDv(availableDv)}</StackedField>
@@ -399,7 +400,7 @@ function LandingStatusComponent({
       >
         <ReadoutCaption>Affordable</ReadoutCaption>
         {affordable == null ? (
-          <Value tone="muted">—</Value>
+          <Value tone="muted">{NULL_DISPLAY}</Value>
         ) : (
           <Badge tone={affordable ? "go" : "nogo"} size="sm">
             {affordable ? "yes" : "insufficient dV"}
@@ -411,12 +412,12 @@ function LandingStatusComponent({
       </StackedField>
       <StackedField label="Touchdown (burn now)">
         {solution.bestSpeedAtImpact == null
-          ? "—"
+          ? NULL_DISPLAY
           : formatMps(solution.bestSpeedAtImpact)}
       </StackedField>
       <StackedField label="Impact in">
         {landed || solution.timeToImpact == null
-          ? "—"
+          ? NULL_DISPLAY
           : formatDuration(solution.timeToImpact, { ms: true })}
       </StackedField>
       {vs?.targetDistance != null && (
@@ -446,7 +447,7 @@ function LandingStatusComponent({
           </Field>
           <Field label="Impact in">
             {landing?.atmosphericTimeToImpact == null
-              ? "—"
+              ? NULL_DISPLAY
               : formatDuration(landing.atmosphericTimeToImpact, { ms: true })}
           </Field>
           {landing?.descentRegime && (
@@ -593,7 +594,7 @@ function LandingStatusComponent({
       {landing?.predictedBiome ? `${landing.predictedBiome} · ` : ""}
       {landing?.predictedSlopeAngle != null
         ? `${landing.predictedSlopeAngle.toFixed(1)}° slope`
-        : "—"}
+        : NULL_DISPLAY}
       {reliefRange != null && reliefRange >= 1
         ? ` · Δ ${Math.round(reliefRange)} m relief`
         : ""}

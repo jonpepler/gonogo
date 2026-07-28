@@ -1,4 +1,5 @@
 import { ArrowRightIcon, PlayIcon, StopIcon } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useAlarmHost, useAlarmSnapshot } from "./AlarmHostContext";
@@ -388,7 +389,7 @@ function formatWarp(index: number, rate: number): string {
   // frame. `index` may be unavailable in some KSP / Telemachus builds, so
   // never gate on `index === 0` (that would silently mask manual warp).
   if (!Number.isFinite(rate) || rate <= 0) {
-    return Number.isFinite(index) ? `${index}×` : "—";
+    return Number.isFinite(index) ? `${index}×` : NULL_DISPLAY;
   }
   return formatRate(rate);
 }

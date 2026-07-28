@@ -1,4 +1,5 @@
 import { act, render, screen } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { makeMeta } from "./stub-transport";
 import type { TimelinePoint } from "./timeline";
@@ -17,7 +18,7 @@ function point(validAt: number, payload: number): TimelinePoint<number> {
 
 function Alt({ store }: { store: TimelineStore }) {
   const v = useTimelineStream<number>(store, "vessel.state.altitudeAsl");
-  return <div>alt:{v ?? "—"}</div>;
+  return <div>alt:{v ?? NULL_DISPLAY}</div>;
 }
 
 describe("useTimelineStream", () => {

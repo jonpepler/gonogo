@@ -12,6 +12,7 @@ import {
   Sparkline,
   useElementSize,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 
@@ -120,7 +121,9 @@ function TwrComponent({ w, h }: Readonly<ComponentProps<TwrConfig>>) {
             data" sentence clips to just "No". A single em-dash conveys
             "no data" without crowding the panel; the panel title alone
             tells the operator what the widget is. */}
-        <EmptyState>{variant === "tiny" ? "—" : "No engine data"}</EmptyState>
+        <EmptyState>
+          {variant === "tiny" ? NULL_DISPLAY : "No engine data"}
+        </EmptyState>
       </Panel>
     );
   }

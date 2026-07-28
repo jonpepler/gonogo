@@ -26,7 +26,7 @@ import {
   StreamStatusBadge,
   useModalSaveBar,
 } from "@ksp-gonogo/ui";
-import { formatDuration } from "@ksp-gonogo/ui-kit";
+import { formatDuration, NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useMemo, useState } from "react";
 import styled from "styled-components";
 
@@ -162,7 +162,7 @@ function pickTWR(s: StageInfo, mode: DeltaVMode): number {
  * undefined for one row.
  */
 function fmtFixed(value: unknown, digits: number): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  if (typeof value !== "number" || !Number.isFinite(value)) return NULL_DISPLAY;
   return value.toFixed(digits);
 }
 
@@ -332,7 +332,7 @@ function FuelStatusComponent({
           branch the panel shows only the title and a black void below
           (the no-engine-data fixture at tiny-3x3 hit this state). */}
       {!showHeroDv && !showTotals && totalDv === undefined && (
-        <BigReadout>—</BigReadout>
+        <BigReadout>{NULL_DISPLAY}</BigReadout>
       )}
 
       {showTotals && (totalDv !== undefined || totalBurnTime !== undefined) && (
@@ -340,7 +340,9 @@ function FuelStatusComponent({
           <TotalsBlock>
             <TotalsLabel>Total ΔV</TotalsLabel>
             <TotalsValue>
-              {totalDv !== undefined ? `${fmtFixed(totalDv, 0)} m/s` : "—"}
+              {totalDv !== undefined
+                ? `${fmtFixed(totalDv, 0)} m/s`
+                : NULL_DISPLAY}
               <TotalsModeTag>{DELTA_V_MODE_SHORT[mode]}</TotalsModeTag>
             </TotalsValue>
           </TotalsBlock>
@@ -349,7 +351,7 @@ function FuelStatusComponent({
             <TotalsValue>
               {totalBurnTime !== undefined
                 ? formatDuration(totalBurnTime)
-                : "—"}
+                : NULL_DISPLAY}
             </TotalsValue>
           </TotalsBlock>
         </TotalsRow>
@@ -394,7 +396,7 @@ function FuelStatusComponent({
               const active = s.stage === currentStage;
               // parseStages yields NaN burnTime for a stage with no burn data;
               // show "0s" for that (and for a non-positive value) rather than
-              // the helper's "—", matching the pre-refactor local formatter.
+              // the helper's NULL_DISPLAY, matching the pre-refactor local formatter.
               const burn =
                 Number.isFinite(s.burnTime) && s.burnTime > 0
                   ? formatDuration(s.burnTime)

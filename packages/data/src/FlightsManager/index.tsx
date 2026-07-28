@@ -1,5 +1,6 @@
 import { getDataSource, type Screen } from "@ksp-gonogo/core";
 import { StarIcon } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import {
   Fragment,
   useCallback,
@@ -379,7 +380,7 @@ export function FlightsManager({
                         </StarButton>
                       </Td>
                       <Td>
-                        {f.vesselName || "—"}
+                        {f.vesselName || NULL_DISPLAY}
                         {f.outcome?.kind === "recovered" && (
                           <OutcomeBadge
                             $tone="go"

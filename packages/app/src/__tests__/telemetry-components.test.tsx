@@ -29,6 +29,7 @@ import {
 } from "@ksp-gonogo/sitrep-client";
 import { Quality } from "@ksp-gonogo/sitrep-sdk";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -143,7 +144,7 @@ describe("CurrentOrbitComponent", () => {
 
   it("shows dashes before data arrives", () => {
     renderWidget(<CurrentOrbitComponent id="t" />);
-    const dashes = screen.getAllByText("—");
+    const dashes = screen.getAllByText(NULL_DISPLAY);
     expect(dashes.length).toBeGreaterThan(0);
   });
 
@@ -274,7 +275,7 @@ describe("DistanceToTargetComponent", () => {
       });
     });
     await waitFor(() => expect(screen.getByText("Duna")).toBeInTheDocument());
-    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText(NULL_DISPLAY)).toBeInTheDocument();
   });
 });
 

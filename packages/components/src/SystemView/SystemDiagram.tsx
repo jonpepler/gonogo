@@ -1,4 +1,5 @@
 import { getBody, type OrbitPatch } from "@ksp-gonogo/core";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
@@ -458,7 +459,7 @@ export function SystemDiagram({
                 fontSize={10 / zoom}
                 pointerEvents="none"
               >
-                {c.name ?? "—"}
+                {c.name ?? NULL_DISPLAY}
               </text>
               {phaseAngles?.has(c.index) && (
                 <text

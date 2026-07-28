@@ -1,3 +1,4 @@
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import type { BodyDefinition } from "./bodies";
 import {
@@ -168,11 +169,11 @@ describe("formatDuration", () => {
   });
 
   it("returns — for negative values", () => {
-    expect(formatDuration(-1)).toBe("—");
+    expect(formatDuration(-1)).toBe(NULL_DISPLAY);
   });
 
   it("returns — for Infinity", () => {
-    expect(formatDuration(Infinity)).toBe("—");
+    expect(formatDuration(Infinity)).toBe(NULL_DISPLAY);
   });
 });
 
@@ -196,7 +197,7 @@ describe("formatDistance", () => {
   });
 
   it("returns — for Infinity", () => {
-    expect(formatDistance(Infinity)).toBe("—");
+    expect(formatDistance(Infinity)).toBe(NULL_DISPLAY);
   });
 });
 

@@ -16,6 +16,7 @@ import {
   PanelTitle,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { OrbitDiagram } from "../shared/OrbitDiagram";
@@ -162,9 +163,9 @@ function CurrentOrbitComponent({
                 "1000.00 Mm". Render an em-dash so the operator doesn't
                 mistake an escape trajectory for a vast bound orbit. */}
             {apoapsisA === undefined
-              ? "—"
+              ? NULL_DISPLAY
               : hyperbolic
-                ? "—"
+                ? NULL_DISPLAY
                 : formatDistance(apoapsisA)}
           </Value>
 
@@ -178,14 +179,18 @@ function CurrentOrbitComponent({
               periapsisA !== undefined && periapsisA < 0 ? "alert" : "pe"
             }
           >
-            {periapsisA === undefined ? "—" : formatDistance(periapsisA)}
+            {periapsisA === undefined
+              ? NULL_DISPLAY
+              : formatDistance(periapsisA)}
           </Value>
 
           {showInclinationRow && (
             <>
               <Label>Inc</Label>
               <Value>
-                {inclination === undefined ? "—" : `${inclination.toFixed(1)}°`}
+                {inclination === undefined
+                  ? NULL_DISPLAY
+                  : `${inclination.toFixed(1)}°`}
               </Value>
             </>
           )}
@@ -199,9 +204,9 @@ function CurrentOrbitComponent({
                     countdown. Render an em-dash so the operator doesn't
                     mistake a hyperbolic flyby for an imminent event. */}
                 {timeToAp === undefined
-                  ? "—"
+                  ? NULL_DISPLAY
                   : hyperbolic
-                    ? "—"
+                    ? NULL_DISPLAY
                     : formatDuration(timeToAp)}
               </Value>
 
@@ -213,9 +218,9 @@ function CurrentOrbitComponent({
                     em-dash rather than a countdown. `=== undefined` alone
                     misses `null` (`null === undefined` is false). */}
                 {timeToPe === undefined || timeToPe === null
-                  ? "—"
+                  ? NULL_DISPLAY
                   : hyperbolic
-                    ? "—"
+                    ? NULL_DISPLAY
                     : formatDuration(timeToPe)}
               </Value>
             </>
@@ -225,7 +230,9 @@ function CurrentOrbitComponent({
             <>
               <Label>Ecc</Label>
               <Value>
-                {eccentricity === undefined ? "—" : eccentricity.toFixed(4)}
+                {eccentricity === undefined
+                  ? NULL_DISPLAY
+                  : eccentricity.toFixed(4)}
               </Value>
 
               <Label>T</Label>
@@ -234,9 +241,9 @@ function CurrentOrbitComponent({
                     trajectory never closes); Telemachus emits 0 which
                     is again indistinguishable from "now". */}
                 {period === undefined
-                  ? "—"
+                  ? NULL_DISPLAY
                   : hyperbolic
-                    ? "—"
+                    ? NULL_DISPLAY
                     : formatDuration(period)}
               </Value>
             </>

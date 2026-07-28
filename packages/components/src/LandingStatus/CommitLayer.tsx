@@ -25,6 +25,7 @@
 import {
   Cluster,
   formatDuration,
+  NULL_DISPLAY,
   Readout,
   ReadoutCaption,
   type ReadoutTone,
@@ -101,7 +102,7 @@ export function CommitLayer({
   } else if (live) {
     heroCaption = "SUICIDE BURN";
     if (countdown == null) {
-      heroValue = "—";
+      heroValue = NULL_DISPLAY;
       heroTone = "default";
     } else if (countdown <= 0) {
       heroValue = "IGNITE";
@@ -125,7 +126,7 @@ export function CommitLayer({
       // locked in (autonomous), so the "BURN GO IN" caption is dropped.
       heroCaption = "";
     } else if (commitInSeconds == null) {
-      heroValue = "—";
+      heroValue = NULL_DISPLAY;
       heroTone = "default";
     } else {
       heroValue = `T−${formatDuration(commitInSeconds, { ms: true })}`;

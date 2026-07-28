@@ -1,5 +1,6 @@
 import { DashboardItemContext } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { ThermalStatusComponent } from "./index";
@@ -63,6 +64,6 @@ describe("ThermalStatus — genuinely runs off the stream (M3 batch 1)", () => {
     expect(screen.getByText("OX-STAT Photovoltaic Panels")).toBeTruthy();
     // No engine data was emitted this tick — the engine row still shows its
     // "no data" placeholder rather than a fabricated value.
-    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(NULL_DISPLAY).length).toBeGreaterThanOrEqual(1);
   });
 });

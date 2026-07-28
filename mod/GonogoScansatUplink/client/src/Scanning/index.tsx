@@ -11,6 +11,7 @@ import {
   Cluster,
   EmptyState,
   Grid,
+  NULL_DISPLAY,
   Panel,
   PanelTitle,
   ProgressBar,
@@ -266,7 +267,7 @@ function ScanningComponent({
                     <Value size="xs" tone="muted">
                       {a.known
                         ? `${a.latitude.toFixed(2)}, ${a.longitude.toFixed(2)}`
-                        : "—"}
+                        : NULL_DISPLAY}
                     </Value>
                   </Grid>
                 ))}

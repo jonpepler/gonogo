@@ -26,6 +26,7 @@ import {
   type VesselState,
 } from "@ksp-gonogo/sitrep-client";
 import { Panel, PanelTitle, StreamStatusBadge, Switch } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OrbitalEventChips } from "../shared/OrbitalEventChips";
 import {
@@ -1156,13 +1157,13 @@ function MapViewComponent({
           <CompactRow>
             <CompactLabel>Lat</CompactLabel>
             <CompactValue>
-              {lat === undefined ? "—" : `${lat.toFixed(2)}°`}
+              {lat === undefined ? NULL_DISPLAY : `${lat.toFixed(2)}°`}
             </CompactValue>
           </CompactRow>
           <CompactRow>
             <CompactLabel>Lon</CompactLabel>
             <CompactValue>
-              {lon === undefined ? "—" : `${lon.toFixed(2)}°`}
+              {lon === undefined ? NULL_DISPLAY : `${lon.toFixed(2)}°`}
             </CompactValue>
           </CompactRow>
           {altSea !== undefined && rows >= 5 && (

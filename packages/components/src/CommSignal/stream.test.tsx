@@ -1,5 +1,6 @@
 import { DashboardItemContext } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { CommSignalComponent } from "./index";
@@ -23,7 +24,7 @@ import { CommSignalComponent } from "./index";
  * A fixture that carries only `vessel.comms` therefore streams
  * connected/signalStrength but leaves control state + delay unresolved (their
  * derived/other homes aren't carried, and no legacy source exists here) — the
- * widget renders the `describeControl`/delay "—" placeholders. The
+ * widget renders the `describeControl`/delay NULL_DISPLAY placeholders. The
  * final test carries the full set to prove control state + delay stream too.
  */
 // Every input `vesselStateChannel` declares (vessel-state.ts) plus `comms.delay`
@@ -75,9 +76,9 @@ describe("CommSignal — genuinely runs off the stream (R6 Wave 1)", () => {
     expect(screen.getByLabelText("Signal 4 of 4")).toBeTruthy();
     // Control state (derived, needs the full vessel.state input set) and delay
     // (comms.delay) aren't carried in THIS fixture, and there's no legacy
-    // source, so `describeControl` falls through to "—" and the delay
-    // readout renders its "—" placeholder — two independent "—" cells.
-    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+    // source, so `describeControl` falls through to NULL_DISPLAY and the delay
+    // readout renders its NULL_DISPLAY placeholder — two independent NULL_DISPLAY cells.
+    expect(screen.getAllByText(NULL_DISPLAY).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Signal to KSC")).toBeTruthy();
   });
 

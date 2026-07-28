@@ -16,6 +16,7 @@ import {
   StatusPill,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import styled from "styled-components";
 
 // Empty config — room to add a "hide heat shield" toggle later.
@@ -103,13 +104,13 @@ const BAND_RANK: Record<Band, number> = {
 };
 
 function formatTempC(c: number | undefined): string {
-  if (c === undefined || !Number.isFinite(c)) return "—";
+  if (c === undefined || !Number.isFinite(c)) return NULL_DISPLAY;
   if (Math.abs(c) >= 1000) return `${c.toFixed(0)}°C`;
   return `${c.toFixed(1)}°C`;
 }
 
 function formatKw(kw: number | undefined): string {
-  if (kw === undefined || !Number.isFinite(kw)) return "—";
+  if (kw === undefined || !Number.isFinite(kw)) return NULL_DISPLAY;
   if (Math.abs(kw) >= 1000) return `${(kw / 1000).toFixed(2)} MW`;
   return `${kw.toFixed(1)} kW`;
 }
@@ -251,7 +252,7 @@ function ThermalStatusComponent({
                     </BandTag>
                   </RowHeader>
                   <RowBody>
-                    <PartName>{hottestName ?? "—"}</PartName>
+                    <PartName>{hottestName ?? NULL_DISPLAY}</PartName>
                     <TempMeter>
                       <TempBar
                         style={{

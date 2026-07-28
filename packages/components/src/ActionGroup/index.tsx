@@ -29,6 +29,7 @@ import {
   ToggleButton,
   useModalSaveBar,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { useAlarmsLauncher } from "../shared/AlarmsLauncher";
@@ -74,7 +75,7 @@ export interface ActionGroupSlotContext {
   label: string;
   /** The group's current Value (boolean or numeric readout); `undefined` if unknown. */
   value: unknown;
-  /** Rendered state readout — "ON" / "OFF" / a numeric string / "—". */
+  /** Rendered state readout — "ON" / "OFF" / a numeric string / NULL_DISPLAY. */
   stateLabel: string;
 }
 
@@ -136,7 +137,7 @@ function resolveGroupValue(
       return control?.precisionControl;
     default:
       // A configured id that no longer exists — e.g. a saved AGX group after
-      // AGX was uninstalled. Unknown, not false: the pill shows "—".
+      // AGX was uninstalled. Unknown, not false: the pill shows NULL_DISPLAY.
       return undefined;
   }
 }
@@ -255,7 +256,7 @@ function ActionGroupView({
   const isOn = isNumeric ? value > 0 : value === true;
   const isUnknown = value === undefined;
   const stateLabel = isUnknown
-    ? "—"
+    ? NULL_DISPLAY
     : isNumeric
       ? String(value)
       : value === true

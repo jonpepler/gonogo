@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { TelemetryClient } from "./client";
 import { TelemetryProvider } from "./context";
@@ -23,7 +24,7 @@ function MissionPanel() {
   const { send, status } = useCommand("stage");
   return (
     <div>
-      <span>altitude:{altitude ?? "—"}</span>
+      <span>altitude:{altitude ?? NULL_DISPLAY}</span>
       <button type="button" onClick={() => send()}>
         stage
       </button>

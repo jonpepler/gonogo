@@ -1,5 +1,6 @@
 import { Quality } from "@ksp-gonogo/sitrep-sdk";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { TelemetryClient } from "./client";
 import { TelemetryProvider } from "./context";
@@ -51,7 +52,7 @@ const FLIGHT: VesselFlightPayload = {
 
 function Altitude() {
   const alt = useStream<number | null>("vessel.state.altitudeAsl");
-  return <div>alt:{alt === undefined ? "—" : String(alt)}</div>;
+  return <div>alt:{alt === undefined ? NULL_DISPLAY : String(alt)}</div>;
 }
 
 describe("TelemetryProvider bridges client -> TimelineStore -> useStream for derived vessel.state.* topics", () => {
@@ -102,7 +103,7 @@ describe("TelemetryProvider bridges client -> TimelineStore -> useStream for der
 
     function Raw() {
       const v = useStream<number>("v.raw");
-      return <div>raw:{v ?? "—"}</div>;
+      return <div>raw:{v ?? NULL_DISPLAY}</div>;
     }
 
     render(

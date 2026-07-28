@@ -13,6 +13,7 @@
  * carrier (and matches the reticle's descent/ground-speed wording).
  */
 
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useId } from "react";
 import { SiteMarker } from "./SiteMarker";
 
@@ -37,7 +38,7 @@ export interface CrossSectionProps {
 }
 
 function fmtSpeed(v: number | null): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return NULL_DISPLAY;
   return `${Math.round(v)} m/s`;
 }
 

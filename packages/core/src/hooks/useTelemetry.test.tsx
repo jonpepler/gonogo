@@ -12,6 +12,7 @@ import {
   screen,
   waitFor,
 } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { beforeEach, describe, expect, it } from "vitest";
 import { clearRegistry, registerDataSource } from "../registry";
 import type { DataSource, DataSourceStatus } from "../types";
@@ -77,7 +78,7 @@ describe("useTelemetry — canonical TopicId read", () => {
       // Compile-time proof: the canonical overload resolves to the Topic's
       // payload type. A wrong payload type here would fail `typecheck`.
       const sma: number | undefined = orbit?.sma;
-      return <div>sma:{sma === undefined ? "—" : String(sma)}</div>;
+      return <div>sma:{sma === undefined ? NULL_DISPLAY : String(sma)}</div>;
     }
 
     // No carriedChannels prop: the canonical Topic read does not consult the

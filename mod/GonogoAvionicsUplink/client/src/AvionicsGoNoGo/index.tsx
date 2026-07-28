@@ -3,6 +3,7 @@ import { registerComponent, useTelemetry } from "@ksp-gonogo/sitrep-sdk";
 import {
   BigReadout,
   Cluster,
+  NULL_DISPLAY,
   Panel,
   PanelTitle,
   ReadoutCaption,
@@ -14,7 +15,7 @@ import {
 type AvionicsConfig = Record<string, never>;
 
 function fmtTons(t?: number): string {
-  return t == null ? "—" : `${t.toFixed(2)} t`;
+  return t == null ? NULL_DISPLAY : `${t.toFixed(2)} t`;
 }
 
 /**

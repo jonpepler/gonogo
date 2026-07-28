@@ -1,5 +1,6 @@
 import { clearRegistry, useTelemetry } from "@ksp-gonogo/core";
 import { render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { ws } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -58,7 +59,11 @@ function streamFrame(topic: string, payload: unknown): string {
 function Throttle() {
   // @ts-expect-error two-arg form is type-banned; runtime shim still under test
   const throttle = useTelemetry("data", "f.throttle");
-  return <div>throttle:{throttle === undefined ? "—" : String(throttle)}</div>;
+  return (
+    <div>
+      throttle:{throttle === undefined ? NULL_DISPLAY : String(throttle)}
+    </div>
+  );
 }
 
 describe("SitrepTelemetryProvider — live WebSocketTransport over MSW", () => {

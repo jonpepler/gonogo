@@ -22,6 +22,7 @@
 
 import type { SlotProps } from "@ksp-gonogo/sitrep-sdk";
 import { registerAugment, useTelemetry } from "@ksp-gonogo/sitrep-sdk";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useMemo } from "react";
 import styled from "styled-components";
 import { useScanningVessels } from "../FogReveal/useScanLayers";
@@ -109,7 +110,7 @@ function CoverageRow({
       ) : range?.inRange ? (
         <Chip $variant="in">scan</Chip>
       ) : (
-        <Chip $variant="idle">—</Chip>
+        <Chip $variant="idle">{NULL_DISPLAY}</Chip>
       )}
     </Row>
   );

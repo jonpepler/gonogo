@@ -6,6 +6,7 @@ import {
   ViewClock,
 } from "@ksp-gonogo/sitrep-client";
 import { render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { MissionBanner } from "./MissionBanner";
@@ -56,7 +57,7 @@ describe("MissionBanner", () => {
     );
 
     expect(screen.getByText("KSC")).toBeInTheDocument();
-    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText(NULL_DISPLAY)).toBeInTheDocument();
   });
 
   it("shows a Y# D# in-game time once a sample lands, and updates live as UT advances", async () => {

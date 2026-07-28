@@ -12,6 +12,7 @@ import {
   Input,
   PrimaryButton,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import type {
@@ -718,7 +719,7 @@ function describeTrigger(a: Alarm, utNow: number | null): React.ReactNode {
 }
 
 function formatUt(s: number): string {
-  if (!Number.isFinite(s)) return "—";
+  if (!Number.isFinite(s)) return NULL_DISPLAY;
   const d = Math.floor(s / 21600);
   const rem = s - d * 21600;
   const h = Math.floor(rem / 3600);

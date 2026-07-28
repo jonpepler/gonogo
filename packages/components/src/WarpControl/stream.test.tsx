@@ -1,5 +1,6 @@
 import { clearActionHandlers, DashboardItemContext } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { WarpControlComponent } from "./index";
@@ -25,7 +26,7 @@ describe("WarpControl — genuinely runs off the stream (M3 pilot)", () => {
   it("reads the recorded time.warp state off the real stream pipeline, not legacy", async () => {
     // No legacy "data" DataSource registered anywhere in this file — if the
     // widget's reads were still secretly falling back to legacy, there
-    // would be nothing to fall back TO and the rate readout would stay "—"
+    // would be nothing to fall back TO and the rate readout would stay NULL_DISPLAY
     // forever, not resolve to "10×".
     const fixture = setupStreamFixture({
       carriedChannels: ["time.warp"],
@@ -41,7 +42,7 @@ describe("WarpControl — genuinely runs off the stream (M3 pilot)", () => {
     );
 
     // Nothing arrived yet — the rate readout is the loading placeholder.
-    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getByText(NULL_DISPLAY)).toBeTruthy();
 
     // A real subscription must have happened for this to deliver at all —
     // StubTransport.emit is subscription-gated (see its own doc comment).

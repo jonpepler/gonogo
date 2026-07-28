@@ -1,5 +1,6 @@
 import { clearActionHandlers, DashboardItemContext } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { afterEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { NavballComponent } from "./index";
@@ -11,7 +12,7 @@ import { NavballComponent } from "./index";
  * pipeline via `StubTransport` — no legacy `DataSource` is registered
  * anywhere in this file, so a value that only ever arrived via the shim's
  * legacy fallback would leave the readouts stuck at their loading
- * placeholder ("—") forever.
+ * placeholder (NULL_DISPLAY) forever.
  *
  * Navball's `dataRequirements` split MAPPED / GAPPED (`map-topic.ts`'s
  * `TELEMACHUS_CLEAN_HOMES`/`TELEMACHUS_KNOWN_GAPS`):
@@ -62,7 +63,7 @@ describe("Navball — genuinely runs off the stream (M3 batch 1)", () => {
     );
 
     // Nothing arrived yet — the numeric readouts show the loading placeholder.
-    expect(screen.getByText("HDG").nextSibling?.textContent).toBe("—");
+    expect(screen.getByText("HDG").nextSibling?.textContent).toBe(NULL_DISPLAY);
 
     // A real subscription must have happened for this to deliver at all —
     // StubTransport.emit is subscription-gated (see its own doc comment).

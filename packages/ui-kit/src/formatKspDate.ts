@@ -1,4 +1,7 @@
 /** KSP-time unit sizes, in seconds. A KSP day is 6h; a KSP year is 426 days. */
+
+import { NULL_DISPLAY } from "./NullValue";
+
 const DAY = 21_600;
 const YEAR = 426 * DAY;
 
@@ -17,7 +20,7 @@ const YEAR = 426 * DAY;
  * `Infinity`) render as an em dash.
  */
 export function formatKspDate(ut: number): string {
-  if (!Number.isFinite(ut)) return "—";
+  if (!Number.isFinite(ut)) return NULL_DISPLAY;
 
   const clamped = Math.max(0, ut);
 

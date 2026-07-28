@@ -1,5 +1,6 @@
 import { DashboardItemContext } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { CommSignalComponent } from "./index";
@@ -85,7 +86,7 @@ describe("CommSignal — full readout off the stream (R6 Wave 1)", () => {
     expect(screen.getByText("Full")).toBeTruthy();
     expect(screen.getByText("0 ms")).toBeTruthy();
     expect(screen.getByText("Signal to KSC")).toBeTruthy();
-    // No stray "—" placeholder — every field resolved.
-    expect(container.textContent).not.toContain("—");
+    // No stray NULL_DISPLAY placeholder — every field resolved.
+    expect(container.textContent).not.toContain(NULL_DISPLAY);
   });
 });

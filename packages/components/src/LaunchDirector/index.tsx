@@ -26,6 +26,7 @@ import {
   Spinner,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 
@@ -562,7 +563,7 @@ function LaunchDirectorComponent({
                     >
                       <CrewName>{k.name}</CrewName>
                       <CrewTrait>
-                        {k.trait || "—"}
+                        {k.trait || NULL_DISPLAY}
                         {k.available ? ` L${k.experienceLevel}` : ""}
                       </CrewTrait>
                     </CrewChip>
@@ -817,7 +818,7 @@ function InFlightPanel({
                   {typeof entry.distance === "number" &&
                   Number.isFinite(entry.distance)
                     ? formatDistance(entry.distance)
-                    : "—"}
+                    : NULL_DISPLAY}
                 </VesselSwitchDistance>
               </VesselSwitchRow>
             ))
@@ -829,7 +830,7 @@ function InFlightPanel({
 }
 
 function formatMissionTime(s: number | null): string {
-  if (s === null || !Number.isFinite(s)) return "—";
+  if (s === null || !Number.isFinite(s)) return NULL_DISPLAY;
   const total = Math.max(0, Math.floor(s));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
@@ -841,7 +842,7 @@ function formatMissionTime(s: number | null): string {
 }
 
 function formatAltitude(m: number | null): string {
-  if (m === null || !Number.isFinite(m)) return "—";
+  if (m === null || !Number.isFinite(m)) return NULL_DISPLAY;
   if (Math.abs(m) >= 1000) return `${(m / 1000).toFixed(1)} km`;
   return `${m.toFixed(0)} m`;
 }

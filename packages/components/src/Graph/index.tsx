@@ -29,6 +29,7 @@ import {
   useModalSaveBar,
   WidgetHeader,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import {
   type ReactNode,
   useCallback,
@@ -81,7 +82,7 @@ function computeXDomain(
 }
 
 function formatReadoutValue(value: number): string {
-  if (!Number.isFinite(value)) return "—";
+  if (!Number.isFinite(value)) return NULL_DISPLAY;
   const abs = Math.abs(value);
   if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
   if (abs >= 10_000) return `${(value / 1_000).toFixed(1)}k`;
@@ -360,7 +361,7 @@ export function GraphView({
         <PanelSubtitle>{seriesLabel}</PanelSubtitle>
         <ReadoutBody ref={containerRef}>
           <BigReadout aria-label={`${seriesLabel} ${latest ?? "no data"}`}>
-            {latest !== undefined ? formatReadoutValue(latest) : "—"}
+            {latest !== undefined ? formatReadoutValue(latest) : NULL_DISPLAY}
             {unit && <ReadoutCaption>{unit}</ReadoutCaption>}
           </BigReadout>
           <SparkSlot>

@@ -4,6 +4,7 @@ import {
   registerAugment,
 } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor, within } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -34,7 +35,7 @@ import {
  * only derives in the OnRails/"propagated" basis, `altitudeAsl` only in the
  * Loaded/"measured" basis (`vessel-state.ts`'s own doc). The ACTIVE (flying)
  * vessel this widget's in-flight panel describes is always Loaded, so
- * `missionTime` genuinely renders "—" in every in-flight scenario below —
+ * `missionTime` genuinely renders NULL_DISPLAY in every in-flight scenario below —
  * a real, documented gap in the migrated data, not a test omission.
  */
 const CARRIED = [
@@ -268,8 +269,8 @@ describe("LaunchDirectorComponent", () => {
       await screen.findByText(/In flight: Stayputnik X/i),
     ).toBeInTheDocument();
     // missionTime (`vessel.state.met`) is null in the Loaded/measured basis
-    // (see this file's doc comment) — the panel shows its "—" placeholder.
-    expect(screen.getByText("—")).toBeInTheDocument();
+    // (see this file's doc comment) — the panel shows its NULL_DISPLAY placeholder.
+    expect(screen.getByText(NULL_DISPLAY)).toBeInTheDocument();
     expect(screen.getByText("72.4 km")).toBeInTheDocument();
     expect(screen.getByText("Revert to launch")).toBeInTheDocument();
     expect(screen.getByText("Revert to VAB")).toBeInTheDocument();

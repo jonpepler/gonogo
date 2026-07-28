@@ -1,3 +1,4 @@
+import { NULL_DISPLAY } from "./NullValue";
 export interface FormatNumberOptions {
   /** Fixed decimal places (`Number.toFixed`). Omit to stringify as-is. */
   decimals?: number;
@@ -12,7 +13,7 @@ export function formatNumber(
   value: number | undefined,
   opts: FormatNumberOptions = {},
 ): string {
-  if (value === undefined || !Number.isFinite(value)) return "—";
+  if (value === undefined || !Number.isFinite(value)) return NULL_DISPLAY;
   const { decimals } = opts;
   return decimals === undefined ? String(value) : value.toFixed(decimals);
 }

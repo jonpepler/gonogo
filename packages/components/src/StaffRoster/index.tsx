@@ -13,6 +13,7 @@ import {
   PanelTitle,
   ScrollArea,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import styled from "styled-components";
 
 type StaffRosterConfig = Record<string, never>;
@@ -114,7 +115,7 @@ const TRAIT_RANK: Record<string, number> = TRAIT_ORDER.reduce(
 // kerbals — useful context the row otherwise loses.
 function buildTooltip(k: StaffMember): string {
   const parts: string[] = [];
-  parts.push(`${k.trait || "—"} · L${k.experienceLevel}`);
+  parts.push(`${k.trait || NULL_DISPLAY} · L${k.experienceLevel}`);
   if (k.careerFlights > 0) parts.push(`${k.careerFlights} flight(s)`);
   parts.push(`courage ${Math.round(k.courage * 100)}`);
   parts.push(`stupidity ${Math.round(k.stupidity * 100)}`);
@@ -239,7 +240,7 @@ function StaffRosterComponent({
               <Name>{kerbal.name}</Name>
               <Meta>
                 <TraitTag title={`Trait: ${kerbal.trait || "Unknown"}`}>
-                  {kerbal.trait || "—"}
+                  {kerbal.trait || NULL_DISPLAY}
                 </TraitTag>
                 <Level
                   title={`Experience level ${kerbal.experienceLevel}`}

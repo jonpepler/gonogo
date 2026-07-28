@@ -1,4 +1,7 @@
 /** KSP-time unit sizes, in seconds. A KSP day is 6h; a KSP year is 426 days. */
+
+import { NULL_DISPLAY } from "./NullValue";
+
 const SECOND = 1;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
@@ -45,7 +48,7 @@ export function formatDuration(
   seconds: number,
   opts: FormatDurationOptions = {},
 ): string {
-  if (!Number.isFinite(seconds)) return "—";
+  if (!Number.isFinite(seconds)) return NULL_DISPLAY;
 
   const { ms = false, sign = false } = opts;
   const signPrefix = sign ? (seconds < 0 ? "T+" : "T−") : "";

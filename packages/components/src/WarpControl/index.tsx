@@ -18,6 +18,7 @@ import {
   StreamStatusBadge,
   ToggleButton,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 
@@ -341,7 +342,7 @@ function normalizeWarpMode(raw: number | undefined): string | null {
 }
 
 function formatRate(rate: number | null): string {
-  if (rate === null) return "—";
+  if (rate === null) return NULL_DISPLAY;
   if (rate < 1.0001) return "1×";
   if (rate >= 1000) return `${(rate / 1000).toFixed(rate >= 10_000 ? 0 : 1)}k×`;
   if (Number.isInteger(rate)) return `${rate}×`;

@@ -1,5 +1,6 @@
 import { DashboardItemContext } from "@ksp-gonogo/core";
 import { act, render, waitFor, within } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { getWidget } from "../../scripts/widgets";
 import {
@@ -106,10 +107,10 @@ async function snapshotWarpStream(
   });
 
   // Wait until the warp state has settled off the stream — the rate readout
-  // starts as the "—" loading placeholder before the first sample resolves.
+  // starts as the NULL_DISPLAY loading placeholder before the first sample resolves.
   await waitFor(() => {
     const label = within(container).getByRole("img").getAttribute("aria-label");
-    if (!label || label.endsWith("—")) {
+    if (!label || label.endsWith(NULL_DISPLAY)) {
       throw new Error("warp state has not rendered off the stream yet");
     }
   });

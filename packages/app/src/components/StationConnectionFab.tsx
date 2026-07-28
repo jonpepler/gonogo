@@ -7,6 +7,7 @@ import {
   StatusIndicator,
   useModal,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useState } from "react";
 import styled from "styled-components";
 import type { ConnStatus } from "../peer/PeerClientService";
@@ -62,7 +63,7 @@ function StationConnectionPanel({
     <Wrap>
       <Row>
         <Label>Host ID</Label>
-        <Code>{hostId ?? "—"}</Code>
+        <Code>{hostId ?? NULL_DISPLAY}</Code>
       </Row>
       <Row>
         <Label>Status</Label>

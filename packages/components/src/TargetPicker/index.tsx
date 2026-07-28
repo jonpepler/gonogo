@@ -34,6 +34,7 @@ import {
   Spinner,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import type { ReactNode } from "react";
 import {
   useCallback,
@@ -422,7 +423,9 @@ function TargetPickerComponent({
           {subtitle && <RowSubtitle>{subtitle}</RowSubtitle>}
         </RowMain>
         <RowDistance>
-          {entry.distance === undefined ? "—" : formatDistance(entry.distance)}
+          {entry.distance === undefined
+            ? NULL_DISPLAY
+            : formatDistance(entry.distance)}
         </RowDistance>
         {isPending && <Spinner ariaLabel="Setting target" />}
         {!isPending && entry.isCurrent && <RowTag>TARGET</RowTag>}

@@ -1,6 +1,7 @@
 import { clearActionHandlers, DashboardItemContext } from "@ksp-gonogo/core";
 import { Quality } from "@ksp-gonogo/sitrep-sdk";
 import { act, render, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { afterEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import northLevel from "./__fixtures__/north-level.json";
@@ -79,9 +80,9 @@ describe("Navball — stream render golden (delay=0)", () => {
 
     // sasModeName resolves only off the derived vessel.state record, which is
     // fed purely by the stream here — so its presence proves the stream leg
-    // landed (and the attitude readouts have left their "—" placeholder).
+    // landed (and the attitude readouts have left their NULL_DISPLAY placeholder).
     await waitFor(() => {
-      const attitudeResolved = !container.textContent?.includes("—");
+      const attitudeResolved = !container.textContent?.includes(NULL_DISPLAY);
       if (
         !attitudeResolved ||
         !container.textContent?.includes("StabilityAssist")

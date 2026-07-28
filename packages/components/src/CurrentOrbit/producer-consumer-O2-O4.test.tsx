@@ -1,6 +1,7 @@
 import { DashboardItemContext, registerStockBodies } from "@ksp-gonogo/core";
 import { Quality } from "@ksp-gonogo/sitrep-sdk";
 import { act, render, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { CurrentOrbitComponent } from "./index";
@@ -19,7 +20,7 @@ import { CurrentOrbitComponent } from "./index";
  *   undefined` refactor silently flipping the gate.
  * - **O4**: in the "measured" basis the mini diagram must be suppressed
  *   (already true via O2's gate — `periapisR` is `null` there too), but the
- *   numeric grid must still render (raw `ecc` + "—" for the null derived
+ *   numeric grid must still render (raw `ecc` + NULL_DISPLAY for the null derived
  *   apsides) rather than some other empty state.
  */
 const VESSEL_STATE_INPUTS = [
@@ -86,7 +87,7 @@ describe("CurrentOrbit — O2: hyperbolic orbit still counts as hasOrbit", () =>
 });
 
 describe("CurrentOrbit — O4: 'measured' basis suppresses the diagram, not the grid", () => {
-  it("shows the grid with '—' apsides and no diagram in the measured basis", async () => {
+  it("shows the grid with NULL_DISPLAY apsides and no diagram in the measured basis", async () => {
     registerStockBodies();
     const stream = setupStreamFixture({
       carriedChannels: VESSEL_STATE_INPUTS,
@@ -151,9 +152,9 @@ describe("CurrentOrbit — O4: 'measured' basis suppresses the diagram, not the 
 
     expect(container.querySelector("svg")).toBeNull();
     // Ap/Pe are gated on `hasOrbit`, which is false here (periapsisR null in
-    // the measured basis) — they render as "—", never a stale/garbage value.
-    expect(getValueCell(container, "Ap")).toBe("—");
-    expect(getValueCell(container, "Pe")).toBe("—");
+    // the measured basis) — they render as NULL_DISPLAY, never a stale/garbage value.
+    expect(getValueCell(container, "Ap")).toBe(NULL_DISPLAY);
+    expect(getValueCell(container, "Pe")).toBe(NULL_DISPLAY);
   });
 });
 

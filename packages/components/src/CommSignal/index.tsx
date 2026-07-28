@@ -14,7 +14,7 @@ import {
   PanelTitle,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
-import { formatDuration } from "@ksp-gonogo/ui-kit";
+import { formatDuration, NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import styled from "styled-components";
 
 type CommSignalConfig = Record<string, never>;
@@ -62,7 +62,7 @@ function describeControl(
           ? "Partial"
           : state === 0
             ? "None"
-            : "—";
+            : NULL_DISPLAY;
   const lower = resolved.toLowerCase();
   if (lower === "none" || lower.includes("no signal"))
     return { label: resolved, tone: "lost" };
@@ -152,7 +152,7 @@ function CommSignalComponent({
   const isLandscape = getWidgetShape(w, h).shape === "landscape";
   const showSubtitle = rows >= 4;
   const showDetailGrid = rows >= 4 && cols >= 4;
-  // "LOS" (loss of signal) vs "—" (no telemetry) — both render zero
+  // "LOS" (loss of signal) vs NULL_DISPLAY (no telemetry) — both render zero
   // bars, so the headline label is the only differentiator at tiny
   // sizes where subtitle + detail grid are suppressed. Without this
   // split, an occluded vessel and a connection-lost probe looked
@@ -218,7 +218,7 @@ function CommSignalComponent({
                   when-no-path fix: neither is a number to format. */}
               {typeof delay === "number"
                 ? formatDuration(delay, { ms: true })
-                : "—"}
+                : NULL_DISPLAY}
             </GridValue>
           </Grid>
         )}

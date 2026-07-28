@@ -11,6 +11,7 @@ import {
   ViewClock,
 } from "@ksp-gonogo/sitrep-client";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -198,7 +199,7 @@ describe("ActionGroup component", () => {
 
   /**
    * BEHAVIOUR DELTA, asserted rather than quietly dropped. This used to assert
-   * the pill cleared to "—" when the legacy `DataSource` disconnected. Now that
+   * the pill cleared to NULL_DISPLAY when the legacy `DataSource` disconnected. Now that
    * the widget reads the canonical stream, it HOLDS the last-known value
    * instead — the documented M2 semantic delta (`useTelemetry`'s own doc
    * comment: "the legacy path clears to `undefined` when the DataSource status
@@ -230,7 +231,7 @@ describe("ActionGroup component", () => {
     });
 
     expect(screen.getByText("ON")).toBeInTheDocument();
-    expect(screen.queryByText("—")).not.toBeInTheDocument();
+    expect(screen.queryByText(NULL_DISPLAY)).not.toBeInTheDocument();
   });
 
   it("toggles SAS independently from AG1", async () => {

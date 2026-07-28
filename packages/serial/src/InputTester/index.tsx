@@ -8,6 +8,7 @@ import {
   PanelTitle,
   Select,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { GamepadGlyph } from "../GamepadGlyph";
@@ -169,7 +170,7 @@ function InputTesterComponent({
                       />
                     </AnalogTrack>
                     <AnalogValue $live={live}>
-                      {live ? v.toFixed(2) : "—"}
+                      {live ? v.toFixed(2) : NULL_DISPLAY}
                     </AnalogValue>
                   </AnalogRow>
                 );

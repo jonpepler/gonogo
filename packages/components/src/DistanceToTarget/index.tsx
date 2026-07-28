@@ -25,7 +25,7 @@ import {
   Switch,
   useModalSaveBar,
 } from "@ksp-gonogo/ui";
-import { formatDuration } from "@ksp-gonogo/ui-kit";
+import { formatDuration, NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import {
   useCallback,
   useEffect,
@@ -241,7 +241,7 @@ function DistanceToTargetComponent({
   const dockAy = derivedDockAngles?.ay;
   // Docking-port roll (az) misalignment isn't on the wire at all — vessel.dock
   // carries only RelativePosition/RelativeVelocity/Distance + a scalar
-  // ForwardDot. The true third axis is unavailable and renders "—".
+  // ForwardDot. The true third axis is unavailable and renders NULL_DISPLAY.
   const dockAz: number | undefined = undefined;
   const dockX = dockRelPos?.x;
   const dockY = dockRelPos?.y;
@@ -281,7 +281,7 @@ function DistanceToTargetComponent({
   // docking-port target with a free "Ready" port on the active vessel
   // (VesselDock.cs). A plain Vessel/Other target (or a port with no free port
   // on our side) has no dock channel, so promoting it to the HUD on distance
-  // alone rendered a dead-centre reticle with every alignment row "—". Gate HUD
+  // alone rendered a dead-centre reticle with every alignment row NULL_DISPLAY. Gate HUD
   // entry on the dock channel actually carrying a relative position, NOT on
   // "any non-body target under 100 m".
   const dockingAvailable = dockRelPos !== undefined;
@@ -376,7 +376,7 @@ function DistanceToTargetComponent({
       <TrackingBody>
         {showTargetName && <TargetName>{tarName}</TargetName>}
         {tarDistance === undefined ? (
-          <Dash>—</Dash>
+          <Dash>{NULL_DISPLAY}</Dash>
         ) : (
           <Distance>{formatDistance(tarDistance)}</Distance>
         )}
@@ -453,7 +453,7 @@ function ApproachHud({
         <TrackingBody>
           <TargetName>{name}</TargetName>
           {distance === undefined ? (
-            <Dash>—</Dash>
+            <Dash>{NULL_DISPLAY}</Dash>
           ) : (
             <Distance>{formatDistance(distance)}</Distance>
           )}
@@ -475,20 +475,20 @@ function ApproachHud({
       <ApproachGrid $stack={stack}>
         <ApproachLabel>Distance</ApproachLabel>
         <ApproachValue>
-          {distance === undefined ? "—" : formatDistance(distance)}
+          {distance === undefined ? NULL_DISPLAY : formatDistance(distance)}
         </ApproachValue>
 
         <ApproachLabel>Closing rate</ApproachLabel>
         <ApproachValue $tone={closing ? "ok" : "warn"}>
           {closingMagnitude === null
-            ? "—"
+            ? NULL_DISPLAY
             : `${closing ? "−" : "+"}${closingMagnitude.toFixed(1)} m/s`}
         </ApproachValue>
 
         <ApproachLabel>TCA</ApproachLabel>
         <ApproachValue>
           {tcaSeconds === null
-            ? "—"
+            ? NULL_DISPLAY
             : formatDuration(tcaSeconds, { sign: true })}
         </ApproachValue>
       </ApproachGrid>
@@ -650,14 +650,14 @@ function DockingHud(props: DockingHudProps) {
         <HudHeader>
           <HudName>{name}</HudName>
           <HudRange>
-            {distance === undefined ? "—" : formatDistance(distance)}
+            {distance === undefined ? NULL_DISPLAY : formatDistance(distance)}
           </HudRange>
         </HudHeader>
         <HudGrid $stack={stackReadouts}>
           <HudLabel>Δv</HudLabel>
           <HudValue $tone={closing ? "ok" : "warn"}>
             {relVel === undefined || !Number.isFinite(relVel)
-              ? "—"
+              ? NULL_DISPLAY
               : `${relVel.toFixed(2)} m/s`}
           </HudValue>
 
@@ -665,15 +665,15 @@ function DockingHud(props: DockingHudProps) {
             <>
               <HudLabel>X/Y</HudLabel>
               <HudValue>
-                {x === undefined ? "—" : `${x.toFixed(2)} m`} /{" "}
-                {y === undefined ? "—" : `${y.toFixed(2)} m`}
+                {x === undefined ? NULL_DISPLAY : `${x.toFixed(2)} m`} /{" "}
+                {y === undefined ? NULL_DISPLAY : `${y.toFixed(2)} m`}
               </HudValue>
 
               <HudLabel>α/β/γ</HudLabel>
               <HudValue>
-                {ax === undefined ? "—" : `${ax.toFixed(1)}°`} ·{" "}
-                {ay === undefined ? "—" : `${ay.toFixed(1)}°`} ·{" "}
-                {az === undefined ? "—" : `${az.toFixed(1)}°`}
+                {ax === undefined ? NULL_DISPLAY : `${ax.toFixed(1)}°`} ·{" "}
+                {ay === undefined ? NULL_DISPLAY : `${ay.toFixed(1)}°`} ·{" "}
+                {az === undefined ? NULL_DISPLAY : `${az.toFixed(1)}°`}
               </HudValue>
             </>
           )}

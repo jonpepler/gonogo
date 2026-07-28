@@ -1,5 +1,6 @@
 import { DashboardItemContext } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { CurrentOrbitComponent } from "./index";
@@ -11,7 +12,7 @@ import { CurrentOrbitComponent } from "./index";
  * `StubTransport` — no legacy `DataSource` is registered anywhere in this
  * file. CurrentOrbit reads no `TELEMACHUS_KNOWN_GAPS` key, so
  * every field it shows is `TELEMACHUS_CLEAN_HOMES` and resolves off the
- * stream — what stays "—" here does so only because its INPUT topic isn't
+ * stream — what stays NULL_DISPLAY here does so only because its INPUT topic isn't
  * emitted in this file, never because it's gapped.
  *
  * `o.sma`/`o.eccentricity`/`o.inclination`/`o.argumentOfPeriapsis` are raw
@@ -61,8 +62,8 @@ describe("CurrentOrbit — genuinely runs off the stream (M3 batch 2)", () => {
     );
 
     // Nothing arrived yet — every field (mapped and gapped alike) is
-    // undefined, so every row shows its "—" placeholder.
-    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(6);
+    // undefined, so every row shows its NULL_DISPLAY placeholder.
+    expect(screen.getAllByText(NULL_DISPLAY).length).toBeGreaterThanOrEqual(6);
 
     // A real subscription must have happened for this to deliver at all —
     // StubTransport.emit is subscription-gated (see its own doc comment).
@@ -102,10 +103,10 @@ describe("CurrentOrbit — genuinely runs off the stream (M3 batch 2)", () => {
     // timeToPe is 0 and timeToAp is exactly half the period.
     expect(screen.getByText("0s")).toBeTruthy();
     expect(screen.getByText("15m 42s")).toBeTruthy();
-    // Only Ap/Pe stay "—": their apsis-ALTITUDE derivation needs
+    // Only Ap/Pe stay NULL_DISPLAY: their apsis-ALTITUDE derivation needs
     // system.bodies (unemitted here). ApR/PeR resolved (sma·(1±ecc)), so the
     // diagram renders; referenceBody/v.body render nothing (no subtitle)
-    // rather than a "—". Two dashes total, never a fabricated value.
-    expect(screen.getAllByText("—").length).toBe(2);
+    // rather than a NULL_DISPLAY. Two dashes total, never a fabricated value.
+    expect(screen.getAllByText(NULL_DISPLAY).length).toBe(2);
   });
 });

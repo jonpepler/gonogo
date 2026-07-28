@@ -25,7 +25,12 @@ import {
   Switch,
   useModalSaveBar,
 } from "@ksp-gonogo/ui";
-import { Badge, formatDuration, StatusIndicator } from "@ksp-gonogo/ui-kit";
+import {
+  Badge,
+  formatDuration,
+  NULL_DISPLAY,
+  StatusIndicator,
+} from "@ksp-gonogo/ui-kit";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { AttitudeIndicator } from "./AttitudeIndicator";
@@ -441,14 +446,14 @@ function NavballComponent({
             <ReadoutRow>
               <ReadoutLabel>HDG</ReadoutLabel>
               <ReadoutValue>
-                {heading === null ? "—" : `${heading.toFixed(0)}°`}
+                {heading === null ? NULL_DISPLAY : `${heading.toFixed(0)}°`}
               </ReadoutValue>
             </ReadoutRow>
             <ReadoutRow>
               <ReadoutLabel>PCH</ReadoutLabel>
               <ReadoutValue>
                 {pitch === null
-                  ? "—"
+                  ? NULL_DISPLAY
                   : `${pitch >= 0 ? "+" : ""}${pitch.toFixed(0)}°`}
               </ReadoutValue>
             </ReadoutRow>
@@ -456,7 +461,7 @@ function NavballComponent({
               <ReadoutLabel>RLL</ReadoutLabel>
               <ReadoutValue>
                 {roll === null
-                  ? "—"
+                  ? NULL_DISPLAY
                   : `${roll >= 0 ? "+" : ""}${roll.toFixed(0)}°`}
               </ReadoutValue>
             </ReadoutRow>

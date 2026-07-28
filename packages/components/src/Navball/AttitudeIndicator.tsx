@@ -1,3 +1,4 @@
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import styled from "styled-components";
 
 export interface AttitudeIndicatorProps {
@@ -184,15 +185,15 @@ export function AttitudeIndicator({
       <Readout>
         <Cell>
           <Lab>HDG</Lab>
-          <Val>{ready ? `${safeHeading.toFixed(0)}°` : "—"}</Val>
+          <Val>{ready ? `${safeHeading.toFixed(0)}°` : NULL_DISPLAY}</Val>
         </Cell>
         <Cell>
           <Lab>PIT</Lab>
-          <Val>{ready ? `${safePitch.toFixed(0)}°` : "—"}</Val>
+          <Val>{ready ? `${safePitch.toFixed(0)}°` : NULL_DISPLAY}</Val>
         </Cell>
         <Cell>
           <Lab>ROL</Lab>
-          <Val>{ready ? `${safeRoll.toFixed(0)}°` : "—"}</Val>
+          <Val>{ready ? `${safeRoll.toFixed(0)}°` : NULL_DISPLAY}</Val>
         </Cell>
       </Readout>
     </Wrap>

@@ -20,6 +20,7 @@ import {
   StatusPill,
   StreamStatusBadge,
 } from "@ksp-gonogo/ui";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { useCallback, useSyncExternalStore } from "react";
 import styled from "styled-components";
 import { useBodyRotation } from "../SystemView/useBodyRotation";
@@ -267,7 +268,7 @@ function OrbitViewComponent({
   // standard mission-control shorthand the operator already reads
   // elsewhere (e.g. flight-plan annotations).
   const compactPill = cols < 4 || rows < 4;
-  let pillLabel = "—";
+  let pillLabel = NULL_DISPLAY;
   let pillTone: ReadoutTone = "default";
   if (hasOrbit) {
     if (eccentricity >= 1) {

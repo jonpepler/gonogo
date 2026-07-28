@@ -11,6 +11,7 @@ import {
   screen,
   waitFor,
 } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 // This is the end-to-end proof: the SAME hooks/client/provider
 // from `integration.test.tsx`, now wired to the REAL delay-modelling
@@ -37,7 +38,7 @@ function MissionPanel() {
   const { send, status } = useCommand("deploy");
   return (
     <div>
-      <span>altitude:{altitude ?? "—"}</span>
+      <span>altitude:{altitude ?? NULL_DISPLAY}</span>
       <button
         type="button"
         onClick={() => {

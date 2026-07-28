@@ -15,6 +15,7 @@ import {
   screen,
   waitFor,
 } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -135,10 +136,10 @@ describe("ActionGroupComponent", () => {
     expect(screen.getByText("No action group configured")).toBeInTheDocument();
   });
 
-  it("shows the '—' unknown indicator before telemetry arrives", () => {
+  it("shows the NULL_DISPLAY unknown indicator before telemetry arrives", () => {
     renderGroup({ actionGroupId: "SAS" });
     // No emit yet — value is undefined → unknown state
-    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText(NULL_DISPLAY)).toBeInTheDocument();
   });
 
   it("shows OFF when the group value is false", async () => {

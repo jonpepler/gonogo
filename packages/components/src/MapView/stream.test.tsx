@@ -1,6 +1,7 @@
 import { DashboardItemContext } from "@ksp-gonogo/core";
 import { Quality } from "@ksp-gonogo/sitrep-sdk";
 import { act, render, waitFor } from "@ksp-gonogo/test-utils";
+import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { MapViewComponent } from "./index";
@@ -62,7 +63,7 @@ describe("MapView — genuinely runs off the stream (M3 mechanical-tail batch)",
 
     // Nothing arrived yet — the compact readout shows the em-dash placeholder.
     expect(container.textContent).toContain("Lat");
-    expect(container.textContent).toContain("—");
+    expect(container.textContent).toContain(NULL_DISPLAY);
     expect(container.textContent).not.toContain("°");
 
     // A real subscription must have happened for this to deliver at all —

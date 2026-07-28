@@ -1,7 +1,16 @@
 import type { ComponentProps } from "@ksp-gonogo/core";
-import { registerComponent, useTelemetry } from "@ksp-gonogo/core";
+import { AugmentSlot, registerComponent, useTelemetry } from "@ksp-gonogo/core";
 import { Badge, Meter, Panel, PanelTitle } from "@ksp-gonogo/ui";
 import styled from "styled-components";
+// Side-effect import: registers the built-in `life-support.sections`
+// augment filler (the Greenhouse section) and the SlotRegistry declaration
+// merge — see that file's own doc comment. Registering it here (rather than
+// requiring a separate package import) keeps the slot non-empty out of the
+// box, matching this widget's own "Kerbalism is the built-in source, not an
+// optional third-party Uplink" posture (unlike PowerSystems' still-unfilled
+// `power-systems.sections`, which genuinely waits on a separate Uplink).
+import "./GreenhouseSection";
+import type { GreenhouseRow } from "./GreenhouseSection";
 
 type LifeSupportConfig = Record<string, never>;
 
@@ -42,6 +51,8 @@ interface LifeSupportData {
   comfort: number;
   livingSpace: number;
   processes: ProcessRow[];
+  /** Active Greenhouse parts, if any — see `GreenhouseSection`'s own doc comment. */
+  greenhouses: GreenhouseRow[];
 }
 
 interface WireResource {
@@ -82,6 +93,31 @@ function toProcessRow(p: WireProcess, index: number): ProcessRow {
   };
 }
 
+interface WireGreenhouse {
+  cropResource?: string;
+  foodRatePerSec?: number;
+  natural?: number;
+  artificial?: number;
+  active?: boolean;
+  issue?: string;
+}
+
+/**
+ * Maps ONE wire greenhouse entry to the slot-props shape, defaulting an
+ * absent field rather than dropping the entry — matches `consumable`'s own
+ * "missing key defaults to 0" convention above.
+ */
+function toGreenhouseRow(g: WireGreenhouse): GreenhouseRow {
+  return {
+    cropResource: g.cropResource || "Food",
+    natural: g.natural ?? 0,
+    artificial: g.artificial ?? 0,
+    active: g.active ?? false,
+    issue: g.issue ?? "",
+    foodRatePerSec: g.foodRatePerSec ?? 0,
+  };
+}
+
 function useLifeSupport(): LifeSupportData {
   const t = useTelemetry("kerbalism.lifesupport");
   return {
@@ -97,6 +133,9 @@ function useLifeSupport(): LifeSupportData {
     // (rides kerbalism.crew → CrewManifest death-clock meters), not a
     // vessel-level habitat value, so this vessel widget doesn't surface it.
     processes: (t?.processes ?? []).map(toProcessRow),
+    // Absent on a vessel with no greenhouse part (the common case) — the
+    // slot's own component renders nothing for an empty list.
+    greenhouses: (t?.greenhouses ?? []).map(toGreenhouseRow),
   };
 }
 
@@ -321,6 +360,17 @@ function LifeSupportSystemsComponent({
         </Section>
       )}
 
+      {/* Augment sections — e.g. the built-in Greenhouse readout — compose
+          here, below the process grid. A bare fragment (no extra margin)
+          until something is registered into the slot, matching
+          PowerSystems' `power-systems.sections` usage. */}
+      {!compact && (
+        <AugmentSlot
+          name="life-support.sections"
+          props={{ greenhouses: d.greenhouses }}
+        />
+      )}
+
       <FooterRow>
         <Meter
           label="Power"
@@ -436,6 +486,11 @@ registerComponent<LifeSupportConfig>({
   defaultConfig: {},
   actions: [],
   requires: ["flight"],
+  // `life-support.sections` — a body section slot, below the process grid.
+  // The built-in Greenhouse readout (`./GreenhouseSection`) fills it out of
+  // the box; a future non-Kerbalism life-support source can leave it empty
+  // with no change here.
+  augmentSlots: ["life-support.sections"],
 });
 
 export { LifeSupportSystemsComponent };

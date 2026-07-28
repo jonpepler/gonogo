@@ -17,7 +17,7 @@ import type { DeviceInput } from "../types";
 
 interface Props {
   /**
-   * The current draft inputs from the editor — start the wizard with these
+   * The current draft inputs from the editor, start the wizard with these
    * so re-opening it preserves any in-progress assignments. Buttons keep
    * their length; analogs default to length 3 if unset.
    */
@@ -36,7 +36,7 @@ interface Selection {
 
 /**
  * Inline wizard for the char-position parser. Three steps:
- *   1. Capture a sample line — paste one in, or stream the latest from
+ *   1. Capture a sample line: paste one in, or stream the latest from
  *      a connected web-serial device.
  *   2. For each declared input, drag-select its character region. The
  *      live preview shows what the parser would emit using the current

@@ -148,6 +148,10 @@ export {
   useModalChrome,
   useModalSaveBar,
 } from "./ModalSaveBar";
+// ── Null-display token ──────────────────────────────────────────────────────
+// The one sanctioned em dash in the codebase; see NullValue.tsx's own header
+// comment for the full rationale and the ratchet that enforces it.
+export { NULL_DISPLAY, NullValue } from "./NullValue";
 // ── Panel family ─────────────────────────────────────────────────────────────
 export {
   Panel,

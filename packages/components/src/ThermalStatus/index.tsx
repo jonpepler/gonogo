@@ -360,11 +360,13 @@ const CompactStatusPill = styled(StatusPill)`
   min-width: 0;
   max-width: 100%;
   /* Off the spacing ladder: the only meaning these two numbers carry is
-     their delta from the base StatusPill in ui-kit (padding: 6px 14px).
-     Snapping them (5 -> 6, 14 -> 12) erases the vertical tightening
-     entirely and halves the horizontal clearance this override exists to
-     buy, so the pair has to be retuned against the base, in one edit
-     across both packages, rather than tokenised in place. */
+     their delta from the base StatusPill in ui-kit, which the token
+     migration moved from 6px 14px to var(--space-6) var(--space-12), i.e.
+     6px 12px. So this override now tightens the base by 1px vertically and
+     pulls back 2px horizontally, a smaller delta than it was written for.
+     The nearest rungs (6, and 10 or 12) either erase the tightening or
+     erase the delta outright, so the pair stays literal until it is retuned
+     against the base in one edit across both packages. */
   padding: 5px 10px;
   letter-spacing: 0.06em;
   overflow: hidden;

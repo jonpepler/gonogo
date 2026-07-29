@@ -96,6 +96,11 @@ const Wrap = styled.div<{ $bottom: number | undefined }>`
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   font-family: inherit;
+  /* Snapped, not exact: this was 0.18s ease-out. 180ms to 200ms, and
+     ease-out to ease (the scale has no ease-out rung). Both moves are inside
+     the noise of an 8px slide-and-fade. The entrance recipe
+     (--duration-entrance with --ease-entrance) is deliberately NOT used
+     here: that pairing is tuned to the 40px banner slide. */
   animation: fabPromptIn var(--duration-slow) var(--ease-standard) both;
 
   @keyframes fabPromptIn {

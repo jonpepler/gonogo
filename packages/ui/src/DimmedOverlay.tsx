@@ -77,6 +77,11 @@ const DimmedLayer = styled.div`
   opacity: 0.35;
   pointer-events: none;
   filter: saturate(0.5);
+  /* Snapped, not exact: this was 200ms ease-out. The duration is unchanged;
+     the curve moves ease-out to ease, because the motion scale has no
+     ease-out rung by design. On a 0.35-opacity dim that is not a read the
+     operator takes anything from, so the snap is accepted rather than
+     carved out. */
   transition: opacity var(--duration-slow) var(--ease-standard);
 `;
 

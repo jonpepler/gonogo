@@ -17,6 +17,7 @@
   "v.isControllable": false,
   "_stream": {
     "carriedChannels": [
+      "vessel.attitude",
       "vessel.orbit",
       "vessel.flight",
       "vessel.identity",

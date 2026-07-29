@@ -5,7 +5,7 @@
  * tokens in this file: two copies is exactly how `--color-status-nogo-on-bg`
  * went missing here while only the theme package got it, silently breaking
  * both the app and the render harness (see the ratchet test in
- * `noRedeclaredColorTokens.test.ts`, and `widgetRenderHarness.ts`, which
+ * `tokenSingleSource.test.ts`, beside this file, and `widgetRenderHarness.ts`, which
  * now reads the theme package's tokens.css directly instead of this file).
  * If a consumer genuinely needs an app-local override, add it under its
  * own selector (never `:root`) so it layers on top rather than shadowing

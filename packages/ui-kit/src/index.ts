@@ -11,6 +11,19 @@ import "./styledComponentsTheme";
 // so packages needing only a theme (`@ksp-gonogo/test-utils`) don't pull in the
 // whole kit; it must stay a devDependency so it can't leak into the published
 // manifest. See `tsup.config.ts`.
+//
+// Token-fallback convention for everything in this package: there are two
+// supported ways a host mounts the tokens, `@ksp-gonogo/ui-kit/tokens.css` (a
+// copy of the theme's `tokens.css`, always current) and the `GonogoTokens`
+// global sheet re-exported below, which is a HAND-MAINTAINED mirror and today
+// declares only the colour, font-family and font-size-xs..lg variables. So
+// every `--space-*`, `--radius-*`, `--line-height-*`, `--z-*`, `--duration-*`,
+// `--ease-*` and `--font-size-2xs` reference in this package is written with
+// an inline fallback, e.g. `var(--space-8, 8px)`. On the tokens.css path the
+// fallback never fires; on the GonogoTokens path it is what keeps a padding
+// from computing to its initial `0` and collapsing the layout. Colours
+// degrade to inherited text and are left bare, matching what shipped before.
+// Drop the fallbacks once GonogoTokens is generated from `tokens.css`.
 export * from "@ksp-gonogo/theme";
 export {
   ActionButton,

@@ -11,7 +11,12 @@
   "t.warpMode": "High",
   "t.isPaused": false,
   "_stream": {
-    "carriedChannels": ["time.warp"],
+    "carriedChannels": [
+      "time.warp",
+      "spaceCenter.scene",
+      "spaceCenter.launchSites",
+      "career.mode"
+    ],
     "emits": [
       {
         "channel": "time.warp",
@@ -20,6 +25,28 @@
           "warpRateIndex": 5,
           "warpMode": 0,
           "paused": false
+        }
+      },
+      {
+        "channel": "spaceCenter.scene",
+        "value": {
+          "scene": "Flight"
+        }
+      },
+      {
+        "channel": "spaceCenter.launchSites",
+        "value": [
+          {
+            "name": "__pad_occupancy__",
+            "padOccupied": false,
+            "padVesselTitle": null
+          }
+        ]
+      },
+      {
+        "channel": "career.mode",
+        "value": {
+          "mode": 1
         }
       }
     ]

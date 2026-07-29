@@ -29,7 +29,7 @@
         "channel": "vessel.orbit",
         "value": {
           "referenceBodyIndex": 1,
-          "sma": 215000,
+          "sma": 215000.0,
           "ecc": 0.06,
           "inc": 0,
           "lan": 0,

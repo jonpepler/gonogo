@@ -104,9 +104,9 @@ describe("CommandDelay", () => {
         ariaLabel="Launch: in flight"
       />,
     );
-    // The rail strip is an <svg role="img"> with blips, not the monospace list.
+    // The rail strip is an <svg role="img"> glow band, not the monospace list.
     expect(container.querySelector("svg")).not.toBeNull();
-    expect(container.querySelector('[data-role="blip"]')).not.toBeNull();
+    expect(container.querySelector('[data-role="glow"]')).not.toBeNull();
   });
 
   it("merges the in-flight rows of several discrete handles into one list", () => {

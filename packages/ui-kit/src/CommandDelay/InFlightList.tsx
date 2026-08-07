@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import styled, { css } from "styled-components";
 import { formatCountdown } from "../formatDuration";
 import { useElementSize } from "../useElementSize";
@@ -17,6 +17,14 @@ export interface InFlightListItem {
   label: string;
   etaSeconds: number | null;
   phase: "in-transit" | "awaiting-reply" | "due" | "overdue" | "lost";
+  /**
+   * True position along the 3-stage delay axis, 0 (just sent) .. 1 (end of the
+   * 3T span), from the command's reach/reply geometry (`journeyProgress` in
+   * `toInFlightListItems`). Only the `variant="rail"` glow reads it; the inline
+   * list ignores it. Optional so a hand-built item (tests, non-`useCommand`
+   * sources) need not supply it, the glow then anchors by phase.
+   */
+  progress?: number;
 }
 
 export type InFlightListMode = "live" | "staged" | "no-path";
@@ -53,11 +61,11 @@ export interface InFlightListProps {
   ariaLabel?: string;
   /**
    * `"inline"` (default) is the monospace row/badge list every existing
-   * consumer gets. `"rail"` is the v3 16px height-graph strip the Panel rail
-   * uses: each in-flight command is a soft pulse blip travelling the same
-   * now-left / age-right 3T axis (33/67 dividers) `ControlDelayStream` draws, so
-   * discrete and continuous commands read in ONE visual language. `mode` /
-   * `density` / `orientation` do not apply to the rail strip.
+   * consumer gets. `"rail"` is the v3 16px strip the Panel rail uses: each
+   * in-flight command is a soft glow grazing the top edge (its blip sits off the
+   * widget, above the edge, only the blur reaches down), positioned by true
+   * journey progress so it sweeps left -> right as the command travels the 3
+   * signal stages. `mode` / `density` / `orientation` do not apply to the strip.
    */
   variant?: "inline" | "rail";
 }
@@ -215,27 +223,31 @@ export function InFlightList({
   );
 }
 
-// v3 rail strip geometry. The same now-left / age-right 3T axis
-// ControlDelayStream uses (dividers at 33% / 67%), so a discrete command's blip
-// and a continuous axis's sparkline sit in one coordinate language.
+// v3 rail strip geometry (operator's v3 design). Each in-flight command is a
+// blip that renders effectively OFF the widget, its centre sitting ABOVE the
+// top edge (cy negative, outside the 0..RAIL_VB_H viewBox, so the disc itself is
+// never drawn), and only its soft radial BLUR grazes down onto the top edge. The
+// glow's x tracks the command's TRUE journey progress (0 left .. 1 right across
+// the 3 signal stages), so it sweeps the edge as the command travels. Drawn with
+// preserveAspectRatio="none" (viewBox stretched to the full widget width). No
+// baseline or dividers: a grazing glow, not markers on a line.
 const RAIL_VB_W = 100;
 const RAIL_VB_H = 16;
-const RAIL_BASE_Y = RAIL_VB_H / 2;
+// The blip centre sits this far ABOVE the top edge; only the lower falloff of a
+// radius-GLOW_R glow reaches into the strip, so the disc is unseen and the edge
+// gets a soft graze that fades downward.
+const GLOW_CY = -4;
+const GLOW_R = 9;
+const GLOW_PEAK_ALPHA = 0.22;
 
-/**
- * Where a discrete command sits on the delay axis, by phase. We only have the
- * item's phase here (`InFlightListItem` has dropped the reach/reply geometry
- * `ControlDelayStream` gets), so phase is the honest proxy for "how far through
- * its journey": outgoing in the first leg, awaiting-reply in the echo leg,
- * due/overdue/lost near or past the 2T confirmation boundary. A per-index nudge
- * keeps same-phase blips from stacking exactly.
- */
-const PHASE_X: Record<InFlightListItem["phase"], number> = {
-  "in-transit": 22,
-  "awaiting-reply": 50,
-  due: 67,
-  overdue: 84,
-  lost: 94,
+/** Anchor by phase when an item carries no true `progress` (a hand-built item
+ * from a non-`useCommand` source); mirrors `toInFlightListItems`' fallback. */
+const PHASE_PROGRESS: Record<InFlightListItem["phase"], number> = {
+  "in-transit": 0.18,
+  "awaiting-reply": 0.5,
+  due: 0.62,
+  overdue: 0.82,
+  lost: 0.95,
 };
 
 function InFlightRailStrip({
@@ -245,6 +257,7 @@ function InFlightRailStrip({
   items: InFlightListItem[];
   ariaLabel: string;
 }) {
+  const gradBase = useId();
   const summary = `${items.length} in flight`;
   return (
     <InFlightRailStrip__Svg
@@ -253,68 +266,47 @@ function InFlightRailStrip({
       viewBox={`0 0 ${RAIL_VB_W} ${RAIL_VB_H}`}
       preserveAspectRatio="none"
     >
-      {/* Baseline + the two 3T zone dividers, barely-there texture (v3: 35% of
-          the border ink) rather than chrome. */}
-      <line
-        data-role="baseline"
-        x1="1"
-        x2={RAIL_VB_W - 1}
-        y1={RAIL_BASE_Y}
-        y2={RAIL_BASE_Y}
-        stroke="var(--color-border-subtle)"
-        strokeWidth="0.4"
-        strokeOpacity="0.35"
-      />
-      <line
-        data-divider="t"
-        x1={RAIL_VB_W / 3}
-        x2={RAIL_VB_W / 3}
-        y1="3"
-        y2={RAIL_VB_H - 3}
-        stroke="var(--color-border-subtle)"
-        strokeWidth="0.4"
-        strokeOpacity="0.35"
-      />
-      <line
-        data-divider="2t"
-        x1={(RAIL_VB_W * 2) / 3}
-        x2={(RAIL_VB_W * 2) / 3}
-        y1="3"
-        y2={RAIL_VB_H - 3}
-        stroke="var(--color-border-subtle)"
-        strokeWidth="0.4"
-        strokeOpacity="0.35"
-      />
-      {items.map((item, i) => {
-        const isError = ERROR_PHASES.has(item.phase);
-        const nudge = (i % 3) * 3 - 3;
-        const cx = Math.max(
-          2,
-          Math.min(RAIL_VB_W - 2, PHASE_X[item.phase] + nudge),
-        );
-        const colour = isError
-          ? "var(--color-status-warning-bg)"
-          : "var(--color-accent-fg)";
-        return (
-          <g key={item.id} data-role="blip" data-phase={item.phase}>
-            {/* Soft glow patch (v3 alpha 0.18), then the crisp blip. */}
-            <circle
+      <defs>
+        {items.map((item, i) => {
+          const colour = ERROR_PHASES.has(item.phase)
+            ? "var(--color-status-warning-bg)"
+            : "var(--color-accent-fg)";
+          const progress = Math.max(
+            0,
+            Math.min(1, item.progress ?? PHASE_PROGRESS[item.phase]),
+          );
+          const cx = progress * RAIL_VB_W;
+          return (
+            <radialGradient
+              key={item.id}
+              id={`${gradBase}-${i}`}
+              gradientUnits="userSpaceOnUse"
               cx={cx}
-              cy={RAIL_BASE_Y}
-              r="3"
-              fill={colour}
-              fillOpacity="0.18"
-            />
-            <circle
-              data-role="blip-core"
-              cx={cx}
-              cy={RAIL_BASE_Y}
-              r={isError ? 1.6 : 1.3}
-              fill={colour}
-            />
-          </g>
-        );
-      })}
+              cy={GLOW_CY}
+              r={GLOW_R}
+            >
+              <stop
+                offset="0"
+                stopColor={colour}
+                stopOpacity={GLOW_PEAK_ALPHA}
+              />
+              <stop offset="1" stopColor={colour} stopOpacity="0" />
+            </radialGradient>
+          );
+        })}
+      </defs>
+      {items.map((item, i) => (
+        <rect
+          key={item.id}
+          data-role="glow"
+          data-phase={item.phase}
+          x="0"
+          y="0"
+          width={RAIL_VB_W}
+          height={RAIL_VB_H}
+          fill={`url(#${gradBase}-${i})`}
+        />
+      ))}
     </InFlightRailStrip__Svg>
   );
 }

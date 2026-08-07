@@ -48,8 +48,8 @@ const SCENARIOS: ReadonlyArray<{
           id: "c0",
           label: "Set target",
           command: "vessel.target.set",
-          reachEtaSeconds: 6,
-          replyEtaSeconds: 12,
+          reachEtaSeconds: 2,
+          replyEtaSeconds: 8,
           predictedPhase: "in-transit",
         },
       ],
@@ -112,16 +112,16 @@ const SCENARIOS: ReadonlyArray<{
           id: "c1",
           label: "SAS Prograde",
           command: "vessel.control.setSasMode",
-          reachEtaSeconds: 3,
-          replyEtaSeconds: 6,
+          reachEtaSeconds: -2,
+          replyEtaSeconds: 4,
           predictedPhase: "in-transit",
         },
         {
           id: "c2",
           label: "RCS on",
           command: "vessel.control.setRcs",
-          reachEtaSeconds: 1,
-          replyEtaSeconds: 5,
+          reachEtaSeconds: 5,
+          replyEtaSeconds: 11,
           predictedPhase: "awaiting-reply",
         },
       ],
@@ -208,6 +208,12 @@ async function main(): Promise<void> {
           pxH: VIEWPORT_H,
         },
       );
+      // Park the cursor away from the top rail so a stationary pointer left over
+      // from the previous scenario's click cannot hover-open the float in this
+      // scenario's COLLAPSED shot.
+      await page.mouse.move(VIEWPORT_W / 2, VIEWPORT_H - 10);
+      await page.waitForTimeout(80);
+
       const outName = `${scenario.name}.png`;
       await page.screenshot({ path: join(OUT_DIR, outName), fullPage: false });
       console.log(`  ${outName}`);

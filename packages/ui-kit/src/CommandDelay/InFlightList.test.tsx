@@ -43,8 +43,8 @@ describe("InFlightList", () => {
     expect(results).toHaveNoViolations();
   });
 
-  describe('variant="rail" (v3 height-graph strip)', () => {
-    it("renders an svg strip with one blip per item, not the monospace list", () => {
+  describe('variant="rail" (v3 glow band)', () => {
+    it("renders an svg strip with one glow per item, not the monospace list", () => {
       const { container } = render(
         <InFlightList items={ITEMS} variant="rail" />,
       );
@@ -52,18 +52,51 @@ describe("InFlightList", () => {
       const svg = container.querySelector("svg");
       expect(svg).not.toBeNull();
       expect(svg).toHaveAttribute("role", "img");
-      expect(container.querySelectorAll('[data-role="blip"]')).toHaveLength(
+      expect(container.querySelectorAll('[data-role="glow"]')).toHaveLength(
         ITEMS.length,
       );
       // No monospace list root in the rail rendering.
       expect(container.textContent).not.toContain("run boot.ks");
     });
 
-    it("draws the two 3T zone dividers, shared with ControlDelayStream", () => {
+    it("draws no axis dividers or baseline (a grazing glow, not markers on a line)", () => {
       const { container } = render(
         <InFlightList items={ITEMS} variant="rail" />,
       );
-      expect(container.querySelectorAll("[data-divider]")).toHaveLength(2);
+      expect(container.querySelectorAll("[data-divider]")).toHaveLength(0);
+      expect(container.querySelector('[data-role="baseline"]')).toBeNull();
+    });
+
+    it("centres each glow ABOVE the top edge and positions its x by journey progress", () => {
+      const items: InFlightListItem[] = [
+        {
+          id: "early",
+          label: "a",
+          etaSeconds: 5,
+          phase: "in-transit",
+          progress: 0.1,
+        },
+        {
+          id: "late",
+          label: "b",
+          etaSeconds: 2,
+          phase: "awaiting-reply",
+          progress: 0.8,
+        },
+      ];
+      const { container } = render(
+        <InFlightList items={items} variant="rail" />,
+      );
+      const grads = Array.from(container.querySelectorAll("radialGradient"));
+      expect(grads).toHaveLength(2);
+      const cxs = grads.map((g) => Number(g.getAttribute("cx")));
+      // The lower-progress command sits left of the higher-progress one.
+      expect(cxs[0]).toBeLessThan(cxs[1]);
+      // Every glow centres above the strip (cy < 0), so only the blur grazes
+      // the top edge and the disc itself is never visible.
+      for (const g of grads) {
+        expect(Number(g.getAttribute("cy"))).toBeLessThan(0);
+      }
     });
 
     it("carries an in-flight count in its accessible name", () => {

@@ -103,7 +103,12 @@ export function PanelDelayRail() {
 
   return (
     <PanelDelayRail__Wrap
-      onMouseEnter={() => setPreview(true)}
+      onMouseEnter={() => {
+        // Hover-preview only on devices that actually hover: a touch tap should
+        // pin (the click path), never mis-fire a preview it cannot dismiss.
+        const m = window.matchMedia?.("(hover: hover)");
+        if (!m || m.matches) setPreview(true);
+      }}
       onMouseLeave={() => {
         if (!pinned) setPreview(false);
       }}
@@ -147,7 +152,6 @@ export function PanelDelayRail() {
         aria-label="Signal-delay detail"
       >
         <PanelDelayRail__FloatHeader>
-          <span>{pinned ? "PINNED" : "PREVIEW"}</span>
           <PanelDelayRail__Close
             type="button"
             aria-label="Close signal-delay detail"
@@ -156,14 +160,18 @@ export function PanelDelayRail() {
             ✕
           </PanelDelayRail__Close>
         </PanelDelayRail__FloatHeader>
-        {visible.map((h) => (
-          <CommandDelay
-            key={h.id}
-            handle={h}
-            variant="inline"
-            ariaLabel="Delay detail"
-          />
-        ))}
+        {/* Detail is mounted only while open: the rail's own CommandDelay
+            already marks each handle's must-consume token, so the float owes
+            nothing when closed and need not double-mount every handle. */}
+        {open &&
+          visible.map((h) => (
+            <CommandDelay
+              key={h.id}
+              handle={h}
+              variant="inline"
+              ariaLabel="Delay detail"
+            />
+          ))}
       </PanelDelayRail__Float>
     </PanelDelayRail__Wrap>
   );
@@ -177,6 +185,11 @@ export function PanelDelayRail() {
  */
 const PanelDelayRail__Wrap = styled.div`
   position: relative;
+  /* Edge to edge: cancel the body's own horizontal inset so the strip (and the
+     float below it) span the full widget width, flush to both edges, the same
+     negative-margin trick the sticky header uses. */
+  margin-left: calc(-1 * var(--space-16, 16px));
+  margin-right: calc(-1 * var(--space-16, 16px));
 `;
 
 /**
@@ -249,15 +262,13 @@ const PanelDelayRail__Float = styled.div`
 `;
 
 const PanelDelayRail__FloatHeader = styled.div`
+  /* No state word (v3): the float carries only its close affordance, aligned to
+     the trailing edge. Its open/pinned state is conveyed by aria-expanded /
+     aria-pressed on the rail, not a label. */
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8, 8px);
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
+  justify-content: flex-end;
   color: var(--color-text-muted);
-  margin-bottom: var(--space-4, 4px);
+  font-size: var(--font-size-xs);
 `;
 
 const PanelDelayRail__Close = styled.button`

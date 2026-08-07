@@ -109,13 +109,13 @@ describe("PanelDelayRail", () => {
     const store = createDelayRailStore();
     store.register(handle("cmd"));
     const { container } = inPanel(<PanelDelayRail />, store);
-    // v3: the rail renders the discrete handle as the height-graph strip (an
+    // v3: the rail renders the discrete handle as the glow-band strip (an
     // <svg role="img"> whose accessible name starts "In-flight commands"), not
     // the pre-v3 monospace list.
     expect(
       container.querySelector('[aria-label^="In-flight commands"]'),
     ).not.toBeNull();
-    expect(container.querySelector('[data-role="blip"]')).not.toBeNull();
+    expect(container.querySelector('[data-role="glow"]')).not.toBeNull();
   });
 
   it("renders the rail chrome strip element for an active handle", () => {

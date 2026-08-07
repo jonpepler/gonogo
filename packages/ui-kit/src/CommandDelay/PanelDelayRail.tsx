@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import styled from "styled-components";
 import { CommandDelay } from "./CommandDelay";
 import { type CommandHandle, useActiveHandles } from "./DelayRailContext";
 import { usePanelRailTarget } from "./PanelRailTarget";
@@ -71,10 +72,33 @@ export function PanelDelayRail() {
   if (!hasContent) return null;
 
   return (
-    <div data-panel-rail="" ref={railRef}>
+    <PanelDelayRail__Strip data-panel-rail="" ref={railRef}>
       {visible.map((h) => (
         <CommandDelay key={h.id} handle={h} />
       ))}
-    </div>
+    </PanelDelayRail__Strip>
   );
 }
+
+/**
+ * v3 rail chrome: the 16px drag-bar strip is the whole delivery surface (the
+ * gap doc's "16px transparent top-edge overlay", replacing the pre-v3 bare div
+ * that grew to ~48px and pushed the header down by its content). Transparent, so
+ * an in-flight widget shows no sunken furniture; height-capped at 16px with the
+ * overflow clipped, so a tall indicator crops to the strip rather than growing
+ * the rail (detail lives in the tap-to-pin float, not here); a flex row, so a
+ * widget's several in-flight indicators share the one strip. Coarse pointers get
+ * a slightly taller strip for a reachable hit target. Its measured height still
+ * feeds `--panel-rail-height` (the ResizeObserver above), which is now ~16px.
+ */
+const PanelDelayRail__Strip = styled.div`
+  height: 16px;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  background: transparent;
+
+  @media (pointer: coarse) {
+    height: 20px;
+  }
+`;

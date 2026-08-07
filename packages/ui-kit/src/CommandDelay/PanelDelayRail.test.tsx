@@ -1,6 +1,7 @@
 import { act, render } from "@ksp-gonogo/test-utils";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { axe } from "../test/axe";
 import {
   type CommandHandle,
   createDelayRailStore,
@@ -110,6 +111,20 @@ describe("PanelDelayRail", () => {
     expect(
       container.querySelector('[aria-label="In-flight commands"]'),
     ).not.toBeNull();
+  });
+
+  it("renders the rail chrome strip element for an active handle", () => {
+    const store = createDelayRailStore();
+    store.register(handle("cmd"));
+    const { container } = inPanel(<PanelDelayRail />, store);
+    expect(container.querySelector("[data-panel-rail]")).not.toBeNull();
+  });
+
+  it("has no axe violations with an active handle", async () => {
+    const store = createDelayRailStore();
+    store.register(handle("cmd"));
+    const { container } = inPanel(<PanelDelayRail />, store);
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("renders nothing and sets no rail element when no handles are active (snapshot-stable for no-command widgets)", () => {

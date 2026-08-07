@@ -51,6 +51,15 @@ export interface InFlightListProps {
   orientation?: "column" | "row";
   /** Accessible label for the list region. Defaults to "In-flight commands". */
   ariaLabel?: string;
+  /**
+   * `"inline"` (default) is the monospace row/badge list every existing
+   * consumer gets. `"rail"` is the v3 16px height-graph strip the Panel rail
+   * uses: each in-flight command is a soft pulse blip travelling the same
+   * now-left / age-right 3T axis (33/67 dividers) `ControlDelayStream` draws, so
+   * discrete and continuous commands read in ONE visual language. `mode` /
+   * `density` / `orientation` do not apply to the rail strip.
+   */
+  variant?: "inline" | "rail";
 }
 
 const PHASE_ARROW: Record<InFlightListItem["phase"], string> = {
@@ -148,10 +157,19 @@ export function InFlightList({
   density = "auto",
   orientation = "column",
   ariaLabel = "In-flight commands",
+  variant = "inline",
 }: InFlightListProps) {
   // Seeded wide so the first paint is the full form and `auto` only ever
   // shrinks from it. Seeding narrow would flash a badge on every mount.
   const { ref, size } = useElementSize({ w: 320, h: 0 });
+
+  // v3 rail strip: bypasses the density/badge logic entirely (that is the
+  // inline list's story). Hook above still runs unconditionally.
+  if (variant === "rail") {
+    if (items.length === 0) return null;
+    return <InFlightRailStrip items={items} ariaLabel={ariaLabel} />;
+  }
+
   const resolved: Exclude<InFlightListDensity, "auto"> =
     density !== "auto"
       ? density
@@ -194,6 +212,110 @@ export function InFlightList({
         />
       ))}
     </InFlightList__Root>
+  );
+}
+
+// v3 rail strip geometry. The same now-left / age-right 3T axis
+// ControlDelayStream uses (dividers at 33% / 67%), so a discrete command's blip
+// and a continuous axis's sparkline sit in one coordinate language.
+const RAIL_VB_W = 100;
+const RAIL_VB_H = 16;
+const RAIL_BASE_Y = RAIL_VB_H / 2;
+
+/**
+ * Where a discrete command sits on the delay axis, by phase. We only have the
+ * item's phase here (`InFlightListItem` has dropped the reach/reply geometry
+ * `ControlDelayStream` gets), so phase is the honest proxy for "how far through
+ * its journey": outgoing in the first leg, awaiting-reply in the echo leg,
+ * due/overdue/lost near or past the 2T confirmation boundary. A per-index nudge
+ * keeps same-phase blips from stacking exactly.
+ */
+const PHASE_X: Record<InFlightListItem["phase"], number> = {
+  "in-transit": 22,
+  "awaiting-reply": 50,
+  due: 67,
+  overdue: 84,
+  lost: 94,
+};
+
+function InFlightRailStrip({
+  items,
+  ariaLabel,
+}: {
+  items: InFlightListItem[];
+  ariaLabel: string;
+}) {
+  const summary = `${items.length} in flight`;
+  return (
+    <InFlightRailStrip__Svg
+      role="img"
+      aria-label={`${ariaLabel}: ${summary}`}
+      viewBox={`0 0 ${RAIL_VB_W} ${RAIL_VB_H}`}
+      preserveAspectRatio="none"
+    >
+      {/* Baseline + the two 3T zone dividers, barely-there texture (v3: 35% of
+          the border ink) rather than chrome. */}
+      <line
+        data-role="baseline"
+        x1="1"
+        x2={RAIL_VB_W - 1}
+        y1={RAIL_BASE_Y}
+        y2={RAIL_BASE_Y}
+        stroke="var(--color-border-subtle)"
+        strokeWidth="0.4"
+        strokeOpacity="0.35"
+      />
+      <line
+        data-divider="t"
+        x1={RAIL_VB_W / 3}
+        x2={RAIL_VB_W / 3}
+        y1="3"
+        y2={RAIL_VB_H - 3}
+        stroke="var(--color-border-subtle)"
+        strokeWidth="0.4"
+        strokeOpacity="0.35"
+      />
+      <line
+        data-divider="2t"
+        x1={(RAIL_VB_W * 2) / 3}
+        x2={(RAIL_VB_W * 2) / 3}
+        y1="3"
+        y2={RAIL_VB_H - 3}
+        stroke="var(--color-border-subtle)"
+        strokeWidth="0.4"
+        strokeOpacity="0.35"
+      />
+      {items.map((item, i) => {
+        const isError = ERROR_PHASES.has(item.phase);
+        const nudge = (i % 3) * 3 - 3;
+        const cx = Math.max(
+          2,
+          Math.min(RAIL_VB_W - 2, PHASE_X[item.phase] + nudge),
+        );
+        const colour = isError
+          ? "var(--color-status-warning-bg)"
+          : "var(--color-accent-fg)";
+        return (
+          <g key={item.id} data-role="blip" data-phase={item.phase}>
+            {/* Soft glow patch (v3 alpha 0.18), then the crisp blip. */}
+            <circle
+              cx={cx}
+              cy={RAIL_BASE_Y}
+              r="3"
+              fill={colour}
+              fillOpacity="0.18"
+            />
+            <circle
+              data-role="blip-core"
+              cx={cx}
+              cy={RAIL_BASE_Y}
+              r={isError ? 1.6 : 1.3}
+              fill={colour}
+            />
+          </g>
+        );
+      })}
+    </InFlightRailStrip__Svg>
   );
 }
 
@@ -276,6 +398,12 @@ function InFlightRow({
     </InFlightList__Row>
   );
 }
+
+const InFlightRailStrip__Svg = styled.svg`
+  display: block;
+  width: 100%;
+  height: 16px;
+`;
 
 const InFlightList__Root = styled.div<{ $row: boolean }>`
   flex: 0 0 auto;

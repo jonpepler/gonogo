@@ -74,7 +74,7 @@ export function PanelDelayRail() {
   return (
     <PanelDelayRail__Strip data-panel-rail="" ref={railRef}>
       {visible.map((h) => (
-        <CommandDelay key={h.id} handle={h} />
+        <CommandDelay key={h.id} handle={h} variant="rail" />
       ))}
     </PanelDelayRail__Strip>
   );

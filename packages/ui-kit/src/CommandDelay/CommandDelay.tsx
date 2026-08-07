@@ -82,6 +82,14 @@ export interface CommandDelayProps {
   mode?: InFlightListMode;
   density?: InFlightListDensity;
   orientation?: "column" | "row";
+  /**
+   * `"inline"` (default) is the in-body rendering an inline `<CommandDelay>`
+   * consumer gets (the monospace `InFlightList`, the 40px `ControlDelayStream`).
+   * `"rail"` is the v3 16px strip the Panel-owned rail passes, forwarded to
+   * whichever child branch renders. Kept a prop, not hardcoded, so a widget
+   * that renders `<CommandDelay>` inline in its own body is unaffected.
+   */
+  variant?: "inline" | "rail";
 }
 
 /**
@@ -105,6 +113,7 @@ export function CommandDelay({
   mode,
   density,
   orientation,
+  variant = "inline",
 }: Readonly<CommandDelayProps>) {
   const all = handles ?? (handle ? [handle] : []);
 
@@ -128,7 +137,7 @@ export function CommandDelay({
       <ControlDelayStream
         streams={streamHandle.streams ?? []}
         ariaLabel={ariaLabel}
-        variant="rail"
+        variant={variant}
       />
     );
   }
@@ -149,6 +158,7 @@ export function CommandDelay({
       mode={mode}
       density={density}
       orientation={orientation}
+      variant={variant}
     />
   );
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Render the Panel delay rail (`Panel.Delay`) at a set of hand-built handle
- * scenarios to PNGs under `local_docs/renders/delay-rail/`. Exists because the
+ * scenarios to PNGs under `local_docs/renders/delay-ux-v3/`. Exists because the
  * dashboard visual-gate probe does not mount `DelayRailProvider`, so the rail
  * is invisible in CI; this driver + `delay-rail-probe/` close that gap. Model
  * copied from `render-alarm-banner.ts` (same esbuild -> injected HTML ->
@@ -18,7 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const PROBE_DIR = resolve(HERE, "delay-rail-probe");
 const PROBE_ENTRY = join(PROBE_DIR, "delay-rail-probe-entry.tsx");
 const PROBE_HTML_TEMPLATE = join(PROBE_DIR, "delay-rail-probe.html");
-const OUT_DIR = resolve(HERE, "../../../local_docs/renders/delay-rail");
+const OUT_DIR = resolve(HERE, "../../../local_docs/renders/delay-ux-v3");
 const THEME_TOKENS_CSS = resolve(HERE, "../../theme/src/tokens.css");
 
 const VIEWPORT_W = 380;
@@ -55,6 +55,50 @@ const SCENARIOS: ReadonlyArray<{
       ],
       shape: "discrete",
       effectiveDelaySeconds: 6,
+    },
+  },
+  {
+    name: "04-continuous-stream-in-flight",
+    panelTitle: "NAVBALL",
+    // A fly-by-wire axis in flight: exercises the v3 ControlDelayStream at the
+    // 16px rail size (variant="rail"), subtle 0.10 -> 0.40 confidence ramp, no
+    // area fill. Two axes on one graph, one diverging in the confirmed zone.
+    handle: {
+      inFlight: [],
+      shape: "stream",
+      effectiveDelaySeconds: 1.6,
+      streams: [
+        {
+          id: "vessel.control.throttle",
+          label: "Throttle",
+          oneWaySeconds: 1.6,
+          inTransit: [
+            { age: 0, value: 0.5 },
+            { age: 2.4, value: 0.62 },
+            { age: 4.8, value: 0.62 },
+          ],
+          echo: [
+            { age: 3.2, value: 0.6 },
+            { age: 4.0, value: 0.6 },
+          ],
+          current: 0.5,
+        },
+        {
+          id: "vessel.control.pitch",
+          label: "Pitch",
+          oneWaySeconds: 1.6,
+          inTransit: [
+            { age: 0, value: 0.4 },
+            { age: 2.4, value: 0.45 },
+            { age: 4.8, value: 0.45 },
+          ],
+          echo: [
+            { age: 3.2, value: 0.45 },
+            { age: 4.0, value: 0.72 },
+          ],
+          current: 0.4,
+        },
+      ],
     },
   },
   {

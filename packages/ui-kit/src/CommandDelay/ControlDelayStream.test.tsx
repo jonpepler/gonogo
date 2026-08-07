@@ -171,6 +171,42 @@ describe("ControlDelayStream", () => {
     );
   });
 
+  it("uses the v3 subtle confidence ramp (0.10 -> 0.40 alpha, was 0.30 -> 0.95)", () => {
+    const { container } = render(<ControlDelayStream streams={[stream()]} />);
+    const gradient = container.querySelector("linearGradient");
+    const stops = Array.from(gradient?.querySelectorAll("stop") ?? []);
+    const opacities = stops.map((s) => Number(s.getAttribute("stop-opacity")));
+    expect(opacities[0]).toBe(0.1);
+    expect(opacities[opacities.length - 1]).toBe(0.4);
+  });
+
+  it("draws no area fill under the commanded path (v3 drops all area fills)", () => {
+    const { container } = render(<ControlDelayStream streams={[stream()]} />);
+    // The old area fill was the only <path> with a real fill; every stroke path
+    // sets fill="none". v3 removes it, so nothing is filled.
+    const filled = Array.from(container.querySelectorAll("path")).filter(
+      (p) => (p.getAttribute("fill") ?? "none") !== "none",
+    );
+    expect(filled).toHaveLength(0);
+  });
+
+  it('renders at the 16px rail size under variant="rail", 40px inline by default', () => {
+    const { container: rail } = render(
+      <ControlDelayStream streams={[stream()]} variant="rail" />,
+    );
+    const { container: inline } = render(
+      <ControlDelayStream streams={[stream()]} />,
+    );
+    expect(rail.querySelector("[data-variant]")).toHaveAttribute(
+      "data-variant",
+      "rail",
+    );
+    expect(inline.querySelector("[data-variant]")).toHaveAttribute(
+      "data-variant",
+      "inline",
+    );
+  });
+
   it("has no axe violations", async () => {
     const { container } = render(<ControlDelayStream streams={[stream()]} />);
     expect(await axe(container)).toHaveNoViolations();

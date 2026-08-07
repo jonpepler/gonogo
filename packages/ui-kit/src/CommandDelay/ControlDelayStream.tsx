@@ -32,6 +32,12 @@ export interface ControlDelayStreamProps {
   streams: ControlStreamDatum[];
   /** Accessible label for the graph. Defaults to "Controls in flight". */
   ariaLabel?: string;
+  /**
+   * `"inline"` (default, 40px) keeps the in-widget Navball rendering at its
+   * current size; `"rail"` (16px) is the v3 drag-bar-strip rendering the
+   * Panel-owned rail passes through `<CommandDelay>`.
+   */
+  variant?: "inline" | "rail";
 }
 
 /** Local redeclaration of the model's floor (ui-kit imports nothing from sitrep-client). */
@@ -110,11 +116,6 @@ function StreamPaths({
   }));
   if (cmd.length === 0) return null;
 
-  const areaPath =
-    polyline(cmd) +
-    ` L${cmd[cmd.length - 1].x.toFixed(2)},${(PAD_T + PLOT_H).toFixed(2)}` +
-    ` L${cmd[0].x.toFixed(2)},${(PAD_T + PLOT_H).toFixed(2)} Z`;
-
   const echoPts = stream.echo.map((s) => ({
     x: xAt(s.age, span),
     y: yAt(s.value),
@@ -145,14 +146,15 @@ function StreamPaths({
   return (
     <g>
       <defs>
-        {/* Confidence ramp: muted left (least known) -> clear right (confirmed). */}
+        {/* Confidence ramp: muted left (least known) -> clear right (confirmed).
+            v3 alpha budget 0.10 -> 0.40 (v2 was 0.30 -> 0.95): the rail is
+            roughly a third of v2's ink, so a widget in flight reads as texture,
+            not chrome. No area fill under the line (v3 drops all area fills). */}
         <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor={colour} stopOpacity="0.30" />
-          <stop offset="0.5" stopColor={colour} stopOpacity="0.55" />
-          <stop offset="1" stopColor={colour} stopOpacity="0.95" />
+          <stop offset="0" stopColor={colour} stopOpacity="0.10" />
+          <stop offset="1" stopColor={colour} stopOpacity="0.40" />
         </linearGradient>
       </defs>
-      <path d={areaPath} fill={colour} fillOpacity="0.10" stroke="none" />
       <path
         data-role="commanded"
         data-stream={stream.id}
@@ -205,15 +207,18 @@ function StreamPaths({
  * The continuous sibling of `InFlightList`: one gentle three-zone sparkline for
  * ALL of a widget's control axes. now-left / age-right; outgoing -> echo ->
  * confirmed split by hairline dividers at the one-way delay boundaries (T, 2T);
- * a left-muted -> right-clear confidence ramp; soft area fills; deviation in the
- * confirmed zone as the expected path dashed in the stream colour plus the actual
- * path solid in the reserved orange warning token; zone + delay labels on hover
- * only. Renders `null` when the one-way delay is near zero, so a widget on a
- * direct link pays nothing. Props-only, no data hooks.
+ * a left-muted -> right-clear confidence ramp (v3 alpha 0.10 -> 0.40, no area
+ * fills); deviation in the confirmed zone as the expected path dashed in the
+ * stream colour plus the actual path solid in the reserved orange warning token;
+ * zone + delay labels on hover only. `variant="rail"` renders the 16px v3
+ * drag-bar strip; `"inline"` (default) keeps the 40px in-widget size. Renders
+ * `null` when the one-way delay is near zero, so a widget on a direct link pays
+ * nothing. Props-only, no data hooks.
  */
 export function ControlDelayStream({
   streams,
   ariaLabel = "Controls in flight",
+  variant = "inline",
 }: ControlDelayStreamProps) {
   const first = streams[0];
   const oneWay = first?.oneWaySeconds ?? null;
@@ -224,8 +229,13 @@ export function ControlDelayStream({
   const divX2 = xAt(2 * oneWay, span);
 
   return (
-    <ControlDelayStream__Root aria-label={ariaLabel} data-oneway={oneWay}>
+    <ControlDelayStream__Root
+      aria-label={ariaLabel}
+      data-oneway={oneWay}
+      data-variant={variant}
+    >
       <ControlDelayStream__Svg
+        $variant={variant}
         role="img"
         aria-label={ariaLabel}
         viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -298,10 +308,10 @@ const ControlDelayStream__Root = styled.div`
   width: 100%;
 `;
 
-const ControlDelayStream__Svg = styled.svg`
+const ControlDelayStream__Svg = styled.svg<{ $variant: "inline" | "rail" }>`
   display: block;
   width: 100%;
-  height: 40px;
+  height: ${({ $variant }) => ($variant === "rail" ? "16px" : "40px")};
 
   [data-role="hover-labels"] {
     opacity: 0;

@@ -70,6 +70,20 @@ describe("CommandDelay", () => {
     ).toBeInTheDocument();
   });
 
+  it('renders the stream at the 16px rail size (passes variant="rail")', () => {
+    const handle: CommandDelayHandle = {
+      inFlight: [],
+      shape: "stream",
+      effectiveDelaySeconds: 1.6,
+      streams: [STREAM],
+    };
+    const { container } = render(<CommandDelay handle={handle} />);
+    expect(container.querySelector("[data-variant]")).toHaveAttribute(
+      "data-variant",
+      "rail",
+    );
+  });
+
   it("merges the in-flight rows of several discrete handles into one list", () => {
     const handles: CommandDelayHandle[] = [
       {

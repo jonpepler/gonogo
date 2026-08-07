@@ -128,6 +128,7 @@ export function CommandDelay({
       <ControlDelayStream
         streams={streamHandle.streams ?? []}
         ariaLabel={ariaLabel}
+        variant="rail"
       />
     );
   }

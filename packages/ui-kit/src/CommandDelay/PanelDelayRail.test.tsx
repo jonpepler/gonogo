@@ -1,4 +1,5 @@
-import { act, render } from "@ksp-gonogo/test-utils";
+import { act, render, screen } from "@ksp-gonogo/test-utils";
+import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
@@ -173,6 +174,77 @@ describe("PanelDelayRail", () => {
     expect(
       targetOf(container).style.getPropertyValue("--panel-rail-height"),
     ).toBe("48px");
+  });
+
+  describe("tap-to-pin blur float (v3)", () => {
+    function railButton(): HTMLButtonElement {
+      return screen.getByRole("button", {
+        name: /signal-delay detail/i,
+      }) as HTMLButtonElement;
+    }
+
+    it("exposes the strip as a button, collapsed by default (aria-pressed/expanded false, float inert)", () => {
+      const store = createDelayRailStore();
+      store.register(handle("cmd"));
+      const { container } = inPanel(<PanelDelayRail />, store);
+      const btn = railButton();
+      expect(btn).toHaveAttribute("aria-pressed", "false");
+      expect(btn).toHaveAttribute("aria-expanded", "false");
+      const float = container.querySelector(
+        "[data-delay-float]",
+      ) as HTMLElement;
+      expect(float).not.toBeNull();
+      // aria-controls ties the strip to the float region.
+      expect(btn.getAttribute("aria-controls")).toBe(float.id);
+      // Closed float is inert, so its controls never ghost into the tab order.
+      expect(float).toHaveAttribute("inert");
+    });
+
+    it("pins open on activation and unpins on Escape, returning focus to the strip", async () => {
+      const user = userEvent.setup();
+      const store = createDelayRailStore();
+      store.register(handle("cmd"));
+      const { container } = inPanel(<PanelDelayRail />, store);
+      const btn = railButton();
+      const float = container.querySelector(
+        "[data-delay-float]",
+      ) as HTMLElement;
+
+      await user.click(btn);
+      expect(btn).toHaveAttribute("aria-pressed", "true");
+      expect(btn).toHaveAttribute("aria-expanded", "true");
+      expect(float).not.toHaveAttribute("inert");
+
+      await user.keyboard("{Escape}");
+      expect(btn).toHaveAttribute("aria-pressed", "false");
+      expect(btn).toHaveAttribute("aria-expanded", "false");
+      expect(float).toHaveAttribute("inert");
+      expect(btn).toHaveFocus();
+    });
+
+    it("unpins from the float's close button, returning focus to the strip", async () => {
+      const user = userEvent.setup();
+      const store = createDelayRailStore();
+      store.register(handle("cmd"));
+      inPanel(<PanelDelayRail />, store);
+      const btn = railButton();
+      await user.click(btn);
+      const close = screen.getByRole("button", {
+        name: /close signal-delay detail/i,
+      });
+      await user.click(close);
+      expect(btn).toHaveAttribute("aria-pressed", "false");
+      expect(btn).toHaveFocus();
+    });
+
+    it("has no axe violations while pinned open", async () => {
+      const user = userEvent.setup();
+      const store = createDelayRailStore();
+      store.register(handle("cmd"));
+      const { container } = inPanel(<PanelDelayRail />, store);
+      await user.click(railButton());
+      expect(await axe(container)).toHaveNoViolations();
+    });
   });
 
   it("drops --panel-rail-height back to the 0px fallback when the last command completes", () => {

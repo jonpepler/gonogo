@@ -211,6 +211,20 @@ async function main(): Promise<void> {
       const outName = `${scenario.name}.png`;
       await page.screenshot({ path: join(OUT_DIR, outName), fullPage: false });
       console.log(`  ${outName}`);
+
+      // Where a rail exists, also click it to pin the detail float open and
+      // capture that (the collapsed strip alone does not show the v3 float).
+      const railBtn = await page.$("[data-panel-rail]");
+      if (railBtn) {
+        await railBtn.click();
+        await page.waitForTimeout(200);
+        const pinnedName = `${scenario.name}-pinned.png`;
+        await page.screenshot({
+          path: join(OUT_DIR, pinnedName),
+          fullPage: false,
+        });
+        console.log(`  ${pinnedName}`);
+      }
     }
     console.log(`\nRendered ${SCENARIOS.length} delay-rail shots → ${OUT_DIR}`);
   } finally {

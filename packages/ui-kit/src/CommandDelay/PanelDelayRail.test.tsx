@@ -176,6 +176,38 @@ describe("PanelDelayRail", () => {
     ).toBe("48px");
   });
 
+  it("reserves the pinned height for a stream rail (title fixed), not for a discrete rail", () => {
+    const streamStore = createDelayRailStore();
+    streamStore.register({
+      id: "s",
+      inFlight: [],
+      shape: "stream",
+      effectiveDelaySeconds: 1.6,
+      streams: [
+        {
+          id: "throttle",
+          label: "Throttle",
+          oneWaySeconds: 1.6,
+          inTransit: [{ age: 0, value: 0.5 }],
+          echo: [],
+          current: 0.5,
+        },
+      ],
+    });
+    const { container: streamC } = inPanel(<PanelDelayRail />, streamStore);
+    expect(streamC.querySelector("[data-panel-rail]")).toHaveAttribute(
+      "data-reserve",
+      "stream",
+    );
+
+    const discreteStore = createDelayRailStore();
+    discreteStore.register(handle("d"));
+    const { container: discreteC } = inPanel(<PanelDelayRail />, discreteStore);
+    expect(discreteC.querySelector("[data-panel-rail]")).not.toHaveAttribute(
+      "data-reserve",
+    );
+  });
+
   describe("pin-to-grow (v4)", () => {
     function railButton(): HTMLButtonElement {
       return screen.getByRole("button", {

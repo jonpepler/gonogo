@@ -79,12 +79,20 @@ export function PanelDelayRail() {
     ...visible.filter((h) => h.shape !== "stream"),
   ];
 
+  // A stream rail RESERVES its pinned height in the collapsed band (operator's
+  // stream-#1 decision): the band is sized for the pinned stream and stays that
+  // height whether collapsed or pinned, so pinning fills reserved space and the
+  // widget title never moves. Discrete-only rails keep the collapse -> grow
+  // model (their fixed-height tile row does not move the title anyway).
+  const hasStream = visible.some((h) => h.shape === "stream");
+
   return (
     <PanelDelayRail__Rail
       type="button"
       data-panel-rail=""
       ref={railRef}
       data-pinned={pinned}
+      data-reserve={hasStream ? "stream" : undefined}
       aria-pressed={pinned}
       aria-expanded={pinned}
       aria-label={
@@ -183,5 +191,17 @@ const PanelDelayRail__Rail = styled.button`
     & > * {
       grid-area: auto;
     }
+  }
+
+  /* Stream rail: RESERVE the pinned height in the collapsed band (operator's
+     stream-#1 decision). The band is a fixed height sized for the pinned stream
+     in BOTH states, so pinning fills reserved space instead of growing the rail,
+     and the widget title never moves. Collapsed shows the mini stream grazing
+     the top with reserved space below; pinned fills it with the full graph. The
+     price (accepted) is a taller, emptier collapsed stream rail. */
+  &[data-reserve="stream"],
+  &[data-reserve="stream"][data-pinned="true"] {
+    min-height: var(--rail-stream-reserve, 150px);
+    max-height: var(--rail-stream-reserve, 150px);
   }
 `;

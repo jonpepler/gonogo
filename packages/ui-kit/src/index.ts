@@ -280,6 +280,7 @@ export {
   StatusPill,
 } from "./Readout";
 export { Row, RowName, type RowProps } from "./Row";
+export { resourceColor } from "./resourceColor";
 export { Section, type SectionProps, SectionTitle } from "./Section";
 export {
   SelectableRow,

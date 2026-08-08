@@ -13,8 +13,16 @@ export interface MeterProps
   label: string;
   /** Fill fraction, 0..1. Clamped; non-finite renders empty. */
   value: number;
-  /** Semantic colour of the fill. */
+  /** Semantic colour of the fill. Ignored when `fillColor` is set. */
   tone?: MeterTone;
+  /**
+   * Arbitrary CSS colour for the fill (e.g. `resourceColor(name)`), for
+   * meters whose fill carries an IDENTITY rather than a status (a resource
+   * kind, not "how is it doing"). Wins over `tone` for the fill colour only;
+   * `tone` still exists for the status-driven cases (dose, reliability,
+   * generic health bars) and is unaffected when this prop is absent.
+   */
+  fillColor?: string;
   /** Text shown on the right of the header (e.g. "5.0 rad/h"). Defaults to a percentage. */
   valueLabel?: string;
   size?: MeterSize;
@@ -33,6 +41,7 @@ export function Meter({
   label,
   value,
   tone = "neutral",
+  fillColor,
   valueLabel,
   size = "md",
   ...rest
@@ -66,7 +75,11 @@ export function Meter({
         aria-valuemax={100}
         aria-valuetext={spoken}
       >
-        <Meter__Fill $tone={tone} style={{ width: `${pct}%` }} />
+        <Meter__Fill
+          $tone={tone}
+          $fillColor={fillColor}
+          style={{ width: `${pct}%` }}
+        />
       </Meter__Track>
     </Meter__Root>
   );
@@ -154,11 +167,19 @@ const Meter__Track = styled.div<{ $size: MeterSize }>`
   ${({ $size }) => SIZE_TRACK[$size]}
 `;
 
-const Meter__Fill = styled.div<{ $tone: MeterTone }>`
+const Meter__Fill = styled.div<{ $tone: MeterTone; $fillColor?: string }>`
   height: 100%;
   border-radius: var(--radius-pill);
   transition: width var(--duration-slow) var(--ease-standard);
-  ${({ $tone }) => TONE_FILL[$tone]}
+  /* $fillColor wins outright when set: an identity fill (a resource's own
+     colour) isn't "one of five tones", it's a fully arbitrary CSS colour,
+     so this is a straight override rather than another TONE_FILL entry. */
+  ${({ $tone, $fillColor }) =>
+    $fillColor
+      ? css`
+          background: ${$fillColor};
+        `
+      : TONE_FILL[$tone]}
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;

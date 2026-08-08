@@ -27,107 +27,150 @@ const VIEWPORT_H = 360;
 // Hand-built CommandDelayHandle scenarios. Plain data (no spine), the same
 // shape `useCommand(...)` returns, so the rail draws exactly as it would for a
 // real in-flight command.
+const THROTTLE_STREAM = {
+  id: "vessel.control.throttle",
+  label: "Throttle",
+  oneWaySeconds: 1.6,
+  inTransit: [
+    { age: 0, value: 0.5 },
+    { age: 2.4, value: 0.62 },
+    { age: 4.8, value: 0.62 },
+  ],
+  echo: [
+    { age: 3.2, value: 0.6 },
+    { age: 4.0, value: 0.6 },
+  ],
+  current: 0.5,
+};
+const PITCH_STREAM = {
+  id: "vessel.control.pitch",
+  label: "Pitch",
+  oneWaySeconds: 1.6,
+  inTransit: [
+    { age: 0, value: 0.4 },
+    { age: 2.4, value: 0.45 },
+    { age: 4.8, value: 0.45 },
+  ],
+  echo: [
+    { age: 3.2, value: 0.45 },
+    { age: 4.0, value: 0.72 },
+  ],
+  current: 0.4,
+};
+
 const SCENARIOS: ReadonlyArray<{
   name: string;
   panelTitle: string;
-  handle: unknown;
+  handles: unknown[];
 }> = [
   {
     name: "01-resting-empty-queue",
     panelTitle: "NAVBALL",
     // Delay set but nothing in flight: the rail renders null (no motion when
     // the queue is empty). This is the resting baseline.
-    handle: { inFlight: [], shape: "discrete", effectiveDelaySeconds: 6 },
+    handles: [{ inFlight: [], shape: "discrete", effectiveDelaySeconds: 6 }],
   },
   {
     name: "02-discrete-single-in-flight",
     panelTitle: "TARGET",
-    handle: {
-      inFlight: [
-        {
-          id: "c0",
-          label: "Set target",
-          command: "vessel.target.set",
-          reachEtaSeconds: 2,
-          replyEtaSeconds: 8,
-          predictedPhase: "in-transit",
-        },
-      ],
-      shape: "discrete",
-      effectiveDelaySeconds: 6,
-    },
+    handles: [
+      {
+        inFlight: [
+          {
+            id: "c0",
+            label: "Set target",
+            command: "vessel.target.set",
+            reachEtaSeconds: 2,
+            replyEtaSeconds: 8,
+            predictedPhase: "in-transit",
+          },
+        ],
+        shape: "discrete",
+        effectiveDelaySeconds: 6,
+      },
+    ],
   },
   {
     name: "04-continuous-stream-in-flight",
     panelTitle: "NAVBALL",
-    // A fly-by-wire axis in flight: exercises the v3 ControlDelayStream at the
-    // 16px rail size (variant="rail"), subtle 0.10 -> 0.40 confidence ramp, no
-    // area fill. Two axes on one graph, one diverging in the confirmed zone.
-    handle: {
-      inFlight: [],
-      shape: "stream",
-      effectiveDelaySeconds: 1.6,
-      streams: [
-        {
-          id: "vessel.control.throttle",
-          label: "Throttle",
-          oneWaySeconds: 1.6,
-          inTransit: [
-            { age: 0, value: 0.5 },
-            { age: 2.4, value: 0.62 },
-            { age: 4.8, value: 0.62 },
-          ],
-          echo: [
-            { age: 3.2, value: 0.6 },
-            { age: 4.0, value: 0.6 },
-          ],
-          current: 0.5,
-        },
-        {
-          id: "vessel.control.pitch",
-          label: "Pitch",
-          oneWaySeconds: 1.6,
-          inTransit: [
-            { age: 0, value: 0.4 },
-            { age: 2.4, value: 0.45 },
-            { age: 4.8, value: 0.45 },
-          ],
-          echo: [
-            { age: 3.2, value: 0.45 },
-            { age: 4.0, value: 0.72 },
-          ],
-          current: 0.4,
-        },
-      ],
-    },
+    // A fly-by-wire axis in flight: the v3 ControlDelayStream at the 16px rail
+    // size (mini, no labels), grown to full graph + labels when pinned. Two
+    // axes on one graph, one diverging in the confirmed zone.
+    handles: [
+      {
+        inFlight: [],
+        shape: "stream",
+        effectiveDelaySeconds: 1.6,
+        streams: [THROTTLE_STREAM, PITCH_STREAM],
+      },
+    ],
   },
   {
     name: "03-discrete-multiple-in-flight",
     panelTitle: "NAVBALL",
-    // Two handles worth of commands: shows the current rail's per-handle
-    // stacking (each renders its own InFlightList box, not one merged list).
-    handle: {
-      inFlight: [
-        {
-          id: "c1",
-          label: "SAS Prograde",
-          command: "vessel.control.setSasMode",
-          reachEtaSeconds: -2,
-          replyEtaSeconds: 4,
-          predictedPhase: "in-transit",
-        },
-        {
-          id: "c2",
-          label: "RCS on",
-          command: "vessel.control.setRcs",
-          reachEtaSeconds: 5,
-          replyEtaSeconds: 11,
-          predictedPhase: "awaiting-reply",
-        },
-      ],
-      shape: "discrete",
-      effectiveDelaySeconds: 3,
-    },
+    // Several discrete commands: their grazing glows sit at their own progress
+    // positions along the top edge collapsed, and stack as a list when grown.
+    handles: [
+      {
+        inFlight: [
+          {
+            id: "c1",
+            label: "SAS Prograde",
+            command: "vessel.control.setSasMode",
+            reachEtaSeconds: -2,
+            replyEtaSeconds: 4,
+            predictedPhase: "in-transit",
+          },
+          {
+            id: "c2",
+            label: "RCS on",
+            command: "vessel.control.setRcs",
+            reachEtaSeconds: 5,
+            replyEtaSeconds: 11,
+            predictedPhase: "awaiting-reply",
+          },
+        ],
+        shape: "discrete",
+        effectiveDelaySeconds: 3,
+      },
+    ],
+  },
+  {
+    name: "05-combined-discrete-and-stream",
+    panelTitle: "NAVBALL",
+    // Both kinds in flight at once: a discrete handle (two commands) AND a
+    // stream handle. Collapsed, the grazing glows and the mini sparkline share
+    // the one 16px band; grown, they stack as list + full graph.
+    handles: [
+      {
+        inFlight: [
+          {
+            id: "d1",
+            label: "SAS Prograde",
+            command: "vessel.control.setSasMode",
+            reachEtaSeconds: -3,
+            replyEtaSeconds: 3,
+            predictedPhase: "awaiting-reply",
+          },
+          {
+            id: "d2",
+            label: "Stage",
+            command: "vessel.staging.activate",
+            reachEtaSeconds: 4,
+            replyEtaSeconds: 10,
+            predictedPhase: "in-transit",
+          },
+        ],
+        shape: "discrete",
+        effectiveDelaySeconds: 3,
+      },
+      {
+        inFlight: [],
+        shape: "stream",
+        effectiveDelaySeconds: 1.6,
+        streams: [THROTTLE_STREAM],
+      },
+    ],
   },
 ];
 
@@ -202,7 +245,7 @@ async function main(): Promise<void> {
             }
           ).__renderDelayRail(payload),
         {
-          handle: scenario.handle,
+          handles: scenario.handles,
           panelTitle: scenario.panelTitle,
           pxW: VIEWPORT_W,
           pxH: VIEWPORT_H,

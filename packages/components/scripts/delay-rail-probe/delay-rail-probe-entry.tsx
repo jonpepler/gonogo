@@ -20,8 +20,10 @@ import {
 import { createRoot, type Root } from "react-dom/client";
 
 interface DelayRailProbePayload {
-  /** The command handle the widget body contributes to the rail. */
-  handle: CommandDelayHandle;
+  /** The command handles the widget body contributes to the rail (one per
+   *  in-flight command; a combined scenario passes both a discrete and a stream
+   *  handle). */
+  handles: CommandDelayHandle[];
   /** Panel title, so the rail is shown in real header context. */
   panelTitle: string;
   pxW: number;
@@ -31,37 +33,42 @@ interface DelayRailProbePayload {
 let activeRoot: Root | null = null;
 
 /**
- * A command widget's body: hands its delay handle to the rail via
- * `usePanelDelay`, the same way a real widget hands `useCommand(...)`'s handle
- * across. No explicit prop to the rail.
+ * Registers one delay handle with the rail via `usePanelDelay` (one per
+ * in-flight command, the same way a real widget hands `useCommand(...)`'s handle
+ * across). One component per handle so the hook is called once each, never in a
+ * loop. Renders nothing itself.
  */
-function CommandBody({ handle }: { handle: CommandDelayHandle }) {
+function HandleRegistrar({ handle }: { handle: CommandDelayHandle }) {
   usePanelDelay(handle);
-  return (
-    <div
-      style={{
-        padding: "var(--space-8, 8px)",
-        minHeight: 140,
-        color: "var(--color-text-muted)",
-        fontSize: "var(--font-size-sm)",
-      }}
-    >
-      widget body
-    </div>
-  );
+  return null;
 }
 
 function Harness({
-  handle,
+  handles,
   panelTitle,
 }: {
-  handle: CommandDelayHandle;
+  handles: CommandDelayHandle[];
   panelTitle: string;
 }) {
   return (
     <DelayRailProvider>
       <Panel panelTitle={panelTitle}>
-        <CommandBody handle={handle} />
+        {handles.map((h) => (
+          <HandleRegistrar
+            key={`${h.shape}:${h.inFlight[0]?.id ?? h.streams?.[0]?.id ?? "x"}`}
+            handle={h}
+          />
+        ))}
+        <div
+          style={{
+            padding: "var(--space-8, 8px)",
+            minHeight: 140,
+            color: "var(--color-text-muted)",
+            fontSize: "var(--font-size-sm)",
+          }}
+        >
+          widget body
+        </div>
       </Panel>
     </DelayRailProvider>
   );
@@ -80,7 +87,7 @@ async function renderDelayRail(payload: DelayRailProbePayload): Promise<void> {
   root.innerHTML = "";
   activeRoot = createRoot(root);
   activeRoot.render(
-    <Harness handle={payload.handle} panelTitle={payload.panelTitle} />,
+    <Harness handles={payload.handles} panelTitle={payload.panelTitle} />,
   );
   // Settle past a raf or two so the rail measures its height and any
   // canvas indicators paint before the screenshot.

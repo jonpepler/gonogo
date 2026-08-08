@@ -176,68 +176,61 @@ describe("PanelDelayRail", () => {
     ).toBe("48px");
   });
 
-  describe("tap-to-pin blur float (v3)", () => {
+  describe("pin-to-grow (v4)", () => {
     function railButton(): HTMLButtonElement {
       return screen.getByRole("button", {
         name: /signal-delay detail/i,
       }) as HTMLButtonElement;
     }
 
-    it("exposes the strip as a button, collapsed by default (aria-pressed/expanded false, float inert)", () => {
+    it("is a button, collapsed by default (aria-pressed/expanded false), showing the rail summary not the detail list", () => {
       const store = createDelayRailStore();
       store.register(handle("cmd"));
       const { container } = inPanel(<PanelDelayRail />, store);
       const btn = railButton();
       expect(btn).toHaveAttribute("aria-pressed", "false");
       expect(btn).toHaveAttribute("aria-expanded", "false");
-      const float = container.querySelector(
-        "[data-delay-float]",
-      ) as HTMLElement;
-      expect(float).not.toBeNull();
-      // aria-controls ties the strip to the float region.
-      expect(btn.getAttribute("aria-controls")).toBe(float.id);
-      // Closed float is inert, so its controls never ghost into the tab order.
-      expect(float).toHaveAttribute("inert");
+      expect(btn).toHaveAttribute("data-pinned", "false");
+      // Collapsed = the grazing-glow summary, not the detail list.
+      expect(container.querySelector('[data-role="glow"]')).not.toBeNull();
+      expect(container.textContent).not.toContain("Launch");
     });
 
-    it("pins open on activation and unpins on Escape, returning focus to the strip", async () => {
+    it("pins on activation and grows the detail IN PLACE (the inline list), unpins on Escape", async () => {
       const user = userEvent.setup();
       const store = createDelayRailStore();
       store.register(handle("cmd"));
       const { container } = inPanel(<PanelDelayRail />, store);
       const btn = railButton();
-      const float = container.querySelector(
-        "[data-delay-float]",
-      ) as HTMLElement;
 
       await user.click(btn);
       expect(btn).toHaveAttribute("aria-pressed", "true");
       expect(btn).toHaveAttribute("aria-expanded", "true");
-      expect(float).not.toHaveAttribute("inert");
+      // Grown: the fuller inline detail renders in place (the summary glow is
+      // replaced by the list), inside the rail button, no separate overlay.
+      expect(container.querySelector('[data-role="glow"]')).toBeNull();
+      expect(container.textContent).toContain("Launch");
+      expect(container.querySelector("[data-delay-float]")).toBeNull();
 
       await user.keyboard("{Escape}");
       expect(btn).toHaveAttribute("aria-pressed", "false");
-      expect(btn).toHaveAttribute("aria-expanded", "false");
-      expect(float).toHaveAttribute("inert");
+      expect(container.querySelector('[data-role="glow"]')).not.toBeNull();
       expect(btn).toHaveFocus();
     });
 
-    it("unpins from the float's close button, returning focus to the strip", async () => {
+    it("re-activating collapses it again (toggle)", async () => {
       const user = userEvent.setup();
       const store = createDelayRailStore();
       store.register(handle("cmd"));
       inPanel(<PanelDelayRail />, store);
       const btn = railButton();
       await user.click(btn);
-      const close = screen.getByRole("button", {
-        name: /close signal-delay detail/i,
-      });
-      await user.click(close);
+      expect(btn).toHaveAttribute("aria-pressed", "true");
+      await user.click(btn);
       expect(btn).toHaveAttribute("aria-pressed", "false");
-      expect(btn).toHaveFocus();
     });
 
-    it("has no axe violations while pinned open", async () => {
+    it("has no axe violations while pinned/grown", async () => {
       const user = userEvent.setup();
       const store = createDelayRailStore();
       store.register(handle("cmd"));

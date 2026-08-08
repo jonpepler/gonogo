@@ -123,11 +123,11 @@ export {
   type InFlightCommandLike,
   toInFlightListItems,
 } from "./CommandDelay/toInFlightListItems";
-export { usePanelDelay } from "./CommandDelay/usePanelDelay";
 export {
   type CommandFailures,
   useCommandFailures,
 } from "./CommandDelay/useCommandFailures";
+export { usePanelDelay } from "./CommandDelay/usePanelDelay";
 export { Countdown, type CountdownProps } from "./Countdown";
 export { configEqual } from "./configEqual";
 export {

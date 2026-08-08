@@ -124,6 +124,10 @@ export {
   toInFlightListItems,
 } from "./CommandDelay/toInFlightListItems";
 export { usePanelDelay } from "./CommandDelay/usePanelDelay";
+export {
+  type CommandFailures,
+  useCommandFailures,
+} from "./CommandDelay/useCommandFailures";
 export { Countdown, type CountdownProps } from "./Countdown";
 export { configEqual } from "./configEqual";
 export {

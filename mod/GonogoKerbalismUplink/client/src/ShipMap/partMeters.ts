@@ -56,8 +56,8 @@ function partMeterTone(
     lowThreshold === undefined
       ? DEFAULT_LOW_THRESHOLD
       : mag(lowThreshold, DEFAULT_LOW_THRESHOLD);
-  // NOT "info": ui-kit's "info" tone resolves to `--color-status-info-bg`
-  // (#0d0d0d, near-black), effectively invisible as a filled meter bar
+  // NOT "info": ui-kit's "info" tone resolves to `--color-status-info-bg`,
+  // a near-black token value, effectively invisible as a filled meter bar
   // against the diagram's dark canvas (confirmed by eye against a real
   // render, `local_docs/renders/kerbalism-shipmap/`; see
   // `partMetersContribution.ts`'s own doc comment on the same finding).

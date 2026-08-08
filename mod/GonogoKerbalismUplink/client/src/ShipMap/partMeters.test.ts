@@ -109,8 +109,8 @@ describe("computeKerbalismPartMeters", () => {
   });
 
   it("tones a below-threshold reading warn, at-or-above neutral", () => {
-    // "neutral", not "info": `--color-status-info-bg` (#0d0d0d) is
-    // near-invisible as a filled meter bar against the diagram's dark
+    // "neutral", not "info": `--color-status-info-bg` (a near-black token
+    // value) is near-invisible as a filled meter bar against the diagram's dark
     // canvas, confirmed by eye against a real render (see
     // `partMeterTone`'s own doc comment).
     const low = computeKerbalismPartMeters(

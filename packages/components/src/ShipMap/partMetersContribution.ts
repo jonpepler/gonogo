@@ -33,8 +33,8 @@ const DRAINABLE_TONES: Record<string, MeterTone> = {
   // vocabulary than the old `resourceColor`'s five bespoke CSS-var picks
   // (accent/info/warning/warning/cyan). Mapped as closely as the shared
   // tone set allows, with ONE deliberate deviation: ui-kit's "info" tone
-  // resolves to `--color-status-info-bg` (#0d0d0d, near-black), a colour
-  // clearly meant for a tinted PANEL background, not a filled meter bar; a
+  // resolves to `--color-status-info-bg`, a near-black token value, clearly
+  // meant for a tinted PANEL background, not a filled meter bar; a
   // real render (`local_docs/renders/kerbalism-shipmap/`) confirmed it is
   // visually indistinguishable from the diagram's black canvas. "info" is
   // avoided entirely below rather than shipping an invisible bar; flagged

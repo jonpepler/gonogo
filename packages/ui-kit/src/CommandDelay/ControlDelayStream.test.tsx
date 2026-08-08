@@ -55,6 +55,20 @@ describe("ControlDelayStream", () => {
     );
   });
 
+  it("fades the section dividers with the under-line shading (top -> transparent stroke)", () => {
+    const { container } = render(<ControlDelayStream streams={[stream()]} />);
+    const divider = container.querySelector('[data-divider="t"]');
+    // The divider is stroked with the fade gradient, not a flat colour.
+    expect(divider?.getAttribute("stroke")).toMatch(/^url\(#cds-divfade-/);
+    const grad = container.querySelector('linearGradient[id^="cds-divfade-"]');
+    const opacities = Array.from(grad?.querySelectorAll("stop") ?? []).map(
+      (s) => Number(s.getAttribute("stop-opacity")),
+    );
+    // Fades downward: opaque at the top, gone at the bottom, like the shading.
+    expect(opacities[0]).toBeGreaterThan(0);
+    expect(opacities[opacities.length - 1]).toBe(0);
+  });
+
   it("draws the deviation branch when the echo diverges from the commanded path", () => {
     const diverged = stream({
       echo: [{ age: 3.2, value: 0.95 }],
@@ -173,7 +187,7 @@ describe("ControlDelayStream", () => {
 
   it("draws a confidence-ramp gradient from muted (left) to clear (right)", () => {
     const { container } = render(<ControlDelayStream streams={[stream()]} />);
-    const gradient = container.querySelector("linearGradient");
+    const gradient = container.querySelector('linearGradient[id^="cds-ramp-"]');
     expect(gradient).not.toBeNull();
 
     const stops = Array.from(gradient?.querySelectorAll("stop") ?? []);
@@ -199,7 +213,7 @@ describe("ControlDelayStream", () => {
 
   it("uses the v3 subtle confidence ramp (0.10 -> 0.40 alpha, was 0.30 -> 0.95)", () => {
     const { container } = render(<ControlDelayStream streams={[stream()]} />);
-    const gradient = container.querySelector("linearGradient");
+    const gradient = container.querySelector('linearGradient[id^="cds-ramp-"]');
     const stops = Array.from(gradient?.querySelectorAll("stop") ?? []);
     const opacities = stops.map((s) => Number(s.getAttribute("stop-opacity")));
     expect(opacities[0]).toBe(0.1);

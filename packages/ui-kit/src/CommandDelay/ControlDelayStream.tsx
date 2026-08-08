@@ -274,6 +274,9 @@ export function ControlDelayStream({
   ariaLabel = "Controls in flight",
   variant = "inline",
 }: ControlDelayStreamProps) {
+  // Before the early return (hooks run unconditionally): the divider-fade
+  // gradient id.
+  const dividerFadeId = `cds-divfade-${useId()}`;
   const first = streams[0];
   const oneWay = first?.oneWaySeconds ?? null;
   if (!first || oneWay === null || oneWay < MIN_DELAY_SECONDS) return null;
@@ -304,6 +307,30 @@ export function ControlDelayStream({
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="none"
       >
+        <defs>
+          {/* The dividers fade DOWN, matching the under-line shading (brightest
+              at the top, dissolving toward the baseline) so they read as part of
+              the same soft treatment rather than hard chrome. */}
+          <linearGradient
+            id={dividerFadeId}
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1={PAD_T}
+            x2="0"
+            y2={PAD_T + PLOT_H}
+          >
+            <stop
+              offset="0"
+              stopColor="var(--color-border-subtle)"
+              stopOpacity="0.9"
+            />
+            <stop
+              offset="1"
+              stopColor="var(--color-border-subtle)"
+              stopOpacity="0"
+            />
+          </linearGradient>
+        </defs>
         {streams.map((s, i) => (
           <StreamPaths
             key={s.id}
@@ -320,7 +347,7 @@ export function ControlDelayStream({
           x2={divX1}
           y1={PAD_T}
           y2={PAD_T + PLOT_H}
-          stroke="var(--color-border-subtle)"
+          stroke={`url(#${dividerFadeId})`}
           strokeWidth="0.4"
         />
         <line
@@ -329,7 +356,7 @@ export function ControlDelayStream({
           x2={divX2}
           y1={PAD_T}
           y2={PAD_T + PLOT_H}
-          stroke="var(--color-border-subtle)"
+          stroke={`url(#${dividerFadeId})`}
           strokeWidth="0.4"
         />
         {/* Hover-only zone + delay labels, INLINE variant only. The rail drops

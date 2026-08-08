@@ -1,5 +1,5 @@
 import type { PartStateModule } from "@ksp-gonogo/core";
-import type { MeterTone } from "@ksp-gonogo/ui-kit";
+import { resourceColor } from "@ksp-gonogo/ui-kit";
 import type React from "react";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
@@ -990,24 +990,18 @@ function renderPartShape(
 }
 
 /**
- * `MeterTone` -> CSS var, mirroring ui-kit `Meter`'s own private `TONE_FILL`
- * map (Meter.tsx) so a contributed part-meter bar paints with the exact same
- * hue a real `<Meter>` would use for that tone. Kept local rather than
- * imported: this is raw SVG `<rect>` painting, not the styled-components
- * tagged-template `Meter` itself renders with, there is no JSX component to
- * share here, only the colour vocabulary.
- *
- * There is no per-resource allowlist here any more (the old `DRAINABLE` Set
- * + `resourceColor` switch): which resource earns a bar on which part, and
- * what tone it gets, is entirely the contributing `ship-map.part-meters`
- * entry's own call (see `ShipMapPartMeterEntry.tone`'s doc comment).
+ * `ShipMapPartMeterEntry.status` -> a border/tint colour, deliberately NOT
+ * a fill hue (design doc: local_docs/design/2026-08-08-resource-colour-
+ * system.md, gonogo main repo). The fill itself is the resource's IDENTITY
+ * colour (`resourceColor(m.resource)` below); this is the SEPARATE status
+ * signal, painted as a stroke around the bar's track rather than blended
+ * into the fill, so "what resource is this" and "how is it doing" stay two
+ * independently legible things rather than one conflated hue, which is
+ * exactly what the old `MeterTone`-as-identity scheme did.
  */
-const METER_TONE_FILL: Record<MeterTone, string> = {
-  neutral: "var(--color-text-muted)",
-  go: "var(--color-status-go-bg)",
-  warn: "var(--color-status-warning-bg)",
-  nogo: "var(--color-status-nogo-bg)",
-  info: "var(--color-status-info-bg)",
+const STATUS_BORDER: Record<"low" | "critical", string> = {
+  low: "var(--color-status-warning-bg)",
+  critical: "var(--color-status-nogo-bg)",
 };
 
 function colorFor(type: PartType): string {
@@ -1071,6 +1065,10 @@ function renderResourceFill(
         const fillH = innerH * ratio;
         const barX = box.x + padX + i * (barW + gap);
         const barTop = box.y + padY + (innerH - fillH);
+        // Status is a border tint on the TRACK rect, never the fill hue:
+        // the fill below is always the resource's identity colour,
+        // regardless of level.
+        const statusBorder = m.status ? STATUS_BORDER[m.status] : undefined;
         return (
           <g key={m.resource}>
             <rect
@@ -1080,13 +1078,16 @@ function renderResourceFill(
               height={innerH}
               fill="var(--color-surface-raised)"
               opacity={0.35}
+              stroke={statusBorder}
+              strokeWidth={statusBorder ? 1 : 0}
+              strokeOpacity={0.9}
             />
             <rect
               x={barX}
               y={barTop}
               width={barW}
               height={fillH}
-              fill={METER_TONE_FILL[m.tone]}
+              fill={resourceColor(m.resource)}
               opacity={0.85}
             />
           </g>

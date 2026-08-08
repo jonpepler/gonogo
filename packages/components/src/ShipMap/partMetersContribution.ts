@@ -1,7 +1,6 @@
 import { CORE_UPLINK_CLIENT } from "@ksp-gonogo/core";
 import { buildResourcesByFlightId } from "@ksp-gonogo/data";
 import type { VesselParts } from "@ksp-gonogo/sitrep-sdk";
-import type { MeterTone } from "@ksp-gonogo/ui-kit";
 import type { ShipMapPartMeterEntry } from "./shipTopology";
 
 // ---------------------------------------------------------------------------
@@ -28,27 +27,47 @@ import type { ShipMapPartMeterEntry } from "./shipTopology";
 // duplicated.
 // ---------------------------------------------------------------------------
 
-const DRAINABLE_TONES: Record<string, MeterTone> = {
-  // MeterTone has five values (neutral/go/warn/nogo/info), a smaller
-  // vocabulary than the old `resourceColor`'s five bespoke CSS-var picks
-  // (accent/info/warning/warning/cyan). Mapped as closely as the shared
-  // tone set allows, with ONE deliberate deviation: ui-kit's "info" tone
-  // resolves to `--color-status-info-bg`, a near-black token value, clearly
-  // meant for a tinted PANEL background, not a filled meter bar; a
-  // real render (`local_docs/renders/kerbalism-shipmap/`) confirmed it is
-  // visually indistinguishable from the diagram's black canvas. "info" is
-  // avoided entirely below rather than shipping an invisible bar; flagged
-  // as a real ui-kit token bug for the operator (every OTHER `<Meter
-  // tone="info">` in the app likely renders the same way against a dark
-  // surface). SolidFuel and MonoPropellant already shared one colour
-  // (warning) before this change, so reusing "warn" for a third resource
-  // loses no distinction that existed.
-  LiquidFuel: "go",
-  Oxidizer: "neutral",
-  SolidFuel: "warn",
-  MonoPropellant: "warn",
-  XenonGas: "warn",
-};
+/**
+ * The five classic drainable propellants this contribution watches. Used
+ * to be a `Record<string, MeterTone>` that ALSO doubled as each resource's
+ * fill colour, five bespoke CSS-var picks standing in for "what is this
+ * resource" (see the design doc, `local_docs/design/2026-08-08-resource-
+ * colour-system.md`, for the full case against that conflation): a fixed
+ * per-resource tone with no reference at all to how full the tank actually
+ * was. The fill colour is now the resource's IDENTITY
+ * (`resourceColor(resource)`, derived by the renderer straight from
+ * `resource`, not carried on this entry at all), so this contribution only
+ * needs to name which resources earn a meter; `statusFor` below supplies
+ * the SEPARATE, level-driven status signal that tone used to stand in for.
+ */
+const DRAINABLE_RESOURCES = [
+  "LiquidFuel",
+  "Oxidizer",
+  "SolidFuel",
+  "MonoPropellant",
+  "XenonGas",
+] as const;
+
+/** Ratio thresholds for the built-in five's status signal (a border tint or
+ *  badge, never the fill hue): below this fraction of capacity the meter
+ *  reads "low", below `CRITICAL_THRESHOLD` it reads "critical". Mirrors the
+ *  Kerbalism contribution's own `DEFAULT_LOW_THRESHOLD` convention
+ *  (`mod/GonogoKerbalismUplink/client/src/ShipMap/partMeters.ts`), kept
+ *  local rather than shared: the two contributions live in different
+ *  packages with no shared "ShipMap contribution helpers" module yet. */
+const LOW_THRESHOLD = 0.15;
+const CRITICAL_THRESHOLD = 0.05;
+
+function statusFor(
+  amount: number,
+  capacity: number,
+): "low" | "critical" | null {
+  if (capacity <= 0) return null;
+  const ratio = amount / capacity;
+  if (ratio < CRITICAL_THRESHOLD) return "critical";
+  if (ratio < LOW_THRESHOLD) return "low";
+  return null;
+}
 
 /**
  * Pure core of the built-in contribution, exported so a test can call it
@@ -63,7 +82,7 @@ export function computeBuiltinPartMeters(
   const byFlightId = buildResourcesByFlightId(wire);
   const entries: ShipMapPartMeterEntry[] = [];
   for (const [flightId, resources] of byFlightId) {
-    for (const [name, tone] of Object.entries(DRAINABLE_TONES)) {
+    for (const name of DRAINABLE_RESOURCES) {
       const slot = resources[name];
       if (!slot || slot.maxAmount <= 0) continue;
       entries.push({
@@ -72,7 +91,7 @@ export function computeBuiltinPartMeters(
         displayName: name,
         amount: slot.amount,
         capacity: slot.maxAmount,
-        tone,
+        status: statusFor(slot.amount, slot.maxAmount),
       });
     }
   }

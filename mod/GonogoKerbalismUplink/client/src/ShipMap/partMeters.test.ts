@@ -75,7 +75,7 @@ describe("computeKerbalismPartMeters", () => {
         displayName: "Water",
         amount: 42.3,
         capacity: 180,
-        tone: "neutral",
+        status: null,
       },
     ]);
   });
@@ -108,22 +108,28 @@ describe("computeKerbalismPartMeters", () => {
     ).toEqual([]);
   });
 
-  it("tones a below-threshold reading warn, at-or-above neutral", () => {
-    // "neutral", not "info": `--color-status-info-bg` (a near-black token
-    // value) is near-invisible as a filled meter bar against the diagram's dark
-    // canvas, confirmed by eye against a real render (see
-    // `partMeterTone`'s own doc comment).
+  it('flags a below-threshold reading "low", further below "critical", at-or-above threshold null', () => {
+    // Status is a SEPARATE signal from the fill colour now (design doc,
+    // local_docs/design/2026-08-08-resource-colour-system.md): the fill is
+    // Water's own identity colour regardless of level, this only says how
+    // full the tank is.
     const low = computeKerbalismPartMeters(
-      wire([part("3", { Water: { amount: 10, maxAmount: 180 } })]), // 5.5% < 20% threshold
+      wire([part("3", { Water: { amount: 27, maxAmount: 180 } })]), // 15% < 20% threshold, above critical (6.6%)
       SUPPLY_PROFILE,
     );
-    expect(low[0]?.tone).toBe("warn");
+    expect(low[0]?.status).toBe("low");
+
+    const critical = computeKerbalismPartMeters(
+      wire([part("3", { Water: { amount: 5, maxAmount: 180 } })]), // 2.8% < critical (20% * 0.33)
+      SUPPLY_PROFILE,
+    );
+    expect(critical[0]?.status).toBe("critical");
 
     const healthy = computeKerbalismPartMeters(
       wire([part("3", { Water: { amount: 100, maxAmount: 180 } })]), // 55%
       SUPPLY_PROFILE,
     );
-    expect(healthy[0]?.tone).toBe("neutral");
+    expect(healthy[0]?.status).toBe(null);
   });
 
   it("returns an empty list without a wire payload or a profile", () => {

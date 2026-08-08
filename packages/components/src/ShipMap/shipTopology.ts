@@ -119,6 +119,15 @@ export interface ShipMapPart {
  * contributor produced an entry. There is no hardcoded resource allowlist
  * left in ShipMap itself: which resource earns a meter on which part is
  * entirely the contributor's call.
+ *
+ * Identity vs status (design doc: local_docs/design/2026-08-08-resource-
+ * colour-system.md, gonogo main repo): the meter's FILL colour is the
+ * resource's IDENTITY (`resourceColor(resource)`, derived by the renderer
+ * from `resource`, not carried on the wire), and is entirely independent of
+ * `status`. This retires the previous `tone`-as-identity field, which
+ * conflated "what resource is this" with "how full is it" into one
+ * five-value enum; a contributor no longer picks a colour at all, only a
+ * name and a status.
  */
 export interface ShipMapPartMeterEntry {
   /**
@@ -129,7 +138,9 @@ export interface ShipMapPartMeterEntry {
   partId: string;
   /** Resource name exactly as it appears on `vessel.parts` (e.g.
    *  "LiquidFuel", "Water"). Doubles as part of this meter's identity: a
-   *  contributor should emit at most one entry per (partId, resource) pair. */
+   *  contributor should emit at most one entry per (partId, resource) pair.
+   *  Also the renderer's key into `resourceColor` for the fill's identity
+   *  colour, see this interface's own doc comment. */
   resource: string;
   /** Human label. Falls back to `resource` when the contributor has no nicer
    *  name (the built-in five don't; a Kerbalism profile's
@@ -142,14 +153,14 @@ export interface ShipMapPartMeterEntry {
    *  `renderResourceFill` applied. */
   capacity: number;
   /**
-   * Fill colour, a ui-kit `MeterTone`: the same five-tone vocabulary
-   * `<Meter>` renders with everywhere else, not a bespoke per-resource hex.
-   * This trades the old `resourceColor` switch's exact per-resource hues
-   * (five distinct CSS-var picks) for one shared semantic palette, so a
-   * contributed meter and a built-in one are visually the SAME kind of
-   * thing rather than two lookalike-but-different systems.
+   * A SEPARATE status signal, never the fill hue: `"critical"` /
+   * `"low"` draw a border tint or badge alongside the identity-coloured
+   * fill; `null`/`undefined` means healthy, no status signal drawn. A
+   * contributor decides its own low/critical thresholds (a Kerbalism
+   * profile's `lowThreshold`, or the built-in contribution's own ratio
+   * cutoffs); ShipMap only renders whichever of the two levels it's given.
    */
-  tone: MeterTone;
+  status?: "low" | "critical" | null;
 }
 
 /**

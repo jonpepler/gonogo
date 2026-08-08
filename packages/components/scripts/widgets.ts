@@ -1164,10 +1164,23 @@ const WIDGETS: WidgetRenderConfig[] = [
     // straight in the modern `vessel.parts` wire shape instead.
     widgetId: "ship-map",
     fixturesPath: "ShipMap/__fixtures__/probe",
-    outPath: "renders/kerbalism-shipmap",
+    // Renamed from `kerbalism-shipmap` alongside the resource-colour system
+    // landing (local_docs/design/2026-08-08-resource-colour-system.md): the
+    // fills these renders show are no longer the old MeterTone palette, so
+    // the folder name says so rather than silently going stale under the
+    // pre-colour-system name.
+    outPath: "renders/kerbalism-shipmap-colour",
     modes: [
       // Registered default.
       { name: "default-8x10", w: 8, h: 10 },
+      // Wider/taller: the colour-spread fixture stacks four parts with
+      // several meters each, the default size crops it.
+      {
+        name: "colour-spread-10x16",
+        w: 10,
+        h: 16,
+        forFixtures: ["03-resource-colour-spread"],
+      },
     ],
   },
   {

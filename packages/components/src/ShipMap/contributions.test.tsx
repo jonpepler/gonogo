@@ -1,6 +1,7 @@
 import type { VesselTopology } from "@ksp-gonogo/core";
 import { ContributionsProvider, WidgetMetaContext } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
+import { resourceColor } from "@ksp-gonogo/ui-kit";
 import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
@@ -91,7 +92,7 @@ const META = {
 
 const renderedTrees: Array<() => void> = [];
 
-async function renderShipMap() {
+async function renderShipMap(wire = VESSEL_PARTS_WIRE) {
   const fixture = setupStreamFixture({
     carriedChannels: ["vessel.parts"],
     pinnedUt: 10,
@@ -107,7 +108,7 @@ async function renderShipMap() {
   );
   renderedTrees.push(unmount);
   act(() => {
-    fixture.emit("vessel.parts", VESSEL_PARTS_WIRE);
+    fixture.emit("vessel.parts", wire);
   });
   await waitFor(() =>
     expect(screen.getByLabelText("Ship diagram")).toBeTruthy(),
@@ -121,21 +122,23 @@ describe("ShipMap: self-contribution unify (spec §13.4)", () => {
     renderedTrees.length = 0;
   });
 
-  it("paints the built-in contribution's tones, not the retired resourceColor palette", async () => {
+  it("paints each resource's identity colour (resourceColor), not a shared MeterTone CSS var", async () => {
     const { container } = await renderShipMap();
-    // "go"/"info" are METER_TONE_FILL's CSS vars for LiquidFuel/Oxidizer
-    // (packages/components/src/ShipMap/partMetersContribution.ts's
-    // DRAINABLE_TONES); the OLD hardcoded `resourceColor` painted
-    // LiquidFuel with `--color-accent-fg`, which must not appear here.
+    // Design doc (local_docs/design/2026-08-08-resource-colour-system.md):
+    // the fill is the resource's own identity colour now, derived straight
+    // from `resourceColor`, not a five-value MeterTone CSS var shared across
+    // unrelated resources.
     const fills = Array.from(container.querySelectorAll("rect")).map((r) =>
       r.getAttribute("fill"),
     );
-    expect(fills).toContain("var(--color-status-go-bg)");
-    // "neutral", not "info": `--color-status-info-bg` is near-invisible as a
-    // filled bar against the diagram's dark canvas (see
-    // `partMetersContribution.ts`'s own doc comment on this finding).
-    expect(fills).toContain("var(--color-text-muted)");
+    expect(fills).toContain(resourceColor("LiquidFuel"));
+    expect(fills).toContain(resourceColor("Oxidizer"));
+    expect(resourceColor("LiquidFuel")).not.toBe(resourceColor("Oxidizer"));
+    // Neither the old bespoke `resourceColor` switch's CSS var nor the
+    // MeterTone CSS vars it was replaced with, then replaced again, should
+    // ever appear as a fill on a healthy (no-status) resource meter.
     expect(fills).not.toContain("var(--color-accent-fg)");
+    expect(fills).not.toContain("var(--color-status-go-bg)");
     expect(fills).not.toContain("var(--color-status-info-bg)");
   });
 
@@ -158,5 +161,27 @@ describe("ShipMap: self-contribution unify (spec §13.4)", () => {
     const { container } = await renderShipMap();
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+
+  it("draws a status border on a low resource without changing its identity fill hue", async () => {
+    const criticalWire = topologyToVesselPartsWire(
+      TOPOLOGY,
+      new Map([
+        [2, { resources: { LiquidFuel: { amount: 5, maxAmount: 180 } } }],
+      ]),
+    );
+    const { container } = await renderShipMap(criticalWire);
+    const rects = Array.from(container.querySelectorAll("rect"));
+    // Identity fill is unchanged by status: still LiquidFuel's own colour.
+    expect(
+      rects.some((r) => r.getAttribute("fill") === resourceColor("LiquidFuel")),
+    ).toBe(true);
+    // The status (5 / 180 = 2.8%, below the critical threshold) shows as a
+    // SEPARATE stroke on the track rect, never as a fill colour swap.
+    expect(
+      rects.some(
+        (r) => r.getAttribute("stroke") === "var(--color-status-nogo-bg)",
+      ),
+    ).toBe(true);
   });
 });

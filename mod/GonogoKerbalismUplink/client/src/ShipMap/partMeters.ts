@@ -3,7 +3,6 @@ import type {
   KerbalismProfile,
   VesselParts,
 } from "@ksp-gonogo/sitrep-sdk";
-import type { MeterTone } from "@ksp-gonogo/ui-kit";
 import { mag, resourceFacts } from "../ecosystem";
 import { KERBALISM } from "../uplink";
 
@@ -46,24 +45,35 @@ type PartMeterEntry = ContributionEntry<"ship-map.part-meters">;
  *  one). */
 const DEFAULT_LOW_THRESHOLD = 0.15;
 
-function partMeterTone(
+/** "critical" sits at a fixed fraction of whichever "low" threshold applies
+ *  (the profile's own `lowThreshold`, or `DEFAULT_LOW_THRESHOLD`), rather
+ *  than a second independently-configured number: Kerbalism profiles only
+ *  ever declare ONE per-resource threshold, so critical stays derived, not
+ *  another value this contribution would have to invent. */
+const CRITICAL_FRACTION_OF_LOW = 0.33;
+
+/**
+ * Status signal for a resource meter, SEPARATE from its fill colour (the
+ * design doc, `local_docs/design/2026-08-08-resource-colour-system.md`,
+ * gonogo main repo: the fill is the resource's IDENTITY, derived by the
+ * renderer via `resourceColor(resource)`, never carried on this entry).
+ * Used to return a `MeterTone` that doubled as the fill colour ("warn" /
+ * "neutral"); now returns only the level, a border tint or badge draws it.
+ */
+function partMeterStatus(
   amount: number,
   capacity: number,
   lowThreshold: { magnitude?: number } | number | undefined,
-): MeterTone {
-  if (capacity <= 0) return "neutral";
-  const threshold =
+): "low" | "critical" | null {
+  if (capacity <= 0) return null;
+  const low =
     lowThreshold === undefined
       ? DEFAULT_LOW_THRESHOLD
       : mag(lowThreshold, DEFAULT_LOW_THRESHOLD);
-  // NOT "info": ui-kit's "info" tone resolves to `--color-status-info-bg`,
-  // a near-black token value, effectively invisible as a filled meter bar
-  // against the diagram's dark canvas (confirmed by eye against a real
-  // render, `local_docs/renders/kerbalism-shipmap/`; see
-  // `partMetersContribution.ts`'s own doc comment on the same finding).
-  // "neutral" (`--color-text-muted`) is the closest available tone that is
-  // actually visible for a healthy reading.
-  return amount / capacity < threshold ? "warn" : "neutral";
+  const ratio = amount / capacity;
+  if (ratio < low * CRITICAL_FRACTION_OF_LOW) return "critical";
+  if (ratio < low) return "low";
+  return null;
 }
 
 /**
@@ -93,7 +103,7 @@ export function computeKerbalismPartMeters(
         displayName: fact.displayName,
         amount,
         capacity,
-        tone: partMeterTone(
+        status: partMeterStatus(
           amount,
           capacity,
           profile.resources?.[name]?.lowThreshold,

@@ -1,5 +1,5 @@
 import { value } from "@ksp-gonogo/sitrep-sdk";
-import { Meter, TextButton, Unit } from "@ksp-gonogo/ui-kit";
+import { Meter, resourceColor, TextButton, Unit } from "@ksp-gonogo/ui-kit";
 import type React from "react";
 import type { CSSProperties } from "react";
 import { useState } from "react";
@@ -13,6 +13,19 @@ import type {
 
 const NO_METERS: readonly ShipMapPartMeterEntry[] = [];
 const NO_META: readonly ShipMapPartMetaEntry[] = [];
+
+/**
+ * `ShipMapPartMeterEntry.status` -> an outline colour, the SAME split as
+ * `ShipDiagramSvg`'s own `STATUS_BORDER`: a resource meter's fill is its
+ * identity colour (`resourceColor`) regardless of level, status is drawn as
+ * a separate ring around the compact meter rather than blended into the
+ * fill hue (design doc: local_docs/design/2026-08-08-resource-colour-
+ * system.md, gonogo main repo).
+ */
+const STATUS_OUTLINE: Record<"low" | "critical", string> = {
+  low: "var(--color-status-warning-bg)",
+  critical: "var(--color-status-nogo-bg)",
+};
 
 interface Props {
   parts: readonly ShipMapPart[];
@@ -162,8 +175,16 @@ export function ShipDiagram({
               label={m.displayName}
               value={m.capacity > 0 ? m.amount / m.capacity : 0}
               valueLabel={`${m.amount.toFixed(1)} / ${m.capacity.toFixed(1)}`}
-              tone={m.tone}
+              fillColor={resourceColor(m.resource)}
               size="sm"
+              style={
+                m.status
+                  ? {
+                      outline: `1px solid ${STATUS_OUTLINE[m.status]}`,
+                      outlineOffset: "2px",
+                    }
+                  : undefined
+              }
             />
           ))}
           {otherResources.map((r) => (

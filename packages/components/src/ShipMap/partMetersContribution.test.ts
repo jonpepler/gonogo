@@ -47,7 +47,7 @@ function wire(parts: VesselParts["parts"]): VesselParts {
 }
 
 describe("computeBuiltinPartMeters", () => {
-  it("emits a meter per drainable resource on a part", () => {
+  it("emits a meter per drainable resource on a part, healthy fill has no status", () => {
     const entries = computeBuiltinPartMeters(
       wire([
         part("1", {
@@ -63,7 +63,7 @@ describe("computeBuiltinPartMeters", () => {
       displayName: "LiquidFuel",
       amount: 90,
       capacity: 180,
-      tone: "go",
+      status: null,
     });
     expect(entries).toContainEqual({
       partId: "1",
@@ -71,7 +71,35 @@ describe("computeBuiltinPartMeters", () => {
       displayName: "Oxidizer",
       amount: 100,
       capacity: 220,
-      tone: "neutral",
+      status: null,
+    });
+  });
+
+  it('flags a resource below the low threshold as "low"', () => {
+    const entries = computeBuiltinPartMeters(
+      wire([part("1", { LiquidFuel: { amount: 20, maxAmount: 180 } })]),
+    );
+    expect(entries).toContainEqual({
+      partId: "1",
+      resource: "LiquidFuel",
+      displayName: "LiquidFuel",
+      amount: 20,
+      capacity: 180,
+      status: "low",
+    });
+  });
+
+  it('flags a resource below the critical threshold as "critical"', () => {
+    const entries = computeBuiltinPartMeters(
+      wire([part("1", { LiquidFuel: { amount: 5, maxAmount: 180 } })]),
+    );
+    expect(entries).toContainEqual({
+      partId: "1",
+      resource: "LiquidFuel",
+      displayName: "LiquidFuel",
+      amount: 5,
+      capacity: 180,
+      status: "critical",
     });
   });
 

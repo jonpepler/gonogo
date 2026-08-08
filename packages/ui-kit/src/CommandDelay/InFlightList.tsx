@@ -65,9 +65,11 @@ export interface InFlightListProps {
    * in-flight command is a soft glow grazing the top edge (its blip sits off the
    * widget, above the edge, only the blur reaches down), positioned by true
    * journey progress so it sweeps left -> right as the command travels the 3
-   * signal stages. `mode` / `density` / `orientation` do not apply to the strip.
+   * signal stages. `"expanded"` is the grown/pinned detail: a rich pill per
+   * command (label, phase, countdown, and a leg-coloured progress bar tracking
+   * its journey). `mode` / `density` / `orientation` apply to `"inline"` only.
    */
-  variant?: "inline" | "rail";
+  variant?: "inline" | "rail" | "expanded";
 }
 
 const PHASE_ARROW: Record<InFlightListItem["phase"], string> = {
@@ -171,11 +173,15 @@ export function InFlightList({
   // shrinks from it. Seeding narrow would flash a badge on every mount.
   const { ref, size } = useElementSize({ w: 320, h: 0 });
 
-  // v3 rail strip: bypasses the density/badge logic entirely (that is the
-  // inline list's story). Hook above still runs unconditionally.
+  // v3 rail / expanded renderings bypass the density/badge logic entirely (that
+  // is the inline list's story). Hook above still runs unconditionally.
   if (variant === "rail") {
     if (items.length === 0) return null;
     return <InFlightRailStrip items={items} ariaLabel={ariaLabel} />;
+  }
+  if (variant === "expanded") {
+    if (items.length === 0) return null;
+    return <InFlightPills items={items} ariaLabel={ariaLabel} />;
   }
 
   const resolved: Exclude<InFlightListDensity, "auto"> =
@@ -395,6 +401,113 @@ const InFlightRailStrip__Svg = styled.svg`
   display: block;
   width: 100%;
   height: 16px;
+`;
+
+// v3 expanded (grown/pinned) discrete view: a rich pill per command, the Fable
+// mock's `.pill`. Leg colour distinguishes the journey stage (uplink out / echo
+// back / due / fault), and a 2px bottom bar tracks the command's true progress.
+const PILL_COLOUR: Record<InFlightListItem["phase"], string> = {
+  "in-transit": "var(--color-data-1)",
+  "awaiting-reply": "var(--color-data-10)",
+  due: "var(--color-accent-fg)",
+  overdue: "var(--color-status-warning-bg)",
+  lost: "var(--color-status-nogo-fg)",
+};
+
+const PHASE_TAG: Record<InFlightListItem["phase"], string> = {
+  "in-transit": "uplink",
+  "awaiting-reply": "echo",
+  due: "due",
+  overdue: "overdue",
+  lost: "lost",
+};
+
+function InFlightPills({
+  items,
+  ariaLabel,
+}: {
+  items: InFlightListItem[];
+  ariaLabel: string;
+}) {
+  return (
+    <InFlightPills__List aria-label={ariaLabel}>
+      {items.map((item) => (
+        <InFlightPillRow key={item.id} item={item} />
+      ))}
+    </InFlightPills__List>
+  );
+}
+
+function InFlightPillRow({ item }: { item: InFlightListItem }) {
+  const countdown = useCountdown(item.etaSeconds);
+  const colour = PILL_COLOUR[item.phase];
+  const progress = Math.max(
+    0,
+    Math.min(1, item.progress ?? PHASE_PROGRESS[item.phase]),
+  );
+  return (
+    <InFlightPills__Pill data-phase={item.phase}>
+      <InFlightPills__Tag style={{ color: colour }}>
+        {PHASE_TAG[item.phase]}
+      </InFlightPills__Tag>
+      <InFlightPills__Label>{item.label}</InFlightPills__Label>
+      <InFlightPills__Time style={{ color: colour }}>
+        {countdown === null ? item.phase : formatCountdown(countdown)}
+      </InFlightPills__Time>
+      <InFlightPills__Bar
+        style={{ width: `${progress * 100}%`, background: colour }}
+      />
+    </InFlightPills__Pill>
+  );
+}
+
+const InFlightPills__List = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 4px);
+  width: 100%;
+`;
+
+const InFlightPills__Pill = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8, 8px);
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md, 4px);
+  padding: var(--space-4, 4px) var(--space-8, 8px);
+  background: color-mix(in srgb, var(--color-surface-sunken) 70%, transparent);
+  font-size: var(--font-size-sm);
+`;
+
+const InFlightPills__Tag = styled.span`
+  flex: 0 0 auto;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+`;
+
+const InFlightPills__Label = styled.span`
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+`;
+
+const InFlightPills__Time = styled.span`
+  flex: 0 0 auto;
+  font-family: var(--font-family-mono);
+  font-variant-numeric: tabular-nums;
+`;
+
+const InFlightPills__Bar = styled.span`
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
 `;
 
 const InFlightList__Root = styled.div<{ $row: boolean }>`

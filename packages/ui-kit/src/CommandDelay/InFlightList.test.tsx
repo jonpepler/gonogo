@@ -118,4 +118,35 @@ describe("InFlightList", () => {
       expect(await axe(container)).toHaveNoViolations();
     });
   });
+
+  describe('variant="expanded" (v3 detail pills)', () => {
+    it("renders a rich pill per command: label, phase tag, countdown and a progress bar", () => {
+      const { container } = render(
+        <InFlightList items={ITEMS} variant="expanded" />,
+      );
+      // Real labels (not a glow summary).
+      expect(container.textContent).toContain("run boot.ks");
+      expect(container.textContent).toContain("run land.ks");
+      // One pill per command, each carrying a phase tag.
+      const pills = container.querySelectorAll("[data-phase]");
+      expect(pills).toHaveLength(ITEMS.length);
+      // The in-transit command shows its "uplink" leg tag and a countdown.
+      expect(container.textContent?.toLowerCase()).toContain("uplink");
+      expect(container.textContent).toContain("4s");
+    });
+
+    it("renders nothing for an empty set", () => {
+      const { container } = render(
+        <InFlightList items={[]} variant="expanded" />,
+      );
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it("has no axe violations", async () => {
+      const { container } = render(
+        <InFlightList items={ITEMS} variant="expanded" />,
+      );
+      expect(await axe(container)).toHaveNoViolations();
+    });
+  });
 });

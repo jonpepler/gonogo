@@ -34,10 +34,11 @@ export interface ControlDelayStreamProps {
   ariaLabel?: string;
   /**
    * `"inline"` (default, 40px) keeps the in-widget Navball rendering at its
-   * current size; `"rail"` (16px) is the v3 drag-bar-strip rendering the
-   * Panel-owned rail passes through `<CommandDelay>`.
+   * current size; `"rail"` (16px, no labels) is the collapsed drag-bar strip;
+   * `"expanded"` (the grown/pinned view) is the full-width, taller graph in a
+   * bordered box with always-visible zone labels, a legend, and a delay readout.
    */
-  variant?: "inline" | "rail";
+  variant?: "inline" | "rail" | "expanded";
 }
 
 /** Local redeclaration of the model's floor (ui-kit imports nothing from sitrep-client). */
@@ -229,9 +230,9 @@ export function ControlDelayStream({
   if (!first || oneWay === null || oneWay < MIN_DELAY_SECONDS) return null;
 
   const span = 3 * oneWay;
-  // Full-bleed in the rail: the graph reaches both widget edges, same as the
-  // discrete rail. The inline variant keeps the small inset.
-  const padX = variant === "rail" ? 0 : PAD_X;
+  // Full-bleed for the rail AND the expanded view: the graph reaches both widget
+  // edges. Only the in-widget inline variant keeps the small stroke inset.
+  const padX = variant === "inline" ? PAD_X : 0;
   const divX1 = xAt(oneWay, span, padX);
   const divX2 = xAt(2 * oneWay, span, padX);
 
@@ -240,6 +241,7 @@ export function ControlDelayStream({
       aria-label={ariaLabel}
       data-oneway={oneWay}
       data-variant={variant}
+      $variant={variant}
     >
       <ControlDelayStream__Svg
         $variant={variant}
@@ -275,12 +277,13 @@ export function ControlDelayStream({
           stroke="var(--color-border-subtle)"
           strokeWidth="0.4"
         />
-        {/* Hover-only zone + delay labels, INLINE variant only: at the 16px rail
-            size they squash to noise, so the rail is just the graph. Hidden by
-            default, revealed on hover (the static render is deterministic and the
-            svg's own `role="img"` + aria-label carries the accessible name, so
-            these are never announced separately). */}
-        {variant !== "rail" && (
+        {/* Hover-only zone + delay labels, INLINE variant only. The rail drops
+            them (16px squashes them to noise) and the expanded view uses roomy
+            HTML labels below instead. Hidden by default, revealed on hover (the
+            static render is deterministic and the svg's own `role="img"` +
+            aria-label carries the accessible name, so these are never announced
+            separately). */}
+        {variant === "inline" && (
           <g data-role="hover-labels">
             <text x={divX1} y={PAD_T - 0.4} textAnchor="middle" fontSize="2">
               <Unit value={value("s", oneWay)} decimals={1} />
@@ -315,19 +318,75 @@ export function ControlDelayStream({
           </g>
         )}
       </ControlDelayStream__Svg>
+      {variant === "expanded" && (
+        <>
+          {/* Roomy HTML zone labels under the graph (not squashed svg text): the
+              three delay stages, with the T / 2T boundary times. */}
+          <ControlDelayStream__Zones aria-hidden="true">
+            <span>
+              outgoing <b>0</b>
+            </span>
+            <span>
+              echo{" "}
+              <b>
+                <Unit value={value("s", oneWay)} decimals={1} />
+              </b>
+            </span>
+            <span>
+              confirmed{" "}
+              <b>
+                <Unit value={value("s", 2 * oneWay)} decimals={1} />
+              </b>
+            </span>
+          </ControlDelayStream__Zones>
+          {/* Per-axis legend: which coloured line is which control. */}
+          <ControlDelayStream__Legend aria-hidden="true">
+            {streams.map((s, i) => (
+              <span key={s.id}>
+                <i
+                  style={{
+                    background: `var(${STREAM_TOKENS[i % STREAM_TOKENS.length]})`,
+                  }}
+                />
+                {s.label}
+              </span>
+            ))}
+            <span data-role="legend-deviation">
+              <i style={{ background: "var(--color-status-warning-bg)" }} />
+              off-command
+            </span>
+          </ControlDelayStream__Legend>
+        </>
+      )}
     </ControlDelayStream__Root>
   );
 }
 
-const ControlDelayStream__Root = styled.div`
+const ControlDelayStream__Root = styled.div<{
+  $variant: "inline" | "rail" | "expanded";
+}>`
   flex: 0 0 auto;
   width: 100%;
+  ${({ $variant }) =>
+    $variant === "expanded" &&
+    "display: flex; flex-direction: column; gap: var(--space-4, 4px);"}
 `;
 
-const ControlDelayStream__Svg = styled.svg<{ $variant: "inline" | "rail" }>`
+const ControlDelayStream__Svg = styled.svg<{
+  $variant: "inline" | "rail" | "expanded";
+}>`
   display: block;
   width: 100%;
-  height: ${({ $variant }) => ($variant === "rail" ? "16px" : "40px")};
+  height: ${({ $variant }) =>
+    $variant === "rail" ? "16px" : $variant === "expanded" ? "86px" : "40px"};
+
+  ${({ $variant }) =>
+    $variant === "expanded" &&
+    `
+    background: color-mix(in srgb, var(--color-surface-sunken) 60%, transparent);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md, 4px);
+  `}
 
   [data-role="hover-labels"] {
     opacity: 0;
@@ -336,5 +395,39 @@ const ControlDelayStream__Svg = styled.svg<{ $variant: "inline" | "rail" }>`
   }
   &:hover [data-role="hover-labels"] {
     opacity: 1;
+  }
+`;
+
+const ControlDelayStream__Zones = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+
+  b {
+    color: var(--color-text-dim);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+`;
+
+const ControlDelayStream__Legend = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4, 4px) var(--space-12, 12px);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4, 4px);
+  }
+  i {
+    display: inline-block;
+    width: 10px;
+    height: 2px;
   }
 `;

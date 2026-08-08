@@ -85,11 +85,12 @@ export interface CommandDelayProps {
   /**
    * `"inline"` (default) is the in-body rendering an inline `<CommandDelay>`
    * consumer gets (the monospace `InFlightList`, the 40px `ControlDelayStream`).
-   * `"rail"` is the v3 16px strip the Panel-owned rail passes, forwarded to
-   * whichever child branch renders. Kept a prop, not hardcoded, so a widget
-   * that renders `<CommandDelay>` inline in its own body is unaffected.
+   * `"rail"` (collapsed 16px strip) / `"expanded"` (grown detail) are what the
+   * Panel-owned rail passes, forwarded to whichever child branch renders. Kept a
+   * prop, not hardcoded, so a widget that renders `<CommandDelay>` inline in its
+   * own body is unaffected.
    */
-  variant?: "inline" | "rail";
+  variant?: "inline" | "rail" | "expanded";
 }
 
 /**

@@ -238,6 +238,41 @@ describe("PanelDelayRail", () => {
       await user.click(railButton());
       expect(await axe(container)).toHaveNoViolations();
     });
+
+    it("pinned with a stream AND a multi-command discrete handle grows every command", async () => {
+      const user = userEvent.setup();
+      const store = createDelayRailStore();
+      store.register({
+        id: "stream",
+        inFlight: [],
+        shape: "stream",
+        effectiveDelaySeconds: 1.6,
+        streams: [
+          {
+            id: "throttle",
+            label: "Throttle",
+            oneWaySeconds: 1.6,
+            inTransit: [{ age: 0, value: 0.5 }],
+            echo: [],
+            current: 0.5,
+          },
+        ],
+      });
+      store.register({
+        id: "discrete",
+        inFlight: [
+          { ...IN_FLIGHT[0], id: "d1", label: "SAS Prograde" },
+          { ...IN_FLIGHT[0], id: "d2", label: "Stage" },
+        ],
+        shape: "discrete",
+        effectiveDelaySeconds: 3,
+      });
+      const { container } = inPanel(<PanelDelayRail />, store);
+      await user.click(railButton());
+      // Both discrete commands render as pills (plus the stream graph above).
+      expect(container.textContent).toContain("SAS Prograde");
+      expect(container.textContent).toContain("Stage");
+    });
   });
 
   it("drops --panel-rail-height back to the 0px fallback when the last command completes", () => {

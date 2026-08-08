@@ -218,6 +218,35 @@ describe("ControlDelayStream", () => {
     expect(inline.querySelector('[data-role="hover-labels"]')).not.toBeNull();
   });
 
+  it("renders the expanded view taller, full-bleed, with roomy zone labels and a legend", () => {
+    const { container } = render(
+      <ControlDelayStream
+        streams={[
+          stream(),
+          stream({ id: "vessel.control.pitch", label: "Pitch" }),
+        ]}
+        variant="expanded"
+      />,
+    );
+    expect(container.querySelector("[data-variant]")).toHaveAttribute(
+      "data-variant",
+      "expanded",
+    );
+    // Roomy HTML zone labels (not squashed svg text) + a per-axis legend.
+    expect(container.textContent).toContain("outgoing");
+    expect(container.textContent).toContain("echo");
+    expect(container.textContent).toContain("confirmed");
+    expect(container.textContent).toContain("Throttle");
+    expect(container.textContent).toContain("Pitch");
+    // Full-bleed like the rail: the first divider sits at exactly 1/3.
+    const t = Number(
+      container.querySelector('[data-divider="t"]')?.getAttribute("x1"),
+    );
+    expect(t).toBeCloseTo(100 / 3, 1);
+    // No hover-only svg label group in the expanded view (labels are HTML).
+    expect(container.querySelector('[data-role="hover-labels"]')).toBeNull();
+  });
+
   it("bleeds the graph to the full width in rail mode (no horizontal inset)", () => {
     // padX = 0 in rail, so the first zone divider sits at exactly 1/3 of the
     // full viewBox width; the inline variant keeps a small inset, so its divider

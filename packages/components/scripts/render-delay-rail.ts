@@ -218,6 +218,11 @@ async function main(): Promise<void> {
     const context = await browser.newContext({
       viewport: { width: VIEWPORT_W, height: VIEWPORT_H },
       deviceScaleFactor: 2,
+      // Capture the settled grown state, not a mid-transition frame: the rail's
+      // grow honours prefers-reduced-motion (transition: none), so the pinned
+      // shot shows the full content deterministically. The transition itself is
+      // exercised for real (non-reduced-motion) users.
+      reducedMotion: "reduce",
     });
     const page = await context.newPage();
     page.on("pageerror", (err) => console.error("  [page error]", err.message));
@@ -266,7 +271,10 @@ async function main(): Promise<void> {
       const railBtn = await page.$("[data-panel-rail]");
       if (railBtn) {
         await railBtn.click();
-        await page.waitForTimeout(200);
+        // Past the grow transition (--duration-slow) plus settle, so the fully
+        // grown height (and every stacked pill) is captured, not a mid-animation
+        // frame.
+        await page.waitForTimeout(600);
         const pinnedName = `${scenario.name}-pinned.png`;
         await page.screenshot({
           path: join(OUT_DIR, pinnedName),

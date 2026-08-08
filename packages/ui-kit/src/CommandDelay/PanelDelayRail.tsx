@@ -72,6 +72,13 @@ export function PanelDelayRail() {
 
   if (!hasContent) return null;
 
+  // Stream(s) on top, discrete underneath (operator's v3 ordering): a stable
+  // partition, streams keep their order, discrete keep theirs.
+  const ordered = [
+    ...visible.filter((h) => h.shape === "stream"),
+    ...visible.filter((h) => h.shape !== "stream"),
+  ];
+
   return (
     <PanelDelayRail__Rail
       type="button"
@@ -93,11 +100,11 @@ export function PanelDelayRail() {
         }
       }}
     >
-      {visible.map((h) => (
+      {ordered.map((h) => (
         <CommandDelay
           key={h.id}
           handle={h}
-          variant={pinned ? "inline" : "rail"}
+          variant={pinned ? "expanded" : "rail"}
           ariaLabel={pinned ? "Delay detail" : undefined}
         />
       ))}
@@ -122,6 +129,10 @@ export function PanelDelayRail() {
 const PanelDelayRail__Rail = styled.button`
   appearance: none;
   border: 0;
+  /* Never let the scroller's flex layout shrink the grown rail below its content
+     (that would clip the lower stacked commands under overflow:hidden): the rail
+     takes its full height and the body scrolls under it. */
+  flex: 0 0 auto;
   margin: calc(-1 * var(--space-8, 8px)) calc(-1 * var(--space-16, 16px)) 0;
   padding: 0;
   background: transparent;
@@ -130,17 +141,26 @@ const PanelDelayRail__Rail = styled.button`
   cursor: pointer;
   text-align: inherit;
 
-  /* Collapsed: one 16px band, children stacked in a single grid cell. */
+  /* Collapsed: one 16px band, children stacked in a single grid cell. Height is
+     capped by max-height so pinning can animate it open (auto is not
+     animatable): the element's height follows min(content, max-height), so
+     growing the cap grows the rail smoothly and shrinking it collapses it. */
   display: grid;
-  height: 16px;
+  height: auto;
+  max-height: 16px;
   overflow: hidden;
+  transition: max-height var(--duration-slow, 200ms) var(--ease-standard, ease);
 
   & > * {
     grid-area: 1 / 1;
   }
 
   @media (pointer: coarse) {
-    height: 20px;
+    max-height: 20px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 
   &:focus-visible {
@@ -152,8 +172,9 @@ const PanelDelayRail__Rail = styled.button`
     display: flex;
     flex-direction: column;
     gap: var(--space-8, 8px);
-    height: auto;
-    overflow: visible;
+    /* Generous cap the grown content fits inside; the visible height settles at
+       the content height, the extra headroom is never seen. */
+    max-height: 800px;
     padding: var(--space-4, 4px) var(--space-16, 16px) var(--space-8, 8px);
 
     & > * {

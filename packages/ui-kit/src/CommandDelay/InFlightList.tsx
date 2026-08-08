@@ -1,7 +1,15 @@
-import { type RefObject, useEffect, useId, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import styled, { css } from "styled-components";
 import { formatCountdown } from "../formatDuration";
 import { useElementSize } from "../useElementSize";
+import { deriveGlyph } from "./toInFlightListItems";
 
 /**
  * Vanilla-safe display shape for one delayed command, a deliberate LOCAL
@@ -25,6 +33,14 @@ export interface InFlightListItem {
    * sources) need not supply it, the glow then anchors by phase.
    */
   progress?: number;
+  /**
+   * The command's OWN terse glyph, the issuing button's label/icon ("PRO",
+   * "RET", "WARP"), shown in the `variant="expanded"` queue square. Phase is
+   * conveyed by colour, never by this glyph (it stays the command's identity
+   * throughout its life). Optional: a caller that supplies none falls back to a
+   * short abbreviation derived from `label`.
+   */
+  glyph?: string;
 }
 
 export type InFlightListMode = "live" | "staged" | "no-path";
@@ -70,6 +86,12 @@ export interface InFlightListProps {
    * its journey). `mode` / `density` / `orientation` apply to `"inline"` only.
    */
   variant?: "inline" | "rail" | "expanded";
+  /**
+   * Clear a dead command (`overdue`/`lost`) from the shared delay queue. When
+   * given, the `"expanded"` queue's failed squares become real clear buttons.
+   * Applies to `"expanded"` only.
+   */
+  onDismiss?: (id: string) => void;
 }
 
 const PHASE_ARROW: Record<InFlightListItem["phase"], string> = {
@@ -168,6 +190,7 @@ export function InFlightList({
   orientation = "column",
   ariaLabel = "In-flight commands",
   variant = "inline",
+  onDismiss,
 }: InFlightListProps) {
   // Seeded wide so the first paint is the full form and `auto` only ever
   // shrinks from it. Seeding narrow would flash a badge on every mount.
@@ -181,7 +204,13 @@ export function InFlightList({
   }
   if (variant === "expanded") {
     if (items.length === 0) return null;
-    return <InFlightTiles items={items} ariaLabel={ariaLabel} />;
+    return (
+      <InFlightQueue
+        items={items}
+        ariaLabel={ariaLabel}
+        onDismiss={onDismiss}
+      />
+    );
   }
 
   const resolved: Exclude<InFlightListDensity, "auto"> =
@@ -274,9 +303,15 @@ function InFlightRailStrip({
     >
       <defs>
         {items.map((item, i) => {
-          const colour = ERROR_PHASES.has(item.phase)
-            ? "var(--color-status-warning-bg)"
-            : "var(--color-accent-fg)";
+          // Ext 2: a failed command is represented in the collapsed summary by
+          // its glow going amber (overdue) or red (lost), the same ramp the
+          // expanded queue uses, so a failure is never invisible here.
+          const colour =
+            item.phase === "lost"
+              ? "var(--color-status-nogo-bg)"
+              : item.phase === "overdue"
+                ? "var(--color-status-warning-bg)"
+                : "var(--color-accent-fg)";
           const progress = Math.max(
             0,
             Math.min(1, item.progress ?? PHASE_PROGRESS[item.phase]),
@@ -403,149 +438,262 @@ const InFlightRailStrip__Svg = styled.svg`
   height: 16px;
 `;
 
-// v3 round 6 expanded (grown/pinned) discrete view: one SQUARE-ICON tile per
-// command, laid out left-to-right in a fixed-height row that scrolls when the
-// queue is long, so a growing queue extends HORIZONTALLY and never grows the
-// widget's height (the vertical pill list did, which could shove a button under
-// the operator's cursor). State reads from the icon + leg colour (the
-// optimistic-UI grammar from delay-display-ux-options.md: clock = in transit,
-// tick = delivered), with a bottom bar tracking true progress.
-const TILE_COLOUR: Record<InFlightListItem["phase"], string> = {
-  "in-transit": "var(--color-data-1)",
-  "awaiting-reply": "var(--color-data-10)",
+// v3 discrete-rebuild expanded view: the "compact mode" command queue. Each
+// in-flight command is a SQUARE showing the command's OWN glyph (the issuing
+// button's label, "PRO"/"RET"/...), NEVER a status-icon set. Phase is COLOUR
+// (accent green in flight -> amber overdue -> red lost), progress is a thin BAR.
+// The queue has no size of its own: a fixed box that never grows/reflows the
+// widget, overflow past what fits becomes a `+N` count (never scroll, never
+// growth). The axis is slot-derived, a ROW in a wide box, a COLUMN in a narrow
+// one, via container-query, one square thick, `--thick` the single number that
+// sets it. A lost/overdue square is a real clear button (dismiss).
+const QUEUE_THICK = 64; // px, the rail's doubled square strip (mockup: 34)
+const QUEUE_BAR = 5;
+const QUEUE_GAP = 3;
+const QUEUE_SQUARE = QUEUE_THICK - 8 - QUEUE_BAR; // less border+padding and bar
+const QUEUE_ROW_MIN = 60; // container width at/above which the queue runs as a row
+
+const QUEUE_COLOUR: Record<InFlightListItem["phase"], string> = {
+  "in-transit": "var(--color-accent-fg)",
+  "awaiting-reply": "var(--color-accent-fg)",
   due: "var(--color-accent-fg)",
   overdue: "var(--color-status-warning-bg)",
-  lost: "var(--color-status-nogo-fg)",
+  lost: "var(--color-status-nogo-bg)",
 };
 
-type TileIconKind = "clock" | "check" | "bang" | "cross";
-
-const PHASE_ICON: Record<InFlightListItem["phase"], TileIconKind> = {
-  "in-transit": "clock",
-  "awaiting-reply": "clock",
-  due: "check",
-  overdue: "bang",
-  lost: "cross",
-};
-
-const PHASE_STATE: Record<InFlightListItem["phase"], string> = {
-  "in-transit": "uplink",
-  "awaiting-reply": "echo",
-  due: "delivered",
-  overdue: "overdue",
-  lost: "lost",
-};
-
-function TileIcon({ kind }: { kind: TileIconKind }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      width="15"
-      height="15"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {kind === "clock" && (
-        <>
-          <circle cx="8" cy="8" r="6" />
-          <path d="M8 4.6V8l2.4 1.5" />
-        </>
-      )}
-      {kind === "check" && <path d="M3.5 8.5l3 3 6-7" strokeWidth="1.8" />}
-      {kind === "bang" && (
-        <>
-          <path d="M8 3.5v5" />
-          <path d="M8 11.6v.01" strokeWidth="2" />
-        </>
-      )}
-      {kind === "cross" && <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />}
-    </svg>
-  );
-}
-
-function InFlightTiles({
+function InFlightQueue({
   items,
   ariaLabel,
+  onDismiss,
 }: {
   items: InFlightListItem[];
   ariaLabel: string;
+  onDismiss?: (id: string) => void;
 }) {
+  const { ref, size } = useElementSize({ w: 320, h: QUEUE_THICK });
+  // The queue runs as a row when its box is wide, a column when narrow (the
+  // same container-query CSS decides the visual axis); capacity is measured on
+  // that main axis so a full queue caps at `+N` rather than scrolling.
+  const row = size.w >= QUEUE_ROW_MIN;
+  const main = row ? size.w : size.h;
+  const capacity = Math.max(
+    1,
+    Math.floor((main - 6) / (QUEUE_SQUARE + QUEUE_GAP)),
+  );
+  const willOverflow = items.length > capacity;
+  const shown = willOverflow ? items.slice(0, capacity - 1) : items;
+  const hidden = items.length - shown.length;
   return (
-    <InFlightTiles__Row aria-label={ariaLabel}>
-      {items.map((item) => (
-        <InFlightTile key={item.id} item={item} />
-      ))}
-    </InFlightTiles__Row>
+    <InFlightQueue__Box ref={ref}>
+      <InFlightQueue__Inner role="list" aria-label={ariaLabel}>
+        {shown.map((item) => (
+          <InFlightQueueCmd key={item.id} item={item} onDismiss={onDismiss} />
+        ))}
+        {hidden > 0 && (
+          <InFlightQueue__Overflow
+            role="listitem"
+            aria-label={`${hidden} more in flight`}
+          >
+            +{hidden}
+          </InFlightQueue__Overflow>
+        )}
+      </InFlightQueue__Inner>
+    </InFlightQueue__Box>
   );
 }
 
-function InFlightTile({ item }: { item: InFlightListItem }) {
-  const countdown = useCountdown(item.etaSeconds);
-  const colour = TILE_COLOUR[item.phase];
+function InFlightQueueCmd({
+  item,
+  onDismiss,
+}: {
+  item: InFlightListItem;
+  onDismiss?: (id: string) => void;
+}) {
+  const glyph = item.glyph ?? deriveGlyph(item.label);
+  const colour = QUEUE_COLOUR[item.phase];
   const progress = Math.max(
     0,
     Math.min(1, item.progress ?? PHASE_PROGRESS[item.phase]),
   );
-  const time = countdown === null ? null : formatCountdown(countdown);
-  const spoken = `${item.label}, ${PHASE_STATE[item.phase]}${time ? `, ${time}` : ""}`;
+  const failed = item.phase === "overdue" || item.phase === "lost";
+  const dismissable = failed && !!onDismiss;
+  const spoken = `${item.label}, ${item.phase}`;
   return (
-    <InFlightTile__Box
+    <InFlightQueue__Cmd
+      role="listitem"
+      aria-label={spoken}
       data-phase={item.phase}
       style={{ color: colour }}
-      aria-label={spoken}
-      title={spoken}
     >
-      <TileIcon kind={PHASE_ICON[item.phase]} />
-      <InFlightTile__Time>{time ?? PHASE_STATE[item.phase]}</InFlightTile__Time>
-      <InFlightTile__Bar style={{ width: `${progress * 100}%` }} />
-    </InFlightTile__Box>
+      <InFlightQueue__Sq
+        as={dismissable ? "button" : "div"}
+        {...(dismissable
+          ? {
+              type: "button" as const,
+              onClick: () => onDismiss?.(item.id),
+              "aria-label": `Dismiss ${item.label}`,
+            }
+          : { "aria-hidden": true })}
+        title={dismissable ? `Dismiss ${item.label}` : spoken}
+      >
+        <span className="glyph" aria-hidden="true">
+          {glyph}
+        </span>
+        {dismissable && (
+          <span className="dismiss" aria-hidden="true">
+            ✕
+          </span>
+        )}
+      </InFlightQueue__Sq>
+      <InFlightQueue__Bar>
+        <span
+          className="fill"
+          style={{ "--fill-ratio": progress } as CSSProperties}
+        />
+      </InFlightQueue__Bar>
+    </InFlightQueue__Cmd>
   );
 }
 
-const InFlightTiles__Row = styled.div.attrs({ role: "list" })`
-  display: flex;
-  flex-direction: row;
-  gap: var(--space-4, 4px);
+const InFlightQueue__Box = styled.div.attrs({ role: "group" })`
+  container-type: inline-size;
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  padding-bottom: var(--space-2, 2px);
+  height: ${QUEUE_THICK}px;
+  box-sizing: border-box;
+  overflow: hidden;
 `;
 
-const InFlightTile__Box = styled.div.attrs({ role: "listitem" })`
-  position: relative;
-  flex: 0 0 auto;
+const InFlightQueue__Inner = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2, 2px);
-  width: 44px;
-  height: 44px;
-  overflow: hidden;
-  border: 1px solid currentColor;
-  border-radius: var(--radius-md, 4px);
-  background: color-mix(in srgb, currentColor 8%, var(--color-surface-sunken));
+  gap: ${QUEUE_GAP}px;
+  width: 100%;
+  height: 100%;
+
+  @container (min-width: ${QUEUE_ROW_MIN}px) {
+    flex-direction: row;
+  }
 `;
 
-const InFlightTile__Time = styled.span`
-  font-family: var(--font-family-mono);
+const InFlightQueue__Cmd = styled.div`
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+
+  @container (min-width: ${QUEUE_ROW_MIN}px) {
+    flex-direction: column;
+  }
+`;
+
+const InFlightQueue__Sq = styled.div`
+  --s: ${QUEUE_SQUARE}px;
+  flex: 0 0 var(--s);
+  width: var(--s);
+  height: var(--s);
+  align-self: center;
+  box-sizing: border-box;
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: currentColor;
+  background: color-mix(in srgb, currentColor 8%, var(--color-surface-sunken));
+  border: 1px solid currentColor;
+  border-right: 0;
+  border-radius: var(--radius-sm, 3px) 0 0 var(--radius-sm, 3px);
+  overflow: hidden;
+
+  @container (min-width: ${QUEUE_ROW_MIN}px) {
+    border-right: 1px solid currentColor;
+    border-bottom: 0;
+    border-radius: var(--radius-sm, 3px) var(--radius-sm, 3px) 0 0;
+  }
+
+  .glyph {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--color-text-primary);
+  }
+  .dismiss {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    background: color-mix(in srgb, currentColor 22%, var(--color-surface-sunken));
+  }
+
+  &:is(button) {
+    cursor: pointer;
+  }
+  &:is(button):hover .dismiss,
+  &:is(button):focus-visible .dismiss {
+    opacity: 1;
+  }
+  &:is(button):hover .glyph,
+  &:is(button):focus-visible .glyph {
+    opacity: 0;
+  }
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
+  }
+`;
+
+const InFlightQueue__Bar = styled.div`
+  --s: ${QUEUE_SQUARE}px;
+  position: relative;
+  flex: 0 0 ${QUEUE_BAR}px;
+  width: ${QUEUE_BAR}px;
+  height: var(--s);
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--color-surface-panel);
+  border: 1px solid currentColor;
+  border-radius: 0 var(--radius-sm, 3px) var(--radius-sm, 3px) 0;
+
+  @container (min-width: ${QUEUE_ROW_MIN}px) {
+    width: var(--s);
+    height: ${QUEUE_BAR}px;
+    border-radius: 0 0 var(--radius-sm, 3px) var(--radius-sm, 3px);
+  }
+
+  .fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(var(--fill-ratio, 0) * 100%);
+    background: currentColor;
+  }
+  @container (min-width: ${QUEUE_ROW_MIN}px) {
+    .fill {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: auto;
+      width: calc(var(--fill-ratio, 0) * 100%);
+      height: auto;
+    }
+  }
+`;
+
+const InFlightQueue__Overflow = styled.span`
+  align-self: center;
+  flex: 0 0 auto;
+  padding: 0 ${QUEUE_GAP}px;
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
-`;
-
-const InFlightTile__Bar = styled.span`
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 2px;
-  background: currentColor;
+  color: var(--color-text-muted);
 `;
 
 const InFlightList__Root = styled.div<{ $row: boolean }>`

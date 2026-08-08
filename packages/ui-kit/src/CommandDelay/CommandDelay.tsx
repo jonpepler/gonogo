@@ -60,6 +60,14 @@ export interface CommandDelayHandle {
    * passes. A handle from a non-`useCommand` source simply omits it.
    */
   _output?: CommandOutputToken;
+  /**
+   * Clear a dead command (`overdue`/`lost`) from this handle's shared delay
+   * queue. Supplied by `useCommand` (acting on the shared per-grid-item
+   * DelayStore, so a dismiss clears the entry in the widget-top queue AND on the
+   * issuing control). When present, the expanded queue's failed squares become
+   * real clear buttons. A non-`useCommand` handle omits it.
+   */
+  dismiss?: (id: string) => void;
 }
 
 export interface CommandDelayProps {
@@ -152,6 +160,14 @@ export function CommandDelay({
   // silently hide real in-flight rows; `inFlight` (from the carried
   // `system.uplink.pending`) is the correct, self-consistent signal.
   const items = toInFlightListItems(all.flatMap((h) => h.inFlight));
+  // Route a dismiss to the handle that owns the command (each handle carries
+  // its own `dismiss` from `useCommand`). Only offered when some handle can
+  // dismiss, so a non-`useCommand` handle's failed squares stay inert.
+  const canDismiss = all.some((h) => h.dismiss);
+  const onDismiss = canDismiss
+    ? (id: string) =>
+        all.find((h) => h.inFlight.some((c) => c.id === id))?.dismiss?.(id)
+    : undefined;
   return (
     <InFlightList
       items={items}
@@ -160,6 +176,7 @@ export function CommandDelay({
       density={density}
       orientation={orientation}
       variant={variant}
+      onDismiss={onDismiss}
     />
   );
 }

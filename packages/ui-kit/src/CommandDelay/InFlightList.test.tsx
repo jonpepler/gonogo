@@ -119,24 +119,80 @@ describe("InFlightList", () => {
     });
   });
 
-  describe('variant="expanded" (v3 round 6 square-icon tile row)', () => {
-    it("renders a fixed-height row of square-icon tiles, one per command", () => {
+  describe('variant="expanded" (compact-mode command queue)', () => {
+    it("renders one square per command, each showing the command's own glyph", () => {
       const { container } = render(
-        <InFlightList items={ITEMS} variant="expanded" />,
+        <InFlightList
+          items={[
+            {
+              id: "1",
+              label: "SAS Prograde",
+              etaSeconds: 4,
+              phase: "in-transit",
+              glyph: "PRO",
+            },
+            {
+              id: "2",
+              label: "SAS Retrograde",
+              etaSeconds: 8,
+              phase: "awaiting-reply",
+              glyph: "RET",
+            },
+          ]}
+          variant="expanded"
+        />,
       );
-      const row = container.querySelector('[role="list"]');
-      expect(row).toHaveAttribute("aria-label", "In-flight commands");
-      const tiles = container.querySelectorAll("[data-phase]");
-      expect(tiles).toHaveLength(ITEMS.length);
-      // Each tile carries a state icon and an accessible name with label + state.
-      const first = tiles[0];
-      expect(first.querySelector("svg")).not.toBeNull();
-      expect(first.getAttribute("aria-label")).toContain("run boot.ks");
-      expect(first.getAttribute("aria-label")?.toLowerCase()).toContain(
-        "uplink",
+      const list = container.querySelector('[role="list"]');
+      expect(list).toHaveAttribute("aria-label", "In-flight commands");
+      const cmds = container.querySelectorAll('[role="listitem"][data-phase]');
+      expect(cmds).toHaveLength(2);
+      // The command's OWN glyph, not a status icon.
+      expect(container.textContent).toContain("PRO");
+      expect(container.textContent).toContain("RET");
+      // Each command (a listitem) is named by the full label.
+      expect(cmds[0].getAttribute("aria-label")).toContain("SAS Prograde");
+    });
+
+    it("falls back to a label abbreviation when a command carries no glyph", () => {
+      const { container } = render(
+        <InFlightList
+          items={[
+            {
+              id: "1",
+              label: "Set target",
+              etaSeconds: 4,
+              phase: "in-transit",
+            },
+          ]}
+          variant="expanded"
+        />,
       );
-      // The countdown shows inside the tile.
-      expect(container.textContent).toContain("4s");
+      // deriveGlyph("Set target") -> "TARG".
+      expect(container.textContent).toContain("TARG");
+    });
+
+    it("makes an overdue/lost square a real clear button wired to onDismiss", async () => {
+      const dismissed: string[] = [];
+      const { container } = render(
+        <InFlightList
+          items={[
+            {
+              id: "dead",
+              label: "SAS Prograde",
+              etaSeconds: null,
+              phase: "lost",
+              glyph: "PRO",
+            },
+          ]}
+          variant="expanded"
+          onDismiss={(id) => dismissed.push(id)}
+        />,
+      );
+      const btn = container.querySelector("button");
+      expect(btn).not.toBeNull();
+      expect(btn?.getAttribute("aria-label")).toContain("Dismiss");
+      btn?.click();
+      expect(dismissed).toEqual(["dead"]);
     });
 
     it("renders nothing for an empty set", () => {
@@ -146,9 +202,28 @@ describe("InFlightList", () => {
       expect(container).toBeEmptyDOMElement();
     });
 
-    it("has no axe violations", async () => {
+    it("has no axe violations (incl. a lost clear button)", async () => {
       const { container } = render(
-        <InFlightList items={ITEMS} variant="expanded" />,
+        <InFlightList
+          items={[
+            {
+              id: "1",
+              label: "SAS Prograde",
+              etaSeconds: 4,
+              phase: "in-transit",
+              glyph: "PRO",
+            },
+            {
+              id: "2",
+              label: "SAS Retrograde",
+              etaSeconds: null,
+              phase: "lost",
+              glyph: "RET",
+            },
+          ]}
+          variant="expanded"
+          onDismiss={() => {}}
+        />,
       );
       expect(await axe(container)).toHaveNoViolations();
     });

@@ -17,6 +17,7 @@ import {
   Panel,
   usePanelDelay,
 } from "@ksp-gonogo/ui-kit";
+import { useMemo } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 interface DelayRailProbePayload {
@@ -39,7 +40,15 @@ let activeRoot: Root | null = null;
  * loop. Renders nothing itself.
  */
 function HandleRegistrar({ handle }: { handle: CommandDelayHandle }) {
-  usePanelDelay(handle);
+  // Attach a (no-op) dismiss so a lost/overdue square renders as its real clear
+  // button in the shot (a real widget's dismiss comes from `useCommand`; the
+  // payload cannot carry a function). Memoised so `usePanelDelay` sees a stable
+  // handle and does not churn.
+  const withDismiss = useMemo(
+    () => ({ ...handle, dismiss: () => {} }),
+    [handle],
+  );
+  usePanelDelay(withDismiss);
   return null;
 }
 

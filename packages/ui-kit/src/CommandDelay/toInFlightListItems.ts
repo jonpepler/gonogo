@@ -13,6 +13,19 @@ export interface InFlightCommandLike {
   reachEtaSeconds: number | null;
   replyEtaSeconds: number | null;
   predictedPhase: InFlightListItem["phase"];
+  /** The issuing button's own terse glyph ("PRO"/"RET"/...). Optional; the
+   *  queue falls back to an abbreviation of `label` when absent. */
+  glyph?: string;
+}
+
+/** Fallback queue glyph when a command carries none: the significant word of
+ *  the label, upper-cased and cut to 4 chars ("SAS Prograde" -> "PROG",
+ *  "Set target" -> "SET"). A terse identity, never a status word. */
+export function deriveGlyph(label: string): string {
+  const words = label.trim().split(/\s+/).filter(Boolean);
+  const pick = words.length > 1 ? words[words.length - 1] : (words[0] ?? "");
+  const letters = pick.replace(/[^a-zA-Z0-9]/g, "");
+  return (letters || label).slice(0, 4).toUpperCase();
 }
 
 /** Anchor progress by phase when the eta geometry is missing (nulled on an
@@ -70,5 +83,6 @@ export function toInFlightListItems(
         : item.replyEtaSeconds,
     phase: item.predictedPhase,
     progress: journeyProgress(item),
+    glyph: item.glyph ?? deriveGlyph(item.label || item.command),
   }));
 }

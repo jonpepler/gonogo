@@ -211,8 +211,8 @@ describe("PanelDelayRail", () => {
       // The command's label rides the tile's accessible name (visible text is
       // the icon + countdown).
       expect(container.querySelector('[data-role="glow"]')).toBeNull();
-      const tile = container.querySelector("[data-phase]");
-      expect(tile?.getAttribute("aria-label")).toContain("Launch");
+      // The command's label rides the queue square's accessible name.
+      expect(container.querySelector('[aria-label*="Launch"]')).not.toBeNull();
       expect(container.querySelector("[data-delay-float]")).toBeNull();
 
       await user.keyboard("{Escape}");
@@ -272,11 +272,11 @@ describe("PanelDelayRail", () => {
       });
       const { container } = inPanel(<PanelDelayRail />, store);
       await user.click(railButton());
-      // Both discrete commands render as tiles (plus the stream graph above);
-      // their labels ride the tiles' accessible names.
-      const labels = Array.from(container.querySelectorAll("[data-phase]")).map(
-        (t) => t.getAttribute("aria-label") ?? "",
-      );
+      // Both discrete commands render as queue squares (plus the stream graph
+      // above); their labels ride the squares' accessible names.
+      const labels = Array.from(
+        container.querySelectorAll('[role="listitem"][data-phase]'),
+      ).map((t) => t.getAttribute("aria-label") ?? "");
       expect(labels.some((l) => l.includes("SAS Prograde"))).toBe(true);
       expect(labels.some((l) => l.includes("Stage"))).toBe(true);
     });

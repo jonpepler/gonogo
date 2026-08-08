@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveGlyph,
   type InFlightCommandLike,
   journeyProgress,
   toInFlightListItems,
@@ -94,6 +95,22 @@ describe("toInFlightListItems", () => {
         cmd({ reachEtaSeconds: -2, replyEtaSeconds: 4 }),
       ]);
       expect(item.progress).toBeCloseTo(8 / 18, 5);
+    });
+  });
+
+  describe("queue glyph", () => {
+    it("passes a supplied glyph through", () => {
+      const [item] = toInFlightListItems([cmd({ glyph: "PRO" })]);
+      expect(item.glyph).toBe("PRO");
+    });
+
+    it("derives a terse abbreviation from the label when no glyph is given", () => {
+      expect(deriveGlyph("SAS Prograde")).toBe("PROG");
+      expect(deriveGlyph("Set target")).toBe("TARG");
+      expect(deriveGlyph("Warp")).toBe("WARP");
+      // Mapped item gets the derived glyph.
+      const [item] = toInFlightListItems([cmd({ label: "Set target" })]);
+      expect(item.glyph).toBe("TARG");
     });
   });
 });

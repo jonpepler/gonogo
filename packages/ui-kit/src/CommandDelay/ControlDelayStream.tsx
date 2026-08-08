@@ -58,11 +58,13 @@ const VB_H = 30;
 const PAD_X = 1.5;
 const PAD_T = 2;
 const PAD_B = 4;
-const PLOT_W = VB_W - PAD_X * 2;
 const PLOT_H = VB_H - PAD_T - PAD_B;
 
-const xAt = (age: number, span: number): number =>
-  PAD_X + (span <= 0 ? 0 : Math.min(1, age / span)) * PLOT_W;
+// `padX` is variant-driven: the rail variant bleeds to 0 so the graph is flush
+// to both widget edges (the inline variant keeps a small inset so strokes stay
+// off the edge).
+const xAt = (age: number, span: number, padX: number): number =>
+  padX + (span <= 0 ? 0 : Math.min(1, age / span)) * (VB_W - padX * 2);
 const yAt = (value: number): number =>
   PAD_T + (1 - Math.max(0, Math.min(1, value))) * PLOT_H;
 
@@ -97,10 +99,12 @@ function StreamPaths({
   stream,
   span,
   index,
+  padX,
 }: {
   stream: ControlStreamDatum;
   span: number;
   index: number;
+  padX: number;
 }) {
   const token = STREAM_TOKENS[index % STREAM_TOKENS.length];
   const colour = `var(${token})`;
@@ -111,17 +115,17 @@ function StreamPaths({
   // one instance's gradient silently wins for both.
   const gradId = `cds-ramp-${useId()}-${index}`;
   const cmd = stream.inTransit.map((s) => ({
-    x: xAt(s.age, span),
+    x: xAt(s.age, span, padX),
     y: yAt(s.value),
   }));
   if (cmd.length === 0) return null;
 
   const echoPts = stream.echo.map((s) => ({
-    x: xAt(s.age, span),
+    x: xAt(s.age, span, padX),
     y: yAt(s.value),
   }));
   const expectedPts = stream.echo.map((s) => ({
-    x: xAt(s.age, span),
+    x: xAt(s.age, span, padX),
     y: yAt(commandedAt(stream.inTransit, s.age) ?? s.value),
   }));
   // First echo sample (age-ascending, same order as `stream.echo`) that
@@ -225,8 +229,11 @@ export function ControlDelayStream({
   if (!first || oneWay === null || oneWay < MIN_DELAY_SECONDS) return null;
 
   const span = 3 * oneWay;
-  const divX1 = xAt(oneWay, span);
-  const divX2 = xAt(2 * oneWay, span);
+  // Full-bleed in the rail: the graph reaches both widget edges, same as the
+  // discrete rail. The inline variant keeps the small inset.
+  const padX = variant === "rail" ? 0 : PAD_X;
+  const divX1 = xAt(oneWay, span, padX);
+  const divX2 = xAt(2 * oneWay, span, padX);
 
   return (
     <ControlDelayStream__Root
@@ -242,7 +249,13 @@ export function ControlDelayStream({
         preserveAspectRatio="none"
       >
         {streams.map((s, i) => (
-          <StreamPaths key={s.id} stream={s} span={span} index={i} />
+          <StreamPaths
+            key={s.id}
+            stream={s}
+            span={span}
+            index={i}
+            padX={padX}
+          />
         ))}
         <line
           data-divider="t"
@@ -262,42 +275,45 @@ export function ControlDelayStream({
           stroke="var(--color-border-subtle)"
           strokeWidth="0.4"
         />
-        {/* Hover-only labels: hidden by default, revealed on hover, so the static
-            render is deterministic and screen readers get the aria-label, not this.
-            The parent svg carries `role="img"` + an aria-label, so it is a leaf in
-            the accessibility tree and these labels are never announced separately. */}
-        <g data-role="hover-labels">
-          <text x={divX1} y={PAD_T - 0.4} textAnchor="middle" fontSize="2">
-            <Unit value={value("s", oneWay)} decimals={1} />
-          </text>
-          <text x={divX2} y={PAD_T - 0.4} textAnchor="middle" fontSize="2">
-            <Unit value={value("s", 2 * oneWay)} decimals={1} />
-          </text>
-          <text
-            x={xAt(oneWay / 2, span)}
-            y={VB_H - 0.6}
-            textAnchor="middle"
-            fontSize="2"
-          >
-            outgoing
-          </text>
-          <text
-            x={xAt(1.5 * oneWay, span)}
-            y={VB_H - 0.6}
-            textAnchor="middle"
-            fontSize="2"
-          >
-            echo
-          </text>
-          <text
-            x={xAt(2.5 * oneWay, span)}
-            y={VB_H - 0.6}
-            textAnchor="middle"
-            fontSize="2"
-          >
-            confirmed
-          </text>
-        </g>
+        {/* Hover-only zone + delay labels, INLINE variant only: at the 16px rail
+            size they squash to noise, so the rail is just the graph. Hidden by
+            default, revealed on hover (the static render is deterministic and the
+            svg's own `role="img"` + aria-label carries the accessible name, so
+            these are never announced separately). */}
+        {variant !== "rail" && (
+          <g data-role="hover-labels">
+            <text x={divX1} y={PAD_T - 0.4} textAnchor="middle" fontSize="2">
+              <Unit value={value("s", oneWay)} decimals={1} />
+            </text>
+            <text x={divX2} y={PAD_T - 0.4} textAnchor="middle" fontSize="2">
+              <Unit value={value("s", 2 * oneWay)} decimals={1} />
+            </text>
+            <text
+              x={xAt(oneWay / 2, span, padX)}
+              y={VB_H - 0.6}
+              textAnchor="middle"
+              fontSize="2"
+            >
+              outgoing
+            </text>
+            <text
+              x={xAt(1.5 * oneWay, span, padX)}
+              y={VB_H - 0.6}
+              textAnchor="middle"
+              fontSize="2"
+            >
+              echo
+            </text>
+            <text
+              x={xAt(2.5 * oneWay, span, padX)}
+              y={VB_H - 0.6}
+              textAnchor="middle"
+              fontSize="2"
+            >
+              confirmed
+            </text>
+          </g>
+        )}
       </ControlDelayStream__Svg>
     </ControlDelayStream__Root>
   );

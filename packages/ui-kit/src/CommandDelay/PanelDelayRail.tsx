@@ -185,9 +185,12 @@ export function PanelDelayRail() {
  */
 const PanelDelayRail__Wrap = styled.div`
   position: relative;
-  /* Edge to edge: cancel the body's own horizontal inset so the strip (and the
-     float below it) span the full widget width, flush to both edges, the same
-     negative-margin trick the sticky header uses. */
+  /* Flush to the true top-left-right edges: cancel the body's own inset (top +
+     sides) so the strip sits at the very top edge with no dead band above it,
+     and spans the full widget width. The sticky header's own sticky offset
+     accounts for the rail sitting flush (see PanelStickyHeader). The same
+     negative-margin trick the header uses to reach the true top. */
+  margin-top: calc(-1 * var(--space-8, 8px));
   margin-left: calc(-1 * var(--space-16, 16px));
   margin-right: calc(-1 * var(--space-16, 16px));
 `;

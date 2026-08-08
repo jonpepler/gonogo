@@ -207,6 +207,40 @@ describe("ControlDelayStream", () => {
     );
   });
 
+  it("drops the zone/section labels in rail mode, keeps them inline", () => {
+    const { container: rail } = render(
+      <ControlDelayStream streams={[stream()]} variant="rail" />,
+    );
+    const { container: inline } = render(
+      <ControlDelayStream streams={[stream()]} />,
+    );
+    expect(rail.querySelector('[data-role="hover-labels"]')).toBeNull();
+    expect(inline.querySelector('[data-role="hover-labels"]')).not.toBeNull();
+  });
+
+  it("bleeds the graph to the full width in rail mode (no horizontal inset)", () => {
+    // padX = 0 in rail, so the first zone divider sits at exactly 1/3 of the
+    // full viewBox width; the inline variant keeps a small inset, so its divider
+    // is nudged off the exact third.
+    const { container: rail } = render(
+      <ControlDelayStream
+        streams={[stream({ oneWaySeconds: 1 })]}
+        variant="rail"
+      />,
+    );
+    const { container: inline } = render(
+      <ControlDelayStream streams={[stream({ oneWaySeconds: 1 })]} />,
+    );
+    const railT = Number(
+      rail.querySelector('[data-divider="t"]')?.getAttribute("x1"),
+    );
+    const inlineT = Number(
+      inline.querySelector('[data-divider="t"]')?.getAttribute("x1"),
+    );
+    expect(railT).toBeCloseTo(100 / 3, 1);
+    expect(inlineT).toBeGreaterThan(railT);
+  });
+
   it("has no axe violations", async () => {
     const { container } = render(<ControlDelayStream streams={[stream()]} />);
     expect(await axe(container)).toHaveNoViolations();

@@ -1,11 +1,18 @@
 import { value } from "@ksp-gonogo/sitrep-sdk";
-import { TextButton, Unit } from "@ksp-gonogo/ui-kit";
+import { Meter, TextButton, Unit } from "@ksp-gonogo/ui-kit";
 import type React from "react";
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { useZoomPan } from "../shared/useZoomPan";
 import { ShipDiagramSvg } from "./ShipDiagramSvg";
-import type { ShipMapPart } from "./shipTopology";
+import type {
+  ShipMapPart,
+  ShipMapPartMetaEntry,
+  ShipMapPartMeterEntry,
+} from "./shipTopology";
+
+const NO_METERS: readonly ShipMapPartMeterEntry[] = [];
+const NO_META: readonly ShipMapPartMetaEntry[] = [];
 
 interface Props {
   parts: readonly ShipMapPart[];
@@ -20,6 +27,15 @@ interface Props {
   /** Current `f.throttle` (0..1+). Forwarded to ShipDiagramSvg so
    *  engine-flame overlays gate on actual thrust. */
   throttle?: number;
+  /** Per-part resource meters (spec §13.4 self-contribution), keyed by
+   *  `ShipMapPart.flightId` (stringified). Forwarded to `ShipDiagramSvg`
+   *  for the compact in-body fill bars, and read here to render the SAME
+   *  entries as real `<Meter>`s in the hover tooltip. */
+  partMeters?: ReadonlyMap<string, readonly ShipMapPartMeterEntry[]>;
+  /** Per-part status/metadata rows (spec §13.4), same keying as
+   *  `partMeters`. Rendered only in the hover tooltip, ShipDiagramSvg has
+   *  no compact-body equivalent for these. */
+  partMeta?: ReadonlyMap<string, readonly ShipMapPartMetaEntry[]>;
 }
 
 export function ShipDiagram({
@@ -29,6 +45,8 @@ export function ShipDiagram({
   width,
   height,
   throttle,
+  partMeters,
+  partMeta,
 }: Readonly<Props>) {
   const [hovered, setHovered] = useState<ShipMapPart | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
@@ -44,6 +62,26 @@ export function ShipDiagram({
     const rect = e.currentTarget.getBoundingClientRect();
     setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
+
+  // The hovered part's contributed rows (spec §13.4): rendered here through
+  // the real ui-kit `<Meter>`, the SAME component ShipSystems and every other
+  // meter-bearing widget uses, so a contributed reading and a built-in one
+  // look like one system rather than two. `ShipDiagramSvg`'s compact in-body
+  // bars read the identical `partMeters` map (passed straight through
+  // above); this is the OTHER rendering of that one aggregated list, not a
+  // second data path.
+  const hoveredMeters = hovered
+    ? (partMeters?.get(String(hovered.flightId)) ?? NO_METERS)
+    : NO_METERS;
+  const hoveredMeta = hovered
+    ? (partMeta?.get(String(hovered.flightId)) ?? NO_META)
+    : NO_META;
+  // Resources with no contributed meter still get the plain raw row they
+  // always had, full transparency isn't lost just because a resource didn't
+  // earn a bar.
+  const meteredResourceNames = new Set(hoveredMeters.map((m) => m.resource));
+  const otherResources =
+    hovered?.resources?.filter((r) => !meteredResourceNames.has(r.n)) ?? [];
 
   return (
     // Mouse pan/zoom surface only (drag to pan, wheel to zoom): a progressive
@@ -82,6 +120,7 @@ export function ShipDiagram({
         throttle={throttle}
         onPartHover={setHovered}
         onPartFocus={(_, center) => setMouse(center)}
+        partMeters={partMeters}
       />
 
       {hovered && (
@@ -117,16 +156,40 @@ export function ShipDiagram({
             <span>stage</span>
             <span style={TOOLTIP_ROW_VALUE}>{hovered.stage}</span>
           </div>
-          {hovered.resources && hovered.resources.length > 0
-            ? hovered.resources.map((r) => (
-                <div style={TOOLTIP_ROW} key={r.n}>
-                  <span>{r.n}</span>
-                  <span style={TOOLTIP_ROW_VALUE}>
-                    {r.a.toFixed(0)} / {r.c.toFixed(0)}
-                  </span>
-                </div>
-              ))
-            : null}
+          {hoveredMeters.map((m) => (
+            <Meter
+              key={`meter-${m.resource}`}
+              label={m.displayName}
+              value={m.capacity > 0 ? m.amount / m.capacity : 0}
+              valueLabel={`${m.amount.toFixed(1)} / ${m.capacity.toFixed(1)}`}
+              tone={m.tone}
+              size="sm"
+            />
+          ))}
+          {otherResources.map((r) => (
+            <div style={TOOLTIP_ROW} key={r.n}>
+              <span>{r.n}</span>
+              <span style={TOOLTIP_ROW_VALUE}>
+                {r.a.toFixed(0)} / {r.c.toFixed(0)}
+              </span>
+            </div>
+          ))}
+          {hoveredMeta.map((m) =>
+            m.kind === "ratio" ? (
+              <Meter
+                key={`meta-${m.label}`}
+                label={m.label}
+                value={m.value ?? 0}
+                tone={m.tone}
+                size="sm"
+              />
+            ) : (
+              <div style={TOOLTIP_ROW} key={`meta-${m.label}`}>
+                <span>{m.label}</span>
+                <span style={TOOLTIP_ROW_VALUE}>{m.text}</span>
+              </div>
+            ),
+          )}
         </div>
       )}
     </div>

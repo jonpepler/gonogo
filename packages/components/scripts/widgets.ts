@@ -1154,6 +1154,23 @@ const WIDGETS: WidgetRenderConfig[] = [
     ],
   },
   {
+    // ShipMap: part diagram + the spec §13.4 self-contribution flagship
+    // (`ship-map.part-meters` / `ship-map.part-meta`). A dedicated
+    // `probe/` subfolder under the widget's own `__fixtures__/`, separate
+    // from the SSR-only legacy `{ "v.topology": ... }` fixtures the
+    // `render-ship-map` script + snapshot tests use: those carry no
+    // `_stream` block, so the probe would render them as a permanent
+    // "Waiting for vessel topology" placeholder. These two are authored
+    // straight in the modern `vessel.parts` wire shape instead.
+    widgetId: "ship-map",
+    fixturesPath: "ShipMap/__fixtures__/probe",
+    outPath: "renders/kerbalism-shipmap",
+    modes: [
+      // Registered default.
+      { name: "default-8x10", w: 8, h: 10 },
+    ],
+  },
+  {
     // ShipSystems: Kerbalism vessel-wide resource ledger, replacing the
     // deleted LifeSupportSystems widget. Its actual source lives at
     // mod/GonogoKerbalismUplink/client/src/ShipSystems, the fixture stays

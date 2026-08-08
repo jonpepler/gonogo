@@ -75,6 +75,29 @@ function polyline(points: { x: number; y: number }[]): string {
     .join(" ");
 }
 
+/**
+ * Clip the confirmed-echo line so it BEGINS exactly at the confirmed-stage
+ * boundary (`2 * oneWay`, the same value the 2T divider is drawn from), never at
+ * a stray earlier data age. The reply cannot be confirmed before it arrives at
+ * 2T, so a sample before the boundary is dropped and an interpolated vertex is
+ * placed at the boundary itself: the line's last-stage transition then lands ON
+ * the divider, not before it (both derive from the one shared boundary).
+ */
+function clipToConfirmed(
+  echo: ControlStreamSample[],
+  boundaryAge: number,
+): ControlStreamSample[] {
+  if (echo.length === 0 || echo[0].age >= boundaryAge) return echo;
+  const after = echo.findIndex((s) => s.age >= boundaryAge);
+  if (after === -1) return []; // nothing confirmed yet
+  const before = echo[after - 1];
+  const first = echo[after];
+  const span = first.age - before.age || 1;
+  const t = (boundaryAge - before.age) / span;
+  const value = before.value + t * (first.value - before.value);
+  return [{ age: boundaryAge, value }, ...echo.slice(after)];
+}
+
 /** Commanded value interpolated at `age` (local copy; ui-kit imports no model). */
 function commandedAt(
   inTransit: ControlStreamSample[],
@@ -101,11 +124,15 @@ function StreamPaths({
   span,
   index,
   padX,
+  twoT,
 }: {
   stream: ControlStreamDatum;
   span: number;
   index: number;
   padX: number;
+  /** The 2T stage boundary AGE, the exact value the 2T divider is drawn from,
+   *  so the confirmed line and the divider share one boundary (no drift). */
+  twoT: number;
 }) {
   const token = STREAM_TOKENS[index % STREAM_TOKENS.length];
   const colour = `var(${token})`;
@@ -128,19 +155,23 @@ function StreamPaths({
   // to nothing, kept low-alpha so it reads as a glow, not a solid fill.
   const areaPath = `${polyline(cmd)} L${cmd[cmd.length - 1].x.toFixed(2)},${(PAD_T + PLOT_H).toFixed(2)} L${cmd[0].x.toFixed(2)},${(PAD_T + PLOT_H).toFixed(2)} Z`;
 
-  const echoPts = stream.echo.map((s) => ({
+  // The confirmed-echo line is clipped to begin at the 2T stage boundary (the
+  // exact `twoT` the 2T divider is drawn from), so its stage transition lands
+  // exactly on the divider, never before it.
+  const confirmedEcho = clipToConfirmed(stream.echo, twoT);
+  const echoPts = confirmedEcho.map((s) => ({
     x: xAt(s.age, span, padX),
     y: yAt(s.value),
   }));
-  const expectedPts = stream.echo.map((s) => ({
+  const expectedPts = confirmedEcho.map((s) => ({
     x: xAt(s.age, span, padX),
     y: yAt(commandedAt(stream.inTransit, s.age) ?? s.value),
   }));
-  // First echo sample (age-ascending, same order as `stream.echo`) that
-  // diverges from the commanded path past the epsilon. The actual-orange
-  // treatment stems FROM this point, not the whole echo path: everything
-  // before it stays the ordinary confirmed-zone treatment.
-  const divergeIndex = stream.echo.findIndex((s) => {
+  // First confirmed sample (age-ascending) that diverges from the commanded
+  // path past the epsilon. The actual-orange treatment stems FROM this point,
+  // not the whole echo path: everything before it stays the ordinary
+  // confirmed-zone treatment.
+  const divergeIndex = confirmedEcho.findIndex((s) => {
     const c = commandedAt(stream.inTransit, s.age);
     return c !== null && Math.abs(s.value - c) > DEVIATION_EPSILON;
   });
@@ -248,11 +279,16 @@ export function ControlDelayStream({
   if (!first || oneWay === null || oneWay < MIN_DELAY_SECONDS) return null;
 
   const span = 3 * oneWay;
+  // The two stage boundaries, computed ONCE and shared by the dividers AND the
+  // confirmed-line clip, so a line can never change appearance anywhere except
+  // exactly on a divider.
+  const oneT = oneWay;
+  const twoT = 2 * oneWay;
   // Full-bleed for the rail AND the expanded view: the graph reaches both widget
   // edges. Only the in-widget inline variant keeps the small stroke inset.
   const padX = variant === "inline" ? PAD_X : 0;
-  const divX1 = xAt(oneWay, span, padX);
-  const divX2 = xAt(2 * oneWay, span, padX);
+  const divX1 = xAt(oneT, span, padX);
+  const divX2 = xAt(twoT, span, padX);
 
   return (
     <ControlDelayStream__Root
@@ -275,6 +311,7 @@ export function ControlDelayStream({
             span={span}
             index={i}
             padX={padX}
+            twoT={twoT}
           />
         ))}
         <line

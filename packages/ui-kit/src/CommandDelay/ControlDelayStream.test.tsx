@@ -121,6 +121,33 @@ describe("ControlDelayStream", () => {
     );
   });
 
+  it("begins the confirmed-echo line exactly at the 2T divider (shared boundary, not a stray data age)", () => {
+    // Echo's first sample is at age 1.5, BEFORE 2T (=2 for oneWay 1). The
+    // confirmed line must still begin at the 2T divider, both derived from the
+    // one boundary, so the last-stage transition lands ON the divider.
+    const s = stream({
+      oneWaySeconds: 1,
+      inTransit: [
+        { age: 0, value: 0.5 },
+        { age: 3, value: 0.5 },
+      ],
+      echo: [
+        { age: 1.5, value: 0.5 },
+        { age: 2.5, value: 0.5 },
+      ],
+    });
+    const { container } = render(
+      <ControlDelayStream streams={[s]} variant="expanded" />,
+    );
+    const divX2 = Number(
+      container.querySelector('[data-divider="2t"]')?.getAttribute("x1"),
+    );
+    const echoD =
+      container.querySelector('[data-role="echo"]')?.getAttribute("d") ?? "";
+    const firstX = Number(echoD.match(/^M([\d.]+),/)?.[1]);
+    expect(firstX).toBeCloseTo(divX2, 1);
+  });
+
   it("gives every instance its own gradient id, never colliding across mounted widgets", () => {
     // Two independently-mounted streams (the same shape two Navball
     // instances, or a Navball plus a second control widget, would produce):

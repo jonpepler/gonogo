@@ -447,7 +447,7 @@ const InFlightRailStrip__Svg = styled.svg`
 // growth). The axis is slot-derived, a ROW in a wide box, a COLUMN in a narrow
 // one, via container-query, one square thick, `--thick` the single number that
 // sets it. A lost/overdue square is a real clear button (dismiss).
-const QUEUE_THICK = 64; // px, the rail's doubled square strip (mockup: 34)
+const QUEUE_THICK = 54; // px, the rail's square strip (down from a first-cut 64)
 const QUEUE_BAR = 5;
 const QUEUE_GAP = 3;
 const QUEUE_SQUARE = QUEUE_THICK - 8 - QUEUE_BAR; // less border+padding and bar
@@ -604,7 +604,10 @@ const InFlightQueue__Sq = styled.div`
   font-size: var(--font-size-xs);
   font-weight: 700;
   color: currentColor;
-  background: color-mix(in srgb, currentColor 8%, var(--color-surface-sunken));
+  /* A RAISED tile, lighter than the panel (a tint of the phase colour over the
+     raised surface), so each square reads as a raised chip rather than a
+     bordered hole punched into the panel. */
+  background: color-mix(in srgb, currentColor 10%, var(--color-surface-raised));
   border: 1px solid currentColor;
   border-right: 0;
   border-radius: var(--radius-sm, 3px) 0 0 var(--radius-sm, 3px);

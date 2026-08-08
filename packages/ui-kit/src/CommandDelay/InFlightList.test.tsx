@@ -119,19 +119,23 @@ describe("InFlightList", () => {
     });
   });
 
-  describe('variant="expanded" (v3 detail pills)', () => {
-    it("renders a rich pill per command: label, phase tag, countdown and a progress bar", () => {
+  describe('variant="expanded" (v3 round 6 square-icon tile row)', () => {
+    it("renders a fixed-height row of square-icon tiles, one per command", () => {
       const { container } = render(
         <InFlightList items={ITEMS} variant="expanded" />,
       );
-      // Real labels (not a glow summary).
-      expect(container.textContent).toContain("run boot.ks");
-      expect(container.textContent).toContain("run land.ks");
-      // One pill per command, each carrying a phase tag.
-      const pills = container.querySelectorAll("[data-phase]");
-      expect(pills).toHaveLength(ITEMS.length);
-      // The in-transit command shows its "uplink" leg tag and a countdown.
-      expect(container.textContent?.toLowerCase()).toContain("uplink");
+      const row = container.querySelector('[role="list"]');
+      expect(row).toHaveAttribute("aria-label", "In-flight commands");
+      const tiles = container.querySelectorAll("[data-phase]");
+      expect(tiles).toHaveLength(ITEMS.length);
+      // Each tile carries a state icon and an accessible name with label + state.
+      const first = tiles[0];
+      expect(first.querySelector("svg")).not.toBeNull();
+      expect(first.getAttribute("aria-label")).toContain("run boot.ks");
+      expect(first.getAttribute("aria-label")?.toLowerCase()).toContain(
+        "uplink",
+      );
+      // The countdown shows inside the tile.
       expect(container.textContent).toContain("4s");
     });
 

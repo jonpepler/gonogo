@@ -181,7 +181,7 @@ export function InFlightList({
   }
   if (variant === "expanded") {
     if (items.length === 0) return null;
-    return <InFlightPills items={items} ariaLabel={ariaLabel} />;
+    return <InFlightTiles items={items} ariaLabel={ariaLabel} />;
   }
 
   const resolved: Exclude<InFlightListDensity, "auto"> =
@@ -403,10 +403,14 @@ const InFlightRailStrip__Svg = styled.svg`
   height: 16px;
 `;
 
-// v3 expanded (grown/pinned) discrete view: a rich pill per command, the Fable
-// mock's `.pill`. Leg colour distinguishes the journey stage (uplink out / echo
-// back / due / fault), and a 2px bottom bar tracks the command's true progress.
-const PILL_COLOUR: Record<InFlightListItem["phase"], string> = {
+// v3 round 6 expanded (grown/pinned) discrete view: one SQUARE-ICON tile per
+// command, laid out left-to-right in a fixed-height row that scrolls when the
+// queue is long, so a growing queue extends HORIZONTALLY and never grows the
+// widget's height (the vertical pill list did, which could shove a button under
+// the operator's cursor). State reads from the icon + leg colour (the
+// optimistic-UI grammar from delay-display-ux-options.md: clock = in transit,
+// tick = delivered), with a bottom bar tracking true progress.
+const TILE_COLOUR: Record<InFlightListItem["phase"], string> = {
   "in-transit": "var(--color-data-1)",
   "awaiting-reply": "var(--color-data-10)",
   due: "var(--color-accent-fg)",
@@ -414,15 +418,56 @@ const PILL_COLOUR: Record<InFlightListItem["phase"], string> = {
   lost: "var(--color-status-nogo-fg)",
 };
 
-const PHASE_TAG: Record<InFlightListItem["phase"], string> = {
+type TileIconKind = "clock" | "check" | "bang" | "cross";
+
+const PHASE_ICON: Record<InFlightListItem["phase"], TileIconKind> = {
+  "in-transit": "clock",
+  "awaiting-reply": "clock",
+  due: "check",
+  overdue: "bang",
+  lost: "cross",
+};
+
+const PHASE_STATE: Record<InFlightListItem["phase"], string> = {
   "in-transit": "uplink",
   "awaiting-reply": "echo",
-  due: "due",
+  due: "delivered",
   overdue: "overdue",
   lost: "lost",
 };
 
-function InFlightPills({
+function TileIcon({ kind }: { kind: TileIconKind }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width="15"
+      height="15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {kind === "clock" && (
+        <>
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 4.6V8l2.4 1.5" />
+        </>
+      )}
+      {kind === "check" && <path d="M3.5 8.5l3 3 6-7" strokeWidth="1.8" />}
+      {kind === "bang" && (
+        <>
+          <path d="M8 3.5v5" />
+          <path d="M8 11.6v.01" strokeWidth="2" />
+        </>
+      )}
+      {kind === "cross" && <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />}
+    </svg>
+  );
+}
+
+function InFlightTiles({
   items,
   ariaLabel,
 }: {
@@ -430,84 +475,77 @@ function InFlightPills({
   ariaLabel: string;
 }) {
   return (
-    <InFlightPills__List aria-label={ariaLabel}>
+    <InFlightTiles__Row aria-label={ariaLabel}>
       {items.map((item) => (
-        <InFlightPillRow key={item.id} item={item} />
+        <InFlightTile key={item.id} item={item} />
       ))}
-    </InFlightPills__List>
+    </InFlightTiles__Row>
   );
 }
 
-function InFlightPillRow({ item }: { item: InFlightListItem }) {
+function InFlightTile({ item }: { item: InFlightListItem }) {
   const countdown = useCountdown(item.etaSeconds);
-  const colour = PILL_COLOUR[item.phase];
+  const colour = TILE_COLOUR[item.phase];
   const progress = Math.max(
     0,
     Math.min(1, item.progress ?? PHASE_PROGRESS[item.phase]),
   );
+  const time = countdown === null ? null : formatCountdown(countdown);
+  const spoken = `${item.label}, ${PHASE_STATE[item.phase]}${time ? `, ${time}` : ""}`;
   return (
-    <InFlightPills__Pill data-phase={item.phase}>
-      <InFlightPills__Tag style={{ color: colour }}>
-        {PHASE_TAG[item.phase]}
-      </InFlightPills__Tag>
-      <InFlightPills__Label>{item.label}</InFlightPills__Label>
-      <InFlightPills__Time style={{ color: colour }}>
-        {countdown === null ? item.phase : formatCountdown(countdown)}
-      </InFlightPills__Time>
-      <InFlightPills__Bar
-        style={{ width: `${progress * 100}%`, background: colour }}
-      />
-    </InFlightPills__Pill>
+    <InFlightTile__Box
+      data-phase={item.phase}
+      style={{ color: colour }}
+      aria-label={spoken}
+      title={spoken}
+    >
+      <TileIcon kind={PHASE_ICON[item.phase]} />
+      <InFlightTile__Time>{time ?? PHASE_STATE[item.phase]}</InFlightTile__Time>
+      <InFlightTile__Bar style={{ width: `${progress * 100}%` }} />
+    </InFlightTile__Box>
   );
 }
 
-const InFlightPills__List = styled.div`
+const InFlightTiles__Row = styled.div.attrs({ role: "list" })`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: var(--space-4, 4px);
   width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: var(--space-2, 2px);
 `;
 
-const InFlightPills__Pill = styled.div`
+const InFlightTile__Box = styled.div.attrs({ role: "listitem" })`
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-8, 8px);
-  overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md, 4px);
-  padding: var(--space-4, 4px) var(--space-8, 8px);
-  background: color-mix(in srgb, var(--color-surface-sunken) 70%, transparent);
-  font-size: var(--font-size-sm);
-`;
-
-const InFlightPills__Tag = styled.span`
   flex: 0 0 auto;
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 2px);
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-md, 4px);
+  background: color-mix(in srgb, currentColor 8%, var(--color-surface-sunken));
 `;
 
-const InFlightPills__Label = styled.span`
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+const InFlightTile__Time = styled.span`
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
 `;
 
-const InFlightPills__Time = styled.span`
-  flex: 0 0 auto;
-  font-family: var(--font-family-mono);
-  font-variant-numeric: tabular-nums;
-`;
-
-const InFlightPills__Bar = styled.span`
+const InFlightTile__Bar = styled.span`
   position: absolute;
   left: 0;
   bottom: 0;
   height: 2px;
+  background: currentColor;
 `;
 
 const InFlightList__Root = styled.div<{ $row: boolean }>`

@@ -133,16 +133,15 @@ describe("ControlDelayStream", () => {
     const { container: b } = render(
       <ControlDelayStream streams={[stream()]} />,
     );
-    const idsA = Array.from(a.querySelectorAll("linearGradient")).map((el) =>
-      el.getAttribute("id"),
-    );
-    const idsB = Array.from(b.querySelectorAll("linearGradient")).map((el) =>
-      el.getAttribute("id"),
-    );
-    expect(idsA).toHaveLength(1);
-    expect(idsB).toHaveLength(1);
-    expect(idsA[0]).toBeTruthy();
-    expect(idsA[0]).not.toBe(idsB[0]);
+    const rampA = a
+      .querySelector('linearGradient[id^="cds-ramp-"]')
+      ?.getAttribute("id");
+    const rampB = b
+      .querySelector('linearGradient[id^="cds-ramp-"]')
+      ?.getAttribute("id");
+    expect(rampA).toBeTruthy();
+    expect(rampB).toBeTruthy();
+    expect(rampA).not.toBe(rampB);
   });
 
   it("draws a confidence-ramp gradient from muted (left) to clear (right)", () => {
@@ -180,14 +179,18 @@ describe("ControlDelayStream", () => {
     expect(opacities[opacities.length - 1]).toBe(0.4);
   });
 
-  it("draws no area fill under the commanded path (v3 drops all area fills)", () => {
+  it("draws a soft under-line glow fill (v3 round 6), a gradient not a flat colour", () => {
     const { container } = render(<ControlDelayStream streams={[stream()]} />);
-    // The old area fill was the only <path> with a real fill; every stroke path
-    // sets fill="none". v3 removes it, so nothing is filled.
-    const filled = Array.from(container.querySelectorAll("path")).filter(
-      (p) => (p.getAttribute("fill") ?? "none") !== "none",
-    );
-    expect(filled).toHaveLength(0);
+    const area = container.querySelector('[data-role="area"]');
+    expect(area).not.toBeNull();
+    // Filled with a gradient (the glow), not a solid colour or none.
+    expect(area?.getAttribute("fill")).toMatch(/^url\(#cds-fill-/);
+    // Its gradient fades top -> transparent bottom.
+    const fillGrad = container.querySelector('linearGradient[id^="cds-fill-"]');
+    const stops = Array.from(fillGrad?.querySelectorAll("stop") ?? []);
+    const opacities = stops.map((s) => Number(s.getAttribute("stop-opacity")));
+    expect(opacities[0]).toBeGreaterThan(0);
+    expect(opacities[opacities.length - 1]).toBe(0);
   });
 
   it('renders at the 16px rail size under variant="rail", 40px inline by default', () => {

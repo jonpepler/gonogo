@@ -114,12 +114,19 @@ function StreamPaths({
   // would otherwise both emit `id="cds-ramp-0"`, and the SVG spec resolves
   // `url(#cds-ramp-0)` to whichever element is FIRST in document order, so
   // one instance's gradient silently wins for both.
-  const gradId = `cds-ramp-${useId()}-${index}`;
+  const uid = useId();
+  const gradId = `cds-ramp-${uid}-${index}`;
+  const fillId = `cds-fill-${uid}-${index}`;
   const cmd = stream.inTransit.map((s) => ({
     x: xAt(s.age, span, padX),
     y: yAt(s.value),
   }));
   if (cmd.length === 0) return null;
+
+  // Soft area fill under the commanded line: a little glow so the trace pops
+  // (v3 round 6). A vertical gradient, brightest just under the line and fading
+  // to nothing, kept low-alpha so it reads as a glow, not a solid fill.
+  const areaPath = `${polyline(cmd)} L${cmd[cmd.length - 1].x.toFixed(2)},${(PAD_T + PLOT_H).toFixed(2)} L${cmd[0].x.toFixed(2)},${(PAD_T + PLOT_H).toFixed(2)} Z`;
 
   const echoPts = stream.echo.map((s) => ({
     x: xAt(s.age, span, padX),
@@ -159,7 +166,18 @@ function StreamPaths({
           <stop offset="0" stopColor={colour} stopOpacity="0.10" />
           <stop offset="1" stopColor={colour} stopOpacity="0.40" />
         </linearGradient>
+        {/* Under-line glow fill: brightest just below the trace, fading down. */}
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={colour} stopOpacity="0.22" />
+          <stop offset="1" stopColor={colour} stopOpacity="0" />
+        </linearGradient>
       </defs>
+      <path
+        data-role="area"
+        d={areaPath}
+        fill={`url(#${fillId})`}
+        stroke="none"
+      />
       <path
         data-role="commanded"
         data-stream={stream.id}
@@ -378,7 +396,7 @@ const ControlDelayStream__Svg = styled.svg<{
   display: block;
   width: 100%;
   height: ${({ $variant }) =>
-    $variant === "rail" ? "16px" : $variant === "expanded" ? "86px" : "40px"};
+    $variant === "rail" ? "32px" : $variant === "expanded" ? "86px" : "40px"};
 
   ${({ $variant }) =>
     $variant === "expanded" &&

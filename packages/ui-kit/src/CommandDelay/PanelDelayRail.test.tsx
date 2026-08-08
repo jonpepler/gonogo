@@ -206,10 +206,13 @@ describe("PanelDelayRail", () => {
       await user.click(btn);
       expect(btn).toHaveAttribute("aria-pressed", "true");
       expect(btn).toHaveAttribute("aria-expanded", "true");
-      // Grown: the fuller inline detail renders in place (the summary glow is
-      // replaced by the list), inside the rail button, no separate overlay.
+      // Grown: the fuller detail renders in place (the summary glow is replaced
+      // by the square-icon tile), inside the rail button, no separate overlay.
+      // The command's label rides the tile's accessible name (visible text is
+      // the icon + countdown).
       expect(container.querySelector('[data-role="glow"]')).toBeNull();
-      expect(container.textContent).toContain("Launch");
+      const tile = container.querySelector("[data-phase]");
+      expect(tile?.getAttribute("aria-label")).toContain("Launch");
       expect(container.querySelector("[data-delay-float]")).toBeNull();
 
       await user.keyboard("{Escape}");
@@ -269,9 +272,13 @@ describe("PanelDelayRail", () => {
       });
       const { container } = inPanel(<PanelDelayRail />, store);
       await user.click(railButton());
-      // Both discrete commands render as pills (plus the stream graph above).
-      expect(container.textContent).toContain("SAS Prograde");
-      expect(container.textContent).toContain("Stage");
+      // Both discrete commands render as tiles (plus the stream graph above);
+      // their labels ride the tiles' accessible names.
+      const labels = Array.from(container.querySelectorAll("[data-phase]")).map(
+        (t) => t.getAttribute("aria-label") ?? "",
+      );
+      expect(labels.some((l) => l.includes("SAS Prograde"))).toBe(true);
+      expect(labels.some((l) => l.includes("Stage"))).toBe(true);
     });
   });
 

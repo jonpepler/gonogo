@@ -147,7 +147,10 @@ const PanelDelayRail__Rail = styled.button`
      growing the cap grows the rail smoothly and shrinking it collapses it. */
   display: grid;
   height: auto;
-  max-height: 16px;
+  /* Cap collapsed height so it stays a thin band: a discrete-only rail settles
+     at its 16px grazing-glow height (height:auto), a stream at its 32px mini
+     graph, both under this cap. */
+  max-height: 32px;
   overflow: hidden;
   transition: max-height var(--duration-slow, 200ms) var(--ease-standard, ease);
 
@@ -156,7 +159,7 @@ const PanelDelayRail__Rail = styled.button`
   }
 
   @media (pointer: coarse) {
-    max-height: 20px;
+    max-height: 36px;
   }
 
   @media (prefers-reduced-motion: reduce) {

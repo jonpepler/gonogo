@@ -27,35 +27,52 @@ const VIEWPORT_H = 360;
 // Hand-built CommandDelayHandle scenarios. Plain data (no spine), the same
 // shape `useCommand(...)` returns, so the rail draws exactly as it would for a
 // real in-flight command.
+// Noisier sample sets so the graph conveys VOLUME / activity, not a near-flat
+// line (v3 round 6): the control input varies over the 3T axis the way a real
+// hand-flown axis does.
 const THROTTLE_STREAM = {
   id: "vessel.control.throttle",
   label: "Throttle",
   oneWaySeconds: 1.6,
   inTransit: [
-    { age: 0, value: 0.5 },
-    { age: 2.4, value: 0.62 },
-    { age: 4.8, value: 0.62 },
+    { age: 0, value: 0.44 },
+    { age: 0.6, value: 0.61 },
+    { age: 1.2, value: 0.53 },
+    { age: 1.9, value: 0.7 },
+    { age: 2.6, value: 0.58 },
+    { age: 3.4, value: 0.74 },
+    { age: 4.2, value: 0.63 },
+    { age: 4.8, value: 0.67 },
   ],
   echo: [
-    { age: 3.2, value: 0.6 },
-    { age: 4.0, value: 0.6 },
+    { age: 3.0, value: 0.5 },
+    { age: 3.6, value: 0.63 },
+    { age: 4.2, value: 0.55 },
+    { age: 4.8, value: 0.64 },
   ],
-  current: 0.5,
+  current: 0.44,
 };
 const PITCH_STREAM = {
   id: "vessel.control.pitch",
   label: "Pitch",
   oneWaySeconds: 1.6,
   inTransit: [
-    { age: 0, value: 0.4 },
-    { age: 2.4, value: 0.45 },
-    { age: 4.8, value: 0.45 },
+    { age: 0, value: 0.5 },
+    { age: 0.6, value: 0.41 },
+    { age: 1.2, value: 0.56 },
+    { age: 1.9, value: 0.47 },
+    { age: 2.6, value: 0.6 },
+    { age: 3.4, value: 0.49 },
+    { age: 4.2, value: 0.54 },
+    { age: 4.8, value: 0.46 },
   ],
   echo: [
-    { age: 3.2, value: 0.45 },
-    { age: 4.0, value: 0.72 },
+    { age: 3.0, value: 0.5 },
+    { age: 3.6, value: 0.58 },
+    { age: 4.2, value: 0.74 },
+    { age: 4.8, value: 0.8 },
   ],
-  current: 0.4,
+  current: 0.5,
 };
 
 const SCENARIOS: ReadonlyArray<{

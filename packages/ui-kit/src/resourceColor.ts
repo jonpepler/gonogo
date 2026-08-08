@@ -43,6 +43,24 @@ const RESERVED_BAND_DEG = 15;
  *  only so a pathological future CURATED table can't hang this function. */
 const MAX_ROTATIONS = 64;
 
+/** The reserved-band escape step is DERIVED FROM THE NAME (upper bits of the
+ *  same FNV-1a hash), not the fixed golden angle, and mapped into this range.
+ *  Two different unknowns that both land in the same reserved band then rotate
+ *  by DIFFERENT amounts and diverge, instead of converging on one hue the way a
+ *  shared fixed step made them. 60..300deg: wide enough to clear a band in a
+ *  step or two, never a small step that crawls. Still fully deterministic per
+ *  name. */
+const ESCAPE_STEP_MIN_DEG = 60;
+const ESCAPE_STEP_RANGE_DEG = 241;
+
+/** Fractional dither (~0.508deg, the golden angle's own fractional part) added
+ *  to the name-derived step so it is NEVER a whole number. A whole-number step
+ *  can orbit a small set of hues (step and 360 sharing a factor) that all sit
+ *  in reserved bands, so the escape loop would run to its cap without ever
+ *  clearing; a non-integer step's orbit never exactly repeats, so it always
+ *  reaches a clear hue. */
+const ESCAPE_STEP_DITHER = GOLDEN_ANGLE_DEG - Math.floor(GOLDEN_ANGLE_DEG);
+
 /**
  * One curated family: every alias in `aliases` maps to `hue`. Aliases
  * within a family don't need internal ordering (they share a hue), but
@@ -144,16 +162,25 @@ function isWithinReservedBand(hue: number): boolean {
  * Tier 2: stateless golden-angle hash fallback, exported for the same
  * synthetic-table testing reason as `matchCuratedHue`.
  *
- * `hue = (stableHash(name) * goldenAngle) mod 360`, then rotated by the
- * golden angle again (deterministically, no randomness) as many times as
- * it takes to clear every curated hue's reserved band.
+ * `hue = (stableHash(name) * goldenAngle) mod 360`, then, if it lands in a
+ * curated hue's reserved band, rotated by a NAME-DERIVED step (deterministic,
+ * no randomness) as many times as it takes to clear every band. The step is
+ * per-name so two unknowns escaping the SAME band diverge, see
+ * `ESCAPE_STEP_MIN_DEG`'s comment.
  */
 export function hashHue(key: string): number {
-  const seed = fnv1a(key) * GOLDEN_ANGLE_DEG;
-  let hue = positiveMod(seed, 360);
+  const hash = fnv1a(key);
+  let hue = positiveMod(hash * GOLDEN_ANGLE_DEG, 360);
+  // Escape step from the name's own hash (upper bits, decoupled from the
+  // initial-hue derivation above), so a different name escaping the same band
+  // rotates by a different amount and lands somewhere else.
+  const escapeStep =
+    ESCAPE_STEP_MIN_DEG +
+    ((hash >>> 8) % ESCAPE_STEP_RANGE_DEG) +
+    ESCAPE_STEP_DITHER;
   let rotations = 0;
   while (isWithinReservedBand(hue) && rotations < MAX_ROTATIONS) {
-    hue = positiveMod(hue + GOLDEN_ANGLE_DEG, 360);
+    hue = positiveMod(hue + escapeStep, 360);
     rotations++;
   }
   return hue;

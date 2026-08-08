@@ -119,4 +119,18 @@ describe("resourceColor", () => {
       expect(hashHue("krunchies")).toBe(hashHue("krunchies"));
     });
   });
+
+  it("two unknowns that both escape the same reserved band get distinct hues", () => {
+    // solidfuel hashes to ~214deg (water's band) and kerbalkrunchies to ~128deg
+    // (food's band), so both must escape. With a NAME-DERIVED escape step they
+    // diverge instead of converging on one hue (the old fixed-step collision
+    // put both on the same magenta ~1.7deg apart).
+    const hueDist = (a: number, b: number) => {
+      const d = Math.abs(a - b) % 360;
+      return d > 180 ? 360 - d : d;
+    };
+    expect(
+      hueDist(hashHue("solidfuel"), hashHue("kerbalkrunchies")),
+    ).toBeGreaterThan(15);
+  });
 });

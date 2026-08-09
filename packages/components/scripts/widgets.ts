@@ -559,6 +559,10 @@ const WIDGETS: WidgetRenderConfig[] = [
     modes: [
       // minSize 3×3: single-crew row, tightest placement.
       { name: "tiny-3x3", w: 3, h: 3 },
+      // narrowest roster width (showRoster's own w>=4 floor): exercises the
+      // per-crew-row badge WRAP behaviour (a badge that doesn't fit next to
+      // the name drops to its own line instead of truncating it).
+      { name: "narrow-4x10", w: 4, h: 10 },
       // defaultSize 6×8: the common operator view.
       { name: "default-6x8", w: 6, h: 8 },
       // wide/tall: roomy crew list.
@@ -579,6 +583,10 @@ const WIDGETS: WidgetRenderConfig[] = [
     fixturesPath: "CrewManifest/__render_kerbalism_survival__",
     outPath: "renders/kerbalism-crew-survival",
     modes: [
+      // Narrowest roster width: the badge-wrap case actually has badges to
+      // wrap here (crew-critical.json's per-kerbal warnings), unlike the
+      // vanilla base-widget fixtures above which never bind the slot.
+      { name: "narrow-4x10", w: 4, h: 10 },
       // defaultSize 6×8: the common operator view, both fixtures.
       { name: "default-6x8", w: 6, h: 8 },
       // Wide/tall review shot: every row's survival meter + badge readable

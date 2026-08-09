@@ -1,5 +1,10 @@
 import type { ComponentProps } from "@ksp-gonogo/core";
-import { AugmentSlot, registerComponent, useTelemetry } from "@ksp-gonogo/core";
+import {
+  AugmentSlot,
+  getAugmentsForSlot,
+  registerComponent,
+  useTelemetry,
+} from "@ksp-gonogo/core";
 import { useStream, type VesselState } from "@ksp-gonogo/sitrep-client";
 import { Meter, type MeterTone } from "@ksp-gonogo/ui";
 import {
@@ -38,6 +43,19 @@ const TINY_READOUT_STYLE = {
  * Leading per-crew avatar cell size: a square that reserves room for an
  * avatar-face augment. Scales with the widget, clamped 36-56px (mirrors
  * `TINY_READOUT_STYLE`'s vw-clamp idiom).
+ *
+ * Only reserved when an Uplink actually binds `crew-manifest.avatar`
+ * (`avatarAugmentPresent` in `renderBody`, below): a vanilla roster with no
+ * avatar-providing Uplink installed carries no leading cell at all, not a
+ * same-size cell showing an empty placeholder. Operator feedback: a ~40-56px
+ * box reserved for nothing but a 6px decorative dot was wasted width on
+ * every row, and the dot never signalled anything (no augment, no
+ * kerbal-not-seated flag, nothing) - just a bullet point standing in for a
+ * future avatar image. Once an avatar Uplink IS present (e.g. kerbcast's
+ * facecam augment), the cell renders exactly as before, including the
+ * per-kerbal case where THAT Uplink has nothing to show for one kerbal (it
+ * now shows blank there, not the bullet either, same "nothing to signal"
+ * reasoning).
  */
 const AVATAR_CELL_SIZE = "clamp(36px, 8vw, 56px)";
 
@@ -152,15 +170,19 @@ declare module "@ksp-gonogo/core" {
 // ---------------------------------------------------------------------------
 // The `crew-manifest.avatar` slot contract (see augment-slot-map)
 //
-// A per-crew-row LEADING square cell (left of the name, where the bullet dot
-// renders today): the SDK-independent shell of a per-kerbal avatar/portrait. An
-// Uplink can register an augment that fills it with a live face, keyed by
-// kerbal identity. Same per-row keying as `crew-manifest.badges`, `crewName`
-// is the augment's identity handle and `crewIndex` disambiguates duplicate
-// names. Whenever the augment yields nothing (no Uplink providing avatars, the
-// avatar source disabled, kerbal not seated) the cell falls back to the bullet,
-// so CrewManifest renders fully with the slot empty, the avatar augment is
-// entirely optional.
+// A per-crew-row LEADING square cell (left of the name): the SDK-independent
+// shell of a per-kerbal avatar/portrait. An Uplink can register an augment
+// that fills it with a live face, keyed by kerbal identity. Same per-row
+// keying as `crew-manifest.badges`, `crewName` is the augment's identity
+// handle and `crewIndex` disambiguates duplicate names. The cell itself is
+// only reserved while at least one augment is bound to this slot at all
+// (`avatarAugmentPresent`, `renderBody` below); with no avatar-providing
+// Uplink installed, no cell is rendered and the row's leading space goes to
+// the name instead, not a same-size empty placeholder. Once an Uplink IS
+// providing avatars, the cell renders as usual, and for any one kerbal that
+// Uplink has nothing to show for (avatar source disabled, kerbal not seated),
+// the cell renders blank rather than a placeholder: the avatar augment is
+// entirely optional, both at the slot level and per-kerbal.
 // ---------------------------------------------------------------------------
 
 /** Props passed to every `crew-manifest.avatar` augment, one per crew row. */
@@ -374,47 +396,60 @@ function renderBody({
     );
   }
 
+  // Non-reactive read, augments register at module load, before first render
+  // (same convention as FleetRoster's `updatesAugmentPresent`). Gates whether
+  // the leading avatar cell is reserved at all: with no Uplink providing
+  // avatars, no cell is rendered and that width goes back to the name instead
+  // of sitting empty behind a decorative dot that never signalled anything.
+  const avatarAugmentPresent =
+    getAugmentsForSlot("crew-manifest.avatar").length > 0;
+
   return (
     <Stack as="ul" gap="sm" style={rosterListStyle}>
       {names.map((name, index) => {
         return (
           <Stack as="li" gap="sm" key={name}>
-            <Cluster justify="start">
-              {/* Leading per-crew avatar slot: a square cell where an Uplink's
-                  avatar augment composes. The fallback bullet is a base
-                  layer under the slot, with no augment bound (or the augment
-                  yielding nothing: no Uplink, facecams off, kerbal not seated)
-                  it shows through, so the roster degrades gracefully. */}
-              <CrewAvatarCell
-                fallback={
-                  <div
-                    data-testid="crew-avatar-fallback"
-                    aria-hidden
-                    style={AVATAR_LAYER_STYLE}
-                  >
-                    <CrewBullet />
-                  </div>
-                }
-                slot={
-                  <div style={AVATAR_LAYER_STYLE}>
-                    {/* Forces whatever the augment renders (e.g. a face
-                        image) to fill the cell, matching the fallback's
-                        own centred sizing. */}
-                    <div style={{ width: "100%", height: "100%" }}>
-                      <AugmentSlot
-                        name="crew-manifest.avatar"
-                        props={{ crewName: name, crewIndex: index }}
-                      />
+            <Cluster justify="start" wrap>
+              {/* Leading per-crew avatar slot: a square cell where an
+                  Uplink's avatar augment composes. Only rendered while an
+                  Uplink actually binds this slot; with none bound there is no
+                  cell at all, see `avatarAugmentPresent` above. */}
+              {avatarAugmentPresent && (
+                <CrewAvatarCell
+                  slot={
+                    <div style={AVATAR_LAYER_STYLE}>
+                      {/* Forces whatever the augment renders (e.g. a face
+                          image) to fill the cell. Renders blank (not a
+                          placeholder) for a kerbal the bound Uplink has
+                          nothing to show yet. */}
+                      <div style={{ width: "100%", height: "100%" }}>
+                        <AugmentSlot
+                          name="crew-manifest.avatar"
+                          props={{ crewName: name, crewIndex: index }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-              <Truncate>{name}</Truncate>
+                  }
+                />
+              )}
+              {/* `flex: 1 1 auto` (not the shared `Truncate`'s default `flex:
+                  1` = `1 1 0%`, overridden via inline `style` since that
+                  wins over the class-based rule without a bespoke styled
+                  wrapper): the name commands its own natural width in the
+                  wrap decision below, so a trailing badge wraps onto its own
+                  line instead of shrinking the name into an ellipsis. Still
+                  truncates in the rare case the panel itself is too narrow
+                  for the name alone. */}
+              <Truncate style={NAME_FLEX_STYLE}>{name}</Truncate>
               {/* Per-crew inline badges slot. Renders nothing until an Uplink
                   (e.g. Kerbalism Habitat/Radiation) binds, the props carry
                   this row's kerbal identity so the augment badges the right
-                  one. */}
-              <Inline gap="xs" style={{ marginLeft: "auto" }}>
+                  one. `wrap` on the Cluster above lets this drop to its own
+                  line under the name rather than squeeze it; the name's own
+                  flex-grow already pushes the badge to the trailing edge
+                  when both fit on one line, so no `marginLeft: auto` is
+                  needed here. */}
+              <Inline gap="xs">
                 <AugmentSlot
                   name="crew-manifest.badges"
                   props={{ crewName: name, crewIndex: index }}
@@ -438,8 +473,7 @@ function renderBody({
 
 // ── Avatar cell ──────────────────────────────────────────────────────────────
 
-// Both layers absolutely fill the avatar cell and centre their content, so
-// the fallback bullet and a live augment face stack in the same box.
+// The augment slot layer fills the avatar cell and centres its content.
 const AVATAR_LAYER_STYLE = {
   position: "absolute",
   inset: 0,
@@ -449,16 +483,27 @@ const AVATAR_LAYER_STYLE = {
 } as const;
 
 /**
- * Leading per-crew avatar cell: a square that reserves room for an avatar-face
- * augment, sized via `AVATAR_CELL_SIZE`. `position: relative` so the fallback
- * and the augment slot layers stack in the same box.
+ * The crew-row name: overrides `Truncate`'s `flex: 1 1 0%` with `flex: 1 1
+ * auto` so a trailing badge wraps to its own line instead of shrinking the
+ * name (see the row's own comment above). An inline `style` override, not a
+ * bespoke `styled(Truncate)` extension: this widget carries zero bespoke CSS
+ * (`noRestrictedImports` bans `styled-components` here), and inline `style`
+ * already wins over the shared component's class-based rule for the one
+ * property being overridden.
  */
-function CrewAvatarCell({
-  fallback,
-  slot,
-}: Readonly<{ fallback: ReactNode; slot: ReactNode }>) {
+const NAME_FLEX_STYLE = { flex: "1 1 auto" } as const;
+
+/**
+ * Leading per-crew avatar cell: a square that reserves room for an avatar-face
+ * augment, sized via `AVATAR_CELL_SIZE`. `position: relative` so the augment
+ * slot layer fills the box. Only rendered while `avatarAugmentPresent`
+ * (`renderBody`, above) is true, so this component never has to fall back to
+ * placeholder content.
+ */
+function CrewAvatarCell({ slot }: Readonly<{ slot: ReactNode }>) {
   return (
     <div
+      data-testid="crew-avatar-cell"
       style={{
         position: "relative",
         flex: "0 0 auto",
@@ -466,26 +511,8 @@ function CrewAvatarCell({
         height: AVATAR_CELL_SIZE,
       }}
     >
-      {fallback}
       {slot}
     </div>
-  );
-}
-
-// Base layer: the bullet dot, centred in the avatar cell. Shows whenever the
-// slot yields nothing (no augment / facecams off / kerbal not seated); an
-// augment paints over it. Decorative, the name carries the identity.
-function CrewBullet() {
-  return (
-    <span
-      style={{
-        display: "block",
-        width: "6px",
-        height: "6px",
-        borderRadius: "var(--radius-circle)",
-        background: "var(--color-accent-fg)",
-      }}
-    />
   );
 }
 
@@ -502,9 +529,10 @@ registerComponent<CrewManifestConfig>({
   component: CrewManifestComponent,
   // Per-crew-row augment slots (augment-slot-map). All unfilled until an Uplink
   // binds, the roster renders as before:
-  //   crew-manifest.badges, trailing inline badges (e.g. Kerbalism dose/comfort)
-  //   crew-manifest.avatar, leading square face cell (Uplink-provided avatar), falls
-  //     back to the bullet when empty.
+  //   crew-manifest.badges, trailing inline badges (e.g. Kerbalism dose/comfort);
+  //     wraps under the name (Cluster `wrap`) rather than truncating it.
+  //   crew-manifest.avatar, leading square face cell (Uplink-provided avatar); only
+  //     reserved while an Uplink actually binds it, see `avatarAugmentPresent`.
   //   crew-manifest.survival, per-row survival section (e.g. Kerbalism death
   //     clock/worst rule), see that slot's own doc comment above. This widget
   //     carries no Kerbalism-specific reads itself; the per-kerbal survival

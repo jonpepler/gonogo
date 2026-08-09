@@ -405,15 +405,29 @@ function renderBody({
     getAugmentsForSlot("crew-manifest.avatar").length > 0;
 
   return (
-    <Stack as="ul" gap="sm" style={rosterListStyle}>
+    // `gap="lg"` (12px, up from `sm`'s 4px): the between-ROW breathing room
+    // operator feedback flagged as too tight. This is the ONLY gap this fix
+    // touches, the within-row gaps below (avatar-to-text-block, name-row-to-
+    // survival-section) are unrelated and stay as they were.
+    <Stack as="ul" gap="lg" style={rosterListStyle}>
       {names.map((name, index) => {
         return (
-          <Stack as="li" gap="sm" key={name}>
-            <Cluster justify="start" wrap>
-              {/* Leading per-crew avatar slot: a square cell where an
-                  Uplink's avatar augment composes. Only rendered while an
-                  Uplink actually binds this slot; with none bound there is no
-                  cell at all, see `avatarAugmentPresent` above. */}
+          <li key={name}>
+            {/* Per-crew row: a leading avatar COLUMN (when bound) beside a
+                right-hand column carrying the WHOLE rest of the row (name +
+                wrapping badge + survival section), not just the name.
+                `align="start"` top-aligns the fixed-size avatar square
+                against the top of that column rather than centring it
+                against the row as a whole, so a tall column (badge wrapped,
+                survival meters present) doesn't float the avatar down into
+                its middle. */}
+            <Cluster justify="start" align="start">
+              {/* Leading per-crew avatar column: a square cell where an
+                  Uplink's avatar augment composes, spanning the whole row
+                  block (name + badge + survival), not just the name line.
+                  Only rendered while an Uplink actually binds this slot;
+                  with none bound there is no column at all, see
+                  `avatarAugmentPresent` above. */}
               {avatarAugmentPresent && (
                 <CrewAvatarCell
                   slot={
@@ -432,39 +446,49 @@ function renderBody({
                   }
                 />
               )}
-              {/* `flex: 1 1 auto` (not the shared `Truncate`'s default `flex:
-                  1` = `1 1 0%`, overridden via inline `style` since that
-                  wins over the class-based rule without a bespoke styled
-                  wrapper): the name commands its own natural width in the
-                  wrap decision below, so a trailing badge wraps onto its own
-                  line instead of shrinking the name into an ellipsis. Still
-                  truncates in the rare case the panel itself is too narrow
-                  for the name alone. */}
-              <Truncate style={NAME_FLEX_STYLE}>{name}</Truncate>
-              {/* Per-crew inline badges slot. Renders nothing until an Uplink
-                  (e.g. Kerbalism Habitat/Radiation) binds, the props carry
-                  this row's kerbal identity so the augment badges the right
-                  one. `wrap` on the Cluster above lets this drop to its own
-                  line under the name rather than squeeze it; the name's own
-                  flex-grow already pushes the badge to the trailing edge
-                  when both fit on one line, so no `marginLeft: auto` is
-                  needed here. */}
-              <Inline gap="xs">
+              {/* Right-hand column: name, wrapping badge, and the survival
+                  section all stack here, to the right of the avatar (or
+                  full-width when no avatar is bound). `flex: 1 1 auto` +
+                  `minWidth: 0` (CREW_INFO_STYLE) so it fills the remaining
+                  row width and its own `Truncate` child can still shrink to
+                  ellipsis rather than overflow. */}
+              <Stack gap="sm" style={CREW_INFO_STYLE}>
+                <Cluster justify="start" wrap>
+                  {/* `flex: 1 1 auto` (not the shared `Truncate`'s default
+                      `flex: 1` = `1 1 0%`, overridden via inline `style`
+                      since that wins over the class-based rule without a
+                      bespoke styled wrapper): the name commands its own
+                      natural width in the wrap decision below, so a trailing
+                      badge wraps onto its own line instead of shrinking the
+                      name into an ellipsis. Still truncates in the rare case
+                      the panel itself is too narrow for the name alone. */}
+                  <Truncate style={NAME_FLEX_STYLE}>{name}</Truncate>
+                  {/* Per-crew inline badges slot. Renders nothing until an
+                      Uplink (e.g. Kerbalism Habitat/Radiation) binds, the
+                      props carry this row's kerbal identity so the augment
+                      badges the right one. `wrap` on the Cluster above lets
+                      this drop to its own line under the name rather than
+                      squeeze it; the name's own flex-grow already pushes the
+                      badge to the trailing edge when both fit on one line,
+                      so no `marginLeft: auto` is needed here. */}
+                  <Inline gap="xs">
+                    <AugmentSlot
+                      name="crew-manifest.badges"
+                      props={{ crewName: name, crewIndex: index }}
+                    />
+                  </Inline>
+                </Cluster>
+                {/* Per-crew survival section slot. Renders nothing until an
+                    Uplink (e.g. Kerbalism) binds; this widget carries no
+                    Kerbalism-specific data itself, see the slot's own doc
+                    comment above. */}
                 <AugmentSlot
-                  name="crew-manifest.badges"
+                  name="crew-manifest.survival"
                   props={{ crewName: name, crewIndex: index }}
                 />
-              </Inline>
+              </Stack>
             </Cluster>
-            {/* Per-crew survival section slot. Renders nothing until an
-                Uplink (e.g. Kerbalism) binds; this widget carries no
-                Kerbalism-specific data itself, see the slot's own doc
-                comment above. */}
-            <AugmentSlot
-              name="crew-manifest.survival"
-              props={{ crewName: name, crewIndex: index }}
-            />
-          </Stack>
+          </li>
         );
       })}
     </Stack>
@@ -492,6 +516,17 @@ const AVATAR_LAYER_STYLE = {
  * property being overridden.
  */
 const NAME_FLEX_STYLE = { flex: "1 1 auto" } as const;
+
+/**
+ * The right-hand column beside the leading avatar: name, wrapping badge, and
+ * survival section all stack here. `flex: 1 1 auto` fills the remaining row
+ * width once the avatar column (fixed `AVATAR_CELL_SIZE`) takes its share;
+ * `minWidth: 0` is the standard flex-child fix that lets its own `Truncate`
+ * child actually shrink to ellipsis instead of forcing the row wider. With no
+ * avatar bound this column is the row's only flex child, so it still spans
+ * the full width, same as before this column existed.
+ */
+const CREW_INFO_STYLE = { flex: "1 1 auto", minWidth: 0 } as const;
 
 /**
  * Leading per-crew avatar cell: a square that reserves room for an avatar-face

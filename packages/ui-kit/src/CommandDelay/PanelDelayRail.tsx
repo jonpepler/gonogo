@@ -138,9 +138,11 @@ const grownRail = css`
      the content height, the extra headroom is never seen. A stream + discrete
      combined rail needs the room, so nothing clips. */
   max-height: 800px;
-  /* Full-bleed: no horizontal padding, so the pinned stream spans the true
-     widget width edge to edge (the discrete row-container insets itself). */
-  padding: var(--space-4, 4px) 0 var(--space-8, 8px);
+  /* Fully full-bleed: no padding at all, so the pinned stream GRAPH spans the
+     true widget width edge to edge and grazes the top. Each child owns its own
+     inset instead: the stream's legend row takes the standard content margin,
+     and the discrete row-container insets itself evenly. */
+  padding: 0;
 
   & > * {
     grid-area: auto;

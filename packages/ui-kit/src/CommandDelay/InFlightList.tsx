@@ -562,13 +562,14 @@ const InFlightQueue__Box = styled.div.attrs({ role: "group" })`
      stream leaves. Stretches to the rail width minus its own inset margin. */
   flex: 0 0 auto;
   /* The row CONTAINER, distinct from the per-square tiles inside it: a rounded,
-     slightly-lighter frosted panel the tiles sit in, inset from the pinned
-     rail's full-bleed edges so it reads as a grouped surface. */
-  margin: 0 var(--space-8, 8px);
+     slightly-lighter frosted panel the tiles sit in, EVENLY inset from the
+     pinned rail's full-bleed edges (~5px, the same on all four sides) with
+     rounder corners so it reads as a grouped surface. */
+  margin: var(--space-4, 4px);
   padding: var(--space-4, 4px);
   height: calc(${QUEUE_THICK}px + var(--space-8, 8px));
   box-sizing: border-box;
-  border-radius: var(--radius-md, 4px);
+  border-radius: var(--radius-lg, 6px);
   background: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
   backdrop-filter: blur(6px);
   overflow: hidden;

@@ -494,6 +494,10 @@ const ControlDelayStream__Legend = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4, 4px) var(--space-12, 12px);
+  /* The GRAPH and its divider-aligned zone labels are full-bleed, but the legend
+     key sits at the standard content horizontal margin (not edge to edge), and
+     carries a little bottom breathing since the pinned rail is padding-free. */
+  margin: 0 var(--space-16, 16px) var(--space-4, 4px);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   letter-spacing: 0.06em;

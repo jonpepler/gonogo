@@ -108,9 +108,9 @@ const TONE_FILL = {
   `,
   info: css`
     /* The visible info hue (--color-status-info-fg), NOT --color-status-info-bg:
-       the -bg token is a near-black subtle panel background (#0d0d0d) and
-       vanishes as a filled bar on a dark surface. The other tones' -bg values
-       happen to be saturated; info's is not, its saturated counterpart is -fg. */
+       the -bg token is a near-black subtle panel background and vanishes as a
+       filled bar on a dark surface. The other tones' -bg values happen to be
+       saturated; info's is not, its saturated counterpart is -fg. */
     background: var(--color-status-info-fg);
   `,
 } as const;

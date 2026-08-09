@@ -479,6 +479,11 @@ const ControlDelayStream__Svg = styled.svg<{
 const ControlDelayStream__Zones = styled.div`
   display: flex;
   justify-content: space-between;
+  /* The GRAPH and its dividers stay full-bleed, but the zone labels below it
+     ("outgoing 0" / "echo …" / "confirmed …") taper inward to the standard
+     content margin, same as the legend, so the outermost labels don't touch
+     the widget edges. */
+  margin: 0 var(--space-16, 16px);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   letter-spacing: 0.06em;
@@ -494,8 +499,8 @@ const ControlDelayStream__Legend = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4, 4px) var(--space-12, 12px);
-  /* The GRAPH and its divider-aligned zone labels are full-bleed, but the legend
-     key sits at the standard content horizontal margin (not edge to edge), and
+  /* The GRAPH stays full-bleed, but the legend key sits at the standard content
+     horizontal margin (not edge to edge, same as the zone labels above it), and
      carries a little bottom breathing since the pinned rail is padding-free. */
   margin: 0 var(--space-16, 16px) var(--space-4, 4px);
   font-size: var(--font-size-xs);

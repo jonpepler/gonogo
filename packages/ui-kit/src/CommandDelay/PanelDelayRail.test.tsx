@@ -233,6 +233,67 @@ describe("PanelDelayRail", () => {
       expect(btn).toHaveAttribute("aria-pressed", "false");
     });
 
+    it("shows a sighted collapse hint while pinned, hidden again once un-pinned", async () => {
+      const user = userEvent.setup();
+      const store = createDelayRailStore();
+      store.register(handle("cmd"));
+      const { container } = inPanel(<PanelDelayRail />, store);
+      const btn = railButton();
+
+      expect(container.textContent).not.toMatch(/collapse/i);
+
+      await user.click(btn);
+      const hint = container.querySelector('[aria-hidden="true"]');
+      expect(hint?.textContent).toMatch(/collapse/i);
+
+      await user.click(btn);
+      expect(container.textContent).not.toMatch(/collapse/i);
+    });
+
+    it("un-pinning via click suppresses the CSS hover-preview immediately (data-suppress-hover), the pointer having never left", async () => {
+      // Regression test: the rail's hover-preview grows it on `:hover` alone.
+      // Clicking to un-pin while the pointer is still resting on the rail (the
+      // common case, userEvent's virtual pointer stays put across clicks the
+      // same as a real cursor) must not leave it visually stuck open. The
+      // resulting DOM attribute is the CSS escape hatch; jsdom doesn't run
+      // layout/paint so the visual collapse itself is covered by the browser
+      // probe, not here.
+      const user = userEvent.setup();
+      const store = createDelayRailStore();
+      store.register(handle("cmd"));
+      const { container } = inPanel(<PanelDelayRail />, store);
+      const btn = railButton();
+
+      await user.click(btn); // pin
+      expect(btn).toHaveAttribute("data-suppress-hover", "false");
+
+      await user.click(btn); // un-pin, pointer still over the button
+      expect(btn).toHaveAttribute("data-pinned", "false");
+      expect(btn).toHaveAttribute("data-suppress-hover", "true");
+      expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
+    });
+
+    it("clears the hover-preview suppression on the pointer's next genuine entry, not on its exit", async () => {
+      const user = userEvent.setup();
+      const store = createDelayRailStore();
+      store.register(handle("cmd"));
+      inPanel(<PanelDelayRail />, store);
+      const btn = railButton();
+
+      await user.click(btn);
+      await user.click(btn);
+      expect(btn).toHaveAttribute("data-suppress-hover", "true");
+
+      await user.unhover(btn);
+      // Leaving does not clear it (that would race the same layout-only hover
+      // loss a real browser exhibits here, see the rail's own doc comment);
+      // only a fresh entry does.
+      expect(btn).toHaveAttribute("data-suppress-hover", "true");
+
+      await user.hover(btn);
+      expect(btn).toHaveAttribute("data-suppress-hover", "false");
+    });
+
     it("has no axe violations while pinned/grown", async () => {
       const user = userEvent.setup();
       const store = createDelayRailStore();

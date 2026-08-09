@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { CommandDelay } from "./CommandDelay";
 import { type CommandHandle, useActiveHandles } from "./DelayRailContext";
 import { usePanelRailTarget } from "./PanelRailTarget";
@@ -79,20 +79,12 @@ export function PanelDelayRail() {
     ...visible.filter((h) => h.shape !== "stream"),
   ];
 
-  // A stream rail RESERVES its pinned height in the collapsed band (operator's
-  // stream-#1 decision): the band is sized for the pinned stream and stays that
-  // height whether collapsed or pinned, so pinning fills reserved space and the
-  // widget title never moves. Discrete-only rails keep the collapse -> grow
-  // model (their fixed-height tile row does not move the title anyway).
-  const hasStream = visible.some((h) => h.shape === "stream");
-
   return (
     <PanelDelayRail__Rail
       type="button"
       data-panel-rail=""
       ref={railRef}
       data-pinned={pinned}
-      data-reserve={hasStream ? "stream" : undefined}
       aria-pressed={pinned}
       aria-expanded={pinned}
       aria-label={
@@ -127,13 +119,34 @@ export function PanelDelayRail() {
  * rail, see PanelStickyHeader). A real `<button>` for the pin disclosure, reset
  * to carry no button chrome.
  *
- * Collapsed: a 16px band, all handles OVERLAID (grid, every child in the one
- * cell) so several grazing glows + a mini sparkline share the top edge rather
- * than crowd. Pinned: grows: a flex column that stacks each command's fuller
- * `inline` view and lets the button's height expand into real layout space
- * (overflow visible, auto height), which republishes `--panel-rail-height` and
- * pushes the title + body down. Coarse pointers get a taller collapsed strip.
+ * Collapsed (the resting state, kept COMPACT): a thin band, all handles OVERLAID
+ * (grid, every child in the one cell) so several grazing glows + a mini sparkline
+ * share the top edge rather than crowd, the title sits just below with normal
+ * padding, no reserved dead space. GROWN on hover OR pin (click): the band
+ * becomes a flex column that stacks each command's fuller view and expands into
+ * real layout space, which republishes `--panel-rail-height` and pushes the
+ * title + body DOWN (the operator is happy for content to slide on expand;
+ * growth eats the stream-to-title padding first). Hover is a transient preview
+ * on pointer devices; a click PINS it open. Coarse pointers get a taller
+ * collapsed strip and rely on the pin (no hover).
  */
+const grownRail = css`
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8, 8px);
+  /* Generous cap the grown content fits inside; the visible height settles at
+     the content height, the extra headroom is never seen. A stream + discrete
+     combined rail needs the room, so nothing clips. */
+  max-height: 800px;
+  /* Full-bleed: no horizontal padding, so the pinned stream spans the true
+     widget width edge to edge (the discrete row-container insets itself). */
+  padding: var(--space-4, 4px) 0 var(--space-8, 8px);
+
+  & > * {
+    grid-area: auto;
+  }
+`;
+
 const PanelDelayRail__Rail = styled.button`
   appearance: none;
   border: 0;
@@ -179,29 +192,17 @@ const PanelDelayRail__Rail = styled.button`
     outline-offset: -2px;
   }
 
+  /* Pinned (sticky) grows. */
   &[data-pinned="true"] {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8, 8px);
-    /* Generous cap the grown content fits inside; the visible height settles at
-       the content height, the extra headroom is never seen. */
-    max-height: 800px;
-    padding: var(--space-4, 4px) var(--space-16, 16px) var(--space-8, 8px);
-
-    & > * {
-      grid-area: auto;
-    }
+    ${grownRail}
   }
 
-  /* Stream rail: RESERVE the pinned height in the collapsed band (operator's
-     stream-#1 decision). The band is a fixed height sized for the pinned stream
-     in BOTH states, so pinning fills reserved space instead of growing the rail,
-     and the widget title never moves. Collapsed shows the mini stream grazing
-     the top with reserved space below; pinned fills it with the full graph. The
-     price (accepted) is a taller, emptier collapsed stream rail. */
-  &[data-reserve="stream"],
-  &[data-reserve="stream"][data-pinned="true"] {
-    min-height: var(--rail-stream-reserve, 150px);
-    max-height: var(--rail-stream-reserve, 150px);
+  /* Hover is a transient preview grow on pointer devices only (touch has no
+     hover and relies on the pin). A pinned rail is already grown, so hover is a
+     no-op there. */
+  @media (hover: hover) {
+    &:hover {
+      ${grownRail}
+    }
   }
 `;

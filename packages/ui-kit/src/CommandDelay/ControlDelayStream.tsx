@@ -35,8 +35,8 @@ export interface ControlDelayStreamProps {
   /**
    * `"inline"` (default, 40px) keeps the in-widget Navball rendering at its
    * current size; `"rail"` (16px, no labels) is the collapsed drag-bar strip;
-   * `"expanded"` (the grown/pinned view) is the full-width, taller graph in a
-   * bordered box with always-visible zone labels, a legend, and a delay readout.
+   * `"expanded"` (the grown/pinned view) is the full-width, taller graph with
+   * NO box (full-bleed) plus always-visible zone labels, a legend, and a readout.
    */
   variant?: "inline" | "rail" | "expanded";
 }
@@ -462,13 +462,9 @@ const ControlDelayStream__Svg = styled.svg<{
   height: ${({ $variant }) =>
     $variant === "rail" ? "32px" : $variant === "expanded" ? "86px" : "40px"};
 
-  ${({ $variant }) =>
-    $variant === "expanded" &&
-    `
-    background: color-mix(in srgb, var(--color-surface-sunken) 60%, transparent);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-md, 4px);
-  `}
+  /* Expanded (pinned) is a full-bleed, taller graph with NO box: the operator
+     rejected the bordered box, the graph spans the full widget width edge to
+     edge, just taller than the collapsed strip. No background / border / radius. */
 
   [data-role="hover-labels"] {
     opacity: 0;

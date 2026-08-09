@@ -557,9 +557,20 @@ function InFlightQueueCmd({
 
 const InFlightQueue__Box = styled.div.attrs({ role: "group" })`
   container-type: inline-size;
-  width: 100%;
-  height: ${QUEUE_THICK}px;
+  /* Never shrink inside the rail's flex column: a combined (stream + discrete)
+     pinned rail must show the WHOLE tile row, not clip it to the space the
+     stream leaves. Stretches to the rail width minus its own inset margin. */
+  flex: 0 0 auto;
+  /* The row CONTAINER, distinct from the per-square tiles inside it: a rounded,
+     slightly-lighter frosted panel the tiles sit in, inset from the pinned
+     rail's full-bleed edges so it reads as a grouped surface. */
+  margin: 0 var(--space-8, 8px);
+  padding: var(--space-4, 4px);
+  height: calc(${QUEUE_THICK}px + var(--space-8, 8px));
   box-sizing: border-box;
+  border-radius: var(--radius-md, 4px);
+  background: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
+  backdrop-filter: blur(6px);
   overflow: hidden;
 `;
 

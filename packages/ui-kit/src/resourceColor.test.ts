@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { hashHue, matchCuratedHue, resourceColor } from "./resourceColor";
+import {
+  CURATED_BANDS,
+  hashHue,
+  matchCuratedHue,
+  placedHue,
+  resourceColor,
+} from "./resourceColor";
+
+/** Local mirror of the module's own circular-distance helper, kept private
+ *  there on purpose; tests need it to reason about band membership. */
+function hueDistance(a: number, b: number): number {
+  const diff = Math.abs(a - b) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
 
 describe("resourceColor", () => {
   it("is deterministic: same name always yields the same colour", () => {
@@ -21,7 +34,7 @@ describe("resourceColor", () => {
 
   it("maps curated resources to kind-appropriate hues", () => {
     // Exact numbers are tunable; what matters is each curated resource
-    // resolves through Tier 1 (a specific, named hue) rather than falling
+    // resolves through Tier 1 (a specific, named band) rather than falling
     // through to the Tier 2 hash.
     const water = resourceColor("Water");
     const oxidizer = resourceColor("Oxidizer");
@@ -33,10 +46,32 @@ describe("resourceColor", () => {
     expect(food).not.toBe(water);
   });
 
-  it("resolves aliases of the same curated family to the same colour", () => {
-    expect(resourceColor("ElectricCharge")).toBe(resourceColor("EC"));
-    expect(resourceColor("MonoPropellant")).toBe(resourceColor("MonoProp"));
-    expect(resourceColor("LqdHydrogen")).toBe(resourceColor("Hydrogen"));
+  it("resolves aliases of the same curated family into that family's band", () => {
+    // ElectricCharge/EC etc are different full strings, so each now gets its
+    // OWN deterministic in-band placement rather than an identical exact
+    // hue: the invariant that survives band placement is "same band", not
+    // "same point in the band".
+    const assertSameBand = (nameA: string, nameB: string) => {
+      const keyA = nameA.toLowerCase();
+      const keyB = nameB.toLowerCase();
+      const hueA = placedHue(keyA);
+      const hueB = placedHue(keyB);
+      expect(hueA).not.toBeUndefined();
+      expect(hueB).not.toBeUndefined();
+      const band = CURATED_BANDS.find((candidate) =>
+        candidate.aliases.some((alias) => keyA.includes(alias)),
+      );
+      expect(band).not.toBeUndefined();
+      expect(hueDistance(hueA as number, band!.centre)).toBeLessThanOrEqual(
+        band!.spread,
+      );
+      expect(hueDistance(hueB as number, band!.centre)).toBeLessThanOrEqual(
+        band!.spread,
+      );
+    };
+    assertSameBand("ElectricCharge", "EC");
+    assertSameBand("MonoPropellant", "MonoProp");
+    assertSameBand("LqdHydrogen", "Hydrogen");
   });
 
   it("gives unrecognised resources a distinct, stable, hashed colour", () => {
@@ -98,19 +133,91 @@ describe("resourceColor", () => {
     });
   });
 
+  describe("Tier 1: hue-band auto-spread", () => {
+    it("spreads three distinct waste-family resources into three distinct in-band hues", () => {
+      // Waste, WasteWater and CarbonDioxide are three different real
+      // resources that share the ["carbondioxide","co2","waste"] family
+      // (a single family, not split into hand-picked hues); each must land
+      // at its own point inside the band, not collapse onto one shared hue.
+      const wasteBand = CURATED_BANDS.find((band) =>
+        band.aliases.includes("waste"),
+      );
+      expect(wasteBand).not.toBeUndefined();
+
+      const waste = placedHue("waste") as number;
+      const wasteWater = placedHue("wastewater") as number;
+      const carbonDioxide = placedHue("carbondioxide") as number;
+
+      for (const hue of [waste, wasteWater, carbonDioxide]) {
+        expect(hueDistance(hue, wasteBand!.centre)).toBeLessThanOrEqual(
+          wasteBand!.spread,
+        );
+      }
+
+      // Pairwise distinct by a sensible margin, not just "not bitwise equal".
+      const MIN_SEPARATION_DEG = 1;
+      expect(hueDistance(waste, wasteWater)).toBeGreaterThan(
+        MIN_SEPARATION_DEG,
+      );
+      expect(hueDistance(waste, carbonDioxide)).toBeGreaterThan(
+        MIN_SEPARATION_DEG,
+      );
+      expect(hueDistance(wasteWater, carbonDioxide)).toBeGreaterThan(
+        MIN_SEPARATION_DEG,
+      );
+    });
+
+    it("keeps WasteWater inside the waste band, not water's band", () => {
+      // "wastewater" contains "waste" (the waste family is ordered ahead of
+      // water in CURATED), so it must resolve as an olive-band member, never
+      // as blue.
+      const wasteBand = CURATED_BANDS.find((band) =>
+        band.aliases.includes("waste"),
+      );
+      const waterBand = CURATED_BANDS.find((band) =>
+        band.aliases.includes("water"),
+      );
+      expect(wasteBand).not.toBeUndefined();
+      expect(waterBand).not.toBeUndefined();
+
+      const wasteWaterHue = placedHue("wastewater") as number;
+      expect(hueDistance(wasteWaterHue, wasteBand!.centre)).toBeLessThanOrEqual(
+        wasteBand!.spread,
+      );
+      expect(hueDistance(wasteWaterHue, waterBand!.centre)).toBeGreaterThan(
+        wasteBand!.spread,
+      );
+    });
+
+    it("is deterministic: same resource name always places at the same point in its band", () => {
+      expect(placedHue("wastewater")).toBe(placedHue("wastewater"));
+      expect(placedHue("wastewater")).toBe(
+        placedHue("WasteWater".toLowerCase()),
+      );
+    });
+
+    it("no two curated families' bands overlap", () => {
+      for (let i = 0; i < CURATED_BANDS.length; i++) {
+        for (let j = i + 1; j < CURATED_BANDS.length; j++) {
+          const a = CURATED_BANDS[i];
+          const b = CURATED_BANDS[j];
+          expect(hueDistance(a.centre, b.centre)).toBeGreaterThanOrEqual(
+            a.spread + b.spread,
+          );
+        }
+      }
+    });
+  });
+
   describe("Tier 2: hashHue reserved-band avoidance", () => {
-    it("never lands within 15deg of a curated hue", () => {
+    it("never lands within a curated family's whole band", () => {
       // Sweep a wide sample of synthetic names; none should resolve within
-      // the reserved band of a curated hue (40 = liquidfuel, 215 = water).
-      const curatedHues = [
-        40, 205, 50, 65, 95, 15, 190, 215, 28, 130, 275, 5, 175,
-      ];
+      // any curated family's band (centre +/- effective spread).
       for (let i = 0; i < 200; i++) {
         const hue = hashHue(`synthetic-resource-${i}`);
-        for (const curated of curatedHues) {
-          const diff = Math.abs(hue - curated) % 360;
-          const distance = diff > 180 ? 360 - diff : diff;
-          expect(distance).toBeGreaterThanOrEqual(15);
+        for (const band of CURATED_BANDS) {
+          const distance = hueDistance(hue, band.centre);
+          expect(distance).toBeGreaterThanOrEqual(band.spread);
         }
       }
     });
@@ -125,12 +232,8 @@ describe("resourceColor", () => {
     // (food's band), so both must escape. With a NAME-DERIVED escape step they
     // diverge instead of converging on one hue (the old fixed-step collision
     // put both on the same magenta ~1.7deg apart).
-    const hueDist = (a: number, b: number) => {
-      const d = Math.abs(a - b) % 360;
-      return d > 180 ? 360 - d : d;
-    };
     expect(
-      hueDist(hashHue("solidfuel"), hashHue("kerbalkrunchies")),
+      hueDistance(hashHue("solidfuel"), hashHue("kerbalkrunchies")),
     ).toBeGreaterThan(15);
   });
 });

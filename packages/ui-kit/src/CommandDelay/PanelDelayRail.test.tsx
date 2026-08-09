@@ -233,21 +233,26 @@ describe("PanelDelayRail", () => {
       expect(btn).toHaveAttribute("aria-pressed", "false");
     });
 
-    it("shows a sighted collapse hint while pinned, hidden again once un-pinned", async () => {
+    it("shows a sighted arrow-only collapse hint while pinned, hidden again once un-pinned; the word 'collapse' stays in the button's aria-label for assistive tech", async () => {
       const user = userEvent.setup();
       const store = createDelayRailStore();
       store.register(handle("cmd"));
       const { container } = inPanel(<PanelDelayRail />, store);
       const btn = railButton();
 
-      expect(container.textContent).not.toMatch(/collapse/i);
+      expect(container.textContent).not.toContain("▲");
 
       await user.click(btn);
       const hint = container.querySelector('[aria-hidden="true"]');
-      expect(hint?.textContent).toMatch(/collapse/i);
+      expect(hint?.textContent).toBe("▲");
+      expect(hint?.textContent).not.toMatch(/collapse/i);
+      expect(btn).toHaveAttribute(
+        "aria-label",
+        expect.stringMatching(/collapse/i),
+      );
 
       await user.click(btn);
-      expect(container.textContent).not.toMatch(/collapse/i);
+      expect(container.textContent).not.toContain("▲");
     });
 
     it("un-pinning via click suppresses the CSS hover-preview immediately (data-suppress-hover), the pointer having never left", async () => {

@@ -562,15 +562,18 @@ const InFlightQueue__Box = styled.div.attrs({ role: "group" })`
      stream leaves. Stretches to the rail width minus its own inset margin. */
   flex: 0 0 auto;
   /* The row CONTAINER, distinct from the per-square tiles inside it: a rounder,
-     slightly-lighter frosted panel the tiles sit in, EVENLY inset from the
-     pinned rail's full-bleed edges (~5px, the same margin on all four sides).
+     slightly-lighter frosted panel the tiles sit in. Left/right match the
+     standard CONTENT horizontal margin (the same margin the stream's legend,
+     the title and the widget body use), so the container is flush with the
+     body content rather than floating at a narrower inset. Top/bottom keep a
+     small even margin, there's no sibling edge to line up with on that axis.
      The box's own height is taller than the tile+bar content (headroom for the
      fixed-thickness design so item count never reflows it), so the tiles are
      centred inside it: without that, the unused headroom collects under the
      content and reads as a bigger bottom inset than the equal margin actually
      is. Centring makes the visible padding equal even though the margin token
      already was. */
-  margin: var(--space-4, 4px);
+  margin: var(--space-4, 4px) var(--space-16, 16px);
   padding: var(--space-4, 4px);
   height: calc(${QUEUE_THICK}px + var(--space-8, 8px));
   box-sizing: border-box;
@@ -583,11 +586,14 @@ const InFlightQueue__Box = styled.div.attrs({ role: "group" })`
 const InFlightQueue__Inner = styled.div`
   display: flex;
   flex-direction: column;
-  /* Centres the fixed-height tile+bar content inside the box's own headroom on
-     BOTH axes, so the visible gap around the tiles matches the box's equal
-     margin instead of collecting under/beside them. */
+  /* Centres the fixed-height tile+bar content on the CROSS axis, so the
+     visible gap on that axis matches the box's equal margin instead of
+     collecting to one side. The main axis is flex-start: the tile row fills
+     from the container's left edge (top edge in column mode) rightward,
+     rather than centring as a block, so a short queue reads as "started",
+     not "floating" mid-container. */
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: ${QUEUE_GAP}px;
   width: 100%;
   height: 100%;

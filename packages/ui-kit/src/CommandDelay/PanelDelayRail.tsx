@@ -35,8 +35,10 @@ function handleHasContent(handle: CommandHandle): boolean {
  * title and body are pushed DOWN. It never overlays anything, it takes space.
  * `aria-pressed` / `aria-expanded` carry the state. Activating it AGAIN
  * (click / Enter / Space / Esc) un-pins and re-minifies it: pin is a true
- * toggle, not a one-way expand, and the pinned rail shows a small "collapse ▲"
- * hint so that's discoverable, not just present in the aria-label. Hover
+ * toggle, not a one-way expand, and the pinned rail shows a small "▲"
+ * hint so that's discoverable, not just present in the aria-label (which
+ * carries the word "collapse" for assistive tech; the visible hint stays
+ * icon-only). Hover
  * separately grows it as a transient preview (pointer devices only, gone on
  * pointer-leave, a no-op once pinned); an explicit un-pin click wins over a
  * pointer that simply hasn't moved off the rail yet, see
@@ -133,7 +135,7 @@ export function PanelDelayRail() {
     >
       {pinned && (
         <PanelDelayRail__CollapseHint aria-hidden="true">
-          collapse ▲
+          ▲
         </PanelDelayRail__CollapseHint>
       )}
       {ordered.map((h) => (

@@ -51,7 +51,7 @@ const TINY_READOUT_STYLE = {
  * box reserved for nothing but a 6px decorative dot was wasted width on
  * every row, and the dot never signalled anything (no augment, no
  * kerbal-not-seated flag, nothing) - just a bullet point standing in for a
- * future avatar image. Once an avatar Uplink IS present (e.g. kerbcast's
+ * future avatar image. Once an avatar-providing Uplink IS present (e.g. a
  * facecam augment), the cell renders exactly as before, including the
  * per-kerbal case where THAT Uplink has nothing to show for one kerbal (it
  * now shows blank there, not the bullet either, same "nothing to signal"

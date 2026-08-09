@@ -195,6 +195,26 @@ describe("ShipSystemsComponent", () => {
     expect(labels.slice(0, 3)).toEqual(["Electric Charge", "Water", "Oxygen"]);
   });
 
+  it("names the blocked resource as the subject and the blocker by its display name", async () => {
+    const fixture = newFixture();
+    renderWidget(fixture);
+    emitAll(fixture);
+
+    // Water is downstream of Electric Charge: the footnote reads subject
+    // (Water, the row it sits on) limited by object (Electric Charge, the
+    // blocker), by DISPLAY name (never the raw profile key
+    // "ElectricCharge"), and the reverse never appears on Electric
+    // Charge's own row.
+    await screen.findByText("Root cause");
+    expect(
+      screen.getByText("Water limited by Electric Charge"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/ElectricCharge/)).toBeNull();
+    expect(
+      screen.queryByText(/Electric Charge limited by/),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a time-to-empty for a draining supply and 'steady' for a healthy one", async () => {
     const fixture = newFixture();
     renderWidget(fixture);

@@ -436,11 +436,16 @@ function FooterRow({ children }: { children: ReactNode }) {
 }
 
 /**
- * One resource row: a `Meter` plus an accessible `Disclosure` revealing its
- * per-source rate ledger (`buildLedger`, a click-time pure call over the
- * already-carried profile/lifeSupport/crew, never re-derived by the
- * Processor). `blockedBy`/`explains` render as a footnote beneath the meter
- * so the diagnosis reads without opening the ledger.
+ * One resource row: a `Meter` on its own full-width line (never squeezed
+ * against the disclosure trigger, the narrow-width overlap operators hit),
+ * an optional "X limited by Y" footnote naming THIS row's resource as the
+ * subject and its blocker as the object (never the reverse: a root cause's
+ * own row carries no footnote, since nothing blocks it, `diagnose` says so
+ * via an empty `blockedBy`), and an accessible `variant="inline"` accordion
+ * revealing the per-source rate ledger (`buildLedger`, a click-time pure
+ * call over the already-carried profile/lifeSupport/crew, never re-derived
+ * by the Processor). `inline` expands the ledger in flow below the trigger,
+ * so it pushes the row taller instead of overlaying whatever follows.
  */
 function ResourceLedgerRow({
   row,
@@ -461,8 +466,8 @@ function ResourceLedgerRow({
   );
 
   return (
-    <Box pad="xs" surface="raised" radius="sm">
-      <Cluster justify="between" align="start" gap="sm">
+    <Box pad="sm" surface="raised" radius="sm">
+      <Stack gap="xs">
         <Meter
           label={row.displayName}
           value={row.fraction ?? 0}
@@ -470,23 +475,29 @@ function ResourceLedgerRow({
           valueLabel={rowValueLabel(row)}
           size="sm"
         />
+        {row.role === "downstream" && row.blockedBy.length > 0 && (
+          // `tone="warn"` alone renders --color-status-warning-fg, a
+          // near-black meant for text ON the warning "-bg" orange, e.g.
+          // inside a Badge. Standalone on this row's dark surface that is
+          // functionally invisible. The `-fg-muted` override is the same
+          // fix GreenhouseSection.tsx documents for the identical landmine
+          // (LaunchDirector, CommSignal, DeployedScience hit it too).
+          <Value
+            tone="warn"
+            size="xs"
+            style={{ color: "var(--color-status-warning-fg-muted)" }}
+          >
+            {row.displayName} limited by {row.blockedBy.join(", ")}
+          </Value>
+        )}
         <Disclosure
+          variant="inline"
           label="Ledger"
           ariaLabel={`Show rate ledger for ${row.displayName}`}
         >
           <LedgerBody ledger={ledger} />
         </Disclosure>
-      </Cluster>
-      {row.role === "root" && row.explains.length > 0 && (
-        <Value tone="nogo" size="xs">
-          Explains: {row.explains.join(", ")}
-        </Value>
-      )}
-      {row.role === "downstream" && row.blockedBy.length > 0 && (
-        <Value tone="warn" size="xs">
-          Blocked by: {row.blockedBy.join(", ")}
-        </Value>
-      )}
+      </Stack>
     </Box>
   );
 }
@@ -531,7 +542,13 @@ function LedgerBody({ ledger }: { ledger: Ledger }) {
         </Cluster>
       )}
       {hasResidual && ledger.residual !== undefined && (
-        <Value tone="warn" size="xs">
+        // Same near-black-on-dark landmine as the row footnote above: the
+        // `-fg-muted` override keeps this readable on the panel surface.
+        <Value
+          tone="warn"
+          size="xs"
+          style={{ color: "var(--color-status-warning-fg-muted)" }}
+        >
           Residual {formatRate(ledger.residual)} (modifiers not modelled)
         </Value>
       )}

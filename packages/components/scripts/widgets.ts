@@ -1181,6 +1181,15 @@ const WIDGETS: WidgetRenderConfig[] = [
         h: 16,
         forFixtures: ["03-resource-colour-spread"],
       },
+      // Water-family review shot: Water, WasteWater, Waste, CarbonDioxide,
+      // and Oxygen (for contrast) across two parts, three meters on the
+      // taller one, so all five bars read uncropped at once.
+      {
+        name: "water-family-10x14",
+        w: 10,
+        h: 14,
+        forFixtures: ["04-water-family"],
+      },
     ],
   },
   {

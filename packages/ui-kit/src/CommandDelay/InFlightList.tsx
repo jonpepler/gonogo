@@ -566,18 +566,26 @@ const InFlightQueue__Box = styled.div.attrs({ role: "group" })`
      standard CONTENT horizontal margin (the same margin the stream's legend,
      the title and the widget body use), so the container is flush with the
      body content rather than floating at a narrower inset. Top/bottom keep a
-     small even margin, there's no sibling edge to line up with on that axis.
-     The box's own height is taller than the tile+bar content (headroom for the
-     fixed-thickness design so item count never reflows it), so the tiles are
-     centred inside it: without that, the unused headroom collects under the
-     content and reads as a bigger bottom inset than the equal margin actually
-     is. Centring makes the visible padding equal even though the margin token
-     already was. */
+     small even margin, there's no sibling edge to line up with on that axis. */
   margin: var(--space-4, 4px) var(--space-16, 16px);
-  padding: var(--space-4, 4px);
-  height: calc(${QUEUE_THICK}px + var(--space-8, 8px));
+  /* The first tile's rounded corner has to nest CONCENTRICALLY inside the
+     panel's own rounded corner, same arc centre, or the two radii read as a
+     mismatched offset rather than one continuous curve. That only holds when
+     the inset from the panel edge to the tile edge equals (panel radius -
+     tile radius); derived from the two radius tokens rather than a fixed
+     space-* value so a token change can't desync the two again. Padding
+     drives the inset directly and the box height is sized to the tile+bar
+     content plus exactly twice that inset, so the inner row's centring
+     (below) has zero slack to redistribute and can't push the top inset out
+     of step with the left one. */
+  --queue-panel-radius: calc(var(--radius-lg, 6px) * 2);
+  --queue-tile-inset: calc(var(--queue-panel-radius) - var(--radius-sm, 3px));
+  padding: var(--queue-tile-inset);
+  height: calc(
+    ${QUEUE_SQUARE}px + ${QUEUE_BAR}px + (var(--queue-tile-inset) * 2)
+  );
   box-sizing: border-box;
-  border-radius: calc(var(--radius-lg, 6px) * 2);
+  border-radius: var(--queue-panel-radius);
   background: color-mix(in srgb, var(--color-surface-raised) 68%, transparent);
   backdrop-filter: blur(6px);
   overflow: hidden;

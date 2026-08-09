@@ -29,6 +29,7 @@ export type KnownSitrepUnit =
   | "kPa"
   | "kW"
   | "kg/m³"
+  | "km"
   | "m"
   | "m/s"
   | "m²"
@@ -658,6 +659,9 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
     dvTotal: "m/s",
     id: "id",
     ut: "s",
+  },
+  "MechJebAscentArgs": {
+    targetAltitudeKm: "km",
   },
   "Meta": {
     active: "flag",
@@ -1319,6 +1323,21 @@ export const GENERATED_TOPIC_UNITS: Readonly<Record<string, UnitsByField>> = {
     vesselType: "id",
     what: "text",
   },
+  "deployed.bases": {
+    biome: "text",
+    body: "text",
+    connectionState: "text",
+    deployedOnGround: "flag",
+    experimentId: "id",
+    partName: "text",
+    powerState: "text",
+    scienceCompletedPercentage: "%",
+    scienceLimit: "science",
+    scienceTransmittedPercentage: "%",
+    scienceValue: "science",
+    situation: "text",
+    vesselName: "text",
+  },
   "dv.stages": {
     burnTime: "s",
     dryMass: "t",
@@ -1449,27 +1468,6 @@ export const GENERATED_TOPIC_UNITS: Readonly<Record<string, UnitsByField>> = {
   "parts.power": {
     totalProductionEc: "units/s",
   },
-  "parts.robotics": {
-    brakePercentage: "%",
-    counterClockwise: "flag",
-    currentAngle: "°",
-    currentExtension: "m",
-    currentRPM: "rpm",
-    maxTorque: "kN",
-    motorState: "text",
-    normalizedOutput: "ratio",
-    partId: "id",
-    partName: "text",
-    rpmLimit: "rpm",
-    servoIsLocked: "flag",
-    servoIsMotorized: "flag",
-    servoMotorIsEngaged: "flag",
-    servoMotorLimit: "%",
-    targetAngle: "°",
-    targetExtension: "m",
-    traverseVelocity: "n/a",
-    type: "id",
-  },
   "recovery.lastSummary": {
     capturedAtUT: "s",
     displayReputation: "flag",
@@ -1506,6 +1504,27 @@ export const GENERATED_TOPIC_UNITS: Readonly<Record<string, UnitsByField>> = {
   "robotics.available": {
     available: "flag",
   },
+  "robotics.servos": {
+    brakePercentage: "%",
+    counterClockwise: "flag",
+    currentAngle: "°",
+    currentExtension: "m",
+    currentRPM: "rpm",
+    maxTorque: "kN",
+    motorState: "text",
+    normalizedOutput: "ratio",
+    partId: "id",
+    partName: "text",
+    rpmLimit: "rpm",
+    servoIsLocked: "flag",
+    servoIsMotorized: "flag",
+    servoMotorIsEngaged: "flag",
+    servoMotorLimit: "%",
+    targetAngle: "°",
+    targetExtension: "m",
+    traverseVelocity: "n/a",
+    type: "id",
+  },
   "scansat.scanningVessels": {
     altitude: "m",
     body: "text",
@@ -1525,21 +1544,6 @@ export const GENERATED_TOPIC_UNITS: Readonly<Record<string, UnitsByField>> = {
     partTitle: "text",
     rerunnable: "flag",
     title: "text",
-  },
-  "science.deployed": {
-    biome: "text",
-    body: "text",
-    connectionState: "text",
-    deployedOnGround: "flag",
-    experimentId: "id",
-    partName: "text",
-    powerState: "text",
-    scienceCompletedPercentage: "%",
-    scienceLimit: "science",
-    scienceTransmittedPercentage: "%",
-    scienceValue: "science",
-    situation: "text",
-    vesselName: "text",
   },
   "science.experimentBreakdown": {
     biome: "text",

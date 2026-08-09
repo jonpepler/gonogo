@@ -361,6 +361,23 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       "packages/core/src/sdk-facade.conformance.test-d.ts",
       "packages/sitrep-client/src/use-late-telemetry-subscribe.test.tsx",
       "packages/sitrep-client/src/use-late-telemetry-subscribe.ts",
+      // GonogoMechJebUplink (2026-08-08): its version-guard + Register doc
+      // comments cite "mirrors GonogoScansatUplink.VersionGuard" as the
+      // pattern this Uplink's own MechJebVersionGuard/Register-inert-path
+      // copies. Doc-comment-only, no scansat import or coupling.
+      "mod/GonogoMechJebUplink/MechJebUplink.Ksp.cs",
+      "mod/GonogoMechJebUplink/MechJebVersionGuard.cs",
+      "mod/GonogoMechJebUplink/client/src/test/setup.ts",
+      "mod/GonogoMechJebUplink.Tests/MechJebVersionGuardFakes.cs",
+      // Breaking Ground uplink extraction (2026-08-08): the new bundled
+      // uplink's doc comments and its client package's scaffolding name
+      // GonogoScansatUplink/client as the structural template they were
+      // built from ("mirroring GonogoScansatUplink/client's structure").
+      // Doc mentions + boilerplate config only, nothing imports from the
+      // scansat Uplink.
+      "mod/Gonogo.KSP/BreakingGroundUplink.cs",
+      "mod/GonogoBreakingGroundUplink/client/scripts/widgets.ts",
+      "mod/GonogoBreakingGroundUplink/client/vitest.config.ts",
     ],
   },
 
@@ -608,6 +625,21 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       "packages/sitrep-client/src/use-certainty.ts",
       "packages/sitrep-client/src/use-stream-status.ts",
       "packages/ui/src/VersionMismatchBanner.tsx",
+      // GonogoMechJebUplink (2026-08-08): copies GonogoKosUplink's
+      // MainThreadDispatcher/RunOnMainThread drop-not-run-on-timeout
+      // discipline and its KosMainThreadDispatcherAddon/KosChannels shape
+      // verbatim, citing the source class names in doc comments so the
+      // mirrored pattern is traceable. Doc-comment-only: this Uplink builds
+      // its OWN MainThreadDispatcher/addon/channels, never imports kOS's.
+      "mod/GonogoMechJebUplink/MainThreadDispatcher.cs",
+      "mod/GonogoMechJebUplink/MechJebChannels.cs",
+      "mod/GonogoMechJebUplink/MechJebMainThreadDispatcherAddon.cs",
+      "mod/GonogoMechJebUplink/MechJebUplink.Ksp.cs",
+      "mod/GonogoMechJebUplink/MechJebUplink.cs",
+      "mod/GonogoMechJebUplink/MechJebVersionGuard.cs",
+      "mod/GonogoMechJebUplink/client/src/test/setup.ts",
+      "mod/GonogoMechJebUplink.Tests/MechJebUplinkRunOnMainThreadTests.cs",
+      "mod/GonogoMechJebUplink.Tests/MechJebVersionGuardFakes.cs",
     ],
   },
 

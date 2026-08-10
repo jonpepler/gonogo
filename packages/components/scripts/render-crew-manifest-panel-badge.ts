@@ -1,9 +1,15 @@
 #!/usr/bin/env tsx
 /**
- * Render CrewManifest's WIDGET-LEVEL panel badge ("Crew critical") to a PNG
- * under `local_docs/renders/crew-manifest-panel-badge/`, the header badge the
- * Kerbalism Uplink's `crew-survival-badge` contribution drops into the panel
- * chrome (`mod/GonogoKerbalismUplink/client/src/CrewSurvival/badge.ts`).
+ * Render CrewManifest's WIDGET-LEVEL panel badges to a PNG under
+ * `local_docs/renders/crew-manifest-panel-badge/`, the header chips two
+ * SEPARATE `crew-manifest.badges` contributions drop into the panel chrome:
+ * the base widget's own info-tone "N/M aboard" headcount
+ * (`src/CrewManifest/badge.ts`, `crewAboardBadge`) and the Kerbalism
+ * Uplink's nogo-tone "N crew critical" danger badge
+ * (`mod/GonogoKerbalismUplink/client/src/CrewSurvival/badge.ts`). Both are
+ * registered against the SAME automatic slot and coexist (info is
+ * unconditional, nogo only fires once a kerbal crosses into the critical
+ * band), so this fixture (crew-critical) exercises both at once.
  *
  * The shared widget probe (`scripts/probe/probe-entry.tsx`, used for every
  * other widget's review render and the visual-gate baselines) deliberately
@@ -21,7 +27,21 @@
  * already used for the per-row survival render) so the two renders describe
  * the SAME vessel state: Jebediah at 94% radiation and Bill's 240s death
  * clock both cross the "nogo" threshold, so the header reads "2 crew
- * critical" alongside the per-row badges/meters.
+ * critical" alongside the per-row badges/meters, plus the "3/4 aboard" info
+ * chip from the crew count itself.
+ *
+ * The tile is rendered WIDE (`PANEL_PX_W` below) rather than at the
+ * `defaultSize` 6x8's actual grid width: `Panel`'s header runs a measured-fit
+ * collapse (`usePanelAsideSize`/`PanelHeader` in ui-kit's `Panel.tsx`) that
+ * hides the aside behind a dots+chevron summary the moment title + both
+ * badges don't fit inline side by side, and that collapsed summary reflects
+ * `useStatusBreakdown()` (stream/alarm severity), a completely SEPARATE
+ * signal from badge content, so a collapsed shot of this fixture shows an
+ * empty chevron even though both badges are genuinely present in state. This
+ * render exists to show badge CONTENT, so it uses a width both badges
+ * actually fit at, the same as an operator would see on a sufficiently wide
+ * tile; the collapse behavior itself is real dashboard behavior, not
+ * something to work around in the component.
  */
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -48,6 +68,13 @@ const FIXTURE_PATH = resolve(
   "../src/CrewManifest/__render_kerbalism_survival__/crew-critical.json",
 );
 
+// Wide enough for "CREW" + both badges ("3/4 ABOARD" info + "2 CREW
+// CRITICAL" nogo) to sit inline in the header without tripping the
+// measured-fit collapse (see this file's own top comment). Verified against
+// the real Panel header chain, not guessed: 260px (the widget's actual 6x8
+// grid-formula width) collapses both away, 420px does not.
+const PANEL_PX_W = 420;
+const PANEL_PX_H = 320;
 const VIEWPORT_W = 460;
 const VIEWPORT_H = 420;
 
@@ -155,17 +182,19 @@ async function main(): Promise<void> {
       { timeout: 10_000 },
     );
 
-    // Default widget size (6x8): the common operator view, roster branch
-    // active so both the per-row badges/meters AND the header panel badge
-    // are visible in the same shot.
+    // `w`/`h` (6x8, the widget's `defaultSize`) still gate the roster branch
+    // so per-row badges/meters render; the PIXEL box is wider than that
+    // grid size would actually render at (`PANEL_PX_W`, see this file's own
+    // top comment) specifically so both header badges stay inline instead
+    // of collapsing behind the dots+chevron summary.
     const payload: CrewBadgeProbePayload = {
       carriedChannels: fixture._stream.carriedChannels,
       pinnedUt: fixture._stream.pinnedUt,
       emits: fixture._stream.emits,
       w: 6,
       h: 8,
-      pxW: 260,
-      pxH: 320,
+      pxW: PANEL_PX_W,
+      pxH: PANEL_PX_H,
     };
 
     await page.evaluate(

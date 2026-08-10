@@ -138,6 +138,7 @@ export {
   type DialZone,
 } from "./Dial";
 export { Disclosure, type DisclosureProps } from "./Disclosure";
+export { DivergingBar, type DivergingBarProps } from "./DivergingBar";
 export { Divider, type DividerProps } from "./Divider";
 // ── Leaf components ──────────────────────────────────────────────────────────
 export {

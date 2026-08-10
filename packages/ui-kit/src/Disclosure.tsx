@@ -1,5 +1,6 @@
 import { type ReactNode, useId, useRef, useState } from "react";
 import styled, { css } from "styled-components";
+import { GhostButton } from "./Button";
 import { ChevronRightIcon } from "./Icons";
 
 export interface DisclosureProps {
@@ -38,6 +39,18 @@ export interface DisclosureProps {
    * `variant="popover"`, which never has a chevron.
    */
   chevron?: boolean;
+  /**
+   * Renders the trigger as a real `GhostButton` (bordered, padded chrome)
+   * instead of the plain unstyled `Disclosure__Trigger`. Off by default, so
+   * `FleetRoster`'s compact popover trigger (a coloured tag, not a worded
+   * label) is unaffected. Pair with `chevron={false}` and a worded `label`
+   * (e.g. "Show detail"): a chevron-less text label with no visible chrome
+   * reads as plain text, which is exactly the "is this actually a button?"
+   * complaint this prop exists to fix. The trigger sizes to its own content
+   * and right-aligns within the row rather than stretching full width, so it
+   * reads as a small control, not a giant clickable band.
+   */
+  asButton?: boolean;
 }
 
 /**
@@ -56,12 +69,14 @@ export function Disclosure({
   className,
   variant = "popover",
   chevron = true,
+  asButton = false,
 }: DisclosureProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const showChevron = variant === "inline" && chevron;
   const resolvedLabel = typeof label === "function" ? label(open) : label;
+  const TriggerTag = asButton ? Disclosure__ButtonTrigger : Disclosure__Trigger;
 
   return (
     <Disclosure__Root
@@ -74,7 +89,7 @@ export function Disclosure({
         }
       }}
     >
-      <Disclosure__Trigger
+      <TriggerTag
         ref={triggerRef}
         type="button"
         aria-expanded={open}
@@ -90,7 +105,7 @@ export function Disclosure({
             <ChevronRightIcon size={14} />
           </Disclosure__Chevron>
         )}
-      </Disclosure__Trigger>
+      </TriggerTag>
       {open && (
         <Disclosure__Panel id={panelId} role="group" $variant={variant}>
           {children}
@@ -133,6 +148,29 @@ const Disclosure__Trigger = styled.button<{
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
+`;
+
+/**
+ * The `asButton` trigger: a real `GhostButton` (border, padding, hover/focus
+ * chrome all inherited from it) rather than the bare `Disclosure__Trigger`
+ * above. Sized to its own content and pinned to the row's trailing edge via
+ * `align-self`, never stretched to `width: 100%` the way the plain trigger
+ * is for `variant="inline"`, so it reads as a small control sitting at the
+ * end of the row rather than a full-width clickable band with right-aligned
+ * text inside it.
+ */
+const Disclosure__ButtonTrigger = styled(GhostButton)<{
+  $variant: "popover" | "inline";
+  $align: "between" | "end";
+}>`
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  ${({ $variant }) =>
+    $variant === "inline" &&
+    css`
+      align-self: flex-end;
+    `}
 `;
 
 const Disclosure__Chevron = styled.span<{ $open: boolean }>`

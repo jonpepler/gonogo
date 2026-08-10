@@ -1235,7 +1235,7 @@ const WIDGETS: WidgetRenderConfig[] = [
         clicks: [
           {
             selector:
-              'button[aria-label="Show rate ledger for Electric Charge"]',
+              'button[aria-label="Show rate breakdown for Electric Charge"]',
             awaitMs: 100,
           },
         ],

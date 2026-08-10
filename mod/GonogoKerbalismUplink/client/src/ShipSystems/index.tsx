@@ -24,6 +24,7 @@ import {
   Stack,
   severityFromBadgeTone,
   speakQuantity,
+  Unit,
   Value,
 } from "@ksp-gonogo/ui-kit";
 import type { ReactNode } from "react";
@@ -224,6 +225,14 @@ function overallStatus(ship: ShipSystems): { label: string; tone: Tone } {
 function ShipSystemsBody({ ship }: { ship: ShipSystems }) {
   const { summary } = ship;
   const status = overallStatus(ship);
+  // The "Limiting factors" banner names a cause's ROOT resource but the
+  // sentence's subject is the resource it explains (see `LimitedByMessage`),
+  // so its own time-to-empty has to come from that OTHER row, not the
+  // cause's. displayName is unique per profile (it is the key the operator
+  // reads by), so it is a safe lookup key here.
+  const rowsByDisplayName = new Map(
+    [...summary.supplies, ...summary.other].map((r) => [r.displayName, r]),
+  );
   const habitat: KerbalismHabitat | undefined = ship.lifeSupport?.habitat;
   const processes = (ship.lifeSupport?.processes ?? []).map(toProcessRow);
   const greenhouses = (ship.lifeSupport?.greenhouses ?? []).map(
@@ -266,25 +275,53 @@ function ShipSystemsBody({ ship }: { ship: ShipSystems }) {
     >
       <Stack gap="md">
         {summary.causes.length > 0 && (
-          <Box
-            surface="sunken"
-            pad="sm"
-            radius="sm"
-            role="status"
-            aria-live="polite"
-          >
+          // No `surface`: this used to sit on `sunken` (a near-black tile
+          // that visually detached from the rest of the panel). Transparent
+          // lets it sit on the Panel's own surface like every other block.
+          <Box pad="md" radius="sm" role="status" aria-live="polite">
             <Stack gap="xs">
               <Value tone="nogo" weight="semibold" size="sm">
-                Root cause
+                Limiting factors
               </Value>
-              {summary.causes.map((cause) => (
-                <Value key={cause.name} tone="nogo" size="xs">
-                  {cause.displayName}
-                  {cause.explains.length > 0
-                    ? ` → blocks ${cause.explains.join(", ")}`
-                    : ""}
-                </Value>
-              ))}
+              {summary.causes.flatMap((cause) =>
+                cause.explains.length > 0
+                  ? cause.explains.map((explained) => {
+                      const explainedRow = rowsByDisplayName.get(explained);
+                      return (
+                        <Value
+                          key={`${cause.name}-${explained}`}
+                          tone="nogo"
+                          size="xs"
+                        >
+                          <LimitedByMessage
+                            subjectDisplayName={explained}
+                            blockedBy={[cause.displayName]}
+                            secondsToEmpty={
+                              explainedRow?.secondsToEmpty ?? null
+                            }
+                          />
+                        </Value>
+                      );
+                    })
+                  : [
+                      <Value key={cause.name} tone="nogo" size="xs">
+                        {cause.displayName} is running critically low
+                        {cause.secondsToEmpty !== null && (
+                          <>
+                            {" "}
+                            (~
+                            <Unit
+                              value={value(
+                                "s",
+                                Math.max(0, cause.secondsToEmpty),
+                              )}
+                            />{" "}
+                            left)
+                          </>
+                        )}
+                      </Value>,
+                    ],
+              )}
             </Stack>
           </Box>
         )}
@@ -466,8 +503,10 @@ function ResourceLedgerRow({
   );
 
   return (
-    <Box pad="sm" surface="raised" radius="sm">
-      <Stack gap="xs">
+    // pad="md": pad="sm" (4px) still read as cramped once the meter, the
+    // footnote, and the disclosure trigger were all stacked in one block.
+    <Box pad="md" surface="raised" radius="sm">
+      <Stack gap="sm">
         <Meter
           label={row.displayName}
           value={row.fraction ?? 0}
@@ -487,18 +526,52 @@ function ResourceLedgerRow({
             size="xs"
             style={{ color: "var(--color-status-warning-fg-muted)" }}
           >
-            {row.displayName} limited by {row.blockedBy.join(", ")}
+            <LimitedByMessage
+              subjectDisplayName={row.displayName}
+              blockedBy={row.blockedBy}
+              secondsToEmpty={row.secondsToEmpty}
+            />
           </Value>
         )}
         <Disclosure
           variant="inline"
-          label="Ledger"
-          ariaLabel={`Show rate ledger for ${row.displayName}`}
+          label="Rate breakdown"
+          ariaLabel={`Show rate breakdown for ${row.displayName}`}
         >
           <LedgerBody ledger={ledger} />
         </Disclosure>
       </Stack>
     </Box>
+  );
+}
+
+/**
+ * "<subject> is being limited by <blockers>", the resource in shortage named
+ * first because that is what an operator is trying to fix, followed by a
+ * prediction of how long THAT resource (never the blocker) has left. Shared
+ * by the per-row footnote and the panel-level "Limiting factors" banner so
+ * the two never drift into different phrasings for the same diagnosis.
+ */
+function LimitedByMessage({
+  subjectDisplayName,
+  blockedBy,
+  secondsToEmpty,
+}: {
+  subjectDisplayName: string;
+  blockedBy: string[];
+  secondsToEmpty: number | null;
+}) {
+  return (
+    <>
+      {subjectDisplayName} is being limited by {blockedBy.join(", ")}.
+      {secondsToEmpty !== null && (
+        <>
+          {" "}
+          ~<Unit value={value("s", Math.max(0, secondsToEmpty))} /> of{" "}
+          {subjectDisplayName} left
+        </>
+      )}
+    </>
   );
 }
 

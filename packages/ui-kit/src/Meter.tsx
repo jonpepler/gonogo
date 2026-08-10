@@ -1,5 +1,5 @@
 import { value as quantity } from "@ksp-gonogo/sitrep-sdk";
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import styled, { css } from "styled-components";
 import { Unit } from "./Unit";
 import { speakQuantity } from "./units";
@@ -23,8 +23,22 @@ export interface MeterProps
    * generic health bars) and is unaffected when this prop is absent.
    */
   fillColor?: string;
-  /** Text shown on the right of the header (e.g. "5.0 rad/h"). Defaults to a percentage. */
+  /**
+   * Text shown on the right of the header (e.g. "5.0 rad/h"). Defaults to a
+   * percentage. Also doubles as the `aria-valuetext` spoken value, so it
+   * stays a plain string; pass `valueLabelNode` alongside it when the
+   * VISIBLE header needs live markup (e.g. a `<Unit>`) that this string
+   * can't carry (an attribute can only hold text).
+   */
   valueLabel?: string;
+  /**
+   * Visual override for the header's value display. Wins over `valueLabel`
+   * for what's ON SCREEN, but `aria-valuetext` still reads from `valueLabel`
+   * (falling back to the bare percentage), since that's an attribute and
+   * can only hold a string. Pass both together: this for the eye, `valueLabel`
+   * for the accessibility tree.
+   */
+  valueLabelNode?: ReactNode;
   size?: MeterSize;
 }
 
@@ -43,6 +57,7 @@ export function Meter({
   tone = "neutral",
   fillColor,
   valueLabel,
+  valueLabelNode,
   size = "md",
   ...rest
 }: MeterProps) {
@@ -50,15 +65,16 @@ export function Meter({
   const pct = Math.round(clamped * 100);
   // `value` is a 0..1 ratio, which is a unit the kit knows, so <Unit> does the
   // *100 and writes the symbol. `valueLabel` still wins when a caller has a
-  // better sentence than a bare percentage.
+  // better sentence than a bare percentage; `valueLabelNode` wins over both
+  // when that sentence itself needs live markup (see the prop doc).
   //
   // Two forms, because they go to two places. The visible one is a NODE, so
   // the symbol keeps its own styling; `aria-valuetext` is an attribute and can
-  // only hold a string, which is what `speakQuantity` is for. Writing one
-  // string for both is what the unit layer exists to stop: it would announce
-  // "72 percent-sign".
+  // only hold a string, which is what `speakQuantity` (or a caller-supplied
+  // `valueLabel`) is for. Writing one string for both is what the unit layer
+  // exists to stop: it would announce "72 percent-sign".
   const reading = quantity("ratio", clamped);
-  const display = valueLabel ?? <Unit value={reading} />;
+  const display = valueLabelNode ?? valueLabel ?? <Unit value={reading} />;
   const spoken = valueLabel ?? speakQuantity(reading);
   return (
     <Meter__Root $size={size} {...rest}>

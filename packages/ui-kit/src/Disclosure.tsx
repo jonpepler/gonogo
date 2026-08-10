@@ -3,8 +3,12 @@ import styled, { css } from "styled-components";
 import { ChevronRightIcon } from "./Icons";
 
 export interface DisclosureProps {
-  /** The always-visible trigger content (text, a glyph, a badge). */
-  label: ReactNode;
+  /**
+   * The always-visible trigger content (text, a glyph, a badge). Pass a
+   * function of `open` when the label itself should read differently once
+   * expanded (e.g. "Show detail" → "Hide detail").
+   */
+  label: ReactNode | ((open: boolean) => ReactNode);
   /** The panel content, revealed when open. */
   children: ReactNode;
   /**
@@ -19,11 +23,21 @@ export interface DisclosureProps {
    * tight trigger (FleetRoster's per-row signal cell).
    * "inline": the panel expands IN FLOW below the trigger, full width,
    * pushing later content down rather than covering it, the accordion shape
-   * a resource-row ledger needs. The trigger also grows a rotating chevron
-   * so the control reads unambiguously as an expander. Long panels scroll
-   * inside a capped-height block instead of overflowing the row.
+   * a resource-row ledger needs. By default the trigger also grows a
+   * rotating chevron so the control reads unambiguously as an expander (set
+   * `chevron={false}` when `label` is itself a right-aligned, worded control
+   * like "Show detail" and a second glyph would be redundant). Long panels
+   * scroll inside a capped-height block instead of overflowing the row.
    */
   variant?: "popover" | "inline";
+  /**
+   * Whether the rotating chevron renders for `variant="inline"`. Defaults to
+   * `true`. Set `false` when `label` already reads as the affordance (e.g.
+   * "Show detail"): the trigger then right-aligns that label to where the
+   * chevron would have sat, rather than showing both. Ignored for
+   * `variant="popover"`, which never has a chevron.
+   */
+  chevron?: boolean;
 }
 
 /**
@@ -41,10 +55,13 @@ export function Disclosure({
   ariaLabel,
   className,
   variant = "popover",
+  chevron = true,
 }: DisclosureProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const showChevron = variant === "inline" && chevron;
+  const resolvedLabel = typeof label === "function" ? label(open) : label;
 
   return (
     <Disclosure__Root
@@ -65,9 +82,10 @@ export function Disclosure({
         aria-label={ariaLabel}
         onClick={() => setOpen((v) => !v)}
         $variant={variant}
+        $align={variant === "inline" && !chevron ? "end" : "between"}
       >
-        {label}
-        {variant === "inline" && (
+        {resolvedLabel}
+        {showChevron && (
           <Disclosure__Chevron $open={open}>
             <ChevronRightIcon size={14} />
           </Disclosure__Chevron>
@@ -89,7 +107,10 @@ const Disclosure__Root = styled.div<{ $variant: "popover" | "inline" }>`
   width: ${({ $variant }) => ($variant === "inline" ? "100%" : "auto")};
 `;
 
-const Disclosure__Trigger = styled.button<{ $variant: "popover" | "inline" }>`
+const Disclosure__Trigger = styled.button<{
+  $variant: "popover" | "inline";
+  $align: "between" | "end";
+}>`
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
@@ -98,10 +119,10 @@ const Disclosure__Trigger = styled.button<{ $variant: "popover" | "inline" }>`
   border: none;
   color: inherit;
   cursor: pointer;
-  ${({ $variant }) =>
+  ${({ $variant, $align }) =>
     $variant === "inline" &&
     css`
-      justify-content: space-between;
+      justify-content: ${$align === "end" ? "flex-end" : "space-between"};
       width: 100%;
       border-radius: var(--radius-sm);
       &:hover {

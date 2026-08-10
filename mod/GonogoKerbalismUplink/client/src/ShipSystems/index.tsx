@@ -110,10 +110,32 @@ function toneForRow(row: ResourceRow): Tone {
   return "nogo";
 }
 
-/** "12 / 40 · 3m 20s" style meter caption; "not fitted" for a tankless resource. */
+/** "12 / 40 · 3m 20s" style meter caption; "not fitted" for a tankless resource.
+ *  Kept as a plain string for `Meter`'s `aria-valuetext` (an attribute, so it
+ *  can only hold text); the visible header reads `RowValueDisplay` instead,
+ *  which renders the same content through `<Unit>`. */
 function rowValueLabel(row: ResourceRow): string {
   if (row.capacity <= 0) return "not fitted";
   return `${fmtAmt(row.amount)} / ${fmtAmt(row.capacity)} · ${formatTimeToEmpty(row.secondsToEmpty)}`;
+}
+
+/** Visible counterpart to `rowValueLabel`: same "amount / capacity · time"
+ *  shape, but the time-to-empty renders through `<Unit>` (the canonical
+ *  duration path, `formatQuantity` → `formatDuration`) instead of the
+ *  hand-rolled `speakQuantity` string that function returns. */
+function RowValueDisplay({ row }: { row: ResourceRow }) {
+  if (row.capacity <= 0) return <>not fitted</>;
+  const sec = row.secondsToEmpty;
+  return (
+    <>
+      {fmtAmt(row.amount)} / {fmtAmt(row.capacity)} ·{" "}
+      {sec == null || !Number.isFinite(sec) ? (
+        "steady"
+      ) : (
+        <Unit value={value("s", Math.max(0, sec))} />
+      )}
+    </>
+  );
 }
 
 function wearTone(w: WearRow): Tone {
@@ -430,6 +452,7 @@ function ShipSystemsBody({ ship }: { ship: ShipSystems }) {
             value={ecRow.fraction ?? 0}
             tone={toneForRow(ecRow)}
             valueLabel={rowValueLabel(ecRow)}
+            valueLabelNode={<RowValueDisplay row={ecRow} />}
             size="md"
           />
         </FooterRow>
@@ -512,6 +535,7 @@ function ResourceLedgerRow({
           value={row.fraction ?? 0}
           tone={toneForRow(row)}
           valueLabel={rowValueLabel(row)}
+          valueLabelNode={<RowValueDisplay row={row} />}
           size="sm"
         />
         {row.role === "downstream" && row.blockedBy.length > 0 && (
@@ -535,7 +559,8 @@ function ResourceLedgerRow({
         )}
         <Disclosure
           variant="inline"
-          label="Rate breakdown"
+          chevron={false}
+          label={(open) => (open ? "Hide detail" : "Show detail")}
           ariaLabel={`Show rate breakdown for ${row.displayName}`}
         >
           <LedgerBody ledger={ledger} />

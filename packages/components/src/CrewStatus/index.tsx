@@ -3,24 +3,27 @@ import {
   AugmentSlot,
   getAugmentsForSlot,
   registerComponent,
+  useContributions,
   useTelemetry,
 } from "@ksp-gonogo/core";
 import { useStream, type VesselState } from "@ksp-gonogo/sitrep-client";
 import { Meter, type MeterTone } from "@ksp-gonogo/ui";
 import {
   BigReadout,
+  Card,
   Cluster,
   EmptyState,
   Inline,
   NULL_DISPLAY,
   Panel,
   ReadoutCaption,
+  type ReadoutTone,
   Stack,
   Truncate,
   Unit,
   useElementSize,
 } from "@ksp-gonogo/ui-kit";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { magnitudeOf, type Quantityish } from "../shared/magnitude";
 // Side-effect import: the widget's own `crew-status.badges` panel-badge
 // self-contribution (the info-tone "N/M aboard" header chip) registers on
@@ -270,6 +273,45 @@ declare module "@ksp-gonogo/core" {
 }
 
 // ---------------------------------------------------------------------------
+// The `crew-status.row-tone` CONTRIBUTION slot (contribution-slots-spec,
+// same "pure data, host renders its own chrome" model as ShipMap's
+// `ship-map.part-meters`/`.part-meta`, NOT an AugmentSlot: unlike
+// `.badges`/`.avatar`/`.survival` above, an Uplink doesn't render anything
+// into this slot, it only hands back a per-kerbal tone and the widget paints
+// its own `Card` with it. That split matters here specifically: the per-row
+// `Card` wraps the WHOLE row (name, badges, survival section together), so
+// no single augment's own JSX has a natural place to reach up and colour an
+// ancestor element it doesn't render. A contribution sidesteps that: this
+// widget stays exactly as Kerbalism-agnostic as `.survival` already is
+// (`ReadoutTone` carries no meaning here beyond "how alarmed should this
+// row's border read"), while the Kerbalism Uplink still gets to say which
+// kerbal is critical.
+//
+// Entries are looked up by `crewName` (`toneByName` in `renderBody`, below);
+// a kerbal absent from every contribution's entries renders with no tone
+// (`Card`'s own default, an untinted border). First-registered entry per
+// name wins, same convention as ShipMap's `groupByPart`.
+// ---------------------------------------------------------------------------
+
+/** One entry of a `crew-status.row-tone` contribution: the tone this
+ *  kerbal's roster-row `Card` should carry, or omit the kerbal entirely for
+ *  "nothing to report". */
+export interface CrewRowToneEntry {
+  /** The crew member this tone belongs to; matched against the roster row by name. */
+  crewName: string;
+  /** The `Card` tone to apply to this kerbal's row. */
+  tone: ReadoutTone;
+}
+
+declare module "@ksp-gonogo/core" {
+  interface ContributionRegistry {
+    "crew-status.row-tone": {
+      entry: CrewRowToneEntry;
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The `crew-status.summary` slot contract (see augment-slot-map)
 //
 // A WHOLE-WIDGET section slot, rendered once above the roster rather than
@@ -358,6 +400,20 @@ function CrewStatusComponent({
     useElementSize<HTMLDivElement>(AVATAR_MEASURE_SEED);
   const avatarSizePx = avatarCellSizePx(rosterSize.w);
 
+  // Per-kerbal row tone (e.g. an Uplink's "this kerbal is critical" signal),
+  // see the `crew-status.row-tone` contribution slot's own doc comment
+  // above. First-registered entry per name wins, mirroring ShipMap's own
+  // `groupByPart` dedupe convention. Called unconditionally alongside the
+  // other hooks above, ahead of the `showRoster` early return below.
+  const rowToneContributions = useContributions("crew-status.row-tone");
+  const rowToneByName = useMemo(() => {
+    const map = new Map<string, ReadoutTone>();
+    for (const entry of rowToneContributions) {
+      if (!map.has(entry.crewName)) map.set(entry.crewName, entry.tone);
+    }
+    return map;
+  }, [rowToneContributions]);
+
   const names = toCrewNames(crewRaw);
   const known =
     crewCount !== undefined || crewCapacity !== undefined || names.length > 0;
@@ -413,6 +469,7 @@ function CrewStatusComponent({
           crewCount: crewCount?.magnitude,
           names,
           avatarSizePx,
+          rowToneByName,
         })}
       </div>
     </Panel>
@@ -424,11 +481,13 @@ function renderBody({
   crewCount,
   names,
   avatarSizePx,
+  rowToneByName,
 }: {
   known: boolean;
   crewCount: number | undefined;
   names: string[];
   avatarSizePx: number;
+  rowToneByName: ReadonlyMap<string, ReadoutTone>;
 }): React.ReactNode {
   if (!known) return <EmptyState>Waiting for telemetry...</EmptyState>;
 
@@ -477,15 +536,23 @@ function renderBody({
     <Stack as="ul" gap="lg" style={rosterListStyle}>
       {names.map((name, index) => {
         return (
-          <li key={name}>
-            {/* Per-crew row: a leading avatar COLUMN (when bound) beside a
-                right-hand column carrying the WHOLE rest of the row (name +
-                wrapping badge + survival section), not just the name.
-                `align="start"` top-aligns the fixed-size avatar square
-                against the top of that column rather than centring it
-                against the row as a whole, so a tall column (badge wrapped,
-                survival meters present) doesn't float the avatar down into
-                its middle. */}
+          // Per-crew row: a padded, rounded `Card` (operator feedback: the
+          // previous bare `Stack`/`Cluster` row gave the roster no visual
+          // separation between kerbals, which was also why the death-clock
+          // badge above read as glued to the meter directly under it rather
+          // than owned by the kerbal as a whole). `tone` picks up the
+          // `crew-status.row-tone` contribution when an Uplink reports this
+          // kerbal critical (`rowToneByName` above); with none bound, or
+          // this kerbal not flagged, the card renders with its default
+          // untinted border, identical to every other nominal row.
+          <Card as="li" key={name} tone={rowToneByName.get(name)}>
+            {/* A leading avatar COLUMN (when bound) beside a right-hand
+                column carrying the WHOLE rest of the row (name + wrapping
+                badge + survival section), not just the name. `align="start"`
+                top-aligns the fixed-size avatar square against the top of
+                that column rather than centring it against the row as a
+                whole, so a tall column (badge wrapped, survival meters
+                present) doesn't float the avatar down into its middle. */}
             <Cluster justify="start" align="start">
               {/* Leading per-crew avatar column: a square cell where an
                   Uplink's avatar augment composes, spanning the whole row
@@ -554,7 +621,7 @@ function renderBody({
                 />
               </Stack>
             </Cluster>
-          </li>
+          </Card>
         );
       })}
     </Stack>
@@ -652,6 +719,10 @@ registerComponent<CrewStatusConfig>({
     "crew-status.survival",
     "crew-status.summary",
   ],
+  // `crew-status.row-tone`: the sole CONTRIBUTION (data, not JSX) slot, see
+  // its own doc comment above. Fed by nothing when no Uplink binds, every
+  // row's `Card` renders with the default untinted border.
+  contributionSlots: ["crew-status.row-tone"],
   dataRequirements: ["v.crew", "v.crewCount", "v.crewCapacity", "v.isEVA"],
   // `vessel.resources` is the (already-existing, already-consumed-by-
   // FuelStatus) generic per-vessel resource Topic; here it feeds the EVA

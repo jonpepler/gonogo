@@ -623,7 +623,13 @@ public class KerbalismCrewEntry
     [SitrepUnit(Units.Text)]
     public string? Trait { get; set; }
     public List<KerbalismCrewRule>? Rules { get; set; }
-    /// <summary>Optional mod-computed soonest-fatal countdown (s). Null when not derivable. [fixture-confirm]</summary>
+    /// <summary>
+    /// Soonest of this kerbal's own rules to cross its fatal threshold, computed
+    /// mod-side in <c>KerbalismCapture.BuildCrew</c> as
+    /// <c>min((rule.FatalThreshold - rule.Value) / rule.DegenPerSec)</c> over every
+    /// rule with a positive degen rate. Null when no rule is currently degrading
+    /// (a fully-supplied habitat, or a rule name with no matching profile constant).
+    /// </summary>
     [SitrepUnit(Units.Seconds)]
     public double? DeathClockSec { get; set; }
 }

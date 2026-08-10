@@ -236,6 +236,7 @@ namespace Gonogo.KerbalismUplink
             foreach (var k in crew)
             {
                 var rules = new List<object>();
+                double? deathClockSec = null;
                 foreach (var kv in k.Rules)
                 {
                     constants.TryGetValue(kv.Key, out var c);   // default (0,0) when unknown
@@ -246,16 +247,25 @@ namespace Gonogo.KerbalismUplink
                         ["degenPerSec"] = c.DegenPerSec,
                         ["fatalThreshold"] = c.FatalThreshold,
                     });
+
+                    // Soonest of this kerbal's own rules to cross its fatal threshold
+                    // at its current degen rate. Guarded to rules actually degrading
+                    // (DegenPerSec > 0): a stalled rule (fully-supplied habitat, or an
+                    // unmapped constant defaulting to 0) never masquerades as an
+                    // imminent death.
+                    if (c.DegenPerSec > 0)
+                    {
+                        var secondsToFatal = (c.FatalThreshold - kv.Value) / c.DegenPerSec;
+                        if (deathClockSec == null || secondsToFatal < deathClockSec)
+                            deathClockSec = secondsToFatal;
+                    }
                 }
                 list.Add(new Dictionary<string, object?>
                 {
                     ["name"] = k.Name,
                     ["trait"] = k.Trait,
                     ["rules"] = rules,
-                    // deathClockSec: null until rule->resource linkage is confirmed; the client
-                    // derives stage-1 (resource time-to-empty from kerbalism.lifesupport) +
-                    // stage-2 (this rule's (fatalThreshold - value)/degenPerSec).
-                    ["deathClockSec"] = null,
+                    ["deathClockSec"] = deathClockSec,
                 });
             }
             return list;

@@ -2,12 +2,13 @@ import type { SlotProps } from "@ksp-gonogo/sitrep-sdk";
 import { registerAugment, useProcessor, value } from "@ksp-gonogo/sitrep-sdk";
 import {
   Badge,
-  formatDuration,
   Meter,
   type MeterTone,
   Stack,
+  Unit,
   writeQuantity,
 } from "@ksp-gonogo/ui-kit";
+import type { ReactNode } from "react";
 import { KERBALISM } from "../uplink";
 import {
   CREW_SURVIVAL,
@@ -130,17 +131,23 @@ function CrewSurvivalAugment({
  */
 function warningFor(
   kerbal: KerbalSurvival,
-): { label: string; tone: MeterTone } | null {
+): { label: ReactNode; tone: MeterTone } | null {
   if (kerbal.tone !== "nogo") return null;
   if (kerbal.deathClockSec !== null) {
-    // A death clock is a DURATION, not a scalar quantity: it must render
-    // through `formatDuration`, the same composite ladder the delay/countdown
-    // strips use, never `speakQuantity(value("s", ...))`. Routing a duration
-    // through the scalar `time` unit-kind is how this used to render "~4M TO
-    // FATAL", an ambiguous "M" indistinguishable from metres once the Badge's
+    // A death clock is a DURATION, not a scalar quantity: it renders through
+    // `<Unit>`, the canonical duration path (`formatQuantity` ->
+    // `formatDuration`, same as `ShipSystems`' own time-to-empty readout),
+    // never a hand-rolled string. Routing a duration through the scalar
+    // `time` unit-kind is how this used to render "~4M TO FATAL", an
+    // ambiguous "M" indistinguishable from metres once the Badge's
     // `text-transform: uppercase` got hold of it.
     return {
-      label: `~${formatDuration(Math.max(0, kerbal.deathClockSec))} to fatal`,
+      label: (
+        <>
+          ~<Unit value={value("s", Math.max(0, kerbal.deathClockSec))} /> to
+          fatal
+        </>
+      ),
       tone: kerbal.tone,
     };
   }

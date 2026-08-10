@@ -2,7 +2,6 @@ import type { SlotProps } from "@ksp-gonogo/sitrep-sdk";
 import { registerAugment, useProcessor, value } from "@ksp-gonogo/sitrep-sdk";
 import {
   Badge,
-  Disclosure,
   formatDuration,
   Meter,
   type MeterTone,
@@ -58,13 +57,6 @@ function ruleLabel(name: string): string {
   return name.length > 0 ? name.charAt(0).toUpperCase() + name.slice(1) : name;
 }
 
-/** Rules shown directly, no disclosure needed. Kerbalism's stock default
- *  profile reports exactly two rules per kerbal (stress + radiation), so
- *  this covers the common case without ever collapsing it; a heavier
- *  profile (RO, a custom rule set) is the case the overflow disclosure below
- *  exists for. */
-const VISIBLE_RULE_COUNT = 2;
-
 function RuleMeter({ rule }: Readonly<{ rule: KerbalRuleState }>) {
   return (
     <Meter
@@ -89,9 +81,15 @@ function RuleMeter({ rule }: Readonly<{ rule: KerbalRuleState }>) {
  * `CrewSurvivalBadgeAugment` below, which states the CONSEQUENCE instead and
  * lives next to the kerbal's name, not stacked under its own meter.
  *
- * Rules beyond `VISIBLE_RULE_COUNT` sit behind a real `Disclosure` rather
- * than being dropped: nothing is hidden by default, a crowded profile is
- * one click away instead of invisible.
+ * Renders EVERY rule Kerbalism reports for this kerbal, unconditionally: no
+ * overflow disclosure. An earlier version collapsed rules past a visible
+ * count behind a "Show N more" `Disclosure` (reasoned as "Kerbalism's stock
+ * profile only ever reports two rules per kerbal"), but the full profile
+ * reports up to ~7 (eating, drinking, breathing, co2 poisoning, radiation,
+ * climatization, stress); hiding most of them behind an extra click was
+ * exactly the kind of clutter-avoidance nobody asked for, and the operator
+ * confirmed the disclosure served no purpose. A crowded profile just renders
+ * a taller Stack.
  *
  * Renders nothing when the kerbal has no rule reported at all, so a vessel
  * with no Kerbalism data (or a kerbal Kerbalism has nothing to say about
@@ -105,8 +103,6 @@ function CrewSurvivalAugment({
   if (!survival) return null;
   const kerbal = findKerbal(survival, crewName, crewIndex);
   if (!kerbal || kerbal.rules.length === 0) return null;
-  const visible = kerbal.rules.slice(0, VISIBLE_RULE_COUNT);
-  const overflow = kerbal.rules.slice(VISIBLE_RULE_COUNT);
   return (
     <Stack
       gap="xs"
@@ -116,26 +112,9 @@ function CrewSurvivalAugment({
       }}
       aria-label="survival meters"
     >
-      {visible.map((rule) => (
+      {kerbal.rules.map((rule) => (
         <RuleMeter key={rule.name} rule={rule} />
       ))}
-      {overflow.length > 0 && (
-        <Disclosure
-          variant="inline"
-          asButton
-          buttonSize="sm"
-          chevron={false}
-          label={(open) =>
-            open ? "Hide more" : `Show ${overflow.length} more`
-          }
-        >
-          <Stack gap="xs">
-            {overflow.map((rule) => (
-              <RuleMeter key={rule.name} rule={rule} />
-            ))}
-          </Stack>
-        </Disclosure>
-      )}
     </Stack>
   );
 }

@@ -155,7 +155,7 @@ describe("CrewSurvivalAugment", () => {
     expect(meters.indexOf(doseMeter)).toBeLessThan(meters.indexOf(stressMeter));
   });
 
-  it("collapses rules past VISIBLE_RULE_COUNT behind a real disclosure, nothing hidden by default", async () => {
+  it("renders every rule unconditionally, no overflow disclosure", async () => {
     const fixture = newFixture();
     renderAugment(fixture, "Jebediah Kerman", 0);
     emit(fixture, CREW, [
@@ -165,25 +165,36 @@ describe("CrewSurvivalAugment", () => {
           { name: "radiation", value: 45, fatalThreshold: 50 },
           { name: "stress", value: 0.6, fatalThreshold: 1 },
           { name: "co2 poisoning", value: 0.3, fatalThreshold: 1 },
+          { name: "eating", value: 0.2, fatalThreshold: 1 },
+          { name: "drinking", value: 0.15, fatalThreshold: 1 },
+          { name: "breathing", value: 0.1, fatalThreshold: 1 },
+          { name: "climatization", value: 0.05, fatalThreshold: 1 },
         ],
       },
     ]);
 
-    // The two worst rules render directly.
+    // Every rule renders directly, unconditionally: no "Show N more" trigger
+    // and nothing collapsed behind it.
     await screen.findByRole("meter", { name: "Radiation dose" });
     await screen.findByRole("meter", { name: "Stress" });
-    // The third is behind a real, keyboard-reachable disclosure trigger, not
-    // silently dropped.
-    expect(
-      screen.queryByRole("meter", { name: "Co2 poisoning" }),
-    ).not.toBeInTheDocument();
-    const trigger = screen.getByRole("button", { name: /show 1 more/i });
-    await act(async () => {
-      trigger.click();
-    });
     expect(
       await screen.findByRole("meter", { name: "Co2 poisoning" }),
     ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("meter", { name: "Eating" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("meter", { name: "Drinking" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("meter", { name: "Breathing" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("meter", { name: "Climatization" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /show.*more/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders nothing for a kerbal Kerbalism reports no rules or clock for", async () => {

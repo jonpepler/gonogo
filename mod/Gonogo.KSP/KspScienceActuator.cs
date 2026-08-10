@@ -15,8 +15,8 @@ namespace Gonogo.KSP
     /// vessel selector; the science read side scopes to the active vessel the
     /// same way.
     /// The experiment is addressed by the part's <c>flightID.ToString()</c>,
-    /// the SAME opaque id <c>KspHost.BuildScienceInstruments</c> emits on the
-    /// read side.
+    /// the SAME opaque id <see cref="StockScienceBackend.Instruments"/> emits
+    /// on the read side.
     ///
     /// <para>This is a KSP/Unity-touching class alongside <see cref="KspHost"/>
     /// (read side) and <see cref="KspVesselActuator"/> (vessel actuation). Like
@@ -133,7 +133,7 @@ namespace Gonogo.KSP
         /// Resolves the opaque <paramref name="partId"/> (a part's
         /// <c>flightID.ToString()</c>) to that part's live
         /// <c>ModuleScienceExperiment</c> list on the active vessel: the same
-        /// join key <c>KspHost.BuildScienceInstruments</c> emits. Returns
+        /// join key <see cref="StockScienceBackend.Instruments"/> emits. Returns
         /// <see cref="CommandErrorCode.NoVessel"/> with no active vessel,
         /// <see cref="CommandErrorCode.NotFound"/> when no part carries the id
         /// or the resolved part has no experiment module at all.
@@ -157,7 +157,7 @@ namespace Gonogo.KSP
                     continue;
                 }
                 // flightID is the same stable per-Part join key the read side
-                // uses (see KspHost.BuildScienceInstruments); 0 is the
+                // uses (see StockScienceBackend.Instruments); 0 is the
                 // uninitialized sentinel, so it never matches a real id.
                 if (part.flightID != 0 && string.Equals(part.flightID.ToString(), partId, StringComparison.Ordinal))
                 {

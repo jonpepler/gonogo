@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Sitrep.Contract;
 using Sitrep.Core;
 using Sitrep.Host;
+using Sitrep.Host.Science;
 
 namespace Gonogo.KSP
 {
@@ -38,11 +39,22 @@ namespace Gonogo.KSP
     /// production). Both are genuine uplinks to the craft (they actuate an
     /// experiment ON the vessel), so both are declared <c>delayed: true</c>.
     /// Reset/collect remain a follow-up.</para>
+    ///
+    /// <para>Also owns the exclusive <c>"science"</c> capability
+    /// (<see cref="ScienceElection"/>): declared in the pre-Register
+    /// <see cref="IUplinkCapabilityDeclarer.DeclareCapabilities"/> pass with
+    /// <see cref="StockScienceBackend"/> as the Vanilla factory, the same
+    /// election shape <c>ReliabilityCoreUplink</c>/<c>VesselUplink</c>
+    /// (action groups) already use. <c>KspHost.BuildScience</c> resolves the
+    /// elected backend at capture time; this uplink's own channels keep
+    /// reading the raw <c>Values["science"]</c> snapshot exactly as before,
+    /// the election only changes who POPULATES it.</para>
     /// </summary>
     [SitrepUplink("science")]
-    public sealed class ScienceUplink : ISitrepUplink
+    public sealed class ScienceUplink : ISitrepUplink, IUplinkCapabilityDeclarer
     {
         private readonly IScienceActuator _actuator;
+        private Kernel? _kernel;
 
         public ScienceUplink(IScienceActuator actuator)
         {
@@ -124,12 +136,24 @@ namespace Gonogo.KSP
             },
         };
 
-        /// <summary>Mandatory health self-report (see <see cref="ISitrepUplink.Health"/>): a plain
-        /// channel uplink is Healthy once it has registered without error.</summary>
-        public UplinkHealth Health() => UplinkHealth.Healthy;
+        /// <summary>
+        /// Declared HERE in the pre-Register capability pass (two-pass fix,
+        /// same as <c>ReliabilityCoreUplink</c>/<c>VesselUplink</c>'s action-
+        /// groups capability), so the <c>"science"</c> capability exists
+        /// before any future provider uplink's Register runs.
+        /// </summary>
+        public void DeclareCapabilities(Kernel kernel) => ScienceElection.RegisterCapability(kernel, _ => new StockScienceBackend());
+
+        /// <summary>Mandatory health self-report (see <see cref="ISitrepUplink.Health"/>): Healthy once
+        /// the science capability has resolved to an elected backend (shape of <c>ReliabilityCoreUplink.Health</c>).</summary>
+        public UplinkHealth Health() =>
+            _kernel != null && ScienceElection.Elected(_kernel) != null
+                ? UplinkHealth.Healthy
+                : new UplinkHealth(UplinkHealthState.Unavailable, "science capability not resolved");
 
         public void Register(IUplinkHost host)
         {
+            _kernel = host.Kernel;
             host.AddChannelSource(ScienceViewProvider.ExperimentsTopic, ScienceViewProvider.BuildExperiments);
             host.AddChannelSource(ScienceViewProvider.InstrumentsTopic, ScienceViewProvider.BuildInstruments);
             host.AddChannelSource(ScienceViewProvider.LabTopic, ScienceViewProvider.BuildLab);

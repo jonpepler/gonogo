@@ -9,6 +9,7 @@ using KSP.UI.Screens;
 using ModuleWheels;
 using Sitrep.Host;
 using Sitrep.Host.ActionGroups;
+using Sitrep.Host.Science;
 using Sitrep.Host.Targeting;
 using Strategies;
 using UnityEngine;
@@ -90,6 +91,35 @@ namespace Gonogo.KSP
         public void SetActionGroupsBackendSource(Func<IActionGroupsBackend?> resolver)
         {
             _actionGroupsBackend = resolver;
+        }
+
+        /// <summary>
+        /// Resolves the elected <see cref="IScienceBackend"/> (stock, or a
+        /// future modelling-mod backend) fresh on every sample. Same
+        /// late-bound install shape as <see cref="_actionGroupsBackend"/> and
+        /// for the same reason: <see cref="GonogoAddon"/> constructs this host
+        /// before the ChannelEngine exists, so the resolver is a closure the
+        /// addon installs after <c>ResolveCapabilities()</c>, not a
+        /// constructor argument. Invoked per-sample rather than cached so a
+        /// re-resolution is picked up without restarting the host.
+        ///
+        /// <para>Null before the addon wires it (and in a bare-host unit
+        /// test), which degrades to "no science data this tick", the same
+        /// null the contract already documents. Science is not
+        /// SpineCritical; the rest of the snapshot is still good telemetry
+        /// without it.</para>
+        /// </summary>
+        private Func<IScienceBackend?>? _scienceBackend;
+
+        /// <summary>
+        /// Installs the elected-backend resolver. Called by
+        /// <see cref="GonogoAddon"/> once the capability Kernel has resolved,
+        /// see <see cref="_scienceBackend"/> for why this can't be a
+        /// constructor argument.
+        /// </summary>
+        public void SetScienceBackendSource(Func<IScienceBackend?> resolver)
+        {
+            _scienceBackend = resolver;
         }
 
         /// <summary>
@@ -207,7 +237,7 @@ namespace Gonogo.KSP
                         // own try/catch-and-omit, same "one group's failure
                         // doesn't take out another" discipline as every
                         // vessel.* group above.
-                        TryBuildGroup(values, "science", () => BuildScience(activeVessel));
+                        TryBuildGroup(values, "science", () => BuildScience(_scienceBackend?.Invoke()));
                         TryBuildGroup(values, "parts", () => BuildParts(activeVessel));
 
                         // target.available -- everything the active vessel
@@ -3413,527 +3443,36 @@ namespace Gonogo.KSP
         /// "true" science value is computed here (that's
         /// <c>ResearchAndDevelopment.Instance.ScienceValue</c>'s job, a
         /// follow-up if a consumer needs it).
+        ///
+        /// <para>Four of the five sub-groups (experiments/instruments/
+        /// sensors/lab/experimentBreakdown) now come from the elected
+        /// <see cref="IScienceBackend"/> (<see cref="StockScienceBackend"/> in
+        /// stock, resolved via <see cref="ScienceElection"/>) rather than a
+        /// direct static walk - see <c>Sitrep.Host.Science.ScienceElection</c>'s
+        /// doc comment for the election shape this mirrors
+        /// (<see cref="_actionGroupsBackend"/>/<see cref="ActionGroupsElection"/>).
+        /// Null <paramref name="scienceBackend"/> (no election resolved yet,
+        /// or a bare-host unit test) degrades every backend-sourced sub-group
+        /// to "not available this tick", the same null the contract already
+        /// documents.</para>
         /// </summary>
-        private static Dictionary<string, object?> BuildScience(Vessel vessel)
+        private static Dictionary<string, object?> BuildScience(IScienceBackend? scienceBackend)
         {
             var entry = new Dictionary<string, object?>();
-            TryBuildGroup(entry, "experiments", () => BuildScienceExperiments(vessel));
-            TryBuildGroup(entry, "instruments", () => BuildScienceInstruments(vessel));
-            TryBuildGroup(entry, "sensors", () => BuildScienceSensors(vessel));
-            TryBuildGroup(entry, "lab", () => BuildScienceLab(vessel));
+            TryBuildGroup(entry, "experiments", () => scienceBackend?.Experiments());
+            TryBuildGroup(entry, "instruments", () => scienceBackend?.Instruments());
+            TryBuildGroup(entry, "sensors", () => scienceBackend?.Sensors());
+            TryBuildGroup(entry, "lab", () => scienceBackend?.Lab());
             // Deployed science is captured GLOBALLY (across every loaded
-            // vessel), NOT off the active vessel this method receives -- see
-            // BuildDeployedScience's doc comment. Kept as a "science"
-            // sub-group for channel continuity even though its data comes
-            // from other vessels entirely.
+            // vessel), NOT scoped to the active vessel the elected backend
+            // reads -- see BuildDeployedScience's doc comment. It is
+            // Breaking Ground's, NOT part of the science capability, so it
+            // stays a direct call here rather than riding the election. Kept
+            // as a "science" sub-group for channel continuity even though
+            // its data comes from other vessels entirely.
             TryBuildGroup(entry, "deployed", () => BuildDeployedScience());
-            TryBuildGroup(entry, "experimentBreakdown", () => BuildScienceExperimentBreakdown(vessel));
+            TryBuildGroup(entry, "experimentBreakdown", () => scienceBackend?.ExperimentBreakdown());
             return entry;
-        }
-
-        /// <summary>
-        /// Per-subject rollup of the same stored <see cref="ScienceData"/>
-        /// <see cref="BuildScienceExperiments"/> lists one-row-per-blob: the
-        /// new home for the old GonogoTelemetry-only
-        /// <c>sci.experimentBreakdown</c> enrichment (no equivalent on the base
-        /// wire until now). Re-walks the vessel's experiment/container modules
-        /// independently rather than reusing <see cref="BuildScienceExperiments"/>'s
-        /// output, mirroring this group's existing "one independent walk per
-        /// sub-group" convention (<see cref="BuildScienceLab"/>/
-        /// <see cref="BuildScienceSensors"/>/<see cref="BuildScienceInstruments"/>
-        /// are likewise separate walks, not derived from each other).
-        /// <c>biome</c>/<c>situation</c> come from
-        /// <c>ScienceUtil.GetExperimentFieldsFromScienceID</c> (confirmed via
-        /// decompile: public static, splits the subject id APART rather than
-        /// re-deriving from the vessel's CURRENT position, so a subject
-        /// collected earlier in the flight keeps its own original biome/
-        /// situation). <c>remainingPotential</c> is the ABSOLUTE science left
-        /// in the subject (<c>ScienceSubject.scienceCap - science</c>, via
-        /// <c>ResearchAndDevelopment.GetSubjectByID</c>): <c>0</c> outside
-        /// Career/Science mode, where <c>ResearchAndDevelopment.Instance</c> is
-        /// null. One entry per DISTINCT subject id; multiple stored blobs for
-        /// the same subject collapse into one entry with <c>dataMits</c>
-        /// summed. Null when the vessel carries no stored science data at all,
-        /// never an empty list (same convention <see cref="BuildScienceExperiments"/>
-        /// uses).
-        /// </summary>
-        private static List<object?>? BuildScienceExperimentBreakdown(Vessel vessel)
-        {
-            var parts = vessel.parts;
-            if (parts == null || parts.Count == 0)
-            {
-                return null;
-            }
-
-            var bySubject = new Dictionary<string, (string title, double dataMits)>();
-            var order = new List<string>();
-
-            void Accumulate(ScienceData data)
-            {
-                var subjectId = data.subjectID;
-                if (string.IsNullOrEmpty(subjectId))
-                {
-                    return;
-                }
-
-                if (bySubject.TryGetValue(subjectId, out var running))
-                {
-                    bySubject[subjectId] = (running.title, running.dataMits + data.dataAmount);
-                }
-                else
-                {
-                    bySubject[subjectId] = (data.title, data.dataAmount);
-                    order.Add(subjectId);
-                }
-            }
-
-            foreach (var part in parts)
-            {
-                if (part == null || part.Modules == null)
-                {
-                    continue;
-                }
-
-                var experiments = part.Modules.GetModules<ModuleScienceExperiment>();
-                if (experiments != null)
-                {
-                    foreach (var exp in experiments)
-                    {
-                        if (exp == null)
-                        {
-                            continue;
-                        }
-
-                        ScienceData[]? data;
-                        try { data = exp.GetData(); } catch { data = null; }
-                        if (data == null)
-                        {
-                            continue;
-                        }
-
-                        foreach (var d in data)
-                        {
-                            if (d != null)
-                            {
-                                Accumulate(d);
-                            }
-                        }
-                    }
-                }
-
-                var containers = part.Modules.GetModules<ModuleScienceContainer>();
-                if (containers != null)
-                {
-                    foreach (var container in containers)
-                    {
-                        if (container == null)
-                        {
-                            continue;
-                        }
-
-                        ScienceData[]? data;
-                        try { data = container.GetData(); } catch { data = null; }
-                        if (data == null)
-                        {
-                            continue;
-                        }
-
-                        foreach (var d in data)
-                        {
-                            if (d != null)
-                            {
-                                Accumulate(d);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (order.Count == 0)
-            {
-                return null;
-            }
-
-            var list = new List<object?>();
-            foreach (var subjectId in order)
-            {
-                var (title, dataMits) = bySubject[subjectId];
-                ScienceUtil.GetExperimentFieldsFromScienceID(subjectId, out _, out string situation, out string biome);
-
-                var remainingPotential = 0.0;
-                if (ResearchAndDevelopment.Instance != null)
-                {
-                    var subject = ResearchAndDevelopment.GetSubjectByID(subjectId);
-                    if (subject != null)
-                    {
-                        remainingPotential = (double)(subject.scienceCap - subject.science);
-                    }
-                }
-
-                list.Add(new Dictionary<string, object?>
-                {
-                    ["subjectId"] = subjectId,
-                    ["biome"] = biome,
-                    ["situation"] = situation,
-                    ["expTitle"] = title,
-                    ["dataMits"] = dataMits,
-                    ["remainingPotential"] = remainingPotential,
-                });
-            }
-
-            return list;
-        }
-
-        /// <summary>
-        /// One entry per <see cref="ScienceData"/> currently held by any
-        /// <see cref="ModuleScienceExperiment"/> (data collected in the
-        /// experiment itself, not yet transferred - <c>location:
-        /// "experiment"</c>) or <see cref="ModuleScienceContainer"/> (data
-        /// already collected into an onboard container - <c>location:
-        /// "container"</c>) on the vessel. Both classes expose a public
-        /// <c>GetData()</c> directly (confirmed via decompile) - called on
-        /// the concrete type rather than through <c>IScienceDataContainer</c>
-        /// (that interface decompiled with no visible members, so nothing is
-        /// assumed about it). Null when the vessel carries no science data
-        /// at all, never an empty list (same "omit entirely" convention
-        /// <see cref="BuildManeuverNodes"/> uses).
-        /// </summary>
-        private static List<object?>? BuildScienceExperiments(Vessel vessel)
-        {
-            var parts = vessel.parts;
-            if (parts == null || parts.Count == 0)
-            {
-                return null;
-            }
-
-            List<object?>? list = null;
-            var situation = vessel.situation.ToString();
-
-            foreach (var part in parts)
-            {
-                if (part == null || part.Modules == null)
-                {
-                    continue;
-                }
-
-                var partName = part.partInfo != null ? part.partInfo.title : part.name;
-
-                var experiments = part.Modules.GetModules<ModuleScienceExperiment>();
-                if (experiments != null)
-                {
-                    foreach (var exp in experiments)
-                    {
-                        if (exp == null)
-                        {
-                            continue;
-                        }
-
-                        ScienceData[]? data;
-                        try { data = exp.GetData(); } catch { data = null; }
-                        if (data == null)
-                        {
-                            continue;
-                        }
-
-                        foreach (var d in data)
-                        {
-                            if (d == null)
-                            {
-                                continue;
-                            }
-                            list ??= new List<object?>();
-                            list.Add(BuildScienceDataEntry(d, partName, situation, "experiment", exp.experimentID, exp.Deployed, exp.Inoperable));
-                        }
-                    }
-                }
-
-                var containers = part.Modules.GetModules<ModuleScienceContainer>();
-                if (containers != null)
-                {
-                    foreach (var container in containers)
-                    {
-                        if (container == null)
-                        {
-                            continue;
-                        }
-
-                        ScienceData[]? data;
-                        try { data = container.GetData(); } catch { data = null; }
-                        if (data == null)
-                        {
-                            continue;
-                        }
-
-                        foreach (var d in data)
-                        {
-                            if (d == null)
-                            {
-                                continue;
-                            }
-                            list ??= new List<object?>();
-                            list.Add(BuildScienceDataEntry(d, partName, situation, "container", null, null, null));
-                        }
-                    }
-                }
-            }
-
-            return list;
-        }
-
-        private static Dictionary<string, object?> BuildScienceDataEntry(ScienceData data, string partName, string situation, string location, string? experimentId, bool? deployed, bool? inoperable)
-        {
-            return new Dictionary<string, object?>
-            {
-                ["partName"] = partName,
-                // "experiment" = still sitting in the experiment module,
-                // uncollected; "container" = already collected into an
-                // onboard ModuleScienceContainer. KSP doesn't track a
-                // separate "already transmitted" flag on ScienceData itself
-                // (transmission is a fire-and-forget action, not persisted
-                // state) - the consumer reads location as the closest
-                // available "stored vs not yet collected" signal.
-                ["location"] = location,
-                ["experimentId"] = experimentId,
-                ["subjectId"] = data.subjectID,
-                ["title"] = data.title,
-                ["dataAmount"] = (double)data.dataAmount,
-                ["scienceValueRatio"] = (double)data.scienceValueRatio,
-                ["baseTransmitValue"] = (double)data.baseTransmitValue,
-                ["transmitBonus"] = (double)data.transmitBonus,
-                ["labValue"] = (double)data.labValue,
-                ["deployed"] = deployed,
-                ["inoperable"] = inoperable,
-                ["situation"] = situation,
-            };
-        }
-
-        /// <summary>
-        /// One entry per <see cref="ModuleScienceExperiment"/> on the active
-        /// vessel, captured as an INVENTORY / operability list keyed by the
-        /// part's <c>flightID</c> - distinct from
-        /// <see cref="BuildScienceExperiments"/>, which walks the same modules
-        /// but emits one row per STORED <see cref="ScienceData"/> result (a
-        /// module holding no data produces no row there). This list emits a row
-        /// for EVERY experiment module regardless of whether it currently holds
-        /// data, so the operator can see what instruments are aboard and their
-        /// deploy/inoperable/rerunnable/resettable/collectable state. All five
-        /// booleans and <c>experimentID</c> are public fields on
-        /// <see cref="ModuleScienceExperiment"/> (confirmed via decompile);
-        /// <c>title</c> is the linked <c>ScienceExperiment.experimentTitle</c>,
-        /// read defensively since the definition can be lazily unresolved.
-        /// Null when the vessel carries no experiment modules at all, never an
-        /// empty list (same "omit entirely" convention the sibling builders
-        /// use).
-        /// </summary>
-        private static List<object?>? BuildScienceInstruments(Vessel vessel)
-        {
-            var parts = vessel.parts;
-            if (parts == null || parts.Count == 0)
-            {
-                return null;
-            }
-
-            List<object?>? list = null;
-
-            foreach (var part in parts)
-            {
-                if (part == null || part.Modules == null)
-                {
-                    continue;
-                }
-
-                var partName = part.partInfo != null ? part.partInfo.title : part.name;
-                var partId = part.flightID != 0 ? part.flightID.ToString() : null;
-
-                var experiments = part.Modules.GetModules<ModuleScienceExperiment>();
-                if (experiments == null)
-                {
-                    continue;
-                }
-
-                foreach (var exp in experiments)
-                {
-                    if (exp == null)
-                    {
-                        continue;
-                    }
-
-                    string? title = null;
-                    try { title = exp.experiment != null ? exp.experiment.experimentTitle : null; }
-                    catch { title = null; }
-
-                    list ??= new List<object?>();
-                    list.Add(new Dictionary<string, object?>
-                    {
-                        ["partId"] = partId,
-                        ["partName"] = partName,
-                        ["experimentId"] = exp.experimentID,
-                        ["title"] = title,
-                        ["deployed"] = exp.Deployed,
-                        ["inoperable"] = exp.Inoperable,
-                        ["rerunnable"] = exp.rerunnable,
-                        ["resettable"] = exp.resettable,
-                        ["dataIsCollectable"] = exp.dataIsCollectable,
-                    });
-                }
-            }
-
-            return list;
-        }
-
-        /// <summary>
-        /// One entry per <see cref="ModuleEnviroSensor"/> (thermometer,
-        /// barometer, gravioli detector, accelerometer, and any modded sensor
-        /// sharing the module) on the active vessel. A GENERAL sensor group -
-        /// one entry per module, <c>type</c> carrying the raw
-        /// <see cref="SensorType"/> enum name as a string - NOT four fixed
-        /// temp/pres/grav/acc keys, so modded sensor types and multiple
-        /// instances of the same type both fall out naturally. Verified public
-        /// members (via decompile): <c>sensorType</c> (SensorType enum),
-        /// <c>readoutInfo</c> (string, the live readout, "Off" when inactive),
-        /// <c>sensorActive</c> (bool). Null when the vessel carries no sensor
-        /// module at all, never an empty list (same "omit entirely" convention
-        /// <see cref="BuildScienceExperiments"/> uses).
-        /// </summary>
-        private static List<object?>? BuildScienceSensors(Vessel vessel)
-        {
-            var parts = vessel.parts;
-            if (parts == null || parts.Count == 0)
-            {
-                return null;
-            }
-
-            List<object?>? list = null;
-
-            foreach (var part in parts)
-            {
-                if (part == null || part.Modules == null)
-                {
-                    continue;
-                }
-
-                var partName = part.partInfo != null ? part.partInfo.title : part.name;
-                // Same flightID join key as the power/robotics captures - see
-                // BuildPartsPower's comment. 0 is the uninitialized sentinel.
-                var partId = part.flightID != 0 ? part.flightID.ToString() : null;
-
-                var sensors = part.Modules.GetModules<ModuleEnviroSensor>();
-                if (sensors == null)
-                {
-                    continue;
-                }
-
-                foreach (var sensor in sensors)
-                {
-                    if (sensor == null)
-                    {
-                        continue;
-                    }
-                    list ??= new List<object?>();
-                    list.Add(new Dictionary<string, object?>
-                    {
-                        ["partId"] = partId,
-                        ["partName"] = partName,
-                        ["type"] = sensor.sensorType.ToString(),
-                        ["readout"] = sensor.readoutInfo,
-                        ["active"] = sensor.sensorActive,
-                    });
-                }
-            }
-
-            return list;
-        }
-
-        /// <summary>
-        /// One entry per <see cref="ModuleScienceLab"/> (MPL) on the vessel.
-        /// <c>scienceRate</c> comes from <c>ModuleScienceConverter.
-        /// CalculateScienceRate(dataStored)</c> via the lab's public
-        /// <c>Converter</c> property (confirmed via decompile) - wrapped in
-        /// its own try since a lab with no converter configured is a valid
-        /// (if unusual) part config. <c>scientistCount</c> counts
-        /// <c>part.protoModuleCrew</c> entries whose <c>trait == "Scientist"</c>
-        /// (both confirmed via decompile - <c>Part.protoModuleCrew</c> is a
-        /// public field, <c>ProtoCrewMember.trait</c> a public string).
-        /// </summary>
-        private static List<object?>? BuildScienceLab(Vessel vessel)
-        {
-            var parts = vessel.parts;
-            if (parts == null || parts.Count == 0)
-            {
-                return null;
-            }
-
-            List<object?>? list = null;
-
-            foreach (var part in parts)
-            {
-                if (part == null || part.Modules == null)
-                {
-                    continue;
-                }
-
-                var labs = part.Modules.GetModules<ModuleScienceLab>();
-                if (labs == null)
-                {
-                    continue;
-                }
-
-                foreach (var lab in labs)
-                {
-                    if (lab == null)
-                    {
-                        continue;
-                    }
-
-                    var partName = part.partInfo != null ? part.partInfo.title : part.name;
-
-                    double? rate = null;
-                    try
-                    {
-                        var converter = lab.Converter;
-                        if (converter != null)
-                        {
-                            rate = converter.CalculateScienceRate(lab.dataStored);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning("[Gonogo] science.lab rate read failed on \"" + partName + "\", omitting: " + ex);
-                    }
-
-                    var scientistCount = 0;
-                    var crew = part.protoModuleCrew;
-                    if (crew != null)
-                    {
-                        foreach (var kerbal in crew)
-                        {
-                            if (kerbal != null && kerbal.trait == "Scientist")
-                            {
-                                scientistCount++;
-                            }
-                        }
-                    }
-
-                    bool? isOperational = null;
-                    try { isOperational = lab.IsOperational(); } catch { isOperational = null; }
-
-                    list ??= new List<object?>();
-                    list.Add(new Dictionary<string, object?>
-                    {
-                        ["partName"] = partName,
-                        ["dataStored"] = (double)lab.dataStored,
-                        ["dataStorage"] = (double)lab.dataStorage,
-                        ["storedScience"] = (double)lab.storedScience,
-                        ["processingData"] = lab.processingData,
-                        ["statusText"] = lab.statusText,
-                        ["scientistCount"] = scientistCount,
-                        ["scienceRate"] = rate,
-                        ["isOperational"] = isOperational,
-                    });
-                }
-            }
-
-            return list;
         }
 
         /// <summary>

@@ -4,13 +4,13 @@
  * Catches structural drift (rendered text, element order, attribute changes)
  * across every fixture × mode combination registered for the widget. The
  * matching PNG renders live in `local_docs/renders/space-weather-widget/` and
- * cover the visual layer DOM snapshots can't (styled-components CSS, the flux
- * chart / belt rings SVG paint, fonts).
+ * cover the visual layer DOM snapshots can't (the sun/ring/spike SVG paint,
+ * fonts).
  *
- * SpaceWeather reads flat `sw.*` keys off the `"data"` source (see its
- * `useSpaceWeather` hook), so these render through the shared MockDataSource
- * harness like the widget's own index.test.tsx: no TelemetryProvider needed.
- * Missing keys default to 0, so the board always renders populated.
+ * SpaceWeather reads the sun-vantage `kerbalism.spaceweather` Topic
+ * (`Stars`/`Storms`/`StormEjectionSpeed`) through a real `TelemetryProvider`,
+ * fed here via the `sw.*`-prefixed fixture keys `widgetDomSnapshot` reshapes
+ * onto the wire (see `resolveKerbalismSpaceWeatherWire`).
  *
  * If the widget output intentionally changes, regenerate with
  * `pnpm --filter @ksp-gonogo/components exec vitest run src/SpaceWeather/snapshots -u`.
@@ -18,17 +18,17 @@
 import { describe, expect, it } from "vitest";
 import { getWidget } from "../../scripts/widgets";
 import { snapshotWidgetMode } from "../test/widgetDomSnapshot";
-import innerBelt from "./__fixtures__/inner-belt.json";
-import nominal from "./__fixtures__/nominal.json";
+import binary from "./__fixtures__/binary.json";
+import quiet from "./__fixtures__/quiet.json";
+import stormImpact from "./__fixtures__/storm-impact.json";
 import stormInbound from "./__fixtures__/storm-inbound.json";
-import stormPeak from "./__fixtures__/storm-peak.json";
 import { SpaceWeatherComponent } from "./index";
 
 const FIXTURES = {
-  nominal,
-  "inner-belt": innerBelt,
+  quiet,
+  binary,
   "storm-inbound": stormInbound,
-  "storm-peak": stormPeak,
+  "storm-impact": stormImpact,
 };
 
 const config = getWidget("space-weather");

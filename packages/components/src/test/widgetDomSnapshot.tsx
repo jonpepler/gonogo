@@ -137,40 +137,23 @@ const fbool = (fixture: Fixture, key: string): boolean =>
   (fnum(fixture, key) ?? 0) > 0.5;
 
 /**
- * `sw.*` -> `kerbalism.spaceweather`: SpaceWeather dropped its legacy
- * `useDataSourceSubscription("data", "sw.*")` reads for the canonical
- * `useTelemetry("kerbalism.spaceweather")` Topic, so a fixture carrying the old
- * `sw.*` keys must reshape them onto the Topic wire or the board renders empty.
- * Radiation is stored rad/h in the fixture but the Topic (and real mod) is
- * rad/s, so it is divided by 3600 here, the widget multiplies it back for the
- * identical readout. Storm state 0/1/2 -> the incoming/inProgress bools.
+ * `sw.*` -> `kerbalism.spaceweather`: SpaceWeather reads the sun-vantage
+ * shape (`Stars`/`Storms`/`StormEjectionSpeed`, the 2026-08-10 reframe) off
+ * the canonical `useTelemetry("kerbalism.spaceweather")` Topic. Unlike the
+ * pre-reframe scalar fields, `sw.stars`/`sw.storms` are carried as arrays
+ * that already match the wire shape 1:1 (see `KerbalismStarInfo`/
+ * `KerbalismStormEntry`), so this reshape is a pass-through rather than a
+ * unit conversion. A fixture with no `sw.*` key is unaffected (widgets that
+ * don't touch this Topic never trip the `hasSw` gate below).
  */
 function resolveKerbalismSpaceWeatherWire(fixture: Fixture): unknown {
   const hasSw = Object.keys(fixture).some((k) => k.startsWith("sw."));
   if (!hasSw) return undefined;
-  const rph = fnum(fixture, "sw.radiationRadPerHour") ?? 0;
-  const stormState = Math.round(fnum(fixture, "sw.stormState") ?? 0);
   return {
-    radiationRadPerSecond: rph / 3600,
-    habitatRadiationRadPerSecond: rph / 3600,
-    magnetosphere: fbool(fixture, "sw.magnetosphere"),
-    innerBelt: fbool(fixture, "sw.innerBelt"),
-    outerBelt: fbool(fixture, "sw.outerBelt"),
-    stormIncoming: stormState === 1,
-    stormInProgress: stormState === 2,
-    blackout: fbool(fixture, "sw.blackout"),
-    inSunlight: true,
-    shieldingAmount: fnum(fixture, "sw.shieldingValue") ?? 0,
-    shieldingCapacity: fnum(fixture, "sw.shieldingCapacity") ?? 0,
+    stars: fixture["sw.stars"] ?? [],
+    storms: fixture["sw.storms"] ?? [],
+    stormEjectionSpeed: fnum(fixture, "sw.stormEjectionSpeed"),
   };
-}
-
-/** `sw.altitudeM` -> `vessel.flight.altitudeAsl`: SpaceWeather's belt-ring vessel-dot placement. */
-function resolveSpaceWeatherFlightWire(fixture: Fixture): unknown {
-  const alt = fnum(fixture, "sw.altitudeM");
-  return alt !== undefined
-    ? { altitudeAsl: alt, altitudeTerrain: alt }
-    : undefined;
 }
 
 /**
@@ -313,7 +296,7 @@ interface StreamWrap {
   emitVesselParts: () => void;
   /** Emits the fixture's legacy control keys (reshaped) onto `vessel.control`/`vessel.structure`, or a no-op when it carries none. Same `act()` block as the other emits. */
   emitVesselControl: () => void;
-  /** Emits the fixture's `sw.*`/`ls.*` keys (reshaped) onto `kerbalism.spaceweather`/`kerbalism.lifesupport` (+ `vessel.orbit`), or a no-op when it carries none. Same `act()` block as the other emits. */
+  /** Emits the fixture's `sw.*`/`ls.*` keys (reshaped) onto `kerbalism.spaceweather`/`kerbalism.lifesupport`, or a no-op when it carries none. Same `act()` block as the other emits. */
   emitKerbalism: () => void;
 }
 
@@ -334,7 +317,6 @@ function buildStreamWrap(fixture: Fixture): StreamWrap {
   const timeWarpWire = resolveTimeWarpWire(fixture);
   const commsLinkWire = resolveCommsLinkWire(fixture);
   const kerbalismSpaceWeatherWire = resolveKerbalismSpaceWeatherWire(fixture);
-  const spaceWeatherFlightWire = resolveSpaceWeatherFlightWire(fixture);
   const kerbalismLifeSupportWire = resolveKerbalismLifeSupportWire(fixture);
   const lifeSupportLevelsWire = vesselResourcesFromLifeSupportFixture(fixture);
   if (
@@ -387,9 +369,6 @@ function buildStreamWrap(fixture: Fixture): StreamWrap {
     emitKerbalism: () => {
       if (kerbalismSpaceWeatherWire !== undefined) {
         stream.emit("kerbalism.spaceweather", kerbalismSpaceWeatherWire);
-      }
-      if (spaceWeatherFlightWire !== undefined) {
-        stream.emit("vessel.flight", spaceWeatherFlightWire);
       }
       if (kerbalismLifeSupportWire !== undefined) {
         stream.emit("kerbalism.lifesupport", kerbalismLifeSupportWire);

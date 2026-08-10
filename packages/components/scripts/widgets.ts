@@ -1088,10 +1088,10 @@ const WIDGETS: WidgetRenderConfig[] = [
     ],
   },
   {
-    // SpaceWeather: Kerbalism radiation/storm/belt board. Fixtures are the
-    // four SpaceWeatherData showcase states (nominal from a real Deck capture;
-    // storm/inner-belt synthesised to real config magnitudes). See
-    // local_docs/spaceweather-widget-SPEC.md + local_docs/kerbalism-fixtures/.
+    // SpaceWeather: sun-vantage observatory (2026-08-10 reframe). Fixtures
+    // cover single-star quiet, multi-star (binary), and an in-transit /
+    // arrived CME, synthesised to real Kerbol-orbit-distance and
+    // StormEjectionSpeed (0.33c default) magnitudes.
     widgetId: "space-weather",
     fixturesPath: "SpaceWeather/__fixtures__",
     outPath: "renders/space-weather-widget",
@@ -1100,7 +1100,7 @@ const WIDGETS: WidgetRenderConfig[] = [
       { name: "default-8x11", w: 8, h: 11 },
       // Showcase: the rich-graphics board reads best with room.
       { name: "showcase-11x11", w: 11, h: 11 },
-      // Compact: sheds the flux chart + env tags, essentials only.
+      // Compact: sheds the "Departed" row from CME cards, essentials only.
       { name: "compact-5x6", w: 5, h: 6 },
     ],
   },

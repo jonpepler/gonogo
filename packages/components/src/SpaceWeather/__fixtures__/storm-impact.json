@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "scenario": "storm-inbound"
+    "scenario": "storm-impact"
   },
   "t.universalTime": 149489,
   "sw.stars": [
@@ -8,22 +8,16 @@
       "star": "Kerbol",
       "direction": { "x": 1, "y": 0, "z": 0 },
       "distance": 13599840256
-    },
-    {
-      "star": "Menoetius",
-      "direction": { "x": -0.6, "y": 0.2, "z": 0.77 },
-      "distance": 4500000000000
     }
   ],
   "sw.storms": [
     {
       "star": "Kerbol",
-      "stormState": 1,
-      "stormTime": 149549,
+      "stormState": 2,
+      "stormTime": 149469,
       "stormDuration": 300,
       "dist": 13599840256
-    },
-    { "star": "Menoetius", "stormState": 0 }
+    }
   ],
   "sw.stormEjectionSpeed": 98931511.14,
   "_stream": {
@@ -38,22 +32,16 @@
               "star": "Kerbol",
               "direction": { "x": 1, "y": 0, "z": 0 },
               "distance": 13599840256
-            },
-            {
-              "star": "Menoetius",
-              "direction": { "x": -0.6, "y": 0.2, "z": 0.77 },
-              "distance": 4500000000000
             }
           ],
           "storms": [
             {
               "star": "Kerbol",
-              "stormState": 1,
-              "stormTime": 149549,
+              "stormState": 2,
+              "stormTime": 149469,
               "stormDuration": 300,
               "dist": 13599840256
-            },
-            { "star": "Menoetius", "stormState": 0 }
+            }
           ],
           "stormEjectionSpeed": 98931511.14
         }

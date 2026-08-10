@@ -1240,6 +1240,35 @@ const WIDGETS: WidgetRenderConfig[] = [
           },
         ],
       },
+      // Same accordion, at the default and minimum widths: the shape that
+      // caught the ledger overflowing the panel at anything narrower than
+      // wide-12x18 (see LedgerBody's own doc comment).
+      {
+        name: "ledger-expanded-9x15",
+        w: 9,
+        h: 15,
+        forFixtures: ["resource-shortage"],
+        clicks: [
+          {
+            selector:
+              'button[aria-label="Show rate breakdown for Electric Charge"]',
+            awaitMs: 100,
+          },
+        ],
+      },
+      {
+        name: "ledger-expanded-4x8",
+        w: 4,
+        h: 8,
+        forFixtures: ["resource-shortage"],
+        clicks: [
+          {
+            selector:
+              'button[aria-label="Show rate breakdown for Electric Charge"]',
+            awaitMs: 100,
+          },
+        ],
+      },
     ],
   },
   {

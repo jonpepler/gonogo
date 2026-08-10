@@ -258,6 +258,35 @@ describe("ShipSystemsComponent", () => {
     expect(screen.getByText("Net (derived)")).toBeInTheDocument();
   });
 
+  it("gives each ledger term a diverging bar, scaled against the largest term and coloured by sign", async () => {
+    const fixture = newFixture();
+    const { container } = renderWidget(fixture);
+    emitAll(fixture);
+
+    await screen.findByText("Water");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show rate breakdown for Water" }),
+    );
+
+    // Water's ledger has one term of each sign: the Water Recycler produces
+    // Water (+0.00018/s once scaled by its capacity), the crew's "drinking"
+    // rule consumes it (-0.00001/s * 2 crew = -0.00002/s). Sorted by
+    // magnitude, the recycler (the larger term) sets the scale: its bar
+    // reaches the track's own half-width mark (50%), the drinking rule's is
+    // a fraction of that (0.00002 / 0.00018 * 50). The scaling math itself
+    // is `@ksp-gonogo/ui-kit`'s `DivergingBar`, unit-tested there; this only
+    // confirms ShipSystems wires each term's real rate and the ledger's own
+    // scale into it.
+    const bars = container.querySelectorAll('[data-testid="diverging-bar"]');
+    expect(bars).toHaveLength(2);
+
+    const [recyclerFill, drinkingFill] = [...bars].map(
+      (bar) => bar.lastElementChild as HTMLElement,
+    );
+    expect(recyclerFill.style.width).toBe("50%");
+    expect(drinkingFill.style.width).toBe(`${(0.00002 / 0.00018) * 50}%`);
+  });
+
   it("has no axe violations", async () => {
     const fixture = newFixture();
     const { container } = renderWidget(fixture);

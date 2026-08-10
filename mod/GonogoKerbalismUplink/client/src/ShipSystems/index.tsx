@@ -15,6 +15,7 @@ import {
   Box,
   Cluster,
   Disclosure,
+  DivergingBar,
   Divider,
   EmptyState,
   Meter,
@@ -560,6 +561,7 @@ function ResourceLedgerRow({
         <Disclosure
           variant="inline"
           chevron={false}
+          asButton
           label={(open) => (open ? "Hide detail" : "Show detail")}
           ariaLabel={`Show rate breakdown for ${row.displayName}`}
         >
@@ -603,36 +605,70 @@ function LimitedByMessage({
 function LedgerBody({ ledger }: { ledger: Ledger }) {
   const hasResidual =
     ledger.residual !== undefined && Math.abs(ledger.residual) > 1e-6;
+  // Every bar in this ledger scales against the largest |rate| among ITS OWN
+  // terms (never a cross-resource or cross-row scale), matching the
+  // kerbalism-graph-mock prototype (`kerbalism-graph-mock/water-entity.html`)
+  // `DivergingBar` ports the design from: the biggest term reaches the
+  // half-bar mark, everything else is relative to it. 0 when there are no
+  // terms (the "No modelled sources" branch never reaches `DivergingBar`).
+  const maxAbsRate = Math.max(
+    0,
+    ...ledger.terms.map((t) => Math.abs(t.ratePerSecond)),
+  );
   return (
-    <Stack gap="xs" style={{ minWidth: "12rem" }}>
+    // No `minWidth`: a fixed floor here is exactly what used to force this
+    // panel wider than the row that hosts it (see this component's own
+    // history), spilling the ledger past the widget's right edge at any
+    // width narrower than the floor. `width: 100%` lets it size to whatever
+    // the accordion panel actually has, at every panel width down to
+    // minSize.
+    <Stack gap="xs" style={{ width: "100%", minWidth: 0 }}>
       {ledger.terms.length === 0 ? (
         <Value tone="muted" size="xs">
           No modelled sources
         </Value>
       ) : (
         ledger.terms.map((term) => (
+          // `wrap`: the rate ("-0.01/s") is one unbreakable token (no space
+          // for the browser's own text-wrap to catch), so once the term
+          // NAME has shrunk as far as ITS wrapping allows, the rate has
+          // nowhere left to shrink to. Flex-wrapping the row lets the
+          // trailing group drop to a line of its own at the narrowest panel
+          // widths instead of forcing the row (and everything above it)
+          // wider than the panel, which is exactly the overflow this
+          // component used to have (see this function's own doc comment).
           <Cluster
             key={`${term.kind}-${term.name}-${term.flightId ?? ""}`}
             justify="between"
+            wrap
           >
             <Value tone="default" size="xs">
               {term.name}
             </Value>
-            <Value tone={term.ratePerSecond >= 0 ? "go" : "nogo"} size="xs">
-              {formatRate(term.ratePerSecond)}
-            </Value>
+            {/* Nested Cluster, not a bespoke row: groups the bar and the
+                rate so the pair moves together as one item on the outer
+                Cluster's trailing edge. `justify="start"` packs them at
+                their own gap rather than spreading them across the (already
+                content-sized) width `DivergingBar`'s own `flex: 0 0 auto`
+                gives this inner row. */}
+            <Cluster gap="xs" justify="start">
+              <DivergingBar value={term.ratePerSecond} maxAbs={maxAbsRate} />
+              <Value tone={term.ratePerSecond >= 0 ? "go" : "nogo"} size="xs">
+                {formatRate(term.ratePerSecond)}
+              </Value>
+            </Cluster>
           </Cluster>
         ))
       )}
       <Divider space="xs" />
-      <Cluster justify="between">
+      <Cluster justify="between" wrap>
         <Value tone="muted" size="xs">
           Net (derived)
         </Value>
         <Value size="xs">{formatRate(ledger.derivedNet)}</Value>
       </Cluster>
       {ledger.reportedNet !== undefined && (
-        <Cluster justify="between">
+        <Cluster justify="between" wrap>
           <Value tone="muted" size="xs">
             Reported
           </Value>

@@ -1,0 +1,87 @@
+{
+  "_meta": {
+    "scenario": "five-stars"
+  },
+  "t.universalTime": 149489,
+  "sw.stars": [
+    {
+      "star": "Kerbol",
+      "direction": { "x": 1, "y": 0, "z": 0 },
+      "distance": 13599840256
+    },
+    {
+      "star": "Menoetius",
+      "direction": { "x": -0.6, "y": 0.2, "z": 0.77 },
+      "distance": 4500000000000
+    },
+    {
+      "star": "Iota Persei",
+      "direction": { "x": 0.3, "y": -0.9, "z": 0.1 },
+      "distance": 8200000000000
+    },
+    {
+      "star": "Rho Draconis",
+      "direction": { "x": -0.4, "y": 0.4, "z": -0.82 },
+      "distance": 12100000000000
+    },
+    {
+      "star": "Alpha Kerbi",
+      "direction": { "x": 0.7, "y": 0.6, "z": -0.4 },
+      "distance": 6300000000000
+    }
+  ],
+  "sw.storms": [
+    { "star": "Kerbol", "stormState": 0 },
+    { "star": "Menoetius", "stormState": 0 },
+    { "star": "Iota Persei", "stormState": 0 },
+    { "star": "Rho Draconis", "stormState": 0 },
+    { "star": "Alpha Kerbi", "stormState": 0 }
+  ],
+  "sw.stormEjectionSpeed": 98931511.14,
+  "_stream": {
+    "carriedChannels": ["kerbalism.spaceweather"],
+    "pinnedUt": 149489,
+    "emits": [
+      {
+        "channel": "kerbalism.spaceweather",
+        "value": {
+          "stars": [
+            {
+              "star": "Kerbol",
+              "direction": { "x": 1, "y": 0, "z": 0 },
+              "distance": 13599840256
+            },
+            {
+              "star": "Menoetius",
+              "direction": { "x": -0.6, "y": 0.2, "z": 0.77 },
+              "distance": 4500000000000
+            },
+            {
+              "star": "Iota Persei",
+              "direction": { "x": 0.3, "y": -0.9, "z": 0.1 },
+              "distance": 8200000000000
+            },
+            {
+              "star": "Rho Draconis",
+              "direction": { "x": -0.4, "y": 0.4, "z": -0.82 },
+              "distance": 12100000000000
+            },
+            {
+              "star": "Alpha Kerbi",
+              "direction": { "x": 0.7, "y": 0.6, "z": -0.4 },
+              "distance": 6300000000000
+            }
+          ],
+          "storms": [
+            { "star": "Kerbol", "stormState": 0 },
+            { "star": "Menoetius", "stormState": 0 },
+            { "star": "Iota Persei", "stormState": 0 },
+            { "star": "Rho Draconis", "stormState": 0 },
+            { "star": "Alpha Kerbi", "stormState": 0 }
+          ],
+          "stormEjectionSpeed": 98931511.14
+        }
+      }
+    ]
+  }
+}

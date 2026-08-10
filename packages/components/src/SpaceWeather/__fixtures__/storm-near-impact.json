@@ -1,0 +1,79 @@
+{
+  "_meta": {
+    "scenario": "storm-near-impact"
+  },
+  "t.universalTime": 149489,
+  "sw.stars": [
+    {
+      "star": "Kerbol",
+      "direction": { "x": 1, "y": 0, "z": 0 },
+      "distance": 13599840256
+    }
+  ],
+  "sw.storms": [
+    {
+      "star": "Kerbol",
+      "stormState": 1,
+      "stormTime": 149500,
+      "stormDuration": 300,
+      "dist": 13599840256
+    }
+  ],
+  "sw.stormEjectionSpeed": 98931511.14,
+  "sw.targetBody": "Kerbin",
+  "_stream": {
+    "carriedChannels": [
+      "kerbalism.spaceweather",
+      "vessel.orbit",
+      "vessel.flight",
+      "vessel.identity",
+      "system.bodies"
+    ],
+    "pinnedUt": 149489,
+    "emits": [
+      {
+        "channel": "kerbalism.spaceweather",
+        "value": {
+          "stars": [
+            {
+              "star": "Kerbol",
+              "direction": { "x": 1, "y": 0, "z": 0 },
+              "distance": 13599840256
+            }
+          ],
+          "storms": [
+            {
+              "star": "Kerbol",
+              "stormState": 1,
+              "stormTime": 149500,
+              "stormDuration": 300,
+              "dist": 13599840256
+            }
+          ],
+          "stormEjectionSpeed": 98931511.14
+        }
+      },
+      {
+        "channel": "vessel.orbit",
+        "value": {},
+        "metaOverrides": { "quality": 1 }
+      },
+      { "channel": "vessel.flight", "value": {} },
+      { "channel": "vessel.identity", "value": { "parentBodyIndex": 1 } },
+      {
+        "channel": "system.bodies",
+        "value": {
+          "bodies": [
+            {
+              "name": "Kerbin",
+              "index": 1,
+              "parentIndex": 0,
+              "radius": 600000,
+              "orbit": null
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

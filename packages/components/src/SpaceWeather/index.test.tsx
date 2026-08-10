@@ -128,6 +128,69 @@ describe("SpaceWeatherComponent", () => {
     expect(screen.getByText("Menoetius")).toBeInTheDocument();
   });
 
+  /** Walks from a star's name text up to the Cluster root two Card widths
+   *  are compared against: text -> Value -> Stack -> Card -> Cluster. */
+  function clusterRootFor(starNameEl: HTMLElement): HTMLElement {
+    const card = starNameEl.parentElement?.parentElement;
+    const clusterRoot = card?.parentElement;
+    if (!clusterRoot) throw new Error("Could not walk up to the Cluster root");
+    return clusterRoot;
+  }
+
+  it("packs star cards left with a fixed width instead of stretching them across the row", async () => {
+    renderWidget();
+    emit(
+      [
+        { star: "Kerbol", distance: KERBOL_DISTANCE_M },
+        { star: "Menoetius", distance: 4_500_000_000_000 },
+      ],
+      [
+        { star: "Kerbol", stormState: 0 },
+        { star: "Menoetius", stormState: 0 },
+      ],
+    );
+    const kerbolName = await screen.findByText("Kerbol");
+    const menoetiusName = screen.getByText("Menoetius");
+    // Both stars pack into the SAME Cluster row, left-aligned (not
+    // space-between, which is what stretched two cards to the far edges).
+    const clusterRoot = clusterRootFor(kerbolName);
+    expect(clusterRootFor(menoetiusName)).toBe(clusterRoot);
+    expect(getComputedStyle(clusterRoot).justifyContent).toBe("flex-start");
+    // Cards are a fixed, consistent width regardless of star-name length,
+    // so the row packs predictably rather than each card sizing to its
+    // own content.
+    const kerbolCard = kerbolName.parentElement?.parentElement;
+    const menoetiusCard = menoetiusName.parentElement?.parentElement;
+    expect(kerbolCard).toHaveStyle({ width: "128px" });
+    expect(menoetiusCard).toHaveStyle({ width: "128px" });
+  });
+
+  it("packs a five-star system the same way, proving it scales past a pair", async () => {
+    renderWidget();
+    const stars = [
+      { star: "Kerbol", distance: KERBOL_DISTANCE_M },
+      { star: "Menoetius", distance: 4_500_000_000_000 },
+      { star: "Iota Persei", distance: 8_200_000_000_000 },
+      { star: "Rho Draconis", distance: 12_100_000_000_000 },
+      { star: "Alpha Kerbi", distance: 6_300_000_000_000 },
+    ];
+    emit(
+      stars,
+      stars.map((s) => ({ star: s.star, stormState: 0 as const })),
+    );
+    const names = await Promise.all(
+      stars.map((s) => screen.findByText(s.star)),
+    );
+    const clusterRoot = clusterRootFor(names[0]);
+    for (const name of names) {
+      expect(clusterRootFor(name)).toBe(clusterRoot);
+      const card = name.parentElement?.parentElement;
+      expect(card).toHaveStyle({ width: "128px" });
+    }
+    expect(getComputedStyle(clusterRoot).justifyContent).toBe("flex-start");
+    expect(getComputedStyle(clusterRoot).flexWrap).toBe("wrap");
+  });
+
   it("gives each star its OWN diagram, not one diagram fused across stars", async () => {
     renderWidget();
     emit(
@@ -225,9 +288,69 @@ describe("SpaceWeatherComponent", () => {
     const pct = Number(bar.getAttribute("aria-valuenow"));
     expect(pct).toBeGreaterThan(0);
     expect(pct).toBeLessThan(100);
+    // Mid-transit (~56%): amber, past calm but not yet the red danger zone.
+    expect(bar.firstElementChild).toHaveStyle({
+      background: "var(--color-status-warning-bg)",
+    });
     // Overall panel badge escalates to the same Inbound severity.
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("Inbound");
+  });
+
+  it("colours a far-out inbound CME calm/cool, never the reassuring brand-accent green", async () => {
+    renderWidget();
+    emitBody("Kerbin");
+    // stormTime 120s out (transit is ~137.47s total) puts progress at ~13%,
+    // well inside the "still far away" band.
+    emit(
+      [{ star: "Kerbol", distance: KERBOL_DISTANCE_M }],
+      [
+        {
+          star: "Kerbol",
+          stormState: 1,
+          stormTime: PINNED_UT + 120,
+          stormDuration: 300,
+          dist: KERBOL_DISTANCE_M,
+        },
+      ],
+    );
+    const bar = await screen.findByRole("progressbar");
+    const pct = Number(bar.getAttribute("aria-valuenow"));
+    expect(pct).toBeGreaterThan(0);
+    expect(pct).toBeLessThan(33);
+    const fill = bar.firstElementChild;
+    expect(fill).toHaveStyle({ background: "var(--color-status-info-fg)" });
+    expect(fill).not.toHaveStyle({ background: "var(--color-accent-fg)" });
+  });
+
+  it("colours a near-impact inbound CME red, never the reassuring brand-accent green", async () => {
+    renderWidget();
+    emitBody("Kerbin");
+    // stormTime 11s out puts progress at ~92%, well inside the "about to
+    // arrive" band, while the storm is still only state 1 (Inbound, not
+    // yet Impact). This is exactly the case the fix targets: a bar that is
+    // almost full is closing in on a threat, not "almost done" in a good
+    // way, so it must never render as the default accent green.
+    emit(
+      [{ star: "Kerbol", distance: KERBOL_DISTANCE_M }],
+      [
+        {
+          star: "Kerbol",
+          stormState: 1,
+          stormTime: PINNED_UT + 11,
+          stormDuration: 300,
+          dist: KERBOL_DISTANCE_M,
+        },
+      ],
+    );
+    expect(await screen.findByText("Inbound to Kerbin")).toBeInTheDocument();
+    const bar = screen.getByRole("progressbar");
+    const pct = Number(bar.getAttribute("aria-valuenow"));
+    expect(pct).toBeGreaterThan(66);
+    expect(pct).toBeLessThan(100);
+    const fill = bar.firstElementChild;
+    expect(fill).toHaveStyle({ background: "var(--color-status-nogo-bg)" });
+    expect(fill).not.toHaveStyle({ background: "var(--color-accent-fg)" });
   });
 
   it("falls back to a generic target phrase when vessel.state hasn't resolved yet", async () => {
@@ -269,6 +392,11 @@ describe("SpaceWeatherComponent", () => {
     expect(screen.getByText("Impacting Kerbin")).toBeInTheDocument();
     const bar = screen.getByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuenow", "100");
+    // A fully arrived CME is maximum threat regardless of the percentage
+    // figure: always red, never the default accent green.
+    expect(bar.firstElementChild).toHaveStyle({
+      background: "var(--color-status-nogo-bg)",
+    });
   });
 
   it("never reads or displays anything from storm_generation (only StormState/StormTime/Dist)", async () => {

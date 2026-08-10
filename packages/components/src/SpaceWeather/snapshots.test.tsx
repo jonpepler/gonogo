@@ -19,15 +19,19 @@ import { describe, expect, it } from "vitest";
 import { getWidget } from "../../scripts/widgets";
 import { snapshotWidgetMode } from "../test/widgetDomSnapshot";
 import binary from "./__fixtures__/binary.json";
+import fiveStars from "./__fixtures__/five-stars.json";
 import quiet from "./__fixtures__/quiet.json";
 import stormImpact from "./__fixtures__/storm-impact.json";
 import stormInbound from "./__fixtures__/storm-inbound.json";
+import stormNearImpact from "./__fixtures__/storm-near-impact.json";
 import { SpaceWeatherComponent } from "./index";
 
 const FIXTURES = {
   quiet,
   binary,
+  "five-stars": fiveStars,
   "storm-inbound": stormInbound,
+  "storm-near-impact": stormNearImpact,
   "storm-impact": stormImpact,
 };
 

@@ -419,7 +419,14 @@ function SpaceWeatherComponent({
           {d.stars.length === 0 ? (
             <EmptyState>No stars detected yet.</EmptyState>
           ) : (
-            <Cluster gap="sm" wrap>
+            // `justify="start"`, not the Cluster default `between`: with only
+            // one or two stars, space-between shoves the cards to opposite
+            // edges of the widget with a huge gap between them, which reads
+            // as broken rather than "not much going on". Packing left with a
+            // fixed card width (below) is what scales sensibly from a lone
+            // star up to a five-star system, wrapping onto further rows
+            // instead of stretching or crowding.
+            <Cluster gap="sm" wrap justify="start">
               {d.stars.map((star) => {
                 const name = star.star ?? "Unknown star";
                 const activity = starActivity(allStorms, name);
@@ -427,7 +434,14 @@ function SpaceWeatherComponent({
                   <Card
                     key={name}
                     tone={SEVERITY_CARD_TONE[activity.severity]}
-                    style={{ minWidth: 128 }}
+                    // Fixed width, not just a minWidth: every card is the
+                    // same size regardless of star-name length, so a row
+                    // packs and wraps predictably instead of each card
+                    // claiming whatever space its content happens to need.
+                    // flexShrink 0 keeps that width honest under `wrap`
+                    // (the browser wraps to a new row rather than squeezing
+                    // the cards to fit).
+                    style={{ width: 128, flexShrink: 0 }}
                   >
                     <Stack gap="xs">
                       <StarDiagram
@@ -496,6 +510,26 @@ function SpaceWeatherComponent({
  * does) is honest to what's captured; a genuine per-vessel solar-orbit
  * target would need new capture work on the mod side, out of scope here.
  */
+
+// ---------------------------------------------------------------------------
+// Transit-progress colour: ui-kit's `ProgressBar` defaults to
+// `--color-accent-fg`, the brand green used everywhere else to mean "on
+// track". A CME closing in is the opposite of that: further along the bar
+// means CLOSER to impact, so a plain green fill reads as reassuring for what
+// is a threat. Colour is keyed on imminence instead, calm/cool while the CME
+// is still far out, ramping through amber into red as `progressPct` nears
+// 100, and pinned to red the instant the storm has actually arrived (state
+// 2) regardless of the percentage. Uses the shared status tokens, same
+// vocabulary as `TONE_HEX` above, never a raw hex literal.
+// ---------------------------------------------------------------------------
+
+function transitThreatColor(storm: StormDerived): string {
+  if (storm.state >= 2) return "var(--color-status-nogo-bg)";
+  if (storm.progressPct >= 66) return "var(--color-status-nogo-bg)";
+  if (storm.progressPct >= 33) return "var(--color-status-warning-bg)";
+  return "var(--color-status-info-fg)";
+}
+
 function StormCard({
   storm,
   compact,
@@ -541,6 +575,7 @@ function StormCard({
             <ProgressBar
               value={storm.progressPct}
               ariaLabel={`Transit progress from ${storm.star}`}
+              fillColor={transitThreatColor(storm)}
             />
           </>
         ) : (

@@ -20,8 +20,15 @@
     }
   ],
   "sw.stormEjectionSpeed": 98931511.14,
+  "sw.targetBody": "Kerbin",
   "_stream": {
-    "carriedChannels": ["kerbalism.spaceweather"],
+    "carriedChannels": [
+      "kerbalism.spaceweather",
+      "vessel.orbit",
+      "vessel.flight",
+      "vessel.identity",
+      "system.bodies"
+    ],
     "pinnedUt": 149489,
     "emits": [
       {
@@ -44,6 +51,27 @@
             }
           ],
           "stormEjectionSpeed": 98931511.14
+        }
+      },
+      {
+        "channel": "vessel.orbit",
+        "value": {},
+        "metaOverrides": { "quality": 1 }
+      },
+      { "channel": "vessel.flight", "value": {} },
+      { "channel": "vessel.identity", "value": { "parentBodyIndex": 1 } },
+      {
+        "channel": "system.bodies",
+        "value": {
+          "bodies": [
+            {
+              "name": "Kerbin",
+              "index": 1,
+              "parentIndex": 0,
+              "radius": 600000,
+              "orbit": null
+            }
+          ]
         }
       }
     ]

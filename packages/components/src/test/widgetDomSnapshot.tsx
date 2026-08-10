@@ -4,6 +4,7 @@ import {
   type MockDataSource,
   registerStockBodies,
 } from "@ksp-gonogo/core";
+import { Quality } from "@ksp-gonogo/sitrep-sdk";
 
 import { act, render, waitFor } from "@ksp-gonogo/test-utils";
 import type React from "react";
@@ -157,6 +158,25 @@ function resolveKerbalismSpaceWeatherWire(fixture: Fixture): unknown {
 }
 
 /**
+ * `sw.targetBody` -> the four `vessel.state` inputs (`vessel.orbit`,
+ * `vessel.flight`, `vessel.identity`, `system.bodies`) that derive
+ * `parentBodyName`: SpaceWeather's CME-target naming reads
+ * `vessel.state.parentBodyName` (see that widget's own doc comment on
+ * `StormCard` for why: the mod's storm capture is always keyed off this
+ * vessel's current SOI body, no separate target field exists on the wire).
+ * A single-body `system.bodies` table is enough, mirrors
+ * `AtmosphereProfile`'s own `emitBody` test helper exactly. Absent key
+ * means the widget falls back to its own "current body" placeholder text,
+ * same as every other reshape here.
+ */
+function resolveVesselStateWire(
+  fixture: Fixture,
+): { name: string } | undefined {
+  const raw = fixture["sw.targetBody"];
+  return typeof raw === "string" ? { name: raw } : undefined;
+}
+
+/**
  * `ls.*` -> `kerbalism.lifesupport`: LifeSupportSystems dropped its legacy
  * `useDataSourceSubscription("data", "ls.*")` reads for the canonical
  * `useTelemetry("kerbalism.lifesupport")` Topic. Reshapes the flat consumable
@@ -298,6 +318,8 @@ interface StreamWrap {
   emitVesselControl: () => void;
   /** Emits the fixture's `sw.*`/`ls.*` keys (reshaped) onto `kerbalism.spaceweather`/`kerbalism.lifesupport`, or a no-op when it carries none. Same `act()` block as the other emits. */
   emitKerbalism: () => void;
+  /** Emits the fixture's `sw.targetBody` (reshaped onto `vessel.orbit`/`vessel.flight`/`vessel.identity`/`system.bodies`, see {@link resolveVesselStateWire}), or a no-op when the fixture carries none. Same `act()` block as the other emits. */
+  emitVesselState: () => void;
 }
 
 /**
@@ -319,6 +341,7 @@ function buildStreamWrap(fixture: Fixture): StreamWrap {
   const kerbalismSpaceWeatherWire = resolveKerbalismSpaceWeatherWire(fixture);
   const kerbalismLifeSupportWire = resolveKerbalismLifeSupportWire(fixture);
   const lifeSupportLevelsWire = vesselResourcesFromLifeSupportFixture(fixture);
+  const vesselStateWire = resolveVesselStateWire(fixture);
   if (
     pinnedUt === undefined &&
     vesselPartsWire === undefined &&
@@ -327,7 +350,8 @@ function buildStreamWrap(fixture: Fixture): StreamWrap {
     timeWarpWire === undefined &&
     commsLinkWire === undefined &&
     kerbalismSpaceWeatherWire === undefined &&
-    kerbalismLifeSupportWire === undefined
+    kerbalismLifeSupportWire === undefined &&
+    vesselStateWire === undefined
   ) {
     return {
       Wrap: ({ children }) => <Fragment>{children}</Fragment>,
@@ -335,14 +359,27 @@ function buildStreamWrap(fixture: Fixture): StreamWrap {
       emitVesselParts: () => {},
       emitVesselControl: () => {},
       emitKerbalism: () => {},
+      emitVesselState: () => {},
     };
   }
   // `time.warp`/`comms.link` must be CARRIED, not merely emitted: the pause and
   // no-signal notices read them one-arg off the stream, and an uncarried channel
   // never reaches the widget. The other payloads here predate that distinction.
+  // `vessel.state`'s four inputs are the same story: the derived-channel gate
+  // is parent-channel-scoped (see `vesselStateChannel`'s own doc comment in
+  // `sitrep-client`), so all four must be carried or `parentBodyName` never
+  // resolves regardless of what's emitted.
   const carriedChannels: string[] = [];
   if (timeWarpWire !== undefined) carriedChannels.push("time.warp");
   if (commsLinkWire !== undefined) carriedChannels.push("comms.link");
+  if (vesselStateWire !== undefined) {
+    carriedChannels.push(
+      "vessel.orbit",
+      "vessel.flight",
+      "vessel.identity",
+      "system.bodies",
+    );
+  }
   const stream = setupStreamFixture({ carriedChannels, pinnedUt });
   return {
     Wrap: stream.Provider,
@@ -365,6 +402,23 @@ function buildStreamWrap(fixture: Fixture): StreamWrap {
       if (commsLinkWire !== undefined) {
         stream.emit("comms.link", commsLinkWire);
       }
+    },
+    emitVesselState: () => {
+      if (vesselStateWire === undefined) return;
+      stream.emit("vessel.orbit", {}, { quality: Quality.Loaded });
+      stream.emit("vessel.flight", {});
+      stream.emit("vessel.identity", { parentBodyIndex: 1 });
+      stream.emit("system.bodies", {
+        bodies: [
+          {
+            name: vesselStateWire.name,
+            index: 1,
+            parentIndex: 0,
+            radius: 600_000,
+            orbit: null,
+          },
+        ],
+      });
     },
     emitKerbalism: () => {
       if (kerbalismSpaceWeatherWire !== undefined) {
@@ -446,6 +500,7 @@ export async function snapshotWidgetMode<
       emitVesselParts,
       emitVesselControl,
       emitKerbalism,
+      emitVesselState,
     } = buildStreamWrap(opts.fixture);
     const { container } = render(
       <Wrap>
@@ -471,6 +526,7 @@ export async function snapshotWidgetMode<
       emitVesselParts();
       emitVesselControl();
       emitKerbalism();
+      emitVesselState();
     });
     await flushProviderFrame(providerMounted);
 

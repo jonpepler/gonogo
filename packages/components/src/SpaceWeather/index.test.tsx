@@ -1,4 +1,5 @@
 import { clearRegistry, DashboardItemContext } from "@ksp-gonogo/core";
+import { Quality } from "@ksp-gonogo/sitrep-sdk";
 import { act, render, screen } from "@ksp-gonogo/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
@@ -10,6 +11,23 @@ import { SpaceWeatherComponent } from "./index";
 // StormEjectionSpeed. It is strictly sun-bound now, no vessel dose/belt
 // content (that moved to ShipSystems/CrewStatus), so these tests drive it
 // through a real stream and assert on stars/CME cards only.
+//
+// 2026-08-10 operator pass: each star now gets its OWN diagram (own SVG
+// `role="img"`, own aria-label), so a binary system renders TWO diagrams,
+// not one fused ring. The CME tracker names its target
+// (`vessel.state.parentBodyName`), so these tests also carry the four
+// derived-channel inputs (mirrors `AtmosphereProfile`'s own `emitBody`
+// helper) to exercise the real "Inbound to <body>" text, plus one test
+// that leaves `vessel.state` unresolved to prove the "current body"
+// fallback still reads sensibly.
+
+const CARRIED_CHANNELS = [
+  "kerbalism.spaceweather",
+  "vessel.orbit",
+  "vessel.flight",
+  "vessel.identity",
+  "system.bodies",
+];
 
 const PINNED_UT = 149_489;
 const KERBOL_DISTANCE_M = 13_599_840_256; // stock Kerbin-orbit distance
@@ -34,7 +52,7 @@ describe("SpaceWeatherComponent", () => {
   beforeEach(() => {
     clearRegistry();
     stream = setupStreamFixture({
-      carriedChannels: ["kerbalism.spaceweather"],
+      carriedChannels: CARRIED_CHANNELS,
       pinnedUt: PINNED_UT,
     });
   });
@@ -68,6 +86,21 @@ describe("SpaceWeatherComponent", () => {
     });
   }
 
+  /** `vessel.state.parentBodyName` resolution: mirrors `AtmosphereProfile`'s
+   *  own `emitBody` test helper (same four inputs, same shape). */
+  function emitBody(name: string) {
+    act(() => {
+      stream.emit("vessel.orbit", {}, { quality: Quality.Loaded });
+      stream.emit("vessel.flight", {});
+      stream.emit("vessel.identity", { parentBodyIndex: 1 });
+      stream.emit("system.bodies", {
+        bodies: [
+          { name, index: 1, parentIndex: 0, radius: 600_000, orbit: null },
+        ],
+      });
+    });
+  }
+
   it("shows a Quiet status and the star card with no storms active", async () => {
     renderWidget();
     emit(
@@ -95,8 +128,82 @@ describe("SpaceWeatherComponent", () => {
     expect(screen.getByText("Menoetius")).toBeInTheDocument();
   });
 
-  it("surfaces an inbound CME with a transit progress bar and Inbound status", async () => {
+  it("gives each star its OWN diagram, not one diagram fused across stars", async () => {
     renderWidget();
+    emit(
+      [
+        { star: "Kerbol", distance: KERBOL_DISTANCE_M },
+        { star: "Menoetius", distance: 4_500_000_000_000 },
+      ],
+      [
+        {
+          star: "Kerbol",
+          stormState: 1,
+          stormTime: PINNED_UT + 60,
+          stormDuration: 300,
+          dist: KERBOL_DISTANCE_M,
+        },
+        { star: "Menoetius", stormState: 0 },
+      ],
+    );
+    // One SVG diagram per star: Kerbol's is active (its own CME), Menoetius's
+    // is baseline, each with its own aria-label naming its own star.
+    const kerbolDiagram = await screen.findByRole("img", {
+      name: "Solar activity for Kerbol: CME inbound",
+    });
+    const menoetiusDiagram = screen.getByRole("img", {
+      name: "Solar activity for Menoetius: baseline",
+    });
+    expect(kerbolDiagram).toBeInTheDocument();
+    expect(menoetiusDiagram).toBeInTheDocument();
+    // The two diagrams are genuinely separate DOM nodes.
+    expect(kerbolDiagram).not.toBe(menoetiusDiagram);
+  });
+
+  it("visually distinguishes a quiet ring from an active-CME ring (radius, colour, opacity)", async () => {
+    renderWidget();
+    emit(
+      [{ star: "Kerbol", distance: KERBOL_DISTANCE_M }],
+      [
+        {
+          star: "Kerbol",
+          stormState: 2,
+          stormTime: PINNED_UT - 20,
+          stormDuration: 300,
+          dist: KERBOL_DISTANCE_M,
+        },
+      ],
+    );
+    const diagram = await screen.findByRole("img", {
+      name: "Solar activity for Kerbol: CME impacting",
+    });
+    const ring = diagram.querySelector("path");
+    expect(ring).not.toBeNull();
+    // Active (level 1) ring: coloured by severity, not the quiet muted grey,
+    // and visibly heavier/more opaque than the quiet baseline (opacity 0.4,
+    // stroke-width 1).
+    expect(ring?.getAttribute("stroke")).not.toBe("var(--color-text-muted)");
+    expect(Number(ring?.getAttribute("stroke-width"))).toBeGreaterThan(1);
+    expect(Number(ring?.getAttribute("opacity"))).toBeGreaterThan(0.4);
+  });
+
+  it("renders the star itself in a warm colour, never the brand-accent green", async () => {
+    renderWidget();
+    emit(
+      [{ star: "Kerbol", distance: KERBOL_DISTANCE_M }],
+      [{ star: "Kerbol", stormState: 0 }],
+    );
+    const diagram = await screen.findByRole("img", {
+      name: "Solar activity for Kerbol: baseline",
+    });
+    const starCircle = diagram.querySelector("circle");
+    expect(starCircle?.getAttribute("fill")).toBe("var(--color-tag-yellow-fg)");
+    expect(starCircle?.getAttribute("fill")).not.toBe("var(--color-accent-fg)");
+  });
+
+  it("surfaces an inbound CME with a transit progress bar, Inbound status, and a named target", async () => {
+    renderWidget();
+    emitBody("Kerbin");
     // Departs 137.47s before impact at STORM_EJECTION_SPEED_MPS across
     // KERBOL_DISTANCE_M; stormTime 60s after the pinned UT puts the widget
     // partway through transit (progress strictly between 0 and 100).
@@ -113,6 +220,7 @@ describe("SpaceWeatherComponent", () => {
       ],
     );
     expect(await screen.findAllByText("Inbound")).not.toHaveLength(0);
+    expect(screen.getByText("Inbound to Kerbin")).toBeInTheDocument();
     const bar = screen.getByRole("progressbar");
     const pct = Number(bar.getAttribute("aria-valuenow"));
     expect(pct).toBeGreaterThan(0);
@@ -122,8 +230,29 @@ describe("SpaceWeatherComponent", () => {
     expect(status).toHaveTextContent("Inbound");
   });
 
-  it("surfaces an arrived CME as Impact with a full transit bar", async () => {
+  it("falls back to a generic target phrase when vessel.state hasn't resolved yet", async () => {
     renderWidget();
+    // No emitBody(): parentBodyName never resolves.
+    emit(
+      [{ star: "Kerbol", distance: KERBOL_DISTANCE_M }],
+      [
+        {
+          star: "Kerbol",
+          stormState: 1,
+          stormTime: PINNED_UT + 60,
+          stormDuration: 300,
+          dist: KERBOL_DISTANCE_M,
+        },
+      ],
+    );
+    expect(
+      await screen.findByText("Inbound to current body"),
+    ).toBeInTheDocument();
+  });
+
+  it("surfaces an arrived CME as Impact with a full transit bar and a named target", async () => {
+    renderWidget();
+    emitBody("Kerbin");
     emit(
       [{ star: "Kerbol", distance: KERBOL_DISTANCE_M }],
       [
@@ -137,6 +266,7 @@ describe("SpaceWeatherComponent", () => {
       ],
     );
     expect(await screen.findAllByText("Impact")).not.toHaveLength(0);
+    expect(screen.getByText("Impacting Kerbin")).toBeInTheDocument();
     const bar = screen.getByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuenow", "100");
   });
@@ -179,6 +309,7 @@ describe("SpaceWeatherComponent", () => {
 
   it("has no axe violations", async () => {
     const { container } = renderWidget();
+    emitBody("Kerbin");
     emit(
       [
         { star: "Kerbol", distance: KERBOL_DISTANCE_M },

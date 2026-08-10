@@ -1,6 +1,5 @@
 import { clearAugments, registerAugment } from "@ksp-gonogo/core";
 import { act, render, screen, waitFor, within } from "@ksp-gonogo/test-utils";
-import { visibleText } from "@ksp-gonogo/ui-kit/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import {
@@ -76,6 +75,11 @@ describe("CrewManifestComponent", () => {
   });
 
   it("lists crew names alongside count / capacity", async () => {
+    // The "N / M aboard" headcount no longer renders as body text here, it
+    // moved to the info-tone `crew-manifest.badges` panel-badge contribution
+    // (`./badge.ts`, `crewAboardBadge`'s own unit tests cover the label
+    // itself). This render tree mounts no `ContributionsProvider`/`Panel`
+    // badge chrome at all, so what's left to prove here is the roster body.
     const fixture = newFixture();
     renderCrew(fixture);
     act(() => {
@@ -90,8 +94,9 @@ describe("CrewManifestComponent", () => {
       });
     });
 
-    await waitFor(() => expect(visibleText()).toContain("3 / 4 aboard"));
-    expect(screen.getByText("Jebediah Kerman")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Jebediah Kerman")).toBeInTheDocument(),
+    );
     expect(screen.getByText("Bill Kerman")).toBeInTheDocument();
     expect(screen.getByText("Bob Kerman")).toBeInTheDocument();
   });

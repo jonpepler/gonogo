@@ -18,9 +18,15 @@ import {
   Stack,
   Truncate,
   Unit,
+  useElementSize,
 } from "@ksp-gonogo/ui-kit";
 import type { ReactNode } from "react";
 import { magnitudeOf, type Quantityish } from "../shared/magnitude";
+// Side-effect import: the widget's own `crew-manifest.badges` panel-badge
+// self-contribution (the info-tone "N/M aboard" header chip) registers on
+// module load, see that file's own doc comment for why it lives apart from
+// the per-row AugmentSlot declarations below.
+import "./badge";
 
 /**
  * Tiny-mode hero readout font size. `BigReadout`'s 38px max coexists fine
@@ -40,9 +46,21 @@ const TINY_READOUT_STYLE = {
 } as const;
 
 /**
- * Leading per-crew avatar cell size: a square that reserves room for an
- * avatar-face augment. Scales with the widget, clamped 36-56px (mirrors
- * `TINY_READOUT_STYLE`'s vw-clamp idiom).
+ * Leading per-crew avatar cell bounds: a square that reserves room for an
+ * avatar-face augment, clamped 36-56px so it stays legible on a cramped tile
+ * and never dominates a roomy one.
+ *
+ * The size itself tracks the widget's own measured content width (`useElementSize`
+ * on the roster wrapper in `CrewManifestComponent`, `avatarCellSizePx` below),
+ * not a `vw` viewport-relative clamp (the previous version's approach, and
+ * `TINY_READOUT_STYLE`'s idiom, still fine THERE because that readout
+ * genuinely wants to track the browser window). A dashboard tile's on-screen
+ * width has no fixed relationship to the viewport, a station on a big
+ * monitor with a NARROW crew tile would otherwise render a large avatar and
+ * a wide tile on a small laptop a small one, backwards from what "scale with
+ * the widget" means. Mirrors `Twr`/`GroundSurvey`/`SystemView`'s existing
+ * measured-slot-width idiom (`useElementSize` + `Math.min`/`Math.max`), not
+ * a CSS-only fix.
  *
  * Only reserved when an Uplink actually binds `crew-manifest.avatar`
  * (`avatarAugmentPresent` in `renderBody`, below): a vanilla roster with no
@@ -57,7 +75,29 @@ const TINY_READOUT_STYLE = {
  * now shows blank there, not the bullet either, same "nothing to signal"
  * reasoning).
  */
-const AVATAR_CELL_SIZE = "clamp(36px, 8vw, 56px)";
+const AVATAR_CELL_MIN_PX = 36;
+const AVATAR_CELL_MAX_PX = 56;
+/** Fraction of the measured roster width the avatar cell targets before clamping. */
+const AVATAR_CELL_WIDTH_FRACTION = 0.2;
+/** Seed size used until the first real `ResizeObserver` measurement lands
+ *  (matches the widget's own `defaultSize.w` of 6 columns at the render
+ *  harness's grid formula, so the very first paint already lands mid-range
+ *  rather than pinned to the floor). */
+const AVATAR_MEASURE_SEED = { w: 232, h: 0 };
+
+/** Pure size calc, unit-testable with no DOM: clamp a fraction of the
+ *  measured roster width between the cell's min/max bounds. */
+function avatarCellSizePx(containerWidthPx: number): number {
+  return Math.round(
+    Math.min(
+      AVATAR_CELL_MAX_PX,
+      Math.max(
+        AVATAR_CELL_MIN_PX,
+        containerWidthPx * AVATAR_CELL_WIDTH_FRACTION,
+      ),
+    ),
+  );
+}
 
 type CrewManifestConfig = Record<string, never>;
 
@@ -289,6 +329,15 @@ function CrewManifestComponent({
     ? toSuitResourceReadout(resources?.resources?.ElectricCharge)
     : undefined;
 
+  // Avatar cell width tracks the roster's own measured content width (see
+  // `avatarCellSizePx`'s doc comment above for why this is a real
+  // `ResizeObserver` measurement, not a viewport-relative `vw` clamp).
+  // Called unconditionally, ahead of the `showRoster` early return below, so
+  // hook order stays stable across renders regardless of which branch fires.
+  const { ref: rosterWidthRef, size: rosterSize } =
+    useElementSize<HTMLDivElement>(AVATAR_MEASURE_SEED);
+  const avatarSizePx = avatarCellSizePx(rosterSize.w);
+
   const names = toCrewNames(crewRaw);
   const known =
     crewCount !== undefined || crewCapacity !== undefined || names.length > 0;
@@ -322,48 +371,40 @@ function CrewManifestComponent({
     );
   }
 
-  const crewSummary = known
-    ? formatSubtitle(isEVA, crewCount?.magnitude, crewCapacity?.magnitude)
-    : "";
+  // Headcount ("N/M aboard") moved off this body-level caption entirely, an
+  // info-tone `crew-manifest.badges` self-contribution (`./badge.ts`) now
+  // carries it as a header panel badge instead, the same badge system the
+  // Kerbalism Uplink's nogo-tone crew-critical badge already rides. Only the
+  // EVA marker is left for this line to carry; when the vessel isn't an EVA
+  // kerbal there's nothing left to show, and the line drops entirely.
+  const crewSummary = known && isEVA === true ? "EVA" : "";
 
   return (
     <Panel panelTitle="CREW">
-      {/* Crew summary relocated out of the panel subtitle into the body
-          (staging change), carried by ui-kit's ReadoutCaption. */}
       {crewSummary && <ReadoutCaption>{crewSummary}</ReadoutCaption>}
       <EvaSuitReadout oxygen={suitOxygen} electricCharge={suitElectricCharge} />
-      {renderBody({
-        known,
-        crewCount: crewCount?.magnitude,
-        names,
-      })}
+      <div ref={rosterWidthRef}>
+        {renderBody({
+          known,
+          crewCount: crewCount?.magnitude,
+          names,
+          avatarSizePx,
+        })}
+      </div>
     </Panel>
   );
-}
-
-function formatSubtitle(
-  isEVA: boolean | null | undefined,
-  crewCount: number | undefined,
-  crewCapacity: number | undefined,
-): string {
-  const parts: string[] = [];
-  if (isEVA === true) parts.push("EVA");
-  if (crewCount !== undefined && crewCapacity !== undefined) {
-    parts.push(`${crewCount} / ${crewCapacity} aboard`);
-  } else if (crewCount !== undefined) {
-    parts.push(`${crewCount} aboard`);
-  }
-  return parts.join(" · ");
 }
 
 function renderBody({
   known,
   crewCount,
   names,
+  avatarSizePx,
 }: {
   known: boolean;
   crewCount: number | undefined;
   names: string[];
+  avatarSizePx: number;
 }): React.ReactNode {
   if (!known) return <EmptyState>Waiting for telemetry...</EmptyState>;
 
@@ -430,6 +471,7 @@ function renderBody({
                   `avatarAugmentPresent` above. */}
               {avatarAugmentPresent && (
                 <CrewAvatarCell
+                  sizePx={avatarSizePx}
                   slot={
                     <div style={AVATAR_LAYER_STYLE}>
                       {/* Forces whatever the augment renders (e.g. a face
@@ -520,30 +562,34 @@ const NAME_FLEX_STYLE = { flex: "1 1 auto" } as const;
 /**
  * The right-hand column beside the leading avatar: name, wrapping badge, and
  * survival section all stack here. `flex: 1 1 auto` fills the remaining row
- * width once the avatar column (fixed `AVATAR_CELL_SIZE`) takes its share;
- * `minWidth: 0` is the standard flex-child fix that lets its own `Truncate`
- * child actually shrink to ellipsis instead of forcing the row wider. With no
- * avatar bound this column is the row's only flex child, so it still spans
- * the full width, same as before this column existed.
+ * width once the avatar column (sized via `avatarCellSizePx`) takes its
+ * share; `minWidth: 0` is the standard flex-child fix that lets its own
+ * `Truncate` child actually shrink to ellipsis instead of forcing the row
+ * wider. With no avatar bound this column is the row's only flex child, so
+ * it still spans the full width, same as before this column existed.
  */
 const CREW_INFO_STYLE = { flex: "1 1 auto", minWidth: 0 } as const;
 
 /**
  * Leading per-crew avatar cell: a square that reserves room for an avatar-face
- * augment, sized via `AVATAR_CELL_SIZE`. `position: relative` so the augment
- * slot layer fills the box. Only rendered while `avatarAugmentPresent`
- * (`renderBody`, above) is true, so this component never has to fall back to
- * placeholder content.
+ * augment, sized in JS pixels via `sizePx` (`avatarCellSizePx`, computed once
+ * per render off the roster's measured width, see that helper's own doc
+ * comment). `position: relative` so the augment slot layer fills the box.
+ * Only rendered while `avatarAugmentPresent` (`renderBody`, above) is true,
+ * so this component never has to fall back to placeholder content.
  */
-function CrewAvatarCell({ slot }: Readonly<{ slot: ReactNode }>) {
+function CrewAvatarCell({
+  slot,
+  sizePx,
+}: Readonly<{ slot: ReactNode; sizePx: number }>) {
   return (
     <div
       data-testid="crew-avatar-cell"
       style={{
         position: "relative",
         flex: "0 0 auto",
-        width: AVATAR_CELL_SIZE,
-        height: AVATAR_CELL_SIZE,
+        width: `${sizePx}px`,
+        height: `${sizePx}px`,
       }}
     >
       {slot}

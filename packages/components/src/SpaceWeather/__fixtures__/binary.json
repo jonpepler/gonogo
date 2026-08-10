@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "scenario": "storm-inbound"
+    "scenario": "binary"
   },
   "t.universalTime": 149489,
   "sw.stars": [
@@ -16,13 +16,7 @@
     }
   ],
   "sw.storms": [
-    {
-      "star": "Kerbol",
-      "stormState": 1,
-      "stormTime": 149549,
-      "stormDuration": 300,
-      "dist": 13599840256
-    },
+    { "star": "Kerbol", "stormState": 0 },
     { "star": "Menoetius", "stormState": 0 }
   ],
   "sw.stormEjectionSpeed": 98931511.14,
@@ -46,13 +40,7 @@
             }
           ],
           "storms": [
-            {
-              "star": "Kerbol",
-              "stormState": 1,
-              "stormTime": 149549,
-              "stormDuration": 300,
-              "dist": 13599840256
-            },
+            { "star": "Kerbol", "stormState": 0 },
             { "star": "Menoetius", "stormState": 0 }
           ],
           "stormEjectionSpeed": 98931511.14

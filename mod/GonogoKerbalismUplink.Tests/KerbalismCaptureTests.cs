@@ -274,6 +274,52 @@ public class KerbalismCaptureTests
         // a rule with no constant entry defaults to 0, never throws
         var stress = (Dictionary<string, object?>)rules[1];
         Assert.Equal(0.0, (double)stress["degenPerSec"]!, 12);
+
+        // deathClockSec: computed from radiation's own (fatalThreshold - value) /
+        // degenPerSec, ~99985.9s; stress is skipped (no constant, DegenPerSec
+        // defaults to 0, guarded as "not currently degrading").
+        var expectedClock = (1.0 - 0.00014101834111076338) / 1.0e-05;
+        Assert.Equal(expectedClock, (double)kerbal["deathClockSec"]!, 6);
+    }
+
+    [Fact]
+    public void BuildCrew_takes_the_soonest_of_multiple_degrading_rules()
+    {
+        var crew = new[]
+        {
+            new KerbalRulesRaw
+            {
+                Name = "Bill Kerman", Trait = "Engineer",
+                Rules = new() { ["stress"] = 0.0, ["radiation"] = 0.0 },
+            },
+        };
+        var constants = new Dictionary<string, RuleConstants>
+        {
+            // stress: (1 - 0) / (1/60) = 60s to fatal
+            ["stress"] = new RuleConstants { DegenPerSec = 1.0 / 60.0, FatalThreshold = 1.0 },
+            // radiation: (50 - 0) / (1/10) = 500s to fatal, further out than stress
+            ["radiation"] = new RuleConstants { DegenPerSec = 1.0 / 10.0, FatalThreshold = 50.0 },
+        };
+        var built = KerbalismCapture.BuildCrew(crew, constants);
+        var kerbal = (Dictionary<string, object?>)built[0];
+        Assert.Equal(60.0, (double)kerbal["deathClockSec"]!, 6);
+    }
+
+    [Fact]
+    public void BuildCrew_reports_null_deathClockSec_when_no_rule_is_degrading()
+    {
+        var crew = new[]
+        {
+            new KerbalRulesRaw
+            {
+                Name = "Jebediah Kerman", Trait = "Pilot",
+                Rules = new() { ["stress"] = 0.1 },
+            },
+        };
+        // No constant entry at all: DegenPerSec defaults to 0, guarded out.
+        var built = KerbalismCapture.BuildCrew(crew, new Dictionary<string, RuleConstants>());
+        var kerbal = (Dictionary<string, object?>)built[0];
+        Assert.Null(kerbal["deathClockSec"]);
     }
 }
 

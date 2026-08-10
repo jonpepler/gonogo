@@ -51,6 +51,16 @@ export interface DisclosureProps {
    * reads as a small control, not a giant clickable band.
    */
   asButton?: boolean;
+  /**
+   * Size of the `asButton` trigger. `"md"` (default) is the full bordered
+   * `GhostButton` chrome (uppercase, tracked-out label) every other bordered
+   * button in the kit uses. `"sm"` is a compact, quiet secondary control
+   * (normal case, tight tracking, small type/padding, matching
+   * `ActionButton`'s "ghost" tone) for rows where the trigger needs to read
+   * as a small aside rather than a CTA-weight button. Ignored when
+   * `asButton` is false.
+   */
+  buttonSize?: "md" | "sm";
 }
 
 /**
@@ -70,6 +80,7 @@ export function Disclosure({
   variant = "popover",
   chevron = true,
   asButton = false,
+  buttonSize = "md",
 }: DisclosureProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -98,6 +109,7 @@ export function Disclosure({
         onClick={() => setOpen((v) => !v)}
         $variant={variant}
         $align={variant === "inline" && !chevron ? "end" : "between"}
+        $size={buttonSize}
       >
         {resolvedLabel}
         {showChevron && (
@@ -125,6 +137,10 @@ const Disclosure__Root = styled.div<{ $variant: "popover" | "inline" }>`
 const Disclosure__Trigger = styled.button<{
   $variant: "popover" | "inline";
   $align: "between" | "end";
+  // Accepted for prop-type parity with Disclosure__ButtonTrigger (the two
+  // are interchangeable as `TriggerTag` above); the plain trigger has no
+  // bordered chrome to size, so this is unused here.
+  $size: "md" | "sm";
 }>`
   display: inline-flex;
   align-items: center;
@@ -158,10 +174,18 @@ const Disclosure__Trigger = styled.button<{
  * is for `variant="inline"`, so it reads as a small control sitting at the
  * end of the row rather than a full-width clickable band with right-aligned
  * text inside it.
+ *
+ * `$size="sm"` overrides GhostButton's uppercase/tracked-out CTA styling
+ * with the same compact, normal-case chrome `ActionButton`'s "ghost" tone
+ * uses, for triggers that need to read as a quiet secondary control rather
+ * than a primary-weight button. `min-height: 44px` is kept under a coarse
+ * pointer regardless of size (matching `ToggleButton`'s own sm/md split) so
+ * the smaller visual size never shrinks the touch target.
  */
 const Disclosure__ButtonTrigger = styled(GhostButton)<{
   $variant: "popover" | "inline";
   $align: "between" | "end";
+  $size: "md" | "sm";
 }>`
   display: inline-flex;
   align-items: center;
@@ -170,6 +194,21 @@ const Disclosure__ButtonTrigger = styled(GhostButton)<{
     $variant === "inline" &&
     css`
       align-self: flex-end;
+    `}
+  ${({ $size }) =>
+    $size === "sm" &&
+    css`
+      font-size: var(--font-size-2xs, 10px);
+      font-weight: 600;
+      letter-spacing: normal;
+      text-transform: none;
+      padding: var(--space-2, 2px) var(--space-8, 8px);
+      border-radius: var(--radius-xs, 2px);
+
+      @media (pointer: coarse) {
+        min-height: 44px;
+        padding: var(--space-6, 6px) var(--space-10, 10px);
+      }
     `}
 `;
 

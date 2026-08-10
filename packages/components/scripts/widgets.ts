@@ -1269,6 +1269,39 @@ const WIDGETS: WidgetRenderConfig[] = [
           },
         ],
       },
+      // Ledger DESIGN review shot: resource-shortage's Electric Charge only
+      // has ONE ledger term (Water Recycler), which is not enough to judge a
+      // bar that is meant to diverge either side of zero. ledger-showcase's
+      // Electric Charge has five terms of mixed sign and varied magnitude
+      // (a dominant +0.45/s producer down to a -0.003/s trickle), at both
+      // the default and a generous width, so the diverging red/green
+      // DivergingBar treatment is legible across several rows at once.
+      {
+        name: "ledger-showcase-9x15",
+        w: 9,
+        h: 15,
+        forFixtures: ["ledger-showcase"],
+        clicks: [
+          {
+            selector:
+              'button[aria-label="Show rate breakdown for Electric Charge"]',
+            awaitMs: 100,
+          },
+        ],
+      },
+      {
+        name: "ledger-showcase-12x18",
+        w: 12,
+        h: 18,
+        forFixtures: ["ledger-showcase"],
+        clicks: [
+          {
+            selector:
+              'button[aria-label="Show rate breakdown for Electric Charge"]',
+            awaitMs: 100,
+          },
+        ],
+      },
     ],
   },
   {

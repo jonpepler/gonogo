@@ -562,6 +562,7 @@ function ResourceLedgerRow({
           variant="inline"
           chevron={false}
           asButton
+          buttonSize="sm"
           label={(open) => (open ? "Hide detail" : "Show detail")}
           ariaLabel={`Show rate breakdown for ${row.displayName}`}
         >

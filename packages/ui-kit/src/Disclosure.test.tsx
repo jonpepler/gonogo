@@ -91,6 +91,28 @@ describe("Disclosure", () => {
     expect(screen.getByText("ledger")).toBeInTheDocument();
   });
 
+  it("buttonSize sm renders a compact, normal-case trigger (not the tracked-out md chrome)", () => {
+    render(
+      <Disclosure
+        variant="inline"
+        chevron={false}
+        asButton
+        buttonSize="sm"
+        label={(open) => (open ? "Hide detail" : "Show detail")}
+        ariaLabel="Show rate breakdown for Water"
+      >
+        <span>ledger</span>
+      </Disclosure>,
+    );
+    const trigger = screen.getByRole("button", {
+      name: "Show rate breakdown for Water",
+    });
+    expect(trigger.tagName).toBe("BUTTON");
+    expect(trigger).toHaveTextContent("Show detail");
+    const styles = getComputedStyle(trigger);
+    expect(styles.textTransform).toBe("none");
+  });
+
   it("asButton has no accessible violations, open or closed", async () => {
     const { container } = render(
       <Disclosure

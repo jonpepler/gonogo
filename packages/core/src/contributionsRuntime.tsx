@@ -11,15 +11,18 @@ import {
 import type { TopicId } from "@ksp-gonogo/sitrep-sdk";
 import { createPanelStore, createStore, type Store } from "@ksp-gonogo/ui-kit";
 import {
+  createContext,
   type ReactElement,
   type ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
   useSyncExternalStore,
 } from "react";
 import { useWidgetMeta } from "./contexts/WidgetMetaContext";
+import type { ContributionSlotKindHandle } from "./contributionSlotKinds";
 import {
   type AnyContribution,
   type Contributed,
@@ -67,6 +70,11 @@ const EMPTY_ENTRIES: readonly Contributed<unknown>[] = Object.freeze([]);
 // shape `useAllContributionSlots` returns.
 const EMPTY_SLOT_ENTRIES: readonly ContributionSlotEntry[] = Object.freeze([]);
 
+// Stable empty snapshot for the no-`ContributionsProvider` case in the
+// mounted-slots subscription, same referential-stability requirement as the
+// two above.
+const EMPTY_MOUNTED_SLOTS: readonly string[] = Object.freeze([]);
+
 // Stable empty snapshot for the no-`TelemetryProvider` case (a bare widget
 // or a test rendered without one). `useSyncExternalStore` requires a
 // referentially stable value between calls that haven't genuinely changed,
@@ -77,6 +85,64 @@ const EMPTY_TOPIC_VALUES: Readonly<Record<string, unknown>> = Object.freeze({});
 const ContributionsPanelStore = createPanelStore<Store<ContributionSlotEntry>>(
   () => createStore<ContributionSlotEntry>(),
 );
+
+// ---------------------------------------------------------------------------
+// Mounted (component-led) slots. A slot-bearing component announces its
+// minted `<widgetId>.<kind>` address while mounted, and the widget's own
+// `ContributionsAggregation` unions those with the widget-declared list, so
+// the SAME `SlotAggregator` pipeline serves both layers. Ref-counted: the
+// same kind mounted twice in one widget is ONE slot with one aggregator
+// (both instances read one pool), and StrictMode's mount/unmount/mount is a
+// count bounce, not a teardown race.
+// ---------------------------------------------------------------------------
+
+interface MountedSlotsStore {
+  /** Announce a slot id for the caller's mount lifetime; returns the release. */
+  acquire(slotId: string): () => void;
+  subscribe(onChange: () => void): () => void;
+  getSnapshot(): readonly string[];
+}
+
+function createMountedSlotsStore(): MountedSlotsStore {
+  const counts = new Map<string, number>();
+  const listeners = new Set<() => void>();
+  // useSyncExternalStore needs a referentially stable snapshot between
+  // changes, so the id array is rebuilt only when the SET of ids changes
+  // (count bounces above zero never notify).
+  let snapshot: readonly string[] = Object.freeze([]);
+  const notify = () => {
+    snapshot = Object.freeze(Array.from(counts.keys()));
+    for (const cb of listeners) cb();
+  };
+  return {
+    acquire(slotId) {
+      const next = (counts.get(slotId) ?? 0) + 1;
+      counts.set(slotId, next);
+      if (next === 1) notify();
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        const current = counts.get(slotId) ?? 0;
+        if (current <= 1) {
+          counts.delete(slotId);
+          notify();
+        } else {
+          counts.set(slotId, current - 1);
+        }
+      };
+    },
+    subscribe(onChange) {
+      listeners.add(onChange);
+      return () => {
+        listeners.delete(onChange);
+      };
+    },
+    getSnapshot: () => snapshot,
+  };
+}
+
+const MountedSlotsContext = createContext<MountedSlotsStore | null>(null);
 
 // useSyncExternalStore requires a referentially-stable snapshot between
 // changes, so the registry's per-slot array is memoised the same way
@@ -284,28 +350,47 @@ export function ContributionsProvider({
 }: {
   children?: ReactNode;
 }): ReactElement {
+  const mounted = useMemo(createMountedSlotsStore, []);
   return (
-    <ContributionsPanelStore.Provider>
-      <ContributionsAggregation>{children}</ContributionsAggregation>
-    </ContributionsPanelStore.Provider>
+    <MountedSlotsContext.Provider value={mounted}>
+      <ContributionsPanelStore.Provider>
+        <ContributionsAggregation>{children}</ContributionsAggregation>
+      </ContributionsPanelStore.Provider>
+    </MountedSlotsContext.Provider>
   );
 }
 
 function ContributionsAggregation({ children }: { children?: ReactNode }) {
   const meta = useWidgetMeta();
   const store = ContributionsPanelStore.useStore();
+  const mounted = useContext(MountedSlotsContext);
+  const mountedSlots = useSyncExternalStore(
+    useCallback(
+      (onChange: () => void) =>
+        mounted ? mounted.subscribe(onChange) : () => {},
+      [mounted],
+    ),
+    () => (mounted ? mounted.getSnapshot() : EMPTY_MOUNTED_SLOTS),
+    () => (mounted ? mounted.getSnapshot() : EMPTY_MOUNTED_SLOTS),
+  );
   // The standard badges slot is ALWAYS aggregated, on top of whatever the
   // widget itself declared (contribution-slots-spec §13.2: automatic, zero
-  // widget-side input). Deduped in case a widget also explicitly lists its
-  // own badges slot in contributionSlots (harmless either way).
-  const slots = useMemo(() => {
-    const declared = meta?.contributionSlots ?? [];
-    if (!meta) return declared;
-    const badgesSlot = `${meta.componentId}.badges`;
-    return declared.includes(badgesSlot as never)
-      ? declared
-      : [...declared, badgesSlot as never];
-  }, [meta]);
+  // widget-side input) and whatever slot-bearing components are currently
+  // mounted (`useContributionSlot`). Deduped: a widget may list a slot in
+  // contributionSlots that a mounted component also mints (harmless either
+  // way, one aggregator runs).
+  const slots = useMemo((): readonly string[] => {
+    const declared: readonly string[] = meta?.contributionSlots ?? [];
+    const union: string[] = [...declared];
+    if (meta) {
+      const badgesSlot = `${meta.componentId}.badges`;
+      if (!union.includes(badgesSlot)) union.push(badgesSlot);
+    }
+    for (const slot of mountedSlots) {
+      if (!union.includes(slot)) union.push(slot);
+    }
+    return union;
+  }, [meta, mountedSlots]);
 
   if (!store) return <>{children}</>;
 
@@ -364,4 +449,53 @@ export function useContributions(
 
   if (typeof slotOrSlots === "string") return read(slotOrSlots);
   return Object.fromEntries(slotOrSlots.map((slot) => [slot, read(slot)]));
+}
+
+/**
+ * The component-led read (contribution-slots: component-led layer). A
+ * slot-bearing component (ui-kit's filter bar, a badge strip, a meter layer)
+ * calls this with its own registered kind handle; the slot id is minted from
+ * the HOST widget's identity (`useWidgetMeta`), never passed by the widget,
+ * so mounting the component anywhere is all it takes for `<widgetId>.<kind>`
+ * to go live: no `contributionSlots` entry, no per-widget re-declaration.
+ *
+ * While mounted, the hook announces the slot to the widget's
+ * `ContributionsProvider` so a `SlotAggregator` runs for it: the same
+ * pipeline (deps union, Processor activation, requires gating, PerfBudget,
+ * error isolation) widget-declared slots get. The read itself is the same
+ * store read `useContributions` uses; `Entry` comes off the kind handle's
+ * phantom, so the component's own rendering is typed without a cast.
+ *
+ * `qualifier` disambiguates a widget hosting the same kind twice ON PURPOSE
+ * as two distinct extension points: it prefixes the kind segment
+ * (`resource-ops.process-filters`), keeping the two-segment address shape.
+ * Without it, two mounts of one kind in one widget share one slot, which is
+ * the intended default: the slot belongs to the widget, not to the DOM
+ * instance, so the same extension point rendered twice shows the same pool.
+ *
+ * Outside a widget (no `WidgetMetaContext`, e.g. a bare component test or a
+ * styleguide render) `slotId` is null and `entries` is stably empty, the
+ * same graceful posture as the rest of this file's optional contexts.
+ */
+export function useContributionSlot<Entry>(
+  handle: ContributionSlotKindHandle<string, Entry>,
+  options?: { qualifier?: string },
+): { slotId: string | null; entries: readonly Contributed<Entry>[] } {
+  const meta = useWidgetMeta();
+  const mounted = useContext(MountedSlotsContext);
+  const segment = options?.qualifier
+    ? `${options.qualifier}-${handle.kind}`
+    : handle.kind;
+  const slotId = meta ? `${meta.componentId}.${segment}` : null;
+
+  useEffect(() => {
+    if (!mounted || slotId === null) return;
+    return mounted.acquire(slotId);
+  }, [mounted, slotId]);
+
+  const entries = useContributionsBySlotId(slotId ?? "");
+  return {
+    slotId,
+    entries: entries as readonly Contributed<Entry>[],
+  };
 }

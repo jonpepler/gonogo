@@ -25,9 +25,11 @@ export * from "./contexts/DashboardItemContext";
 export * from "./contexts/ScreenContext";
 export * from "./contexts/WidgetMetaContext";
 export * from "./contributedFilters";
+export * from "./contributionSlotKinds";
 export * from "./contributions";
 export {
   ContributionsProvider,
+  useContributionSlot,
   useContributions,
   useContributionsBySlotId,
 } from "./contributionsRuntime";

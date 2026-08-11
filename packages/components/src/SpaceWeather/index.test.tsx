@@ -380,7 +380,9 @@ describe("SpaceWeatherComponent", () => {
       ],
     );
     expect(
-      await screen.findByText("Inbound to Jool Transfer Probe (this vessel)"),
+      await screen.findByText(
+        "Inbound to Jool Transfer Probe (current vessel)",
+      ),
     ).toBeInTheDocument();
     // Never the body-target phrasing, and never the no-target fallback.
     expect(
@@ -405,7 +407,7 @@ describe("SpaceWeatherComponent", () => {
       ],
     );
     expect(
-      await screen.findByText("Impacting Jool Transfer Probe (this vessel)"),
+      await screen.findByText("Impacting Jool Transfer Probe (current vessel)"),
     ).toBeInTheDocument();
   });
 
@@ -428,10 +430,10 @@ describe("SpaceWeatherComponent", () => {
       ],
     );
     expect(await screen.findByText("Inbound to Minmus")).toBeInTheDocument();
-    // A body target reads plainly: the "(this vessel)" qualifier is only for
+    // A body target reads plainly: the "(current vessel)" qualifier is only for
     // the per-vessel case.
     expect(
-      screen.queryByText("Inbound to Minmus (this vessel)"),
+      screen.queryByText("Inbound to Minmus (current vessel)"),
     ).not.toBeInTheDocument();
   });
 

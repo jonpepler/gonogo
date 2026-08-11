@@ -545,7 +545,7 @@ function StormCard({
   // Only the per-vessel case gets a qualifier: a body target reads plainly.
   const qualifier =
     storm.targetKind === KerbalismStormTargetKind.Vessel
-      ? " (this vessel)"
+      ? " (current vessel)"
       : "";
   const targetPhrase = `${verb} ${target}${qualifier}`;
   return (

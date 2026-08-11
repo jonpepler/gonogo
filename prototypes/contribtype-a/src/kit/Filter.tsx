@@ -8,7 +8,12 @@
 // ---------------------------------------------------------------------------
 
 import type { ReactElement } from "react";
-import { getContributionsForSlot, type SlotSpec, slotSpec } from "./slots";
+import {
+  getContributionsForSlot,
+  type RowName,
+  type SlotSpec,
+  slotSpec,
+} from "./slots";
 
 /** The entry a contributor feeds a filter slot. Component-owned, per the brief. */
 export interface FilterEntry<T> {
@@ -61,12 +66,13 @@ function FilterBar(slotId: string, props: FilterProps): ReactElement | null {
  * Curried because TS has no partial type-argument inference: `Row` is stated,
  * the topic union is inferred from the literal array.
  */
-export function filterSlot<Row>() {
+export function filterSlot<const Rows extends RowName>(rows: Rows) {
   return <const Topics extends string = never>(
     options: { topics?: readonly Topics[] } = {},
-  ): SlotSpec<"filter", Row, Topics> =>
-    slotSpec<"filter", Row, Topics>(
+  ): SlotSpec<"filter", Rows, Topics> =>
+    slotSpec<"filter", Rows, Topics>(
       "filter",
+      rows,
       options.topics ?? [],
       (slotId, props) => FilterBar(slotId, props as FilterProps),
     );

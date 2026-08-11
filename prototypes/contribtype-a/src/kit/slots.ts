@@ -50,6 +50,24 @@ export interface SlotKindProps<Row> {}
 
 export type SlotKindId = keyof SlotKindEntries<unknown> & string;
 
+// ── Seam 1b: row types by name ─────────────────────────────────────────────
+
+/**
+ * name -> a widget's row type. Merged by whoever owns the rows: the sdk for a
+ * first-party widget's row union, the Uplink's own package for its own.
+ *
+ * A slot names its rows rather than closing over the type anonymously, for two
+ * reasons. It lets a contribution target "every filter over THESE rows,
+ * wherever it is mounted" and still be fully typed (see `BroadcastTarget`,
+ * and the write-up's assessment of the drop-the-widget-id simplification). And
+ * it gives a build step a machine-readable handle on the row type, which is
+ * what an optional codegen would need to emit the first-party mirror.
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: declaration-merge seam
+export interface RowTypes {}
+
+export type RowName = keyof RowTypes & string;
+
 // ── Slot specs: what a component's factory hands the widget ────────────────
 
 /**
@@ -60,19 +78,31 @@ export type SlotKindId = keyof SlotKindEntries<unknown> & string;
  * type-only field and is deliberately absent at runtime (the factories cast
  * it in), which is why every reader of it is a type, never a value.
  */
-export interface SlotSpec<K extends string, Row, Topics extends string> {
+export interface SlotSpec<
+  K extends string,
+  Rows extends string,
+  Topics extends string,
+> {
   readonly kind: K;
+  /** The name, in `RowTypes`, of the rows this slot's component runs against. */
+  readonly rows: Rows;
   readonly topics: readonly Topics[];
   /** Renders this slot's component, bound to a resolved slot id by `defineSlots`. */
   readonly render: (slotId: string, props: unknown) => ReactElement | null;
-  readonly __phantom: { row: Row; topics: Topics };
+  readonly __phantom: { topics: Topics };
 }
 
-export type AnySlotSpec = SlotSpec<string, unknown, string>;
+export type AnySlotSpec = SlotSpec<string, string, string>;
 
-type SpecKind<S> = S extends SlotSpec<infer K, unknown, string> ? K : never;
-type SpecRow<S> = S extends SlotSpec<string, infer Row, string> ? Row : never;
-type SpecTopics<S> = S extends SlotSpec<string, unknown, infer T> ? T : never;
+type SpecKind<S> = S extends SlotSpec<infer K, string, string> ? K : never;
+type SpecRows<S> = S extends SlotSpec<string, infer R, string> ? R : never;
+type SpecRow<S> = SpecRows<S> extends RowName ? RowTypes[SpecRows<S>] : unknown;
+type SpecTopics<S> = S extends SlotSpec<string, string, infer T> ? T : never;
+
+/** The entry a component of kind `K` accepts over rows named `R`. */
+export type EntryFor<K extends string, R extends RowName> = SlotKindEntries<
+  RowTypes[R]
+>[K & keyof SlotKindEntries<RowTypes[R]>];
 
 /** The props the host passes to a spec's component, resolved through the kind seam. */
 type SpecProps<S> = SlotKindProps<SpecRow<S>>[SpecKind<S> &
@@ -82,12 +112,17 @@ type SpecProps<S> = SlotKindProps<SpecRow<S>>[SpecKind<S> &
  * Helper for a component factory: build a spec without hand-writing the
  * phantom. The single cast in the codebase, and it is confined here.
  */
-export function slotSpec<K extends SlotKindId, Row, Topics extends string>(
+export function slotSpec<
+  K extends SlotKindId,
+  Rows extends RowName,
+  Topics extends string,
+>(
   kind: K,
+  rows: Rows,
   topics: readonly Topics[],
   render: (slotId: string, props: unknown) => ReactElement | null,
-): SlotSpec<K, Row, Topics> {
-  return { kind, topics, render } as unknown as SlotSpec<K, Row, Topics>;
+): SlotSpec<K, Rows, Topics> {
+  return { kind, rows, topics, render } as unknown as SlotSpec<K, Rows, Topics>;
 }
 
 // ── Handles: what the widget renders ───────────────────────────────────────
@@ -123,6 +158,7 @@ export interface RegisteredSlot {
   widgetId: string;
   componentId: string;
   instanceName: string;
+  rows: string;
   topics: readonly string[];
 }
 
@@ -152,6 +188,7 @@ export function defineSlots<
       widgetId,
       componentId: spec.kind,
       instanceName,
+      rows: spec.rows,
       topics: spec.topics,
     });
     handles[instanceName] = {
@@ -275,8 +312,62 @@ export function registerContribution<const S extends ContributionSlotId>(
   contributions.push(def as ContributionDefinition<ContributionSlotId>);
 }
 
+// ── Broadcast contributions: component-scoped, not widget-scoped ───────────
+//
+// The operator's "accept a slot for ANY widget" idea, kept type-safe. A
+// broadcast names a component KIND and a ROW TYPE rather than one slot, and
+// reaches every slot of that kind over those rows in any widget, present or
+// future. The row name is what saves it: a filter's whole payload is a
+// predicate over the host's rows, so a target that names no row type can only
+// hand a contributor `unknown` to predicate against, and dropping the widget
+// id WITHOUT naming rows drops the typing that made the mechanism worth
+// having. Naming the rows keeps both.
+
+export interface BroadcastTarget<K extends SlotKindId, R extends RowName> {
+  kind: K;
+  rows: R;
+}
+
+export interface BroadcastContribution<
+  K extends SlotKindId,
+  R extends RowName,
+> {
+  id: string;
+  contributes: BroadcastTarget<K, R>;
+  compute: (
+    topics: Record<string, unknown>,
+    emit: (entry: EntryFor<K, R>) => void,
+    // biome-ignore lint/suspicious/noConfusingVoidType: an emit-only compute returns nothing, and `undefined` rejects a block-bodied arrow
+  ) => readonly EntryFor<K, R>[] | void;
+  requires?: string;
+  priority?: number;
+}
+
+const broadcasts: BroadcastContribution<SlotKindId, RowName>[] = [];
+
+export function registerBroadcastContribution<
+  const K extends SlotKindId,
+  const R extends RowName,
+>(def: BroadcastContribution<K, R>): void {
+  broadcasts.push(def as unknown as BroadcastContribution<SlotKindId, RowName>);
+}
+
+/**
+ * Everything feeding one slot: contributions addressed to it, plus every
+ * broadcast whose kind and rows match. Matching is on the slot's REGISTERED
+ * kind and row name, so a broadcast reaches a widget written after it with no
+ * edit on either side.
+ */
 export function getContributionsForSlot(
   slot: string,
-): readonly ContributionDefinition<ContributionSlotId>[] {
-  return contributions.filter((c) => c.contributes === slot);
+): readonly { id: string }[] {
+  const registered = slots.get(slot);
+  const direct = contributions.filter((c) => c.contributes === slot);
+  if (!registered) return direct;
+  const matching = broadcasts.filter(
+    (b) =>
+      b.contributes.kind === registered.componentId &&
+      b.contributes.rows === registered.rows,
+  );
+  return [...direct, ...matching];
 }

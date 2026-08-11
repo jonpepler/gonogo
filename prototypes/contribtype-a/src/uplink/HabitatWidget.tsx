@@ -20,18 +20,26 @@ export interface HabitatUnit {
   pressurised: boolean;
 }
 
+// The Uplink names its own row type into the shared seam, from its own
+// package, exactly as it augments the manifest seam below.
+declare module "../kit/slots" {
+  interface RowTypes {
+    HabitatUnit: HabitatUnit;
+  }
+}
+
 const WIDGET_ID = "kerbalism-habitat";
 
 export const HABITAT_SLOTS = defineSlots(WIDGET_ID, {
   // Same component as ResourceOps mounts, in a different widget: different
   // slot id, different row type, zero interaction between the two.
-  pressure: filterSlot<HabitatUnit>()({ topics: ["kerbalism.habitat"] }),
+  pressure: filterSlot("HabitatUnit")({ topics: ["kerbalism.habitat"] }),
   // A second component kind in the same widget.
-  supplies: meterSlot()({ topics: ["kerbalism.lifesupport"] }),
+  supplies: meterSlot("HabitatUnit")({ topics: ["kerbalism.lifesupport"] }),
   // Added after the augmentation below was written, to make the point: this
   // line is the ONLY edit "kerbalism-habitat.filter.waste" needed to exist,
   // be typed and be targetable. `typeof HABITAT_SLOTS` widened on its own.
-  waste: filterSlot<HabitatUnit>()({ topics: ["kerbalism.habitat"] }),
+  waste: filterSlot("HabitatUnit")({ topics: ["kerbalism.habitat"] }),
 });
 
 // The Uplink's own augmentation. In the real tree the specifier is the bare

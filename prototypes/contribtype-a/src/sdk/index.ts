@@ -14,11 +14,16 @@ import "./first-party-slots";
 export type { FilterEntry } from "../kit/Filter";
 export type { MeterEntry } from "../kit/Meter";
 export {
+  type BroadcastContribution,
   type ContributionDefinition,
   type ContributionEntry,
   type ContributionSlotId,
   type ContributionTopics,
   type Emit,
+  type EntryFor,
+  type RowName,
+  type RowTypes,
+  registerBroadcastContribution,
   registerContribution,
 } from "../kit/slots";
 

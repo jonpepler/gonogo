@@ -27,14 +27,17 @@ slots at module load.
 
 ## The shape of it
 
-Two declaration-merge seams and nothing else:
+Three declaration-merge seams and nothing else:
 
 - `SlotKindEntries<Row>`, merged by a COMPONENT from its own file: "kind
   `filter` contributes `FilterEntry<Row>`". The type-level twin of `registerUnit`
 - `WidgetSlotManifests`, merged by a WIDGET OWNER, one entry per widget, whose
   value is `typeof` the object the widget already renders from
+- `RowTypes`, merged by whoever owns a widget's row union, so a contribution
+  can target "every filter over THESE rows, in any widget" and still be typed
+  (the assessed form of the drop-the-widget-id simplification)
 
-Every slot id, entry type and topic union is computed off those two by mapped
+Every slot id, entry type and topic union is computed off those seams by mapped
 and template-literal types. The widget keeps no list: the object it passes to
 `defineSlots` IS its render surface, so a handle it does not declare cannot be
 rendered and a handle it declares is a live, targetable, typed slot.

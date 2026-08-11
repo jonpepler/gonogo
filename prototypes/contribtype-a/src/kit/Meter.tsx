@@ -5,7 +5,12 @@
 // ---------------------------------------------------------------------------
 
 import type { ReactElement } from "react";
-import { getContributionsForSlot, type SlotSpec, slotSpec } from "./slots";
+import {
+  getContributionsForSlot,
+  type RowName,
+  type SlotSpec,
+  slotSpec,
+} from "./slots";
 
 export interface MeterEntry {
   partId: string;
@@ -36,12 +41,13 @@ function MeterStack(slotId: string, props: MeterProps): ReactElement | null {
   );
 }
 
-export function meterSlot<Row = unknown>() {
+export function meterSlot<const Rows extends RowName>(rows: Rows) {
   return <const Topics extends string = never>(
     options: { topics?: readonly Topics[] } = {},
-  ): SlotSpec<"meter", Row, Topics> =>
-    slotSpec<"meter", Row, Topics>(
+  ): SlotSpec<"meter", Rows, Topics> =>
+    slotSpec<"meter", Rows, Topics>(
       "meter",
+      rows,
       options.topics ?? [],
       (slotId, props) => MeterStack(slotId, props as MeterProps),
     );

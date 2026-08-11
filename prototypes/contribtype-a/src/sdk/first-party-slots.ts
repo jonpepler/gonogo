@@ -25,17 +25,17 @@
 // ---------------------------------------------------------------------------
 
 import type { SlotSpec, WidgetSlots } from "../kit/slots";
-import type { ResourceOpsUnit } from "./contract";
+import "./contract";
 
 declare module "../kit/slots" {
   interface WidgetSlotManifests {
     "resource-ops": WidgetSlots<
       "resource-ops",
       {
-        process: SlotSpec<"filter", ResourceOpsUnit, "isru.converters">;
+        process: SlotSpec<"filter", "ResourceOpsUnit", "isru.converters">;
         byResource: SlotSpec<
           "filter",
-          ResourceOpsUnit,
+          "ResourceOpsUnit",
           "isru.drills" | "isru.converters"
         >;
       }

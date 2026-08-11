@@ -10,10 +10,11 @@
 import { filterSlot } from "../kit/Filter";
 import { meterSlot } from "../kit/Meter";
 import { defineDeclaredSlots } from "../kit/slots";
-import type { ResourceOpsUnit } from "../sdk/contract";
+import "../sdk/contract";
+import "../uplink/HabitatWidget";
 
-const process = filterSlot<ResourceOpsUnit>()({ topics: ["isru.converters"] });
-const byResource = filterSlot<ResourceOpsUnit>()({
+const process = filterSlot("ResourceOpsUnit")({ topics: ["isru.converters"] });
+const byResource = filterSlot("ResourceOpsUnit")({
   topics: ["isru.drills", "isru.converters"],
 });
 
@@ -22,7 +23,7 @@ export const EXTRA = defineDeclaredSlots("resource-ops", {
   process,
   byResource,
   // @ts-expect-error mount a new filter and the sdk mirror must gain it too
-  vessel: filterSlot<ResourceOpsUnit>()({}),
+  vessel: filterSlot("ResourceOpsUnit")({}),
 });
 
 // 2. A mirror entry with no handle behind it: dead slot, caught at the widget.
@@ -32,7 +33,7 @@ export const MISSING = defineDeclaredSlots("resource-ops", { process });
 // 3. Right instance name, wrong component: the mirror says filter.
 export const WRONG_KIND = defineDeclaredSlots("resource-ops", {
   // @ts-expect-error a meter cannot fill a slot declared as a filter
-  process: meterSlot()({}),
+  process: meterSlot("ResourceOpsUnit")({}),
   byResource,
 });
 
@@ -40,6 +41,6 @@ export const WRONG_KIND = defineDeclaredSlots("resource-ops", {
 // union this widget never renders.
 export const WRONG_ROW = defineDeclaredSlots("resource-ops", {
   // @ts-expect-error the mirror declares ResourceOpsUnit rows
-  process: filterSlot<{ crew: number }>()({ topics: ["isru.converters"] }),
+  process: filterSlot("HabitatUnit")({ topics: ["isru.converters"] }),
   byResource,
 });

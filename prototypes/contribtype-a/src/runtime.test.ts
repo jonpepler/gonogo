@@ -8,6 +8,7 @@ import { getContributionsForSlot, getRegisteredSlots } from "./kit/slots";
 import "./widget/ResourceOps";
 import "./uplink/HabitatWidget";
 import "./contributor/good";
+import "./contributor/broadcast";
 import "./uplink-contributor/good";
 
 test("a widget's slots register passively at module load", () => {
@@ -33,12 +34,31 @@ test("the composed id carries widget, component and instance", () => {
 });
 
 test("two instances of one component in one widget stay separate", () => {
+  // 2 addressed to this slot, plus the 1 broadcast over these rows
   expect(getContributionsForSlot("resource-ops.filter.process")).toHaveLength(
-    2,
+    3,
   );
+  // 1 addressed to this slot, plus the same broadcast
   expect(
     getContributionsForSlot("resource-ops.filter.byResource"),
-  ).toHaveLength(1);
+  ).toHaveLength(2);
+});
+
+test("a broadcast reaches every filter over its rows, and only those", () => {
+  const ids = (slot: string) => getContributionsForSlot(slot).map((c) => c.id);
+  // The cost of dropping the widget id, made concrete: a facet meant for the
+  // process axis lands on the resource axis too.
+  expect(ids("resource-ops.filter.process")).toContain(
+    "kerbalism/any-resource-ops-filter",
+  );
+  expect(ids("resource-ops.filter.byResource")).toContain(
+    "kerbalism/any-resource-ops-filter",
+  );
+  // Rows are what bound it: a filter over Habitat rows is untouched, which is
+  // the runtime error a widget-free, row-free key could not have prevented.
+  expect(ids("kerbalism-habitat.filter.pressure")).not.toContain(
+    "kerbalism/any-resource-ops-filter",
+  );
 });
 
 test("the same component in two widgets stays separate", () => {

@@ -19,13 +19,13 @@
 import type { ReactElement } from "react";
 import { filterSlot } from "../kit/Filter";
 import { defineDeclaredSlots } from "../kit/slots";
-import type { ResourceOpsUnit } from "../sdk/contract";
+import "../sdk/contract";
 
 const WIDGET_ID = "resource-ops";
 
 export const SLOTS = defineDeclaredSlots(WIDGET_ID, {
-  process: filterSlot<ResourceOpsUnit>()({ topics: ["isru.converters"] }),
-  byResource: filterSlot<ResourceOpsUnit>()({
+  process: filterSlot("ResourceOpsUnit")({ topics: ["isru.converters"] }),
+  byResource: filterSlot("ResourceOpsUnit")({
     topics: ["isru.drills", "isru.converters"],
   }),
 });

@@ -21,3 +21,12 @@ export interface IsruConverterEntry {
 export type ResourceOpsUnit =
   | { kind: "drill"; drill: IsruDrillEntry }
   | { kind: "converter"; converter: IsruConverterEntry };
+
+// The row type, named. This is the same seam an Uplink uses for its own rows,
+// and it is what lets a contribution target "every filter over ResourceOps
+// rows" without naming a widget.
+declare module "../kit/slots" {
+  interface RowTypes {
+    ResourceOpsUnit: ResourceOpsUnit;
+  }
+}

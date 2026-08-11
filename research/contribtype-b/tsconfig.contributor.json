@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@ksp-gonogo/sitrep-sdk": ["./src/sdk/index.ts"],
+      "@ksp-gonogo/ui-kit": ["./src/ui-kit/index.ts"]
+    }
+  },
+  "include": ["src/contributor"]
+}

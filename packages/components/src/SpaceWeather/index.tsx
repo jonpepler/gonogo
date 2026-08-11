@@ -4,10 +4,11 @@ import {
   useViewUt,
   type VesselState,
 } from "@ksp-gonogo/sitrep-client";
-import type {
-  ComponentProps,
-  KerbalismStarInfo,
-  KerbalismStormEntry,
+import {
+  type ComponentProps,
+  type KerbalismStarInfo,
+  type KerbalismStormEntry,
+  KerbalismStormTargetKind,
 } from "@ksp-gonogo/sitrep-sdk";
 import {
   Badge,
@@ -49,7 +50,7 @@ type SpaceWeatherConfig = Record<string, never>;
 // of one diagram fusing every star's storms together. A single unified "CME
 // tracker" list below still aggregates every active storm across all stars,
 // that part reads fine as one list. See the target-naming note on
-// `StormCard` for the vessel-target capture-gap finding.
+// `StormCard` for why a storm names either a body or a vessel.
 // ---------------------------------------------------------------------------
 
 interface SpaceWeatherData {
@@ -98,6 +99,10 @@ interface StormDerived {
   progressPct: number;
   /** stormTime - now, seconds. Negative once the CME has arrived. */
   impactEtaSec: number | null;
+  /** What the CME is aimed at; null on a stream whose mod predates named targets. */
+  targetKind: KerbalismStormTargetKind | null;
+  /** The target's name (body or vessel, per `targetKind`); null on an older stream. */
+  targetName: string | null;
 }
 
 function deriveStorm(
@@ -134,6 +139,8 @@ function deriveStorm(
     departureUt,
     progressPct,
     impactEtaSec,
+    targetKind: entry.targetKind ?? null,
+    targetName: entry.targetName ?? null,
   };
 }
 
@@ -387,13 +394,11 @@ function SpaceWeatherComponent({
 }: Readonly<ComponentProps<SpaceWeatherConfig>>) {
   const d = useSpaceWeather();
   const nowUt = useViewUt() ?? 0;
-  // Storm target naming: `KerbalismStormEntry` carries no explicit target
-  // field at all (see the doc comment on `StormCard` below for the full
-  // capture-gap finding), the mod's capture always keys a storm off THIS
-  // vessel's current SOI body, so `vessel.state.parentBodyName` is the
-  // honest stand-in for "who this CME is inbound to".
+  // Storm target naming: each entry names its own target (see the doc comment
+  // on `StormCard` below), so this derived body name is only the fallback for
+  // a stream whose mod predates that capture.
   const vesselState = useStream<VesselState>("vessel.state");
-  const targetName = vesselState?.parentBodyName ?? undefined;
+  const fallbackBodyName = vesselState?.parentBodyName ?? undefined;
   const cols = w ?? 8;
   const rows = h ?? 11;
   const compact = cols < 7 || rows < 6;
@@ -474,7 +479,7 @@ function SpaceWeatherComponent({
                   key={storm.key}
                   storm={storm}
                   compact={compact}
-                  targetName={targetName}
+                  fallbackBodyName={fallbackBodyName}
                 />
               ))}
             </Stack>
@@ -490,25 +495,20 @@ function SpaceWeatherComponent({
  * operator has one place to see everything inbound/impacting regardless of
  * which star it came from.
  *
- * **Target-naming capture gap.** `KerbalismStormEntry` (the wire type) has
- * no target field at all: `star`, `stormState`, `stormTime`,
- * `stormDuration`, `dist`, nothing else. Server-side, `KerbalismReflection
- * .Solar` looks the storm slot up via `Storm.StormKey(v.mainBody, star)`,
- * i.e. it is ALWAYS keyed off the viewing vessel's own current SOI body,
- * one implicit target shared by every entry in the array, never named
- * explicitly. `targetName` here is `vessel.state.parentBodyName`, the same
- * body, read off the ALREADY-CAPTURED derived vessel-state channel rather
- * than a new mod field.
+ * **Where the target name comes from.** Each `KerbalismStormEntry` names its
+ * own target (`targetKind` + `targetName`), because Kerbalism has two storm
+ * paths and they aim at different things. Around a body, the slot is the
+ * shared `Storm.StormKey(body, star)` one and every vessel in that SOI sees
+ * the same storm, so the body is the target. With no body SOI (solar orbit
+ * or a barycenter), `Storm.Update(Vessel)` rolls per-vessel against
+ * `VesselData.stormDataByStar` and that vessel's own sun distance, so the
+ * VESSEL is the target and no other craft shares the storm: hence the "(this
+ * vessel)" qualifier, which says the CME was aimed at this craft in deep
+ * space rather than at a body it happens to be near.
  *
- * This also means Kerbalism's storm model has no PER-VESSEL target
- * distinct from a body target: `DB.Storm` is keyed purely by
- * `(CelestialBody, CelestialBody)`, never by vessel. A vessel in solar
- * orbit (mainBody = Kerbol) would resolve via that same body-keyed lookup,
- * degenerate case and all; there is no capture path today that names a
- * non-orbiting VESSEL as a CME target distinctly from "the body it's
- * currently reckoned against". Rendering body-targets now (as this card
- * does) is honest to what's captured; a genuine per-vessel solar-orbit
- * target would need new capture work on the mod side, out of scope here.
+ * `vessel.state.parentBodyName` remains as a fallback only, for a stream
+ * whose mod predates the named-target capture (contract Minor 9). A stream
+ * carrying neither degrades to "current body".
  */
 
 // ---------------------------------------------------------------------------
@@ -533,17 +533,21 @@ function transitThreatColor(storm: StormDerived): string {
 function StormCard({
   storm,
   compact,
-  targetName,
+  fallbackBodyName,
 }: {
   storm: StormDerived;
   compact: boolean;
-  targetName: string | undefined;
+  fallbackBodyName: string | undefined;
 }) {
   const severity = stormSeverity(storm.state);
-  const targetPhrase =
-    storm.state >= 2
-      ? `Impacting ${targetName ?? "current body"}`
-      : `Inbound to ${targetName ?? "current body"}`;
+  const target = storm.targetName ?? fallbackBodyName ?? "current body";
+  const verb = storm.state >= 2 ? "Impacting" : "Inbound to";
+  // Only the per-vessel case gets a qualifier: a body target reads plainly.
+  const qualifier =
+    storm.targetKind === KerbalismStormTargetKind.Vessel
+      ? " (this vessel)"
+      : "";
+  const targetPhrase = `${verb} ${target}${qualifier}`;
   return (
     <Card tone={SEVERITY_CARD_TONE[severity]}>
       <Stack gap="xs">
@@ -621,7 +625,7 @@ registerComponent<SpaceWeatherConfig>({
   id: "space-weather",
   name: "Space Weather",
   description:
-    "Sun-vantage observatory: a per-star activity diagram for every star this vessel sees, plus a unified CME tracker (departure, progress, impact ETA, named target) derived from in-transit storm state only, never the storm RNG schedule.",
+    "Sun-vantage observatory: a per-star activity diagram for every star this vessel sees, plus a unified CME tracker (departure, progress, impact ETA, and the named target: the body below, or the vessel itself out in solar orbit) derived from in-transit storm state only, never the storm RNG schedule.",
   tags: ["telemetry", "kerbalism"],
   defaultSize: { w: 8, h: 11 },
   minSize: { w: 3, h: 4 },

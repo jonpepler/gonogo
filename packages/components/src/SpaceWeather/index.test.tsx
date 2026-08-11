@@ -1,5 +1,5 @@
 import { clearRegistry, DashboardItemContext } from "@ksp-gonogo/core";
-import { Quality } from "@ksp-gonogo/sitrep-sdk";
+import { KerbalismStormTargetKind, Quality } from "@ksp-gonogo/sitrep-sdk";
 import { act, render, screen } from "@ksp-gonogo/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
@@ -14,12 +14,15 @@ import { SpaceWeatherComponent } from "./index";
 //
 // 2026-08-10 operator pass: each star now gets its OWN diagram (own SVG
 // `role="img"`, own aria-label), so a binary system renders TWO diagrams,
-// not one fused ring. The CME tracker names its target
-// (`vessel.state.parentBodyName`), so these tests also carry the four
-// derived-channel inputs (mirrors `AtmosphereProfile`'s own `emitBody`
-// helper) to exercise the real "Inbound to <body>" text, plus one test
-// that leaves `vessel.state` unresolved to prove the "current body"
-// fallback still reads sensibly.
+// not one fused ring.
+//
+// CME targets come off the wire (`targetKind`/`targetName` on each storm
+// entry), so a vessel in solar orbit reads as its own target rather than
+// borrowing a body. `vessel.state.parentBodyName` is now only the fallback
+// for a stream that carries no target, which is why some tests still emit
+// the four derived-channel inputs (mirrors `AtmosphereProfile`'s own
+// `emitBody` helper) and one leaves `vessel.state` unresolved entirely to
+// prove the "current body" placeholder still reads sensibly.
 
 const CARRIED_CHANNELS = [
   "kerbalism.spaceweather",
@@ -44,6 +47,8 @@ interface Storm {
   stormTime?: number;
   stormDuration?: number;
   dist?: number;
+  targetKind?: KerbalismStormTargetKind;
+  targetName?: string;
 }
 
 describe("SpaceWeatherComponent", () => {
@@ -351,6 +356,83 @@ describe("SpaceWeatherComponent", () => {
     const fill = bar.firstElementChild;
     expect(fill).toHaveStyle({ background: "var(--color-status-nogo-bg)" });
     expect(fill).not.toHaveStyle({ background: "var(--color-accent-fg)" });
+  });
+
+  it("names the vessel itself as the target for a solar-orbit CME", async () => {
+    renderWidget();
+    // A vessel with no body SOI is its OWN storm target: Kerbalism rolls that
+    // storm per-vessel (Storm.Update(Vessel), against VesselData.stormDataByStar),
+    // so no other craft shares it. No emitBody() at all here, which is the
+    // point: the target rides on the wire, it is not derived from a parent body
+    // that does not exist.
+    emit(
+      [{ star: "Kerbol", distance: 41_000_000_000 }],
+      [
+        {
+          star: "Kerbol",
+          stormState: 1,
+          stormTime: PINNED_UT + 200,
+          stormDuration: 620,
+          dist: 41_000_000_000,
+          targetKind: KerbalismStormTargetKind.Vessel,
+          targetName: "Jool Transfer Probe",
+        },
+      ],
+    );
+    expect(
+      await screen.findByText("Inbound to Jool Transfer Probe (this vessel)"),
+    ).toBeInTheDocument();
+    // Never the body-target phrasing, and never the no-target fallback.
+    expect(
+      screen.queryByText("Inbound to current body"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names the vessel itself on impact too, not just in transit", async () => {
+    renderWidget();
+    emit(
+      [{ star: "Kerbol", distance: 41_000_000_000 }],
+      [
+        {
+          star: "Kerbol",
+          stormState: 2,
+          stormTime: PINNED_UT - 40,
+          stormDuration: 620,
+          dist: 41_000_000_000,
+          targetKind: KerbalismStormTargetKind.Vessel,
+          targetName: "Jool Transfer Probe",
+        },
+      ],
+    );
+    expect(
+      await screen.findByText("Impacting Jool Transfer Probe (this vessel)"),
+    ).toBeInTheDocument();
+  });
+
+  it("takes a body target from the wire without needing vessel.state to resolve", async () => {
+    renderWidget();
+    // The mod now names the body it keyed the slot off, so the derived
+    // parentBodyName is a fallback rather than the only source.
+    emit(
+      [{ star: "Kerbol", distance: KERBOL_DISTANCE_M }],
+      [
+        {
+          star: "Kerbol",
+          stormState: 1,
+          stormTime: PINNED_UT + 60,
+          stormDuration: 300,
+          dist: KERBOL_DISTANCE_M,
+          targetKind: KerbalismStormTargetKind.Body,
+          targetName: "Minmus",
+        },
+      ],
+    );
+    expect(await screen.findByText("Inbound to Minmus")).toBeInTheDocument();
+    // A body target reads plainly: the "(this vessel)" qualifier is only for
+    // the per-vessel case.
+    expect(
+      screen.queryByText("Inbound to Minmus (this vessel)"),
+    ).not.toBeInTheDocument();
   });
 
   it("falls back to a generic target phrase when vessel.state hasn't resolved yet", async () => {

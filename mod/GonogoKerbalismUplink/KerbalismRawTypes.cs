@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Sitrep.Contract;
 
 namespace Gonogo.KerbalismUplink
 {
@@ -112,9 +113,12 @@ namespace Gonogo.KerbalismUplink
     }
 
     /// <summary>
-    /// One (this vessel's current SOI body, star) CME slot. StormTime/StormDuration/Dist
-    /// are only meaningful when StormState != 0; KerbalismReflection.Solar only
-    /// fills them in that case, matching the contract's fair-vs-cheating rule.
+    /// One CME slot for one star: the shared per-body slot, or the vessel's own
+    /// private slot when it has no body SOI (TargetKind says which).
+    /// StormTime/StormDuration/Dist are only meaningful when StormState != 0;
+    /// KerbalismReflection.Solar only fills them in that case, matching the
+    /// contract's fair-vs-cheating rule. Target/TargetName always carry: they
+    /// describe which slot was read, not the storm's state.
     /// </summary>
     public sealed class StormEntryRaw
     {
@@ -124,6 +128,10 @@ namespace Gonogo.KerbalismUplink
         public double? StormTime;
         public double? StormDuration;
         public double? Dist;
+        /// <summary>Which slot this came from: the body's shared one, or the vessel's own.</summary>
+        public KerbalismStormTargetKind TargetKind = KerbalismStormTargetKind.Body;
+        /// <summary>Body name or vessel name, matching TargetKind.</summary>
+        public string TargetName = "";
     }
 
     /// <summary>KerbalismReflection.Solar's return bundle: every star's vantage + every affected storm slot, for one vessel.</summary>

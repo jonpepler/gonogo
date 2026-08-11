@@ -553,6 +553,8 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
     stormDuration: "s",
     stormState: "count",
     stormTime: "s",
+    targetKind: "enum",
+    targetName: "text",
   },
   "KerbcastCameraEntry": {
     cameraId: "id",

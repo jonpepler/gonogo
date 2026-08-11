@@ -518,7 +518,9 @@
       "star": "text",
       "stormDuration": "s",
       "stormState": "count",
-      "stormTime": "s"
+      "stormTime": "s",
+      "targetKind": "enum",
+      "targetName": "text"
     },
     "KerbcastCameraEntry": {
       "cameraId": "id",

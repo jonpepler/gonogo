@@ -352,6 +352,7 @@ public static class RtConfig
                 typeof(PhysicsMode),
                 typeof(FlightEndReason),
                 typeof(RosterCommsControlSource),
+                typeof(KerbalismStormTargetKind),
             });
 
         // --- Topic -> payload map (single source of truth for the SDK registry) ---

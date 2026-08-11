@@ -20,6 +20,7 @@ import { getWidget } from "../../scripts/widgets";
 import { snapshotWidgetMode } from "../test/widgetDomSnapshot";
 import binary from "./__fixtures__/binary.json";
 import fiveStars from "./__fixtures__/five-stars.json";
+import interplanetary from "./__fixtures__/interplanetary.json";
 import quiet from "./__fixtures__/quiet.json";
 import stormImpact from "./__fixtures__/storm-impact.json";
 import stormInbound from "./__fixtures__/storm-inbound.json";
@@ -33,6 +34,10 @@ const FIXTURES = {
   "storm-inbound": stormInbound,
   "storm-near-impact": stormNearImpact,
   "storm-impact": stormImpact,
+  // Solar orbit, so the CME targets the VESSEL: deliberately carries no
+  // `sw.targetBody`, since the target rides on the storm entry itself and
+  // there is no parent body to fall back to.
+  interplanetary,
 };
 
 const config = getWidget("space-weather");

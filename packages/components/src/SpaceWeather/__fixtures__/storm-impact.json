@@ -13,6 +13,8 @@
   "sw.storms": [
     {
       "star": "Kerbol",
+      "targetKind": 0,
+      "targetName": "Kerbin",
       "stormState": 2,
       "stormTime": 149469,
       "stormDuration": 300,
@@ -44,6 +46,8 @@
           "storms": [
             {
               "star": "Kerbol",
+              "targetKind": 0,
+              "targetName": "Kerbin",
               "stormState": 2,
               "stormTime": 149469,
               "stormDuration": 300,

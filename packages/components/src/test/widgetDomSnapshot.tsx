@@ -160,14 +160,15 @@ function resolveKerbalismSpaceWeatherWire(fixture: Fixture): unknown {
 /**
  * `sw.targetBody` -> the four `vessel.state` inputs (`vessel.orbit`,
  * `vessel.flight`, `vessel.identity`, `system.bodies`) that derive
- * `parentBodyName`: SpaceWeather's CME-target naming reads
- * `vessel.state.parentBodyName` (see that widget's own doc comment on
- * `StormCard` for why: the mod's storm capture is always keyed off this
- * vessel's current SOI body, no separate target field exists on the wire).
- * A single-body `system.bodies` table is enough, mirrors
- * `AtmosphereProfile`'s own `emitBody` test helper exactly. Absent key
- * means the widget falls back to its own "current body" placeholder text,
- * same as every other reshape here.
+ * `parentBodyName`: SpaceWeather's FALLBACK for CME-target naming, used only
+ * when a storm entry carries no `targetKind`/`targetName` of its own (a
+ * stream whose mod predates contract Minor 9; see that widget's own doc
+ * comment on `StormCard`). A single-body `system.bodies` table is enough,
+ * mirrors `AtmosphereProfile`'s own `emitBody` test helper exactly. Absent
+ * key means the widget falls back further, to its own "current body"
+ * placeholder text, same as every other reshape here. The `interplanetary`
+ * fixture deliberately omits it: a solar-orbit vessel has no parent body to
+ * name, which is the whole point of the per-vessel target.
  */
 function resolveVesselStateWire(
   fixture: Fixture,

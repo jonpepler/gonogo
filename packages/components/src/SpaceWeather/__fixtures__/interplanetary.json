@@ -1,0 +1,55 @@
+{
+  "_meta": {
+    "scenario": "interplanetary"
+  },
+  "t.universalTime": 149489,
+  "sw.stars": [
+    {
+      "star": "Kerbol",
+      "direction": { "x": 0.42, "y": -0.11, "z": 0.9 },
+      "distance": 17500000000
+    }
+  ],
+  "sw.storms": [
+    {
+      "star": "Kerbol",
+      "stormState": 1,
+      "stormTime": 149579,
+      "stormDuration": 386,
+      "dist": 17500000000,
+      "targetKind": 1,
+      "targetName": "Duna Surveyor 1"
+    }
+  ],
+  "sw.stormEjectionSpeed": 98931511.14,
+  "_stream": {
+    "carriedChannels": ["kerbalism.spaceweather"],
+    "pinnedUt": 149489,
+    "emits": [
+      {
+        "channel": "kerbalism.spaceweather",
+        "value": {
+          "stars": [
+            {
+              "star": "Kerbol",
+              "direction": { "x": 0.42, "y": -0.11, "z": 0.9 },
+              "distance": 17500000000
+            }
+          ],
+          "storms": [
+            {
+              "star": "Kerbol",
+              "stormState": 1,
+              "stormTime": 149579,
+              "stormDuration": 386,
+              "dist": 17500000000,
+              "targetKind": 1,
+              "targetName": "Duna Surveyor 1"
+            }
+          ],
+          "stormEjectionSpeed": 98931511.14
+        }
+      }
+    ]
+  }
+}

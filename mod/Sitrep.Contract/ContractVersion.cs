@@ -420,7 +420,21 @@ namespace Sitrep.Contract
         /// <c>local_docs/design/2026-08-10-kerbalism-solar-vantage-and-modifiers.md</c>
         /// and
         /// <c>local_docs/design/2026-08-10-kerbalism-modifier-product-feasibility.md</c>.</para>
+        ///
+        /// <para><b>Bumped 8 -&gt; 9:</b> named CME targets, including the
+        /// interplanetary case. <see cref="KerbalismStormEntry.TargetKind"/>
+        /// (the new <see cref="KerbalismStormTargetKind"/> enum) and
+        /// <see cref="KerbalismStormEntry.TargetName"/> name what each storm
+        /// slot is aimed at, so a vessel in solar orbit reads as its OWN target
+        /// rather than borrowing the body it happens to be reckoned against.
+        /// Kerbalism's <c>Storm.Update(Vessel)</c> overload rolls storms
+        /// per-vessel off <c>VesselData.stormDataByStar</c> for a craft with no
+        /// body SOI, a slot the capture previously never read at all. One new
+        /// enum plus two new nullable members on an existing
+        /// <c>[SitrepContract]</c> shape, nothing removed or retyped. See
+        /// <c>local_docs/design/2026-08-10-kerbalism-storm-generation-model.md</c>
+        /// Q2.</para>
         /// </summary>
-        public const int Minor = 8;
+        public const int Minor = 9;
     }
 }

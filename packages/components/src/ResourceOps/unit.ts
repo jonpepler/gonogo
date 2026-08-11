@@ -12,8 +12,9 @@ import type {
  *
  * Lives in its own module rather than the widget file so the built-in
  * contribution can name it without importing the widget back.
- * `mod/sitrep-sdk/src/api/contribution-slots.ts` mirrors it for facade-sealed
- * Uplinks, the same way every other slot's context type is mirrored.
+ * `gen-contribution-slots.mjs` inlines it into the sdk's generated mirror
+ * (`mod/sitrep-sdk/src/__generated__/contribution-slots.ts`) for
+ * facade-sealed Uplinks.
  */
 export type ResourceOpsUnit =
   | { kind: "drill"; drill: IsruDrillEntry }

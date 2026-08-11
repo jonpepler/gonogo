@@ -1088,13 +1088,14 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // "TestFlight fills it; null for Kerbalism" and vice versa. Naming both is
       // the contract's job.
       "mod/Sitrep.Contract/Reliability.cs",
-      // contribution-slots.ts: the SDK's mirror of the host-declared
-      // contribution slots. `ship-map.part-meters` / `ship-map.part-meta`
-      // declare `kerbalism.profile` / `kerbalism.lifesupport` as the Topics a
+      // contribution-slots.ts: the SDK's GENERATED mirror of the
+      // host-declared contribution slots (gen-contribution-slots.mjs).
+      // `ship-map.part-meters` / `ship-map.part-meta` declare
+      // `kerbalism.profile` / `kerbalism.lifesupport` as the Topics a
       // contribution to those slots may read, because that IS the slot's
       // contract. String literal types in a slot declaration, not a payload
       // type and not a TopicId: nothing kerbalism-specific is imported.
-      "mod/sitrep-sdk/src/api/contribution-slots.ts",
+      "mod/sitrep-sdk/src/__generated__/contribution-slots.ts",
       // wrap-units.ts (the hand-written decoder, not a generated map): its
       // name-keyed-map branch cites kerbalism.lifesupport.rates as the case that
       // forced it, since every earlier name-keyed channel used a nested SHAPE as

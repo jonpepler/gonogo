@@ -24,3 +24,18 @@ export const WidgetMetaContext = createContext<WidgetMetaContextValue | null>(
 export function useWidgetMeta(): WidgetMetaContextValue | null {
   return useContext(WidgetMetaContext);
 }
+
+/**
+ * Widget-scoped slot-id completion: `${componentId}.${segment}`. This is the
+ * one irreducible fact of a component-led slot: a reusable component cannot
+ * statically know which widget mounts it, so the id's first segment resolves
+ * from context at mount, exactly the completion the automatic badges slot
+ * already does (`useWidgetBadges`). Serves both extension types: pass the
+ * result to `<AugmentSlot name={...}>` for a component-led augment slot, or
+ * read it through `useComponentContributions` for a contribution slot.
+ * Null outside a widget (a bare mount or test): no slot exists there.
+ */
+export function useWidgetSlotId(segment: string): string | null {
+  const meta = useWidgetMeta();
+  return meta ? `${meta.componentId}.${segment}` : null;
+}

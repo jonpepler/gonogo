@@ -144,13 +144,14 @@ export type SlotProps<S extends string> = S extends keyof SlotRegistry
 /**
  * Declaration-merging seam for the contribution model (contribution-slots-
  * spec §3-4), mirrors `SlotRegistry` above: an augmenting package (in
- * practice today, `mod/sitrep-sdk/src/api/contribution-slots.ts`) merges a
- * contribution slot id into this interface. Empty until the first
- * first-party contribution slot lands (Application phase, a separate
- * follow-up plan); this base declaration is what lets that satellite file's
- * `declare module "./types"` block be recognised as an AUGMENTATION of an
- * existing export rather than a fresh ambient module declaration (which TS
- * rejects for a relative specifier).
+ * practice today, the GENERATED
+ * `mod/sitrep-sdk/src/__generated__/contribution-slots.ts`, emitted by
+ * `scripts/gen-contribution-slots.mjs` from the widgets' own declare-module
+ * blocks) merges a contribution slot id into this interface. This base
+ * declaration is what lets that satellite file's `declare module
+ * "../api/types"` block be recognised as an AUGMENTATION of an existing
+ * export rather than a fresh ambient module declaration (which TS rejects
+ * for a relative specifier).
  */
 // biome-ignore lint/suspicious/noEmptyInterface: declaration-merging seam
 export interface ContributionRegistry {}

@@ -29,11 +29,12 @@ import { getHost } from "./host";
 // merge lives here rather than in packages/components). No named export
 // added to the barrel by this import.
 import "./slots";
-// Side-effect only: carries the `ContributionRegistry` declaration-merge
-// scaffold (Phase 1 of the contributions primitive; see ./contribution-
-// slots.ts's own header). Same reasoning as the `./slots` import above, one
-// merge target per declaration-merge seam.
-import "./contribution-slots";
+// Side-effect only: carries the `ContributionRegistry` declaration-merge,
+// GENERATED from the widgets' own declare-module blocks by
+// `scripts/gen-contribution-slots.mjs` (single source of truth: the widget's
+// declaration; no hand-kept mirror, no conformance ratchet). Same reasoning
+// as the `./slots` import above, one merge target per declaration-merge seam.
+import "../__generated__/contribution-slots";
 import type {
   ActionDefinition,
   ActionHandlers,

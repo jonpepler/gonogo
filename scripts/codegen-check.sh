@@ -35,6 +35,7 @@ snapshot() {
 BEFORE="$(snapshot)"
 bash mod/codegen.sh
 node scripts/gen-unit-kinds.mjs
+node scripts/gen-contribution-slots.mjs
 AFTER="$(snapshot)"
 
 if [ "$BEFORE" != "$AFTER" ]; then

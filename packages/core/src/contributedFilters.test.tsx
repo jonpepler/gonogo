@@ -2,13 +2,19 @@ import type { FilterEntry } from "@ksp-gonogo/sitrep-sdk";
 import { fireEvent, render, screen, waitFor } from "@ksp-gonogo/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { WidgetMetaContext } from "./contexts/WidgetMetaContext";
-import { useContributedFilters } from "./contributedFilters";
+import { useFilterSelection } from "./contributedFilters";
 import { clearContributions, registerContribution } from "./contributions";
-import { ContributionsProvider } from "./contributionsRuntime";
+import { useComponentContributions } from "./contributionsRuntime";
 
-// A fixture list widget, standing in for any host with a filterable list. Note
-// what it does NOT contain: any knowledge of what a filter means. It renders
-// whatever facets arrived and applies them, which is the whole mechanism.
+// A fixture filter component inside a fixture widget, standing in for
+// `slots/ContributedFilters.tsx` inside any host with a filterable list
+// (custom markup here so every assertion can see group/selection internals
+// the real FilterBar doesn't spell out). Note what the WIDGET does NOT
+// contain: any knowledge of what a filter means, any slot id, any
+// contribution read. The component-led read (`useComponentContributions`,
+// completing `fixture-list.filters` from WidgetMetaContext alone, with no
+// ContributionsProvider mounted) plus the selection logic is the whole
+// mechanism.
 interface Row {
   id: string;
   colour: string;
@@ -35,7 +41,8 @@ beforeEach(() => {
 });
 
 function ListWidget() {
-  const filters = useContributedFilters("fixture-list.filters");
+  const entries = useComponentContributions("filters");
+  const filters = useFilterSelection<Row>(entries);
   const rows = filters.apply(ROWS);
 
   return (
@@ -73,14 +80,9 @@ function ListWidget() {
 function renderWidget() {
   return render(
     <WidgetMetaContext.Provider
-      value={{
-        componentId: "fixture-list",
-        contributionSlots: ["fixture-list.filters"],
-      }}
+      value={{ componentId: "fixture-list", contributionSlots: [] }}
     >
-      <ContributionsProvider>
-        <ListWidget />
-      </ContributionsProvider>
+      <ListWidget />
     </WidgetMetaContext.Provider>,
   );
 }
@@ -106,7 +108,7 @@ async function visibleRows(): Promise<string[]> {
   return items.map((item) => item.textContent ?? "");
 }
 
-describe("useContributedFilters", () => {
+describe("useComponentContributions + useFilterSelection", () => {
   it("shows everything until an operator selects a facet", async () => {
     registerColourFilters(["red", "blue"]);
     renderWidget();
@@ -304,14 +306,9 @@ describe("useContributedFilters", () => {
     });
     rerender(
       <WidgetMetaContext.Provider
-        value={{
-          componentId: "fixture-list",
-          contributionSlots: ["fixture-list.filters"],
-        }}
+        value={{ componentId: "fixture-list", contributionSlots: [] }}
       >
-        <ContributionsProvider>
-          <ListWidget />
-        </ContributionsProvider>
+        <ListWidget />
       </WidgetMetaContext.Provider>,
     );
 

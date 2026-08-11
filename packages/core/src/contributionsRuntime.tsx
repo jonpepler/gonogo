@@ -19,7 +19,7 @@ import {
   useRef,
   useSyncExternalStore,
 } from "react";
-import { useWidgetMeta } from "./contexts/WidgetMetaContext";
+import { useWidgetMeta, useWidgetSlotId } from "./contexts/WidgetMetaContext";
 import {
   type AnyContribution,
   type Contributed,
@@ -117,20 +117,18 @@ function entriesUnchanged(
  * contribution's `deps` once per Sitrep frame, calls each contribution's
  * `compute()` in a plain loop (no hooks, no Rules-of-Hooks problem: the
  * registered set may change freely at runtime), isolates a throwing
- * contribution with try/catch, and writes the aggregated array into the
- * per-widget store under this slot's key.
+ * contribution with try/catch, and returns the aggregated array,
+ * referentially stable while every entry is unchanged.
  *
- * Isolated into its own component (mirrors AugmentSlot.tsx's AugmentEntry)
- * so each slot's own hooks have a stable position regardless of how many
- * sibling slots the widget declares.
+ * Two consumers: `SlotAggregator` (a widget-led slot declared in
+ * `contributionSlots`, plus the automatic badges slot) writes the result
+ * into the per-widget store for `useContributions` readers anywhere in the
+ * widget's tree; `useComponentContributions` (a component-led slot) consumes
+ * it in place, no store round-trip, because the mounting component is the
+ * slot's only reader. An empty `slot` (a component-led slot mounted outside
+ * any widget) aggregates nothing and records no budget.
  */
-function SlotAggregator({
-  slot,
-  store,
-}: {
-  slot: string;
-  store: Store<ContributionSlotEntry>;
-}) {
+function useSlotEntries(slot: string): readonly Contributed<unknown>[] {
   const contribs = useSyncExternalStore(
     onContributionsChange,
     () => getContributionsForSlotCached(slot),
@@ -238,9 +236,21 @@ function SlotAggregator({
   }, [telemetryStore, unionDeps]);
 
   const topicValues = useSyncExternalStore(subscribe, getSnapshot);
-  const budget = useMemo(() => getSlotPerfBudget(slot), [slot]);
+  const budget = useMemo(
+    () => (slot === "" ? null : getSlotPerfBudget(slot)),
+    [slot],
+  );
 
-  useEffect(() => {
+  // `compute()` is documented pure, so running it during render (memoised on
+  // its actual inputs) is sound, including under StrictMode's double render.
+  // The ref is a memo cache: when every recomputed entry is the SAME object
+  // as last time, the previous array is returned so consumers keyed on the
+  // array's identity stay quiet across frames that changed nothing.
+  const lastEntriesRef = useRef<readonly Contributed<unknown>[]>(EMPTY_ENTRIES);
+  const entries = useMemo(() => {
+    // Recorded per recompute attempt (every frame with live inputs), matching
+    // the budget's "entries recomputed/sec" name, not per changed result.
+    budget?.record();
     const collected: Contributed<unknown>[] = [];
     for (const def of contribs) {
       if (
@@ -267,14 +277,76 @@ function SlotAggregator({
         );
       }
     }
-    budget.record();
+    if (entriesUnchanged(lastEntriesRef.current, collected)) {
+      return lastEntriesRef.current;
+    }
+    lastEntriesRef.current = collected;
+    return collected;
+  }, [contribs, topicValues, client, budget]);
+
+  return entries;
+}
+
+/**
+ * The read half of a COMPONENT-LED contribution slot: a reusable component
+ * (a filter bar, a chip strip) that renders contributed data declares only
+ * its own second segment, and the full id completes to
+ * `${componentId}.<segment>` from the mounting widget's context, exactly the
+ * automatic badges slot's model. The widget mounts the component and is
+ * otherwise unconcerned: no `contributionSlots` listing, no hook call, no
+ * slot id anywhere in the widget body.
+ *
+ * Untyped by design, same posture as `useWidgetBadges`: the segment is a
+ * runtime string, never a member of the declaration-merged
+ * `ContributionRegistry`, so the component (which owns its entry type
+ * generically) casts the result. Contributors are unaffected: the
+ * widget-side `ContributionRegistry` line still types `registerContribution`
+ * for the completed id, identically to a widget-led slot.
+ *
+ * Aggregates in place (deps union, `requires` gating, PerfBudget, error
+ * isolation, all shared with the widget-led pipeline) rather than through
+ * the per-widget store: the mounting component is the slot's only reader, so
+ * no fanout is needed and the hook works even without a
+ * `ContributionsProvider`. Do not ALSO list a component-led slot in the
+ * widget's `contributionSlots`: that would stand up a second, store-side
+ * aggregation of the same slot.
+ *
+ * Outside a widget (bare mount, test without WidgetMetaContext) there is no
+ * slot, and the hook returns a stable empty array.
+ */
+export function useComponentContributions(
+  segment: string,
+): readonly Contributed<unknown>[] {
+  const slotId = useWidgetSlotId(segment);
+  return useSlotEntries(slotId ?? "");
+}
+
+/**
+ * A widget-led slot's store writer: runs the shared aggregation pipeline and
+ * publishes the result into the per-widget store under this slot's key, for
+ * `useContributions` readers anywhere in the widget's tree.
+ *
+ * Isolated into its own component (mirrors AugmentSlot.tsx's AugmentEntry)
+ * so each slot's own hooks have a stable position regardless of how many
+ * sibling slots the widget declares.
+ */
+function SlotAggregator({
+  slot,
+  store,
+}: {
+  slot: string;
+  store: Store<ContributionSlotEntry>;
+}) {
+  const entries = useSlotEntries(slot);
+
+  useEffect(() => {
     const current = store.getSnapshot().find((e) => e.id === slot);
-    if (current && entriesUnchanged(current.entries, collected)) return;
-    store.update(slot, { entries: collected });
+    if (current && entriesUnchanged(current.entries, entries)) return;
+    store.update(slot, { entries });
     // register() is a no-op-safe upsert on first write: update() alone
     // returns early on an unknown id, so seed the entry once.
-    if (!current) store.register({ id: slot, entries: collected });
-  }, [contribs, topicValues, slot, store, budget, client]);
+    if (!current) store.register({ id: slot, entries });
+  }, [entries, slot, store]);
 
   return null;
 }

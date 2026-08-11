@@ -51,7 +51,6 @@ import type {
   IsruConverterEntry,
   IsruDrillEntry,
 } from "../__generated__/contract";
-import type { FilterEntry } from "./types";
 
 /** Mirrors ui-kit's `MeterTone` (`packages/ui-kit/src/Meter.tsx`). */
 export type ShipMapMeterTone = "neutral" | "go" | "warn" | "nogo" | "info";
@@ -78,27 +77,42 @@ export interface ShipMapPartMetaEntry {
 
 // --- ResourceOps (packages/components/src/ResourceOps) ---------------------
 //
-// The first FILTER slot (contribution-slots-spec §15). Its entry is the
-// generic `FilterEntry` over the widget's own row union, so the mirror only
-// has to carry that union: the entry shape itself is owned by `./types.ts`
-// and needs no per-slot duplicate.
+// NOT a mirror: this is the CANONICAL definition. ResourceOps' rows are the
+// contract the widget offers contributors, and the widget imports this type
+// back (`ResourceOps/unit.ts` re-exports it), so there is no second copy to
+// drift and nothing for a conformance test to check. It can live here, unlike
+// the widget-owned context mirrors above, because it is built entirely from
+// GENERATED contract types this package already owns: no leaf cycle.
 //
-// `IsruDrillEntry`/`IsruConverterEntry` are GENERATED contract types this
-// package already owns, so this one is a real import rather than a hand-kept
-// mirror: no leaf cycle exists inside the sdk's own generated surface.
+// The `ContributionRows` merge below is what publishes the name: the widget's
+// `<ContributedFilters rows="ResourceOpsUnit" items={units}>` mount is typed
+// against it, and the derived component-led registry (`ComponentSlotRecord`,
+// ./types.ts) resolves `"filters.ResourceOpsUnit"` through it. The
+// `ContributionRowTopics` merge types the Topic values a contribution to
+// those rows most plausibly reads (the data the rows are built from).
 
-/** Mirrors `ResourceOpsUnit` (`ResourceOps/index.tsx`): one row of the
- *  widget's list, tagged so a filter can tell the two kinds apart. */
+/** One row of ResourceOps' list, tagged so a filter can tell the two kinds
+ *  apart. The widget filters drills and converters as one set: an axis that
+ *  only makes sense for converters has to be able to reject a drill. */
 export type ResourceOpsUnit =
   | { kind: "drill"; drill: IsruDrillEntry }
   | { kind: "converter"; converter: IsruConverterEntry };
 
 declare module "./types" {
+  interface ContributionRows {
+    ResourceOpsUnit: ResourceOpsUnit;
+  }
+
+  interface ContributionRowTopics {
+    ResourceOpsUnit: "isru.drills" | "isru.converters";
+  }
+
+  // Widget-led slots only (the WIDGET renders these entries with its own
+  // chrome, so their ids are declared by hand on the widget and mirrored by
+  // hand here, conformance-test-guarded). Component-led slots never appear
+  // in this block: their lines are generated into
+  // `../__generated__/contribution-slots.gen.ts` from what actually mounts.
   interface ContributionRegistry {
-    "resource-ops.filters": {
-      entry: FilterEntry<ResourceOpsUnit>;
-      topics: "isru.drills" | "isru.converters";
-    };
     "ship-map.part-meters": {
       entry: ShipMapPartMeterEntry;
       topics: "vessel.parts" | "kerbalism.profile";

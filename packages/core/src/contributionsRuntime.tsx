@@ -11,12 +11,15 @@ import {
 import type { TopicId } from "@ksp-gonogo/sitrep-sdk";
 import { createPanelStore, createStore, type Store } from "@ksp-gonogo/ui-kit";
 import {
+  createContext,
   type ReactElement,
   type ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
 import { useWidgetMeta } from "./contexts/WidgetMetaContext";
@@ -131,10 +134,25 @@ function SlotAggregator({
   slot: string;
   store: Store<ContributionSlotEntry>;
 }) {
-  const contribs = useSyncExternalStore(
+  const registered = useSyncExternalStore(
     onContributionsChange,
     () => getContributionsForSlotCached(slot),
     () => getContributionsForSlotCached(slot),
+  );
+
+  // `onlyIn` narrows a contribution to one hosting widget. Applied here, at
+  // the per-widget aggregator, because a component-led slot id is
+  // component-scoped: the same id aggregates independently in every widget
+  // that mounts its component, and this is the one point that knows which
+  // widget this copy belongs to.
+  const meta = useWidgetMeta();
+  const widgetId = meta?.componentId;
+  const contribs = useMemo(
+    () =>
+      registered.filter(
+        (def) => def.onlyIn === undefined || def.onlyIn === widgetId,
+      ),
+    [registered, widgetId],
   );
 
   const unionDeps = useMemo(() => {
@@ -279,33 +297,196 @@ function SlotAggregator({
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Component-led slots: a reusable component (core's `ContributedFilters`,
+// future kin) makes its slot live by BEING MOUNTED inside a widget, the same
+// way the automatic `${componentId}.badges` slot already works, generalised.
+// The slot id is `<segment>.<rowsName>` (segment owned by the component,
+// rows named by the widget's `rows` prop against the sdk's ContributionRows
+// seam), so it is component-scoped, NOT widget-scoped: the same id is live
+// in every widget that renders the component over those rows, and each
+// widget's own provider aggregates its own copy. The component announces the
+// id into the per-widget ref-counted store below; the widget writes nothing
+// (no `contributionSlots` entry, no registry block, no hook call).
+// ---------------------------------------------------------------------------
+
+/** One live component-led slot, as reported to `onSlotAnnounce` listeners. */
+export interface MountedSlotAnnouncement {
+  /** The hosting widget (registered ComponentDefinition id). */
+  widgetId: string;
+  /** The component-scoped slot id, `<segment>.<rowsName>`. */
+  slotId: string;
+}
+
+/**
+ * Per-widget-instance record of which component-led slots are currently
+ * mounted. Ref-counted: the same component mounted twice in one widget
+ * shares one slot (and one aggregator) by design, and StrictMode's
+ * mount/unmount/mount cycle never tears an announced slot down.
+ */
+class MountedSlotsStore {
+  private records = new Map<string, { count: number }>();
+  private listeners = new Set<() => void>();
+  private snapshot: readonly string[] = Object.freeze([]);
+
+  announce(slotId: string): () => void {
+    const record = this.records.get(slotId);
+    if (record) {
+      record.count += 1;
+    } else {
+      this.records.set(slotId, { count: 1 });
+      this.rebuild();
+    }
+    let withdrawn = false;
+    return () => {
+      if (withdrawn) return;
+      withdrawn = true;
+      const current = this.records.get(slotId);
+      if (!current) return;
+      current.count -= 1;
+      if (current.count <= 0) {
+        this.records.delete(slotId);
+        this.rebuild();
+      }
+    };
+  }
+
+  getSnapshot(): readonly string[] {
+    return this.snapshot;
+  }
+
+  subscribe(cb: () => void): () => void {
+    this.listeners.add(cb);
+    return () => {
+      this.listeners.delete(cb);
+    };
+  }
+
+  private rebuild(): void {
+    this.snapshot = Object.freeze(Array.from(this.records.keys()));
+    for (const cb of this.listeners) cb();
+  }
+}
+
+const MountedSlotsContext = createContext<MountedSlotsStore | null>(null);
+
+// Global announce tap: fires for every component-led slot announcement in
+// any widget. The codegen renders each widget and collects these; debug
+// surfaces (a future dev-site "live slots" list) read the same stream.
+const slotAnnounceListeners = new Set<(a: MountedSlotAnnouncement) => void>();
+
+export function onSlotAnnounce(
+  cb: (announcement: MountedSlotAnnouncement) => void,
+): () => void {
+  slotAnnounceListeners.add(cb);
+  return () => {
+    slotAnnounceListeners.delete(cb);
+  };
+}
+
+const EMPTY_MOUNTED: readonly string[] = Object.freeze([]);
+
+/**
+ * The component-led half of the contribution system, and the whole of a
+ * slot-bearing component's contract with it: compose the component-scoped
+ * `<segment>.<rowsName>` slot id, keep it live (aggregated) in the hosting
+ * widget while mounted, and read its entries. Declaring the slot and reading
+ * it are the same act, so there is nothing to keep in sync and nothing for
+ * the hosting widget to know about.
+ *
+ * Both id halves are statically declared (the component's segment constant;
+ * the rows name in the sdk's `ContributionRows` seam), so the id never
+ * depends on which widget this happens to be: contributors target it with no
+ * registry line and no codegen behind it, and reach every widget that
+ * renders these rows (narrow with `ContributionDefinition.onlyIn`). Outside
+ * a `ContributionsProvider` (a bare test render, a panel outside the
+ * dashboard) the slot still reads, it just aggregates nothing: `entries` is
+ * stably empty, the same posture as `useWidgetBadges`.
+ *
+ * `E` is asserted by the calling component, which owns the slot's entry
+ * shape: the same single-cast posture `useWidgetBadges` documents for the
+ * automatic badges slot.
+ */
+export function useSlotContributions<E>(
+  segment: string,
+  rows: string,
+): { slotId: string; entries: readonly Contributed<E>[] } {
+  if (segment.includes(".") || rows.includes(".")) {
+    throw new Error(
+      `Slot segment "${segment}" / rows "${rows}" must not contain "."; ` +
+        `slot ids are two-segment ("<segment>.<rowsName>").`,
+    );
+  }
+  const meta = useWidgetMeta();
+  const store = useContext(MountedSlotsContext);
+  const slotId = `${segment}.${rows}`;
+  const widgetId = meta?.componentId;
+
+  useEffect(() => {
+    const withdraw = store?.announce(slotId);
+    if (widgetId) {
+      const announcement: MountedSlotAnnouncement = { widgetId, slotId };
+      for (const cb of slotAnnounceListeners) cb(announcement);
+    }
+    return withdraw;
+  }, [slotId, widgetId, store]);
+
+  const entries = useContributionsBySlotId(slotId);
+  return { slotId, entries: entries as readonly Contributed<E>[] };
+}
+
 export function ContributionsProvider({
   children,
 }: {
   children?: ReactNode;
 }): ReactElement {
+  const [mountedSlots] = useState(() => new MountedSlotsStore());
   return (
-    <ContributionsPanelStore.Provider>
-      <ContributionsAggregation>{children}</ContributionsAggregation>
-    </ContributionsPanelStore.Provider>
+    <MountedSlotsContext.Provider value={mountedSlots}>
+      <ContributionsPanelStore.Provider>
+        <ContributionsAggregation mountedSlots={mountedSlots}>
+          {children}
+        </ContributionsAggregation>
+      </ContributionsPanelStore.Provider>
+    </MountedSlotsContext.Provider>
   );
 }
 
-function ContributionsAggregation({ children }: { children?: ReactNode }) {
+function ContributionsAggregation({
+  children,
+  mountedSlots,
+}: {
+  children?: ReactNode;
+  mountedSlots: MountedSlotsStore;
+}) {
   const meta = useWidgetMeta();
   const store = ContributionsPanelStore.useStore();
-  // The standard badges slot is ALWAYS aggregated, on top of whatever the
-  // widget itself declared (contribution-slots-spec §13.2: automatic, zero
-  // widget-side input). Deduped in case a widget also explicitly lists its
-  // own badges slot in contributionSlots (harmless either way).
+  const subscribeMounted = useCallback(
+    (onChange: () => void) => mountedSlots.subscribe(onChange),
+    [mountedSlots],
+  );
+  const getMounted = useCallback(
+    () => (meta ? mountedSlots.getSnapshot() : EMPTY_MOUNTED),
+    [mountedSlots, meta],
+  );
+  const mounted = useSyncExternalStore(
+    subscribeMounted,
+    getMounted,
+    getMounted,
+  );
+  // The union of everything live for this widget: its declared widget-led
+  // slots, the standard badges slot (contribution-slots-spec §13.2:
+  // automatic, zero widget-side input), and every component-led slot a
+  // mounted component announced. Deduped: an explicit listing of any of
+  // them is harmless.
   const slots = useMemo(() => {
-    const declared = meta?.contributionSlots ?? [];
+    const declared: readonly string[] = meta?.contributionSlots ?? [];
     if (!meta) return declared;
-    const badgesSlot = `${meta.componentId}.badges`;
-    return declared.includes(badgesSlot as never)
-      ? declared
-      : [...declared, badgesSlot as never];
-  }, [meta]);
+    const union = new Set<string>(declared);
+    union.add(`${meta.componentId}.badges`);
+    for (const slot of mounted) union.add(slot);
+    return Array.from(union);
+  }, [meta, mounted]);
 
   if (!store) return <>{children}</>;
 

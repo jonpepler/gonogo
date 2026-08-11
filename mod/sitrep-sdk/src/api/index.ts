@@ -34,6 +34,12 @@ import "./slots";
 // slots.ts's own header). Same reasoning as the `./slots` import above, one
 // merge target per declaration-merge seam.
 import "./contribution-slots";
+
+// The canonical row type behind the `ContributionRows["ResourceOpsUnit"]`
+// seam member (see ./contribution-slots.ts): exported so the widget can
+// import it back instead of keeping a copy.
+export type { ResourceOpsUnit } from "./contribution-slots";
+
 import type {
   ActionDefinition,
   ActionHandlers,
@@ -75,10 +81,14 @@ export type {
   ComponentDefinition,
   ComponentProps,
   ComponentRequirement,
+  ComponentSlotId,
+  ComponentSlotRecord,
   ConfigComponentProps,
   ConfigField,
   ContributionEntry,
   ContributionRegistry,
+  ContributionRows,
+  ContributionRowTopics,
   DataKey,
   DataRequirement,
   DataSource,
@@ -103,6 +113,7 @@ export type {
   SlotId,
   SlotProps,
   SlotRegistry,
+  SlotSegmentEntries,
   SourceBackedSetting,
   StreamStatusValue,
   TelemetryClient,

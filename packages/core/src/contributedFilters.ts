@@ -1,21 +1,18 @@
 import type { FilterEntry, FilterSelection } from "@ksp-gonogo/sitrep-sdk";
 import { useCallback, useMemo, useState } from "react";
-import type { ContributionEntry, ContributionSlotId } from "./contributions";
-import { useContributionsBySlotId } from "./contributionsRuntime";
+import type { Contributed } from "./contributions";
 
 // ---------------------------------------------------------------------------
-// Contributable list filters (contribution-slots-spec §15), the host half.
-//
-// A widget with a filterable list declares a `<widget-id>.filters` slot whose
-// entry is a `FilterEntry` over its own row type, calls this hook, hands
-// `groups` to ui-kit's `<FilterBar>` and its rows to `apply`. It never learns
-// what any filter means: the taxonomy belongs to whoever contributed it, which
-// is the whole point (the app for a generic axis, an Uplink for its mod's own).
+// Contributable list filters (contribution-slots-spec §15), the ENGINE half:
+// grouping, selection state, and application over an already-read entry
+// array. The slot half (composing the slot id, keeping it aggregated,
+// reading the entries) lives in `./slots/ContributedFilters.tsx`, the
+// component a widget actually mounts; no widget calls into this module.
 //
 // Everything else the mechanism needs already exists on the contributions
 // registry underneath: Domain gating (`requires`), ordering (`priority`),
 // per-slot PerfBudget, error isolation, owner namespacing. This module adds
-// only what is specific to filters: grouping, selection state, and application.
+// only what is specific to filters.
 // ---------------------------------------------------------------------------
 
 /** One facet, as the host renders it. */
@@ -36,7 +33,7 @@ export interface ContributedFilterGroup {
   options: readonly ContributedFilterOption[];
 }
 
-export interface ContributedFilters<T> {
+export interface ContributedFiltersApi<T> {
   /** Render-ready axes, in contribution order. Empty when nothing contributed. */
   groups: readonly ContributedFilterGroup[];
   /** Replace one group's selection. Pass an empty array to clear it. */
@@ -47,10 +44,6 @@ export interface ContributedFilters<T> {
   activeCount: number;
 }
 
-/** The row type a slot's filters run against, read back off its entry type. */
-type FilterItem<S extends string> =
-  ContributionEntry<S> extends FilterEntry<infer T> ? T : unknown;
-
 interface ResolvedOption {
   optionId: string;
   groupId: string;
@@ -58,9 +51,9 @@ interface ResolvedOption {
 }
 
 /**
- * Read a widget's contributed filters, hold the operator's selection, and apply
- * it. Show-all is the default and the resting state: with nothing selected
- * every item passes, so nothing is hidden until an operator hides it.
+ * Hold the operator's selection over a slot's contributed filter entries, and
+ * apply it. Show-all is the default and the resting state: with nothing
+ * selected every item passes, so nothing is hidden until an operator hides it.
  *
  * Stale filters need no handling by the caller. A contribution stops emitting a
  * facet as soon as the data behind it is gone (a resource this vessel no longer
@@ -70,10 +63,9 @@ interface ResolvedOption {
  * pruned from state on the way through: a facet that comes back (a vessel
  * docking, a stream reconnecting) restores the operator's choice with it.
  */
-export function useContributedFilters<S extends ContributionSlotId>(
-  slot: S,
-): ContributedFilters<FilterItem<S>> {
-  const entries = useContributionsBySlotId(slot);
+export function useFilterEngine<T>(
+  entries: readonly Contributed<unknown>[],
+): ContributedFiltersApi<T> {
   const [selected, setSelected] = useState<Record<string, readonly string[]>>(
     {},
   );
@@ -156,7 +148,7 @@ export function useContributedFilters<S extends ContributionSlotId>(
   );
 
   const apply = useCallback(
-    (items: readonly FilterItem<S>[]): readonly FilterItem<S>[] => {
+    (items: readonly T[]): readonly T[] => {
       if (live.size === 0) return items;
       const predicatesByGroup = new Map<
         string,

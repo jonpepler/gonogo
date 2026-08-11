@@ -28,8 +28,11 @@ export * from "./contributedFilters";
 export * from "./contributions";
 export {
   ContributionsProvider,
+  type MountedSlotAnnouncement,
+  onSlotAnnounce,
   useContributions,
   useContributionsBySlotId,
+  useSlotContributions,
 } from "./contributionsRuntime";
 export * from "./fog";
 export * from "./fogReveal";
@@ -69,6 +72,7 @@ export * from "./settings/SettingsContext";
 export * from "./settings/SettingsService";
 export * from "./settings/store";
 export * from "./settingsTabs";
+export * from "./slots/ContributedFilters";
 export * from "./stock-bodies";
 export * from "./telemachus";
 export * from "./testing/installDomStubs";

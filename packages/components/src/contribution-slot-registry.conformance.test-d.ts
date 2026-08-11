@@ -1,44 +1,29 @@
 // ---------------------------------------------------------------------------
-// Drift guard: the `@ksp-gonogo/sitrep-sdk` `ContributionRegistry` MIRROR
-// (`mod/sitrep-sdk/src/api/contribution-slots.ts`) vs core's real
-// `ContributionRegistry` (`packages/core/src/contributions.ts`).
+// Drift guard for WIDGET-LED slots only: the `@ksp-gonogo/sitrep-sdk`
+// `ContributionRegistry` MIRROR (`mod/sitrep-sdk/src/api/
+// contribution-slots.ts`) vs core's real `ContributionRegistry`
+// (`packages/core/src/contributions.ts`).
 //
 // Same reasoning as `slot-registry.conformance.test-d.ts`'s own header: the
 // sdk leaf cannot import `@ksp-gonogo/components` or `@ksp-gonogo/core`
 // (would form a turbo `^build` cycle, components and core both already
-// depend on the sdk), so its `ContributionRegistry` is a hand-mirrored
-// declaration-merge, kept honest here (this package devDepends on the sdk
-// AND is where every first-party contribution slot will eventually be
-// owned, same split as the augment-slot mirror).
+// depend on the sdk), so a widget-led slot's sdk declaration is a
+// hand-mirrored duplicate of the widget's own, kept honest here.
 //
-// `ship-map.part-meters` / `ship-map.part-meta` (spec §13.4, the framework's
-// self-contribution flagship) are the first real slots to land here, so this
-// file grows real per-key bidirectional checks (mirrors ↔ core's real
-// registry, mirrors ↔ the real widget-owned entry types), exactly the same
-// two-directions-per-slot pattern `slot-registry.conformance.test-d.ts`
-// established for `SlotRegistry`.
+// COMPONENT-LED slots (`filters.ResourceOpsUnit` and kin) never appear in this
+// file: they have exactly one declaration (the GENERATED
+// `mod/sitrep-sdk/src/__generated__/contribution-slots.gen.ts`, resolved
+// through sdk-owned seams), so there is no second copy to drift and nothing
+// to conformance-check. Migrating a widget-led slot onto a reusable
+// slot-bearing component deletes its section here.
 // ---------------------------------------------------------------------------
 
-import type {
-  ContributionEntry as CoreContributionEntry,
-  ContributionRegistry as CoreContributionRegistry,
-  FilterEntry,
-} from "@ksp-gonogo/core";
-import type {
-  ContributionEntry as SdkContributionEntry,
-  ContributionRegistry as SdkContributionRegistry,
-} from "@ksp-gonogo/sitrep-sdk";
-import type { ResourceOpsUnit } from "./ResourceOps";
+import type { ContributionEntry as CoreContributionEntry } from "@ksp-gonogo/core";
+import type { ContributionEntry as SdkContributionEntry } from "@ksp-gonogo/sitrep-sdk";
 import type { ShipMapPartMetaEntry, ShipMapPartMeterEntry } from "./ShipMap";
 
 type Assignable<A, B> = A extends B ? true : false;
 type Expect<T extends true> = T;
-
-// Every key the sdk mirrors must exist, with an assignable shape, on core's
-// real registry.
-type _SdkKeysAssignableToCore = Expect<
-  Assignable<keyof SdkContributionRegistry, keyof CoreContributionRegistry>
->;
 
 // --- ship-map.part-meters: checked both directions -------------------------
 
@@ -88,40 +73,8 @@ type _ShipMapPartMetaRealBack = Expect<
   Assignable<ShipMapPartMetaEntry, SdkContributionEntry<"ship-map.part-meta">>
 >;
 
-// --- resource-ops.filters: checked both directions --------------------------
-//
-// The first FILTER slot (spec §15). Its entry is the generic `FilterEntry` over
-// the widget's own row union, so the mirror carries that union and this pair of
-// checks is what keeps the two copies of it from drifting.
-
-type _ResourceOpsFilters = Expect<
-  Assignable<
-    SdkContributionEntry<"resource-ops.filters">,
-    CoreContributionEntry<"resource-ops.filters">
-  >
->;
-type _ResourceOpsFiltersBack = Expect<
-  Assignable<
-    CoreContributionEntry<"resource-ops.filters">,
-    SdkContributionEntry<"resource-ops.filters">
-  >
->;
-type _ResourceOpsFiltersReal = Expect<
-  Assignable<
-    SdkContributionEntry<"resource-ops.filters">,
-    FilterEntry<ResourceOpsUnit>
-  >
->;
-type _ResourceOpsFiltersRealBack = Expect<
-  Assignable<
-    FilterEntry<ResourceOpsUnit>,
-    SdkContributionEntry<"resource-ops.filters">
-  >
->;
-
 // Keep every alias "used" under noUnusedLocals.
 export type _ContributionRegistryConformance = [
-  _SdkKeysAssignableToCore,
   _ShipMapPartMeters,
   _ShipMapPartMetersBack,
   _ShipMapPartMetersReal,
@@ -130,8 +83,4 @@ export type _ContributionRegistryConformance = [
   _ShipMapPartMetaBack,
   _ShipMapPartMetaReal,
   _ShipMapPartMetaRealBack,
-  _ResourceOpsFilters,
-  _ResourceOpsFiltersBack,
-  _ResourceOpsFiltersReal,
-  _ResourceOpsFiltersRealBack,
 ];

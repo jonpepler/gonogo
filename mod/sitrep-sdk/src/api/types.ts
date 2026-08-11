@@ -170,7 +170,107 @@ export type ContributionEntry<S extends string> =
     ? ContributionRegistry[S] extends { entry: infer E }
       ? E
       : Record<string, unknown>
-    : Record<string, unknown>;
+    : [ComponentSlotRecord<S>] extends [never]
+      ? Record<string, unknown>
+      : ComponentSlotRecord<S> extends { entry: infer E }
+        ? E
+        : Record<string, unknown>;
+
+// --- Component-led contribution slots ----------------------------------------
+//
+// A component-led slot's id is `<segment>.<rowsName>`: the SEGMENT is owned
+// by the reusable slot-bearing component (core's `ContributedFilters` owns
+// "filters"), the ROWS NAME is the `ContributionRows` member the hosting
+// widget passes as the component's `rows` prop. Both halves are declared at
+// module scope on this leaf, so the whole registry below is DERIVED by a
+// mapped type: no per-slot registry line exists anywhere, hand-written or
+// generated, and a facade-sealed contributor resolves the same types the
+// widget's own package does.
+//
+// Rows-scoped rather than widget-scoped deliberately: the entry a
+// contributor sends is typed by the host's ROWS (a filter's payload is
+// `predicate: (item: Row) => boolean`), so the rows name is the axis that
+// preserves typing, and a facet contributed for some rows is valid wherever
+// a component renders those rows, in any widget, present or future. To
+// confine a contribution to one widget anyway, see
+// `ContributionDefinition.onlyIn` (core): a runtime filter, not a key form,
+// because the widget changes only WHERE the contribution lands, never what
+// type it is.
+
+/**
+ * Declaration-merging seam for the ROW types component-led contribution
+ * slots run against: name -> row type. A widget that mounts a slot-bearing
+ * component names a member of this interface in the component's `rows` prop;
+ * the prop is typed `keyof ContributionRows` and `items` is typed
+ * `ContributionRows[R][]`, so the name cannot dangle and the named type
+ * cannot disagree with the data.
+ *
+ * First-party row types merge in from `./contribution-slots.ts`; an
+ * out-of-repo Uplink merges its own from its own package
+ * (`declare module "@ksp-gonogo/sitrep-sdk"`). Rows names must not contain
+ * "." (the slot id splits on the first dot) and live in one flat namespace:
+ * prefix with the mod name (`MyModHabitatRow`) where a bare name would be
+ * ambiguous.
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: declaration-merging seam
+export interface ContributionRows {}
+
+/**
+ * Declaration-merging seam for what a slot-bearing COMPONENT accepts: its
+ * segment -> its entry type over the host's rows. Core's built-in
+ * `ContributedFilters` owns "filters"; a third-party slot-bearing component
+ * merges its own member from its own package. Merging an already-taken
+ * segment with a different entry type is a compile error at the merge, which
+ * is the collision guard (no runtime registry exists).
+ */
+export interface SlotSegmentEntries<Row> {
+  /** Core's `ContributedFilters`: named predicate facets over the host's rows. */
+  filters: FilterEntry<Row>;
+}
+
+/**
+ * Optional declaration-merging seam: the Topic ids a rows name is derived
+ * from, rows name -> topic id union. Declared beside the `ContributionRows`
+ * merge by the row type's owner. Feeds the typed head of a contribution
+ * `compute`'s argument for slots over those rows; a rows name absent here
+ * just types no topics (contributions can still `deps` anything, read
+ * `unknown`).
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: declaration-merging seam
+export interface ContributionRowTopics {}
+
+type RowTopicsOf<R> = R extends keyof ContributionRowTopics
+  ? ContributionRowTopics[R] & string
+  : never;
+
+/**
+ * Every component-led slot id: the `<segment>.<rowsName>` cross product of
+ * the two seams above. A finite literal union, so a contributor's typo gets
+ * TS2820's did-you-mean, same as a declared widget-led id.
+ */
+export type ComponentSlotId = {
+  [K in keyof SlotSegmentEntries<unknown> & string]: {
+    [R in keyof ContributionRows & string]: `${K}.${R}`;
+  }[keyof ContributionRows & string];
+}[keyof SlotSegmentEntries<unknown> & string];
+
+/**
+ * Resolve a component-led slot id to its `{ entry, topics }` record, or
+ * `never` for an id that is not one (a widget-led id's first segment is a
+ * widget id, which is not a member of `SlotSegmentEntries`).
+ */
+export type ComponentSlotRecord<S extends string> =
+  S extends `${infer K}.${infer R}`
+    ? K extends keyof SlotSegmentEntries<unknown>
+      ? R extends keyof ContributionRows
+        ? {
+            entry: SlotSegmentEntries<ContributionRows[R]>[K &
+              keyof SlotSegmentEntries<ContributionRows[R]>];
+            topics: RowTopicsOf<R>;
+          }
+        : never
+      : never
+    : never;
 
 /**
  * Whether a filter group's options combine or replace each other. Declared by

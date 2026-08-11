@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 // Importing the real module runs its module-load registration of the built-in
-// `resource-ops.filters` contribution (./resourceFilters.ts, a side-effect
+// `filters.ResourceOpsUnit` contribution (./resourceFilters.ts, a side-effect
 // import inside this file), the same way importing any widget runs its own
 // `registerComponent`.
 import { ResourceOpsComponent } from "./index";
@@ -78,7 +78,9 @@ const CONVERTERS = [
 // the honest behaviour for a bare widget with no dashboard around it.
 const META = {
   componentId: "resource-ops",
-  contributionSlots: ["resource-ops.filters"],
+  // No slot listing: mounting <ContributedFilters> announces the
+  // component-scoped `filters.ResourceOpsUnit` slot itself.
+  contributionSlots: [],
 } as const;
 
 afterEach(() => {
@@ -94,7 +96,7 @@ let uplinkFilterOn = false;
 
 registerContribution({
   id: "fixture-uplink",
-  contributes: "resource-ops.filters",
+  contributes: "filters.ResourceOpsUnit",
   compute: () =>
     uplinkFilterOn
       ? [

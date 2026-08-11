@@ -2,9 +2,12 @@ import type { FilterEntry } from "@ksp-gonogo/sitrep-sdk";
 import { fireEvent, render, screen, waitFor } from "@ksp-gonogo/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { WidgetMetaContext } from "./contexts/WidgetMetaContext";
-import { useContributedFilters } from "./contributedFilters";
+import { useFilterEngine } from "./contributedFilters";
 import { clearContributions, registerContribution } from "./contributions";
-import { ContributionsProvider } from "./contributionsRuntime";
+import {
+  ContributionsProvider,
+  useContributionsBySlotId,
+} from "./contributionsRuntime";
 
 // A fixture list widget, standing in for any host with a filterable list. Note
 // what it does NOT contain: any knowledge of what a filter means. It renders
@@ -35,7 +38,10 @@ beforeEach(() => {
 });
 
 function ListWidget() {
-  const filters = useContributedFilters("fixture-list.filters");
+  // The engine under test, fed the same way the shipping ContributedFilters
+  // component feeds it: entries read off the slot, selection held inside.
+  const entries = useContributionsBySlotId("fixture-list.filters");
+  const filters = useFilterEngine<Row>(entries);
   const rows = filters.apply(ROWS);
 
   return (
@@ -106,7 +112,7 @@ async function visibleRows(): Promise<string[]> {
   return items.map((item) => item.textContent ?? "");
 }
 
-describe("useContributedFilters", () => {
+describe("useFilterEngine", () => {
   it("shows everything until an operator selects a facet", async () => {
     registerColourFilters(["red", "blue"]);
     renderWidget();

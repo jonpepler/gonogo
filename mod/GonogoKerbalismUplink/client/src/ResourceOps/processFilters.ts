@@ -6,7 +6,7 @@ import { readKerbalismIsruConverterExt } from "../isru";
 import { KERBALISM } from "../uplink";
 
 // ---------------------------------------------------------------------------
-// Kerbalism's own axis on ResourceOps' filter slot: one facet per PROCESS
+// Kerbalism's own axis on the ResourceOpsUnit filter slot: one facet per PROCESS
 // running on the vessel, plus its broken state.
 //
 // ── Why this is the honest answer, and what it deliberately is not ──────────
@@ -36,7 +36,7 @@ import { KERBALISM } from "../uplink";
 // never appear and the widget shows the built-in by-resource axis alone.
 // ---------------------------------------------------------------------------
 
-type ResourceOpsFilter = ContributionEntry<"resource-ops.filters">;
+type ResourceOpsFilter = ContributionEntry<"filters.ResourceOpsUnit">;
 /** The widget's row union, read back off the slot's own entry type rather than
  *  imported: a facade-sealed client names a host's shapes through the merge,
  *  never through the host's package. */
@@ -154,7 +154,7 @@ export function resetProcessFilterCache(): void {
 
 KERBALISM.registerContribution({
   id: "resource-ops-processes",
-  contributes: "resource-ops.filters",
+  contributes: "filters.ResourceOpsUnit",
   deps: ["isru.converters"],
   requires: "kerbalism",
   compute: (topics) =>

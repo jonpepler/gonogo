@@ -1,6 +1,12 @@
 import { logger } from "@ksp-gonogo/logger";
 import type { Dep } from "@ksp-gonogo/sitrep-client";
-import type { TopicId, TopicPayload } from "@ksp-gonogo/sitrep-sdk";
+import type {
+  ComponentSlotId,
+  ComponentSlotRecord,
+  ContributionRegistry as SdkContributionRegistry,
+  TopicId,
+  TopicPayload,
+} from "@ksp-gonogo/sitrep-sdk";
 import type {
   AugmentSettingField,
   NamespacedAugmentSettings,
@@ -24,21 +30,44 @@ import type { UplinkClientHandle } from "./uplinkClients";
 // biome-ignore lint/suspicious/noEmptyInterface: declaration-merging seam, mirrors SlotRegistry
 export interface ContributionRegistry {}
 
-/** Union of every declared in-tree contribution slot id. `never` until a package merges one in. */
-export type ContributionSlotId = keyof ContributionRegistry;
+/**
+ * Union of every declared in-tree contribution slot id: core's own registry
+ * (widget-led slots, merged from widget files), the sdk leaf's registry
+ * (their facade mirrors), and the DERIVED component-led ids
+ * (`<segment>.<rowsName>`, the sdk's `ComponentSlotId`, computed from the
+ * `SlotSegmentEntries` x `ContributionRows` seams with no per-slot
+ * declaration anywhere). Everything resolves on the sdk leaf, so in-repo and
+ * facade-sealed contributors see identical types.
+ */
+export type ContributionSlotId =
+  | keyof ContributionRegistry
+  | keyof SdkContributionRegistry
+  | ComponentSlotId;
+
+/** A slot's registry record: core's declaration wins, then the sdk's, then
+ *  the derived component-led record. */
+type ContributionSlotRecord<S extends string> =
+  S extends keyof ContributionRegistry
+    ? ContributionRegistry[S]
+    : S extends keyof SdkContributionRegistry
+      ? SdkContributionRegistry[S]
+      : ComponentSlotRecord<S>;
 
 /** The entry shape a slot renders. Falls back to a loose record for an out-of-repo slot id. */
-export type ContributionEntry<S extends string> =
-  S extends keyof ContributionRegistry
-    ? ContributionRegistry[S] extends { entry: infer E }
+export type ContributionEntry<S extends string> = S extends string
+  ? [ContributionSlotRecord<S>] extends [never]
+    ? Record<string, unknown>
+    : ContributionSlotRecord<S> extends { entry: infer E }
       ? E
       : Record<string, unknown>
-    : Record<string, unknown>;
+  : never;
 
-type DeclaredTopicUnion<S extends string> = S extends keyof ContributionRegistry
-  ? ContributionRegistry[S] extends { topics: infer T extends string }
-    ? T
-    : never
+type DeclaredTopicUnion<S extends string> = S extends string
+  ? [ContributionSlotRecord<S>] extends [never]
+    ? never
+    : ContributionSlotRecord<S> extends { topics: infer T extends string }
+      ? T
+      : never
   : never;
 
 /**
@@ -82,6 +111,21 @@ export interface ContributionDefinition<S extends string = string> {
   ) => readonly ContributionEntry<S>[] | null | undefined;
   /** Domain presence gate, identical semantics to AugmentDefinition.requires. */
   requires?: string;
+  /**
+   * Confine this contribution to slots hosted by ONE widget (a registered
+   * ComponentDefinition id). A component-led slot (`filters.ResourceOpsUnit`)
+   * is live in EVERY widget that renders its component over those rows, which
+   * is the right default: the rows fully determine the entry type, so the
+   * contribution is valid wherever they appear. When a facet genuinely
+   * belongs to one widget's instance of the component anyway, name that
+   * widget here; the per-widget aggregator skips the contribution everywhere
+   * else. A runtime filter rather than a key form, deliberately: the hosting
+   * widget changes only WHERE entries land, never what type they are, and a
+   * three-segment widget-qualified key would need exactly the
+   * widget-to-component link that is only forged in JSX. Harmless on a
+   * widget-led slot (those ids are already unique to their widget).
+   */
+  onlyIn?: string;
   /** Ascending, ties in registration order. Same as augments.ts. */
   priority?: number;
   settings?: readonly AugmentSettingField[];

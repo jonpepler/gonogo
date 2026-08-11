@@ -46,6 +46,7 @@ export * from "./hooks/useTelemetryHostStatus";
 export * from "./hooks/useTouchDevice";
 export * from "./hooks/useUplinkHealthFor";
 export { useWidgetBadges } from "./hooks/useWidgetBadges";
+export { useWidgetSlotId } from "./hooks/useWidgetSlotId";
 export * from "./hooks/useWidgetStreamStatus";
 // ErrorBoundary stays in core (React-specific). The rest of the
 // logger surface: `logger`, `AxiomTransport`, `tagRegistry`, types,
@@ -69,6 +70,7 @@ export * from "./settings/SettingsContext";
 export * from "./settings/SettingsService";
 export * from "./settings/store";
 export * from "./settingsTabs";
+export * from "./slots/ContributedFilters";
 export * from "./stock-bodies";
 export * from "./telemachus";
 export * from "./testing/installDomStubs";

@@ -6,11 +6,13 @@ import { useContributionsBySlotId } from "./contributionsRuntime";
 // ---------------------------------------------------------------------------
 // Contributable list filters (contribution-slots-spec §15), the host half.
 //
-// A widget with a filterable list declares a `<widget-id>.filters` slot whose
-// entry is a `FilterEntry` over its own row type, calls this hook, hands
-// `groups` to ui-kit's `<FilterBar>` and its rows to `apply`. It never learns
-// what any filter means: the taxonomy belongs to whoever contributed it, which
-// is the whole point (the app for a generic axis, an Uplink for its mod's own).
+// The primary consumer is `slots/ContributedFilters.tsx`, the slot-owning
+// component a widget wraps its list in; the widget itself touches none of
+// this. The hooks stay public for a host that wants layout control over the
+// bar: read the slot's filters, hand `groups` to ui-kit's `<FilterBar>` and
+// rows to `apply`. Either way the host never learns what any filter means:
+// the taxonomy belongs to whoever contributed it, which is the whole point
+// (the app for a generic axis, an Uplink for its mod's own).
 //
 // Everything else the mechanism needs already exists on the contributions
 // registry underneath: Domain gating (`requires`), ordering (`priority`),
@@ -36,7 +38,7 @@ export interface ContributedFilterGroup {
   options: readonly ContributedFilterOption[];
 }
 
-export interface ContributedFilters<T> {
+export interface ContributedFiltersApi<T> {
   /** Render-ready axes, in contribution order. Empty when nothing contributed. */
   groups: readonly ContributedFilterGroup[];
   /** Replace one group's selection. Pass an empty array to clear it. */
@@ -72,7 +74,20 @@ interface ResolvedOption {
  */
 export function useContributedFilters<S extends ContributionSlotId>(
   slot: S,
-): ContributedFilters<FilterItem<S>> {
+): ContributedFiltersApi<FilterItem<S>> {
+  return useContributedFiltersBySlotId<FilterItem<S>>(slot);
+}
+
+/**
+ * The runtime-string form, for a component whose slot id is completed from
+ * `WidgetMetaContext` at mount (`useWidgetSlotId`) and therefore can never be
+ * a literal member of the declaration-merged registry. Same relationship to
+ * the typed overload as `useContributionsBySlotId` has to `useContributions`.
+ * An empty string is inert: no slot matches it, so everything passes through.
+ */
+export function useContributedFiltersBySlotId<T>(
+  slot: string,
+): ContributedFiltersApi<T> {
   const entries = useContributionsBySlotId(slot);
   const [selected, setSelected] = useState<Record<string, readonly string[]>>(
     {},
@@ -156,7 +171,7 @@ export function useContributedFilters<S extends ContributionSlotId>(
   );
 
   const apply = useCallback(
-    (items: readonly FilterItem<S>[]): readonly FilterItem<S>[] => {
+    (items: readonly T[]): readonly T[] => {
       if (live.size === 0) return items;
       const predicatesByGroup = new Map<
         string,

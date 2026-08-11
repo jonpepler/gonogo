@@ -1133,11 +1133,11 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // (e.g. a Kerbalism EC-broker breakdown) renders here", "unfilled until a
       // Kerbalism-style Uplink binds". The named mod is a hypothetical
       // contributor, and the widget reads no kerbalism Topic and imports no
-      // kerbalism type. ShipMap additionally declares `kerbalism.profile`/
-      // `kerbalism.lifesupport` in its two ContributionRegistry slot entries,
-      // the host half of the same contract sitrep-sdk mirrors above. FleetRoster
-      // and its sibling carry "kerbalism" as a registerComponent search TAG,
-      // which is metadata text.
+      // kerbalism type. (ShipMap's two ContributionRegistry slot entries,
+      // which declare `kerbalism.profile`/`kerbalism.lifesupport` topics, are
+      // authored on the sdk leaf now, covered by the sitrep-sdk entry above.)
+      // FleetRoster and its sibling carry "kerbalism" as a registerComponent
+      // search TAG, which is metadata text.
       "packages/components/src/ActionGroup/index.tsx",
       "packages/components/src/CrewStatus/badge.ts",
       "packages/components/src/CrewStatus/index.tsx",
@@ -1148,7 +1148,6 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       "packages/components/src/ScienceOfficer/index.tsx",
       "packages/components/src/ShipMap/index.tsx",
       "packages/components/src/ShipMap/partMetersContribution.ts",
-      "packages/components/src/ShipMap/shipTopology.ts",
       "packages/components/src/StaffRoster/index.tsx",
       "packages/components/src/ThermalStatus/index.tsx",
       // DivergingBar.tsx: the kit primitive credits the HTML prototype its

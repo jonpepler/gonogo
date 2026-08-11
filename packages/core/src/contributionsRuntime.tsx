@@ -25,6 +25,7 @@ import {
   type Contributed,
   type ContributionEntry,
   type ContributionSlotId,
+  getContributedSlots,
   getContributionsForSlot,
   onContributionsChange,
 } from "./contributions";
@@ -82,14 +83,17 @@ const ContributionsPanelStore = createPanelStore<Store<ContributionSlotEntry>>(
 // changes, so the registry's per-slot array is memoised the same way
 // AugmentSlot.tsx's getAugmentsForSlotCached is.
 const slotCache = new Map<string, AnyContribution[]>();
+const widgetSlotsCache = new Map<string, readonly string[]>();
 let cacheValid = false;
 onContributionsChange(() => {
   cacheValid = false;
   slotCache.clear();
+  widgetSlotsCache.clear();
 });
 function getContributionsForSlotCached(slot: string): AnyContribution[] {
   if (!cacheValid) {
     slotCache.clear();
+    widgetSlotsCache.clear();
     cacheValid = true;
   }
   let cached = slotCache.get(slot);
@@ -99,6 +103,24 @@ function getContributionsForSlotCached(slot: string): AnyContribution[] {
   }
   return cached;
 }
+
+/** Same referential-stability contract as `getContributionsForSlotCached`,
+ *  for the per-widget contributed-slot LIST the aggregation subscribes to. */
+function getContributedSlotsCached(componentId: string): readonly string[] {
+  if (!cacheValid) {
+    slotCache.clear();
+    widgetSlotsCache.clear();
+    cacheValid = true;
+  }
+  let cached = widgetSlotsCache.get(componentId);
+  if (cached === undefined) {
+    cached = getContributedSlots(`${componentId}.`);
+    widgetSlotsCache.set(componentId, cached);
+  }
+  return cached;
+}
+
+const EMPTY_SLOT_IDS: readonly string[] = Object.freeze([]);
 
 /** Element-wise reference equality: true when every entry is the SAME object as before. */
 function entriesUnchanged(
@@ -294,18 +316,27 @@ export function ContributionsProvider({
 function ContributionsAggregation({ children }: { children?: ReactNode }) {
   const meta = useWidgetMeta();
   const store = ContributionsPanelStore.useStore();
-  // The standard badges slot is ALWAYS aggregated, on top of whatever the
-  // widget itself declared (contribution-slots-spec §13.2: automatic, zero
-  // widget-side input). Deduped in case a widget also explicitly lists its
-  // own badges slot in contributionSlots (harmless either way).
-  const slots = useMemo(() => {
-    const declared = meta?.contributionSlots ?? [];
+  // Aggregation is CONTRIBUTOR-DRIVEN: every slot anyone has registered a
+  // contribution against under this widget's `<componentId>.` namespace is
+  // aggregated while the widget is mounted, exactly the way the automatic
+  // `${componentId}.badges` slot always has been. Neither the widget nor a
+  // slot-owning component inside it has to announce anything; a component
+  // reads its own `<componentId>.<segment>` slot and the entries are there.
+  // `contributionSlots` stays honoured (it types `useContributions`'s keyed
+  // overload and documents widget-led slots) but no longer gates aggregation.
+  const contributed = useSyncExternalStore(
+    onContributionsChange,
+    () => (meta ? getContributedSlotsCached(meta.componentId) : EMPTY_SLOT_IDS),
+    () => (meta ? getContributedSlotsCached(meta.componentId) : EMPTY_SLOT_IDS),
+  );
+  const slots = useMemo<readonly string[]>(() => {
+    const declared: readonly string[] = meta?.contributionSlots ?? [];
     if (!meta) return declared;
-    const badgesSlot = `${meta.componentId}.badges`;
-    return declared.includes(badgesSlot as never)
-      ? declared
-      : [...declared, badgesSlot as never];
-  }, [meta]);
+    const all = new Set<string>(declared);
+    all.add(`${meta.componentId}.badges`);
+    for (const slot of contributed) all.add(slot);
+    return Array.from(all);
+  }, [meta, contributed]);
 
   if (!store) return <>{children}</>;
 

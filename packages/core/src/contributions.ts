@@ -1,6 +1,10 @@
 import { logger } from "@ksp-gonogo/logger";
 import type { Dep } from "@ksp-gonogo/sitrep-client";
-import type { TopicId, TopicPayload } from "@ksp-gonogo/sitrep-sdk";
+import type {
+  ContributionRegistry as SdkContributionRegistry,
+  TopicId,
+  TopicPayload,
+} from "@ksp-gonogo/sitrep-sdk";
 import type {
   AugmentSettingField,
   NamespacedAugmentSettings,
@@ -20,9 +24,16 @@ import type { UplinkClientHandle } from "./uplinkClients";
  * merging exactly like SlotRegistry (augments.ts). `topics` is the union of
  * Topic ids a contribution bound to this slot may read; omit it for a slot
  * that needs no topics.
+ *
+ * Extends the sdk's own `ContributionRegistry`, so a slot declared ONCE on
+ * the sdk leaf (`mod/sitrep-sdk/src/api/contribution-slots.ts`, the only
+ * module a facade-sealed contributor can see) is a member here too with no
+ * second declaration. First-party slots are declared there and nowhere else;
+ * this interface stays a merge target for slots whose entry types genuinely
+ * cannot live on the leaf (none exist today).
  */
 // biome-ignore lint/suspicious/noEmptyInterface: declaration-merging seam, mirrors SlotRegistry
-export interface ContributionRegistry {}
+export interface ContributionRegistry extends SdkContributionRegistry {}
 
 /** Union of every declared in-tree contribution slot id. `never` until a package merges one in. */
 export type ContributionSlotId = keyof ContributionRegistry;
@@ -132,6 +143,23 @@ export function registerContribution<S extends string>(
     order: registrationCounter++,
   });
   notifyContributionChange();
+}
+
+/**
+ * Every distinct slot id currently contributed to under `prefix`, sorted.
+ * This is what makes aggregation contributor-driven: `ContributionsProvider`
+ * asks for `"<componentId>."` and aggregates whatever anyone has registered
+ * against the widget's namespace, whether or not the widget (or a component
+ * inside it) declared the slot anywhere. A slot nobody contributes to needs
+ * no aggregator: reads fall back to the stable empty array either way.
+ */
+export function getContributedSlots(prefix: string): readonly string[] {
+  const out = new Set<string>();
+  for (const entry of contributions.values()) {
+    if (entry.def.contributes.startsWith(prefix))
+      out.add(entry.def.contributes);
+  }
+  return Array.from(out).sort();
 }
 
 export function getContributionsForSlot(slot: string): AnyContribution[] {

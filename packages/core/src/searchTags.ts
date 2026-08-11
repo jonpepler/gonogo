@@ -1,5 +1,5 @@
 import { getAugmentsForSlot } from "./augments";
-import { getContributionsForSlot } from "./contributions";
+import { getContributedSlots, getContributionsForSlot } from "./contributions";
 import type { ComponentDefinition } from "./types";
 import type { UplinkClientHandle } from "./uplinkClients";
 
@@ -24,10 +24,15 @@ function provenanceUplinks(def: ComponentDefinition): UplinkClientHandle[] {
     }
   }
 
-  const contributionSlots = [
+  // Contributor-driven, same rule as aggregation (`ContributionsProvider`):
+  // every slot anyone contributes to under `<id>.` counts, which covers the
+  // automatic badges slot and component-owned slots (`<id>.filters`) that no
+  // longer appear in `contributionSlots`. The declared list is unioned in for
+  // completeness (a declared-but-empty slot adds no owners either way).
+  const contributionSlots = new Set<string>([
     ...(def.contributionSlots ?? []),
-    `${def.id}.badges`,
-  ];
+    ...getContributedSlots(`${def.id}.`),
+  ]);
   for (const slot of contributionSlots) {
     for (const contribution of getContributionsForSlot(slot)) {
       if (contribution.owner)

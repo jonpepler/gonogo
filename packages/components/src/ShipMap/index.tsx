@@ -90,30 +90,19 @@ export interface ShipMapBadgesContext {
 // Co-located declaration-merge of this widget's slot ids → their props (spec
 // §4.6). Kept next to the widget (not in a central registry file) so parallel
 // slot work on other widgets never collides on this seam.
+//
+// The widget's two CONTRIBUTION slots (`ship-map.part-meters` per-part
+// resource meters, `ship-map.part-meta` per-part status/metadata rows, each
+// fed by BOTH the built-in `core` contribution in
+// `./partMetersContribution.ts` and a Kerbalism-style Uplink contribution on
+// equal footing) are NOT declared here: contribution slots are declared once
+// on the sdk leaf (`mod/sitrep-sdk/src/api/contribution-slots.ts`), which
+// core's `ContributionRegistry` extends, so one declaration serves in-repo
+// and facade-sealed contributors alike.
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "ship-map.overlay": ShipMapOverlayContext;
     "ship-map.badges": ShipMapBadgesContext;
-  }
-
-  // The framework's first widget-authored `ContributionRegistry` slots
-  // (contribution-slots-spec §13.4): every OTHER first-party contribution to
-  // date rides the automatic `${componentId}.badges` slot, which is a
-  // runtime string, never a declared member of this registry (see
-  // `useWidgetBadges`'s own doc comment). These two are genuinely typed,
-  // declared slots: `ship-map.part-meters` (per-part resource meters) and
-  // `ship-map.part-meta` (per-part status/metadata rows), each fed by BOTH
-  // the built-in `core` contribution (`./partMetersContribution.ts`) and a
-  // Kerbalism-style Uplink contribution, on equal footing.
-  interface ContributionRegistry {
-    "ship-map.part-meters": {
-      entry: ShipMapPartMeterEntry;
-      topics: "vessel.parts" | "kerbalism.profile";
-    };
-    "ship-map.part-meta": {
-      entry: ShipMapPartMetaEntry;
-      topics: "kerbalism.lifesupport" | "kerbalism.profile";
-    };
   }
 }
 

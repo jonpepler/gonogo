@@ -1,12 +1,8 @@
-import type {
-  ActionDefinition,
-  ComponentProps,
-  FilterEntry,
-} from "@ksp-gonogo/core";
+import type { ActionDefinition, ComponentProps } from "@ksp-gonogo/core";
 import {
+  ContributedFilters,
   registerComponent,
   useActionInput,
-  useContributedFilters,
   useTelemetry,
 } from "@ksp-gonogo/core";
 import type {
@@ -17,7 +13,6 @@ import {
   Badge,
   Cluster,
   EmptyState,
-  FilterBar,
   Inline,
   Panel,
   ReadoutCaption,
@@ -63,19 +58,13 @@ import type { ResourceOpsUnit } from "./unit";
 
 type ResourceOpsConfig = Record<string, never>;
 
-// This widget's filter slot (contribution-slots-spec §15), co-located with the
-// widget the same way ShipMap's contribution slots are. The widget declares
-// that its list is filterable and renders whatever arrives; it never learns
-// what any contributed filter MEANS, which is the entire point. Mirrored for
-// facade-sealed Uplinks in `mod/sitrep-sdk/src/api/contribution-slots.ts`.
-declare module "@ksp-gonogo/core" {
-  interface ContributionRegistry {
-    "resource-ops.filters": {
-      entry: FilterEntry<ResourceOpsUnit>;
-      topics: "isru.drills" | "isru.converters";
-    };
-  }
-}
+// This widget's filter slot, `resource-ops.filters`, is declared ONCE on the
+// sdk leaf (`mod/sitrep-sdk/src/api/contribution-slots.ts`), where both
+// in-repo and facade-sealed contributors see it. The widget itself carries no
+// declaration and never touches the contribution system: `<ContributedFilters>`
+// (core) owns the slot, reads what arrives, and hands back rows that meet
+// this widget's own contract. It never learns what any contributed filter
+// MEANS, which is the entire point.
 
 const resourceOpsActions = [
   {
@@ -246,15 +235,43 @@ function ResourceOpsComponent(
     [allDrills, allConverters],
   );
 
-  // Filters are CONTRIBUTED, never hardcoded here. The generic by-resource axis
-  // is a built-in contribution (`./resourceFilters.ts`); a mod that knows how
-  // its own converters divide up contributes that axis from its own Uplink, on
-  // this same slot. So no taxonomy lives in this widget: it could not assert a
-  // life-support-versus-ISRU split even if it wanted to, because it has no idea
-  // which of these facets is which.
-  const filters = useContributedFilters("resource-ops.filters");
-  const filtered = filters.apply(units);
+  if (!anything) {
+    return (
+      <Panel panelTitle="RESOURCE OPS">
+        {/* An empty list is a fact about the vessel, not a missing backend, so
+            this says so rather than blaming the connection. */}
+        <EmptyState layout="fill">
+          No drills or converters on this vessel
+        </EmptyState>
+      </Panel>
+    );
+  }
 
+  // Filters are CONTRIBUTED, never hardcoded here, and this widget doesn't
+  // even read them: `<ContributedFilters>` owns the `resource-ops.filters`
+  // slot end to end (the control, the selection, the application) and hands
+  // back the rows that pass. The generic by-resource axis is a built-in
+  // contribution (`./resourceFilters.ts`); a mod that knows how its own
+  // converters divide up contributes that axis from its own Uplink, on the
+  // same slot. So no taxonomy lives in this widget: it could not assert a
+  // life-support-versus-ISRU split even if it wanted to, because it has no
+  // idea which of these facets is which.
+  return (
+    <Panel panelTitle="RESOURCE OPS">
+      <ScrollArea>
+        <Stack gap="sm">
+          <ContributedFilters items={units} allLabel="All resources">
+            {(filtered) => <ResourceOpsLists filtered={filtered} />}
+          </ContributedFilters>
+        </Stack>
+      </ScrollArea>
+    </Panel>
+  );
+}
+
+function ResourceOpsLists({
+  filtered,
+}: Readonly<{ filtered: readonly ResourceOpsUnit[] }>) {
   const drillList = useMemo(
     () =>
       filtered.flatMap((unit) => (unit.kind === "drill" ? [unit.drill] : [])),
@@ -292,65 +309,40 @@ function ResourceOpsComponent(
     },
   });
 
-  const filter = (
-    <FilterBar
-      groups={filters.groups}
-      onChange={filters.onChange}
-      allLabel="All resources"
-    />
-  );
-
-  if (!anything) {
-    return (
-      <Panel panelTitle="RESOURCE OPS">
-        {/* An empty list is a fact about the vessel, not a missing backend, so
-            this says so rather than blaming the connection. */}
-        <EmptyState layout="fill">
-          No drills or converters on this vessel
-        </EmptyState>
-      </Panel>
-    );
-  }
-
   return (
-    <Panel panelTitle="RESOURCE OPS">
-      <ScrollArea>
-        <Stack gap="sm">
-          {filter}
-          {total === 0 && (
-            <EmptyState>Nothing on this vessel matches the filter</EmptyState>
-          )}
-          {drillList.length > 0 && (
-            <Section as="section" aria-label="Drills">
-              <SectionTitle>Drills</SectionTitle>
-              <Stack gap="xs">
-                {drillList.map((drill, index) => (
-                  <DrillRow
-                    key={drill.partId ?? `drill-${index}`}
-                    drill={drill}
-                    highlighted={index === current}
-                  />
-                ))}
-              </Stack>
-            </Section>
-          )}
-          {converterList.length > 0 && (
-            <Section as="section" aria-label="Converters">
-              <SectionTitle>Converters</SectionTitle>
-              <Stack gap="xs">
-                {converterList.map((converter, index) => (
-                  <ConverterRow
-                    key={converter.partId ?? `converter-${index}`}
-                    converter={converter}
-                    highlighted={drillList.length + index === current}
-                  />
-                ))}
-              </Stack>
-            </Section>
-          )}
-        </Stack>
-      </ScrollArea>
-    </Panel>
+    <>
+      {total === 0 && (
+        <EmptyState>Nothing on this vessel matches the filter</EmptyState>
+      )}
+      {drillList.length > 0 && (
+        <Section as="section" aria-label="Drills">
+          <SectionTitle>Drills</SectionTitle>
+          <Stack gap="xs">
+            {drillList.map((drill, index) => (
+              <DrillRow
+                key={drill.partId ?? `drill-${index}`}
+                drill={drill}
+                highlighted={index === current}
+              />
+            ))}
+          </Stack>
+        </Section>
+      )}
+      {converterList.length > 0 && (
+        <Section as="section" aria-label="Converters">
+          <SectionTitle>Converters</SectionTitle>
+          <Stack gap="xs">
+            {converterList.map((converter, index) => (
+              <ConverterRow
+                key={converter.partId ?? `converter-${index}`}
+                converter={converter}
+                highlighted={drillList.length + index === current}
+              />
+            ))}
+          </Stack>
+        </Section>
+      )}
+    </>
   );
 }
 
@@ -366,14 +358,10 @@ registerComponent<ResourceOpsConfig>({
   minSize: { w: 3, h: 4 },
   component: ResourceOpsComponent,
   dataRequirements: ["isru.drills", "isru.converters"],
-  contributionSlots: ["resource-ops.filters"],
   defaultConfig: {},
   actions: resourceOpsActions,
   pushable: true,
 });
 
-// Re-exported so the sdk mirror's drift guard
-// (`contribution-slot-registry.conformance.test-d.ts`) can check this slot's
-// entry type against the real one, the same way ShipMap's entry types are.
 export type { ResourceOpsUnit } from "./unit";
 export { ResourceOpsComponent };

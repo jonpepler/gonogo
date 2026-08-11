@@ -29,10 +29,13 @@ import { getHost } from "./host";
 // merge lives here rather than in packages/components). No named export
 // added to the barrel by this import.
 import "./slots";
-// Side-effect only: carries the `ContributionRegistry` declaration-merge
-// scaffold (Phase 1 of the contributions primitive; see ./contribution-
-// slots.ts's own header). Same reasoning as the `./slots` import above, one
-// merge target per declaration-merge seam.
+// Carries the `ContributionRegistry` declaration-merge for every first-party
+// contribution slot (see ./contribution-slots.ts's own header). Same
+// reasoning as the `./slots` import above, one merge target per
+// declaration-merge seam. Unlike `./slots`, the row/entry types are ALSO
+// named exports (below): this file is the single authored declaration of
+// each slot, so the owning widget imports its published row type from here
+// rather than keeping a second copy of it.
 import "./contribution-slots";
 import type {
   ActionDefinition,
@@ -57,6 +60,12 @@ import type {
 // --- Author-facing types (re-exported real, erased at runtime) --------------
 
 export type { Logger, TaggedLogger } from "@ksp-gonogo/logger";
+export type {
+  ResourceOpsUnit,
+  ShipMapMeterTone,
+  ShipMapPartMetaEntry,
+  ShipMapPartMeterEntry,
+} from "./contribution-slots";
 export type { GonogoHost } from "./host";
 export { GONOGO_HOST_KEY, hasHost } from "./host";
 export type {

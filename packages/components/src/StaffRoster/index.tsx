@@ -6,13 +6,10 @@ import {
   registerComponent,
   useTelemetry,
 } from "@ksp-gonogo/core";
-import { Badge, Card, NULL_DISPLAY, Panel } from "@ksp-gonogo/ui-kit";
+import { Card, NULL_DISPLAY, Panel } from "@ksp-gonogo/ui-kit";
 import styled from "styled-components";
-import {
-  magnitudeOf,
-  magnitudeOr,
-  type Quantityish,
-} from "../shared/magnitude";
+import { KerbalStats } from "../shared/KerbalStats";
+import { magnitudeOr, type Quantityish } from "../shared/magnitude";
 
 type StaffRosterConfig = Record<string, never>;
 
@@ -225,59 +222,7 @@ function StaffRosterComponent({
             dimmed={!kerbal.available}
             title={buildTooltip(kerbal)}
           >
-            <Name>{kerbal.name}</Name>
-            <Meta>
-              <TraitTag title={`Trait: ${kerbal.trait || "Unknown"}`}>
-                {kerbal.trait || NULL_DISPLAY}
-              </TraitTag>
-              <Level
-                title={`Experience level ${kerbal.experienceLevel}`}
-                aria-label={`Experience level ${kerbal.experienceLevel}`}
-              >
-                L{kerbal.experienceLevel}
-              </Level>
-              {kerbal.veteran && (
-                <Badge
-                  severity="nominal"
-                  size="sm"
-                  aria-label="veteran"
-                  title="Veteran: has flown a notable mission"
-                >
-                  ★
-                </Badge>
-              )}
-              {kerbal.isBadass && (
-                <Badge
-                  severity="warning"
-                  size="sm"
-                  aria-label="badass"
-                  title="Badass: KSP's brave trait; rarely panics"
-                >
-                  BA
-                </Badge>
-              )}
-              {kerbal.careerFlights > 0 && (
-                <Badge
-                  size="sm"
-                  aria-label={`${kerbal.careerFlights} flights`}
-                  title={`${kerbal.careerFlights} career flight${kerbal.careerFlights === 1 ? "" : "s"} completed`}
-                >
-                  {kerbal.careerFlights}F
-                </Badge>
-              )}
-              {!kerbal.available && (
-                <Badge
-                  severity="critical"
-                  size="sm"
-                  title={
-                    kerbal.currentVesselName
-                      ? `${kerbal.unavailableReason || "Unavailable"} (${kerbal.currentVesselName})`
-                      : kerbal.unavailableReason || "Unavailable"
-                  }
-                >
-                  {kerbal.unavailableReason || "Unavailable"}
-                </Badge>
-              )}
+            <KerbalStats kerbal={kerbal}>
               {/* Per-kerbal inline badges slot. Renders nothing until an Uplink
                   (e.g. Kerbalism Habitat/Radiation) binds: the props carry
                   this row's kerbal identity so the augment badges the right
@@ -286,7 +231,7 @@ function StaffRosterComponent({
                 name="staff-roster.badges"
                 props={{ staffName: kerbal.name, staffIndex: i }}
               />
-            </Meta>
+            </KerbalStats>
           </CrewCard>
         ))}
       </List>
@@ -335,36 +280,6 @@ const CrewCard = styled(Card).attrs({ as: "li" as const })`
   flex-direction: column;
   align-items: stretch;
   gap: var(--space-2);
-`;
-
-const Name = styled.span`
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const Meta = styled.span`
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  align-items: center;
-`;
-
-const TraitTag = styled.span`
-  font-size: var(--font-size-2xs);
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-`;
-
-const Level = styled.span`
-  font-size: var(--font-size-2xs);
-  color: var(--color-accent-fg);
-  font-variant-numeric: tabular-nums;
 `;
 
 const TinyBody = styled.div`

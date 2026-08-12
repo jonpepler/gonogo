@@ -1,14 +1,10 @@
 {
   "_meta": {
-    "notes": "Mid-career Astronaut Complex: a four-applicant hire pool at a uniform 24,000f recruit cost, 4 active crew against a tier-2 cap of 13, a healthy 289,848f balance (all four affordable, none disabled), and a three-kerbal roster with one on a mission.",
+    "notes": "Mid-career Astronaut Complex: a four-applicant pool at a uniform 24,000f recruit cost, 4 active crew against a tier-2 cap of 13, and a healthy 289,848f balance (all four affordable, none disabled). Each candidate reads through the shared crew-stat row (trait + level), the same components the Staff Roster uses.",
     "scenario": "mid-career-pool"
   },
   "_stream": {
-    "carriedChannels": [
-      "spaceCenter.astronautComplex",
-      "spaceCenter.crewRoster",
-      "career.status"
-    ],
+    "carriedChannels": ["spaceCenter.astronautComplex", "career.status"],
     "pinnedUt": 10,
     "emits": [
       {
@@ -47,32 +43,6 @@
           "activeCrew": 4,
           "crewCapacity": 13
         }
-      },
-      {
-        "channel": "spaceCenter.crewRoster",
-        "value": [
-          {
-            "name": "Jebediah Kerman",
-            "trait": "Pilot",
-            "experienceLevel": 5,
-            "available": true,
-            "unavailableReason": ""
-          },
-          {
-            "name": "Bill Kerman",
-            "trait": "Engineer",
-            "experienceLevel": 3,
-            "available": false,
-            "unavailableReason": "On mission"
-          },
-          {
-            "name": "Bob Kerman",
-            "trait": "Scientist",
-            "experienceLevel": 2,
-            "available": true,
-            "unavailableReason": ""
-          }
-        ]
       }
     ]
   }

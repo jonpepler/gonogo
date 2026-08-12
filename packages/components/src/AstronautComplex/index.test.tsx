@@ -13,13 +13,12 @@ import { AstronautComplexComponent } from "./index";
  * Real-provider integration test: the widget runs off a genuine stream
  * (`setupStreamFixture` = real `TelemetryProvider`/`TelemetryClient`/
  * `TimelineStore` over a `StubTransport`), reading the `spaceCenter.astronautComplex`
- * applicant pool, the `spaceCenter.crewRoster` roster and `career.status`'s
- * funds, and dispatching the real `career.crew.hire` command (asserted against
- * `fixture.transport.sentCommands`). No hooks are mocked.
+ * applicant pool and `career.status`'s funds, and dispatching the real
+ * `career.crew.hire` command (asserted against `fixture.transport.sentCommands`).
+ * No hooks are mocked.
  */
 const CARRIED = [
   "spaceCenter.astronautComplex",
-  "spaceCenter.crewRoster",
   "career.status",
   "career.crew.hire",
 ];
@@ -159,38 +158,7 @@ describe("AstronautComplexComponent", () => {
     expect(hire).toBeDisabled();
   });
 
-  it("renders the hired-crew roster with each member's status", async () => {
-    renderWidget();
-    act(() => {
-      emitFunds(fixture, 500000);
-      emitComplex(fixture, {
-        applicants: [],
-        activeCrew: 2,
-        crewCapacity: 13,
-      });
-      fixture.emit("spaceCenter.crewRoster", [
-        {
-          name: "Jebediah Kerman",
-          trait: "Pilot",
-          experienceLevel: 5,
-          available: true,
-          unavailableReason: "",
-        },
-        {
-          name: "Bill Kerman",
-          trait: "Engineer",
-          experienceLevel: 3,
-          available: false,
-          unavailableReason: "On mission",
-        },
-      ]);
-    });
-
-    expect(await screen.findByText("Jebediah Kerman")).toBeInTheDocument();
-    expect(screen.getByText("On mission")).toBeInTheDocument();
-  });
-
-  it("has no axe violations with a populated pool and roster", async () => {
+  it("has no axe violations with a populated applicant pool", async () => {
     const { container } = renderWidget();
     act(() => {
       emitFunds(fixture, 500000);
@@ -199,15 +167,6 @@ describe("AstronautComplexComponent", () => {
         activeCrew: 3,
         crewCapacity: 13,
       });
-      fixture.emit("spaceCenter.crewRoster", [
-        {
-          name: "Jebediah Kerman",
-          trait: "Pilot",
-          experienceLevel: 5,
-          available: true,
-          unavailableReason: "",
-        },
-      ]);
     });
     await screen.findByText("Desdin Kerman");
     expect(await axe(container)).toHaveNoViolations();

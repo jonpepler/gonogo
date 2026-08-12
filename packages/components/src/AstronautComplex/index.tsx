@@ -1,9 +1,5 @@
 import type { ComponentProps } from "@ksp-gonogo/core";
-import {
-  getSizeBucket,
-  registerComponent,
-  useTelemetry,
-} from "@ksp-gonogo/core";
+import { registerComponent, useTelemetry } from "@ksp-gonogo/core";
 import { META_VANTAGE, useCommand } from "@ksp-gonogo/sitrep-client";
 import { value } from "@ksp-gonogo/sitrep-sdk";
 import {
@@ -17,6 +13,7 @@ import {
 } from "@ksp-gonogo/ui-kit";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { type KerbalStatFields, KerbalStats } from "../shared/KerbalStats";
 import { magnitudeOf, type Quantityish } from "../shared/magnitude";
 
 type AstronautComplexConfig = Record<string, never>;
@@ -39,23 +36,32 @@ interface Applicant {
   hireCost: number | null;
 }
 
-interface RosterMember {
-  name: string;
-  trait: string;
-  level: number;
-  available: boolean;
-  unavailableReason: string;
+/** An applicant carries only name / trait / level. The remaining astronaut
+ *  stats the shared row can show (veteran, badass, career flights, current
+ *  assignment) do not apply to someone not yet on the books, so they take
+ *  their safe zero and those badges never render. */
+function applicantStats(a: Applicant): KerbalStatFields {
+  return {
+    name: a.name,
+    trait: a.trait,
+    experienceLevel: a.level,
+    veteran: false,
+    isBadass: false,
+    careerFlights: 0,
+    available: true,
+    unavailableReason: "",
+    currentVesselName: "",
+  };
 }
 
-function AstronautComplexComponent({
-  w,
-  h,
-}: Readonly<ComponentProps<AstronautComplexConfig>>) {
-  // The hire tab (applicant pool + roster cap + active-crew count) rides one
-  // Topic; the current roster rides the existing spaceCenter.crewRoster Topic;
-  // funds comes off career.status.economy.funds (the same read SpaceCenterStatus
-  // uses). All three degrade to "no data" (null) outside career, so the widget
-  // shows an empty state rather than erroring.
+function AstronautComplexComponent(
+  _props: Readonly<ComponentProps<AstronautComplexConfig>>,
+) {
+  // The applicant pool, roster cap and active-crew count ride the
+  // spaceCenter.astronautComplex Topic; funds comes off
+  // career.status.economy.funds (the same read SpaceCenterStatus uses). Both
+  // degrade to null outside career, so the widget shows an empty state rather
+  // than erroring.
   const complex = useTelemetry("spaceCenter.astronautComplex");
   const careerFunds = magnitudeOf(
     useTelemetry("career.status")?.economy?.funds,
@@ -68,7 +74,6 @@ function AstronautComplexComponent({
   usePanelDelay(hireCmd);
 
   const applicants = readApplicants(complex?.applicants);
-  const roster = readRoster(useTelemetry("spaceCenter.crewRoster"));
   const activeCrew = magnitudeOf(complex?.activeCrew);
   const crewCapacity = magnitudeOf(complex?.crewCapacity);
 
@@ -81,8 +86,6 @@ function AstronautComplexComponent({
     activeCrew !== null &&
     crewCapacity !== null &&
     activeCrew >= crewCapacity;
-
-  const sizeBucket = getSizeBucket(w, h);
 
   // Off career (or before telemetry warms up): no applicant pool at all. Show a
   // graceful empty state, still surfacing funds when they are known.
@@ -157,11 +160,7 @@ function AstronautComplexComponent({
                   // name is a stable key (no array index).
                   <Applicant__Row key={a.name}>
                     <Who>
-                      <Name>{a.name || NULL_DISPLAY}</Name>
-                      <Spec>
-                        {a.trait || NULL_DISPLAY}
-                        {a.level > 0 && <Level> · Lv {a.level}</Level>}
-                      </Spec>
+                      <KerbalStats kerbal={applicantStats(a)} />
                     </Who>
                     <Cost $afford={affordable}>
                       {a.hireCost !== null ? (
@@ -191,39 +190,6 @@ function AstronautComplexComponent({
             </List>
           )}
         </Group>
-
-        {sizeBucket !== "tiny" && (
-          <Group aria-label="Current roster">
-            <GroupHeading>
-              Roster
-              <GroupCount>{roster.length}</GroupCount>
-            </GroupHeading>
-            {roster.length === 0 ? (
-              <Empty>No crew hired yet</Empty>
-            ) : (
-              <List>
-                {roster.map((m) => (
-                  // Kerbal names are unique within the roster (KerbalRoster keys
-                  // by name), so the name is a stable key (no array index).
-                  <Roster__Row key={m.name}>
-                    <Who>
-                      <Name>{m.name || NULL_DISPLAY}</Name>
-                      <Spec>
-                        {m.trait || NULL_DISPLAY}
-                        {m.level > 0 && <Level> · Lv {m.level}</Level>}
-                      </Spec>
-                    </Who>
-                    <Status $available={m.available}>
-                      {m.available
-                        ? "Available"
-                        : m.unavailableReason || "Unavailable"}
-                    </Status>
-                  </Roster__Row>
-                ))}
-              </List>
-            )}
-          </Group>
-        )}
       </Body>
     </Panel>
   );
@@ -309,24 +275,6 @@ function readApplicants(raw: unknown): Applicant[] {
       trait: typeof e.trait === "string" ? e.trait : "",
       level: magnitudeOf(e.level as Quantityish) ?? 0,
       hireCost: magnitudeOf(e.hireCost as Quantityish),
-    });
-  }
-  return out;
-}
-
-function readRoster(raw: unknown): RosterMember[] {
-  if (!Array.isArray(raw)) return [];
-  const out: RosterMember[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== "object") continue;
-    const e = entry as Record<string, unknown>;
-    out.push({
-      name: typeof e.name === "string" ? e.name : "",
-      trait: typeof e.trait === "string" ? e.trait : "",
-      level: magnitudeOf(e.experienceLevel as Quantityish) ?? 0,
-      available: e.available === true,
-      unavailableReason:
-        typeof e.unavailableReason === "string" ? e.unavailableReason : "",
     });
   }
   return out;
@@ -433,39 +381,12 @@ const Applicant__Row = styled.li`
   border-radius: var(--radius-xs);
 `;
 
-const Roster__Row = styled.li`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-  padding: var(--space-4) var(--space-8);
-  background: var(--color-surface-panel);
-  border-radius: var(--radius-xs);
-`;
-
 const Who = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 0;
   flex: 1;
-`;
-
-const Name = styled.span`
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const Spec = styled.span`
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-muted);
-`;
-
-const Level = styled.span`
-  color: var(--color-text-faint);
+  gap: var(--space-2);
 `;
 
 const Cost = styled.span<{ $afford: boolean }>`
@@ -474,12 +395,6 @@ const Cost = styled.span<{ $afford: boolean }>`
   color: ${(p) =>
     p.$afford ? "var(--color-accent-fg)" : "var(--color-status-nogo-bg)"};
   font-weight: ${(p) => (p.$afford ? "inherit" : "600")};
-`;
-
-const Status = styled.span<{ $available: boolean }>`
-  font-size: var(--font-size-2xs);
-  color: ${(p) =>
-    p.$available ? "var(--color-accent-fg)" : "var(--color-text-muted)"};
 `;
 
 const Empty = styled.div`
@@ -494,16 +409,12 @@ registerComponent<AstronautComplexConfig>({
   id: "astronaut-complex",
   name: "Astronaut Complex",
   description:
-    "Astronaut Complex recruiting: the applicant pool with each candidate's trait, level and hire cost plus a per-row arm-then-confirm Hire button (disabled when funds are short or the roster is at the facility cap), the current funds balance, and the hired-crew roster.",
+    "Astronaut Complex applicant pool: each candidate shown with the same astronaut stats as the crew roster (trait and experience), the current funds balance and the roster cap, and a per-row arm-then-confirm Hire action that is disabled when funds are short or the roster is at the facility cap.",
   tags: ["career", "crew", "kc"],
   defaultSize: { w: 6, h: 8 },
   minSize: { w: 3, h: 4 },
   component: AstronautComplexComponent,
-  dataRequirements: [
-    "spaceCenter.astronautComplex",
-    "spaceCenter.crewRoster",
-    "career.funds",
-  ],
+  dataRequirements: ["spaceCenter.astronautComplex", "career.funds"],
   defaultConfig: {},
   actions: [],
   pushable: true,

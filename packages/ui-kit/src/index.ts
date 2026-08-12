@@ -135,6 +135,21 @@ export {
 export { usePanelDelay } from "./CommandDelay/usePanelDelay";
 export { Countdown, type CountdownProps } from "./Countdown";
 export { configEqual } from "./configEqual";
+// ── Contribution read seam (relocated from @ksp-gonogo/core) ──────────────────
+// The contribution TYPE surface (the declaration-merge registries, the segment
+// machinery, the entry types), the component-slot context, and the contribution
+// READ hooks + per-widget store. Spine-free (sdk types only); the registration
+// half and the per-frame aggregation stay in core. `@ksp-gonogo/core` re-exports
+// every symbol below, so existing `@ksp-gonogo/core` importers are byte-
+// identical and a `declare module "@ksp-gonogo/core"` augmentation of
+// `ContributionRegistry`/`ComponentSlotRegistry` still merges.
+export * from "./contributions";
+export {
+  type ContributionSlotEntry,
+  ContributionsPanelStore,
+  useContributions,
+  useContributionsBySlotId,
+} from "./contributionsRead";
 export {
   DataKeyPicker,
   type DataKeyPickerProps,
@@ -156,6 +171,15 @@ export {
   type EmptyStateProps,
 } from "./EmptyState";
 export { Fill, type FillProps } from "./Fill";
+export {
+  FilterChip,
+  type FilterChipProps,
+} from "./FilterChip";
+export {
+  FilterList,
+  type FilterListProps,
+  type FilterRow,
+} from "./FilterList";
 export {
   ConfigForm,
   Field,
@@ -416,3 +440,4 @@ export {
 export { VisuallyHidden } from "./VisuallyHidden";
 export { UI_KIT_VERSION } from "./version";
 export { WidgetHeader, type WidgetHeaderProps } from "./WidgetHeader";
+export * from "./WidgetMetaContext";

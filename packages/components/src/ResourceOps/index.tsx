@@ -8,11 +8,12 @@ import type {
   IsruConverterEntry,
   IsruDrillEntry,
 } from "@ksp-gonogo/sitrep-sdk";
-import { FilterList, type FilterRow } from "@ksp-gonogo/ui";
 import {
   Badge,
   Cluster,
   EmptyState,
+  FilterList,
+  type FilterRow,
   Inline,
   Panel,
   ReadoutCaption,

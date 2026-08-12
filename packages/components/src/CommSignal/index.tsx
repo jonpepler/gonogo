@@ -1,8 +1,10 @@
-import type { ComponentProps } from "@ksp-gonogo/core";
+import type { AnyAugment, ComponentProps } from "@ksp-gonogo/core";
 import {
   AugmentSlot,
+  getAugmentsForSlot,
   getWidgetShape,
   registerComponent,
+  useAugmentAvailable,
   useTelemetry,
 } from "@ksp-gonogo/core";
 import { useStream, type VesselState } from "@ksp-gonogo/sitrep-client";
@@ -19,7 +21,7 @@ import {
   Value,
   VisuallyHidden,
 } from "@ksp-gonogo/ui-kit";
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 type CommSignalConfig = Record<string, never>;
 
@@ -75,6 +77,40 @@ function describeControl(
   return { label: resolved, tone: "ok" };
 }
 
+/**
+ * Reports one `comm-signal.sections` augment's live Domain availability up to
+ * CommSignal, via `useAugmentAvailable`: the SAME gate `<AugmentSlot>` itself
+ * applies before ever rendering that augment's component. Isolated into its
+ * own component (mirrors MapView's `VanillaSuppressionProbe`) so the
+ * `useTelemetry` hook underneath has a stable position per augment
+ * regardless of how many candidates are registered. Renders nothing, this
+ * exists purely to answer "does the LINK BUDGET column currently have
+ * anything to show", decoupled from mere registration: a bundled-but-not-
+ * running Uplink client registers its augments unconditionally at import
+ * time (same class of bug `AugmentDefinition.suppressesVanillaBase`'s doc
+ * comment in augments.ts warns about for MapView's analogous decision).
+ * Without this, the LINK BUDGET column would be reserved (wasting half the
+ * row) the moment the RealAntennas Uplink is bundled, even on a vessel/save
+ * where its Domain never reports live.
+ */
+function SectionsAvailabilityProbe({
+  augment,
+  onAvailableChange,
+}: Readonly<{
+  augment: AnyAugment;
+  onAvailableChange: (id: string, available: boolean) => void;
+}>) {
+  const available = useAugmentAvailable(augment);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reports on every value change; onAvailableChange is a stable useCallback (empty dep list) below
+  useEffect(() => {
+    onAvailableChange(augment.id, available);
+    // Drop this augment's contribution on unmount (deregistered, or the
+    // slot's registered set changes).
+    return () => onAvailableChange(augment.id, false);
+  }, [augment.id, available]);
+  return null;
+}
+
 function CommSignalComponent({
   w,
   h,
@@ -100,6 +136,28 @@ function CommSignalComponent({
   const controlState = vesselState?.commsControlStateOrdinal ?? undefined;
   const controlStateName = vesselState?.commsControlStateName ?? undefined;
   const delay = useTelemetry("comms.delay")?.oneWaySeconds;
+
+  // Live (not merely registered) `comm-signal.sections` augments, fed by
+  // `SectionsAvailabilityProbe` below, one per candidate augment. Declared
+  // here (ahead of the `hasData` early return) so these hooks run
+  // unconditionally on every render, same as the telemetry reads above.
+  const sectionsAugments = getAugmentsForSlot("comm-signal.sections");
+  const [availableSectionIds, setAvailableSectionIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const handleSectionAvailableChange = useCallback(
+    (id: string, available: boolean) => {
+      setAvailableSectionIds((prev) => {
+        const has = prev.has(id);
+        if (available === has) return prev;
+        const next = new Set(prev);
+        if (available) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+    },
+    [],
+  );
 
   const hasData =
     connected !== undefined ||
@@ -158,6 +216,14 @@ function CommSignalComponent({
   const isLandscape = getWidgetShape(w, h).shape === "landscape";
   const showSubtitle = rows >= 4;
   const showDetailGrid = rows >= 4 && cols >= 4;
+  // Gates whether a LINK BUDGET column is reserved at all: with no comms
+  // Uplink's `comm-signal.sections` augment currently LIVE, no column is
+  // rendered and its width goes back to the signal readout instead of
+  // sitting empty beside it. Fed by `availableSectionIds` (see
+  // `SectionsAvailabilityProbe` above), not by mere registration: a
+  // bundled-but-not-running Uplink client would otherwise still claim the
+  // column.
+  const sectionsAugmentPresent = availableSectionIds.size > 0;
   // "LOS" (loss of signal) vs NULL_DISPLAY (no telemetry), both render zero
   // bars, so the headline label is the only differentiator at tiny
   // sizes where subtitle + detail grid are suppressed. Without this
@@ -195,6 +261,17 @@ function CommSignalComponent({
         {liveAnnouncement}
       </VisuallyHidden>
 
+      {/* Invisible per-augment probes feeding `sectionsAugmentPresent`
+          above: always mounted regardless of layout branch, one per
+          candidate `comm-signal.sections` augment. */}
+      {sectionsAugments.map((augment) => (
+        <SectionsAvailabilityProbe
+          key={augment.id}
+          augment={augment}
+          onAvailableChange={handleSectionAvailableChange}
+        />
+      ))}
+
       {/* Link caption relocated out of the panel subtitle into the body
           (staging change), carried by a plain span so the title stands alone. */}
       {showSubtitle && (
@@ -212,34 +289,81 @@ function CommSignalComponent({
         </span>
       )}
 
-      {/* Landscape (wide-short): bars/headline cluster and detail grid sit
-          side by side, each taking half the row, rather than clustering
-          top-left. Portrait: the same two blocks stack vertically. Neither
-          Cluster nor Stack has an even-split "each child grows" mode, so the
-          two children get that via a direct style override in landscape.
+      {/* With no comms Uplink bound to `comm-signal.sections` (the common
+          case), this is the ORIGINAL two-mode layout, unchanged: landscape
+          (wide-short) puts the bars/headline cluster and the detail grid
+          side by side; portrait stacks them. Neither Cluster nor Stack has an
+          even-split "each child grows" mode, so the two children get that
+          via a direct style override in landscape.
 
           Dropping this wrapper's `minHeight: 0` (it used to sit alongside
           `flex: 1`) is the fix for a real overlap bug, not a no-op tidy-up.
           A flex item's AUTOMATIC min-height (the spec default, "auto")
           floors it at its own content size, exactly what stops it being
           crushed by a sibling; explicit `minHeight: 0` cancels that floor.
-          With the floor cancelled, whenever a sibling below asked for more
-          room than the panel body had spare (an `AugmentSlot`-composed
-          section, e.g. RealAntennas' link-budget panel, pushing total
-          content past the tile height), the flexbox shrink pass was free to
-          crush this block's box past zero, and its real content (bars,
-          control/delay rows) painted straight through its collapsed box
-          into that sibling. Removing the override restores the automatic
-          floor, so this block never shrinks below its own content and an
-          augment section always starts cleanly below it. At every size
-          WITHOUT an augment this changes nothing: the floor only ever
-          engages during a shrink (negative free space), and the no-augment
-          case always has spare room (positive free space, pure grow), so
-          the clamp never activates and every existing render is
-          byte-identical. If combined content still outgrows the tile,
-          Panel.Body's own `overflow: auto` (with its scroll glow) handles
-          it instead of the two overlapping. */}
-      {isLandscape ? (
+          Removing the override restores the automatic floor, so this block
+          never shrinks below its own content. If combined content still
+          outgrows the tile, Panel.Body's own `overflow: auto` (with its
+          scroll glow) handles overflow instead of the two overlapping.
+
+          When a comms Uplink DOES bind the slot (e.g. RealAntennas' LINK
+          BUDGET panel), the branch below composes it as a SECOND main block
+          beside (landscape) or below (portrait) the signal readout, gated on
+          `sectionsAugmentPresent` so the column is reserved only when
+          there's something to put in it (see that const's comment). In
+          landscape the signal readout drops its OWN bars-vs-grid side-by-side
+          split and stacks instead: it only owns half the row once the LINK
+          BUDGET column sits beside it, and there isn't width for two levels
+          of side-by-side split at once (doing both at once visibly collided
+          the detail grid into the augment column at 9-wide). The automatic
+          min-height floor still holds on every child in both arrangements
+          (no `minHeight: 0` override anywhere below), so the same overlap
+          protection applies: in portrait the augment section stacks inside
+          the SAME Stack as the readout; in landscape it sits beside it
+          instead, so the two never compete for vertical space to begin
+          with. */}
+      {sectionsAugmentPresent ? (
+        isLandscape ? (
+          <Cluster align="start" style={{ flex: 1, gap: "var(--space-24)" }}>
+            <Stack gap="md" style={{ flex: "1 1 0", minWidth: 0 }}>
+              <Cluster justify="start" wrap>
+                <SignalBars bars={bars} tone={control.tone} />
+                <SignalHeadline
+                  headline={headline}
+                  lost={connected === false}
+                />
+              </Cluster>
+
+              {showDetailGrid && (
+                <Grid cols="auto 1fr" gap="md" rowGap="xs" align="baseline">
+                  <CommSignalDetailRows control={control} delay={delay} />
+                </Grid>
+              )}
+            </Stack>
+
+            {/* LINK BUDGET column, beside the signal readout. */}
+            <div style={{ flex: "1 1 0", minWidth: 0 }}>
+              <AugmentSlot name="comm-signal.sections" props={{}} />
+            </div>
+          </Cluster>
+        ) : (
+          <Stack gap="md" style={{ flex: 1 }}>
+            <Cluster justify="start" wrap>
+              <SignalBars bars={bars} tone={control.tone} />
+              <SignalHeadline headline={headline} lost={connected === false} />
+            </Cluster>
+
+            {showDetailGrid && (
+              <Grid cols="auto 1fr" gap="md" rowGap="xs" align="baseline">
+                <CommSignalDetailRows control={control} delay={delay} />
+              </Grid>
+            )}
+
+            {/* Stacked below the signal readout for narrow tiles. */}
+            <AugmentSlot name="comm-signal.sections" props={{}} />
+          </Stack>
+        )
+      ) : isLandscape ? (
         <Cluster
           justify="between"
           align="center"
@@ -276,11 +400,6 @@ function CommSignalComponent({
           )}
         </Stack>
       )}
-
-      {/* Body sections below the signal-bars readout, a comms Uplink (e.g. a
-          RealAntennas per-antenna breakdown) composes here from its own Topics.
-          Renders nothing until an augment binds this slot. */}
-      <AugmentSlot name="comm-signal.sections" props={{}} />
     </Panel>
   );
 }

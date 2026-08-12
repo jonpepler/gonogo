@@ -51,7 +51,7 @@ const ARM_TIMEOUT_MS = 4000;
  * per-instrument `<Row>` + `InstrumentActions`: same arm→confirm→pending
  * behaviour, same badge tones, now composed entirely from kit primitives.
  *
- * Data/framework-free by design (§1 export-safety boundary): this component
+ * Data/framework-free by design: this component
  * never dispatches a command or reads telemetry itself. The arm/pending
  * control state is presentational UI state and stays local; the actual
  * command dispatch is the caller's job via `onDeploy`/`onTransmit`.

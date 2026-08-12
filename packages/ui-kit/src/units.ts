@@ -434,7 +434,7 @@ const DECIMALS: Record<string, number> = {
 const DISPLAY_BY_KIND: Record<string, string> = {
   // The currencies name a category, not a symbol, so each gets the short form
   // the dashboard already uses ("289,848f" in the funds readouts, "13.97 rep"
-  // in Strategies). These are the TEXT fallbacks; §3 of the UI goal replaces
+  // in Strategies). These are the TEXT fallbacks; a future icon pass replaces
   // them with a flask and a star, at which point they become the alt text.
   funds: "f",
   science: "sci",

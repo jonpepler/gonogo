@@ -3,9 +3,9 @@ import type { BadgeTone } from "./Badge";
 
 /**
  * One standard badge Panel can render in its header aside. The fixed,
- * uniform shape every widget's `<id>.badges` contribution slot produces
- * (contribution-slots-spec §13.2): a label and an optional tone, nothing
- * widget-specific, so Panel can render it with zero per-widget code.
+ * uniform shape every widget's `<id>.badges` contribution slot produces: a
+ * label and an optional tone, nothing widget-specific, so Panel can render
+ * it with zero per-widget code.
  */
 export interface BadgeEntry {
   id: string;

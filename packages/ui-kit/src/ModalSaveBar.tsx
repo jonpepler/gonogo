@@ -3,18 +3,18 @@ import { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import { PrimaryButton } from "./Button";
 import { configEqual } from "./configEqual";
 
-// ---------------------------------------------------------------------------
-// Chrome context: lets content rendered *inside* a modal register a sticky
-// footer (rendered outside the scrollable body) and a dirty flag that gates
-// every close path. This is the mechanism behind useModalSaveBar.
-//
-// The modal shell itself (`ModalProvider`/`ModalDialog`) stays in
-// `@ksp-gonogo/ui`: it needs `safeRandomUuid` from `@ksp-gonogo/core`,
-// which this package must never depend on. `ModalChromeContext` is the
-// shared seam: `ui`'s `ModalDialog` provides it, this hook (and
-// `useModalSaveBar`) consume it. Neither side needs to know about the
-// other's extra dependencies.
-// ---------------------------------------------------------------------------
+/**
+ * Chrome context: lets content rendered *inside* a modal register a sticky
+ * footer (rendered outside the scrollable body) and a dirty flag that gates
+ * every close path. This is the mechanism behind useModalSaveBar.
+ *
+ * The modal shell itself (`ModalProvider`/`ModalDialog`) stays in
+ * `@ksp-gonogo/ui`: it needs `safeRandomUuid` from `@ksp-gonogo/core`, which
+ * this package must never depend on. `ModalChromeContext` is the shared
+ * seam: `ui`'s `ModalDialog` provides it, this hook (and `useModalSaveBar`)
+ * consume it. Neither side needs to know about the other's extra
+ * dependencies.
+ */
 
 export interface ModalChromeValue {
   /** Register/replace the sticky footer node. Pass null to clear. */

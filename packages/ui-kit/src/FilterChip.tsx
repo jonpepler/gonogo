@@ -49,8 +49,11 @@ const ChipButton = styled.button<{ $selected: boolean; $size: "md" | "sm" }>`
   border-radius: var(--radius-pill);
   font-size: ${({ $size }) =>
     $size === "sm" ? "var(--font-size-2xs)" : "var(--font-size-xs)"};
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  /* Regular weight: this label renders in the app's monospace body font,
+     where a bold weight over-tracks uppercase text and reads badly at this
+     size. */
+  font-weight: 400;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
   transition:

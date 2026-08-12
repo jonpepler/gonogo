@@ -5,27 +5,31 @@
 import "./styledComponentsTheme";
 
 // ── Theme ────────────────────────────────────────────────────────────────────
-// Re-exported wholesale from `@ksp-gonogo/theme`, an internal `private: true`
-// package that is never published, the build inlines it into `dist` (JS and
-// `.d.ts` alike), so this is the theme's only public surface. The split exists
-// so packages needing only a theme (`@ksp-gonogo/test-utils`) don't pull in the
-// whole kit; it must stay a devDependency so it can't leak into the published
-// manifest. See `tsup.config.ts`.
-//
-// Token convention for everything in this package: `@ksp-gonogo/ui-kit/tokens.css`
-// is the one way a host mounts the tokens, and it is a build-time copy of the
-// theme's `tokens.css`, so it cannot drift from it.
-//
-// There used to be a second route, a `GonogoTokens` styled-components global
-// sheet, for hosts that build their global styles in JS. It was a hand-typed
-// copy of the same values, nothing consumed it, and it fell 39 properties
-// behind without anyone noticing. Removed rather than automated: a consumer
-// that can install this package can import a stylesheet.
-//
-// The inline fallbacks written through this package (`var(--space-8, 8px)`)
-// are the last line of defence for a host that mounts NO sheet: they keep a
-// padding from computing to its initial `0` and collapsing the layout. Colours
-// degrade to inherited text and are left bare, matching what shipped before.
+/**
+ * Re-exported wholesale from `@ksp-gonogo/theme`, an internal `private: true`
+ * package that is never published, the build inlines it into `dist` (JS and
+ * `.d.ts` alike), so this is the theme's only public surface. The split
+ * exists so packages needing only a theme (`@ksp-gonogo/test-utils`) don't
+ * pull in the whole kit; it must stay a devDependency so it can't leak into
+ * the published manifest. See `tsup.config.ts`.
+ *
+ * Token convention for everything in this package:
+ * `@ksp-gonogo/ui-kit/tokens.css` is the one way a host mounts the tokens,
+ * and it is a build-time copy of the theme's `tokens.css`, so it cannot
+ * drift from it.
+ *
+ * There used to be a second route, a `GonogoTokens` styled-components global
+ * sheet, for hosts that build their global styles in JS. It was a hand-typed
+ * copy of the same values, nothing consumed it, and it fell 39 properties
+ * behind without anyone noticing. Removed rather than automated: a consumer
+ * that can install this package can import a stylesheet.
+ *
+ * The inline fallbacks written through this package (`var(--space-8, 8px)`)
+ * are the last line of defence for a host that mounts NO sheet: they keep a
+ * padding from computing to its initial `0` and collapsing the layout.
+ * Colours degrade to inherited text and are left bare, matching what
+ * shipped before.
+ */
 export * from "@ksp-gonogo/theme";
 export {
   ActionButton,
@@ -47,13 +51,15 @@ export {
   type AutoEmptyStateProps,
 } from "./AutoEmptyState";
 // ── Augment seam (relocated from @ksp-gonogo/core) ────────────────────────────
-// The augment registry + declaration-merge type surface (`SlotRegistry`,
-// `SlotProps`, the segment seam, the setting types), the `<AugmentSlot>`
-// composition point, and the ui-kit-owned domain-availability store its
-// presence gate reads. Spine-free (sdk types only); the frame-batched evaluator
-// stays in core (spec §14). `@ksp-gonogo/core` re-exports every symbol below, so
-// existing importers are byte-identical and a `declare module "@ksp-gonogo/core"`
-// augmentation of `SlotRegistry` still merges.
+/**
+ * The augment registry + declaration-merge type surface (`SlotRegistry`,
+ * `SlotProps`, the segment seam, the setting types), the `<AugmentSlot>`
+ * composition point, and the ui-kit-owned domain-availability store its
+ * presence gate reads. Spine-free (sdk types only); the frame-batched
+ * evaluator stays in core. `@ksp-gonogo/core` re-exports every symbol below,
+ * so existing importers are byte-identical and a `declare module
+ * "@ksp-gonogo/core"` augmentation of `SlotRegistry` still merges.
+ */
 export * from "./augments";
 export {
   Badge,
@@ -144,13 +150,16 @@ export { usePanelDelay } from "./CommandDelay/usePanelDelay";
 export { Countdown, type CountdownProps } from "./Countdown";
 export { configEqual } from "./configEqual";
 // ── Contribution read seam (relocated from @ksp-gonogo/core) ──────────────────
-// The contribution TYPE surface (the declaration-merge registries, the segment
-// machinery, the entry types), the component-slot context, and the contribution
-// READ hooks + per-widget store. Spine-free (sdk types only); the registration
-// half and the per-frame aggregation stay in core. `@ksp-gonogo/core` re-exports
-// every symbol below, so existing `@ksp-gonogo/core` importers are byte-
-// identical and a `declare module "@ksp-gonogo/core"` augmentation of
-// `ContributionRegistry`/`ComponentSlotRegistry` still merges.
+/**
+ * The contribution TYPE surface (the declaration-merge registries, the
+ * segment machinery, the entry types), the component-slot context, and the
+ * contribution READ hooks + per-widget store. Spine-free (sdk types only);
+ * the registration half and the per-frame aggregation stay in core.
+ * `@ksp-gonogo/core` re-exports every symbol below, so existing
+ * `@ksp-gonogo/core` importers are byte-identical and a `declare module
+ * "@ksp-gonogo/core"` augmentation of
+ * `ContributionRegistry`/`ComponentSlotRegistry` still merges.
+ */
 export * from "./contributions";
 export {
   type ContributionSlotEntry,
@@ -303,16 +312,17 @@ export {
   type Quantityish,
 } from "./magnitude";
 // ── Null-display token ──────────────────────────────────────────────────────
-// The one sanctioned em dash in the codebase; see NullValue.tsx's own header
-// comment for the full rationale and the ratchet that enforces it.
+// The one sanctioned em dash in the codebase; see NullValue.tsx's own header comment for the full rationale and the ratchet that enforces it.
 export { NULL_DISPLAY, NullValue } from "./NullValue";
 // ── Panel family ─────────────────────────────────────────────────────────────
-// `Panel` is a compound component: `Panel.Container`, `.Title`, `.Subtitle`,
-// `.Toolbar`, `.Glow`, `.Body`, `.Split` and `.Sidebar` are reachable from it, so
-// a widget that needs
-// a variant can hand-compose the same arrangement. The named exports below are the same
-// objects, kept for widgets that render them as children; prefer
-// `<Panel panelTitle="…">` in new code. See README.md's Panel section.
+/**
+ * `Panel` is a compound component: `Panel.Container`, `.Title`, `.Subtitle`,
+ * `.Toolbar`, `.Glow`, `.Body`, `.Split` and `.Sidebar` are reachable from it,
+ * so a widget that needs a variant can hand-compose the same arrangement. The
+ * named exports below are the same objects, kept for widgets that render them
+ * as children; prefer `<Panel panelTitle="…">` in new code. See README.md's
+ * Panel section.
+ */
 export {
   Panel,
   PanelBody,
@@ -416,11 +426,14 @@ export {
 export { Truncate } from "./Truncate";
 export { Unit } from "./Unit";
 // ── Units ───────────────────────────────────────────────────────────────────
-// The contract declares what a field IS; these decide how to SHOW it. The wire
-// is canonical SI and never pre-scaled, so every ladder lives here.
-// Only the extension point and the shapes it needs. Every formatter that used
-// to live here is gone: `<Unit value={…} />` is the one way to show a
-// quantity, and a second way is how eleven widgets each grew their own ladder.
+/**
+ * The contract declares what a field IS; these decide how to SHOW it. The
+ * wire is canonical SI and never pre-scaled, so every ladder lives here.
+ * Only the extension point and the shapes it needs. Every formatter that
+ * used to live here is gone: `<Unit value={…} />` is the one way to show a
+ * quantity, and a second way is how eleven widgets each grew their own
+ * ladder.
+ */
 export {
   type FormatsFor,
   type KnownQuantityKind,

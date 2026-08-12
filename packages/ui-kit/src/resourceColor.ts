@@ -1,39 +1,38 @@
-// ---------------------------------------------------------------------------
-// Resource-identity colour primitive (design doc: gonogo main repo,
-// local_docs/design/2026-08-08-resource-colour-system.md). Deterministic
-// name -> colour mapping so the same resource always renders the same
-// colour everywhere it appears (ShipMap's per-part meters today, any future
-// resource widget). Pure and stateless: no registry, no memoisation needed,
-// same input always produces the same output.
-//
-// Two tiers:
-//   1. A curated substring map for resource names we know the real-world
-//      kind of (water, oxidizer, food, ...). Ordered MOST-SPECIFIC-FIRST so
-//      a longer/more specific alias always gets first refusal over a
-//      shorter one that would also match (see CURATED's own comment). Each
-//      family owns a single HUE (its neighbourhood on the wheel); members of
-//      a family (waste/wastewater/carbondioxide all share the co2/waste
-//      family) are told apart by LIGHTNESS, not hue. Hue-only spreading was
-//      tried first and failed for crowded families: waste's three members
-//      landed 2.8-6deg apart, boxed in by ElectricCharge's neighbouring
-//      band, and read as nearly-identical olives. Lightness has headroom
-//      even when hue is crowded, so a family's members now spread along
-//      that axis instead, deterministically from a hash of each member's own
-//      full name, no per-member table entry required.
-//   2. A stateless golden-angle hash fallback for anything unrecognised
-//      (mod resources, future KSP resources, typos), so an unknown resource
-//      still gets a stable, well-spread, legible colour rather than one
-//      shared "unknown" grey. Its reserved-zone check avoids every curated
-//      family's hue neighbourhood, not just its exact centre point.
-//
-// Both tiers are normalised into the SAME saturation band and lightness
-// range, so a curated resource and a hashed one read as one system rather
-// than two. This retires the old muted `MeterTone`-as-identity workaround in
-// ShipMap.
-// ---------------------------------------------------------------------------
+/**
+ * Resource-identity colour primitive. Deterministic name -> colour mapping so
+ * the same resource always renders the same colour everywhere it appears
+ * (ShipMap's per-part meters today, any future resource widget). Pure and
+ * stateless: no registry, no memoisation needed, same input always produces
+ * the same output.
+ *
+ * Two tiers:
+ *  1. A curated substring map for resource names we know the real-world
+ *     kind of (water, oxidizer, food, ...). Ordered MOST-SPECIFIC-FIRST so
+ *     a longer/more specific alias always gets first refusal over a
+ *     shorter one that would also match (see CURATED's own comment). Each
+ *     family owns a single HUE (its neighbourhood on the wheel); members of
+ *     a family (waste/wastewater/carbondioxide all share the co2/waste
+ *     family) are told apart by LIGHTNESS, not hue. Hue-only spreading was
+ *     tried first and failed for crowded families: waste's three members
+ *     landed 2.8-6deg apart, boxed in by ElectricCharge's neighbouring
+ *     band, and read as nearly-identical olives. Lightness has headroom
+ *     even when hue is crowded, so a family's members now spread along
+ *     that axis instead, deterministically from a hash of each member's own
+ *     full name, no per-member table entry required.
+ *  2. A stateless golden-angle hash fallback for anything unrecognised
+ *     (mod resources, future KSP resources, typos), so an unknown resource
+ *     still gets a stable, well-spread, legible colour rather than one
+ *     shared "unknown" grey. Its reserved-zone check avoids every curated
+ *     family's hue neighbourhood, not just its exact centre point.
+ *
+ * Both tiers are normalised into the SAME saturation band and lightness
+ * range, so a curated resource and a hashed one read as one system rather
+ * than two. This retires the old muted `MeterTone`-as-identity workaround in
+ * ShipMap.
+ */
 
 /** Fixed saturation shared by both tiers, tuned for the dark ShipMap canvas.
- *  Starter value per the design doc; tune by eye on operator review, the
+ *  Starting value; tune by eye on operator review, the
  *  MECHANISM (two tiers, ordered curated match, hue = family identity,
  *  lightness = member identity, golden-angle hash, reserved-zone avoidance)
  *  is what must stay correct, not this number. */
@@ -43,7 +42,7 @@ const SATURATION_PCT = 65;
  *  mapped into. Kept away from the extremes on purpose: below the floor a
  *  fill gets hard to read against the dark ShipMap canvas, above the
  *  ceiling it washes out against the same canvas's highlight chrome. Widened
- *  slightly past the design doc's starter 42-70 (by eye, on the waste
+ *  slightly past an earlier 42-70 (by eye, on the waste
  *  family, the tightest three-member case): 42-70 gave the closest pair
  *  (CarbonDioxide/WasteWater) only ~5.3pts apart, legible but not quite the
  *  confident step the operator asked for; 38-72 pushes the same pair to
@@ -117,9 +116,9 @@ interface CuratedFamily {
 
 /**
  * Tier 1: curated substring matches, case-insensitive (callers normalise
- * to lower-case before matching), most-specific-first. Starter set from the
- * design doc; small and obvious on purpose, extend it rather than widen an
- * existing alias.
+ * to lower-case before matching), most-specific-first. Starter set kept
+ * small and obvious on purpose, extend it rather than widen an existing
+ * alias.
  *
  * `liquidfuel` is listed ahead of any future generic `fuel` alias, and
  * `electriccharge` ahead of `ec`, so a later addition of a broader alias

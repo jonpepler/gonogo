@@ -200,14 +200,15 @@ describe("AugmentSlot: Domain presence gating (spec §4.2)", () => {
   });
 });
 
-// useAugmentAvailable is AugmentEntry's own gate hook, extracted (spec:
-// local_docs/spec-mapview-stackable-layers.md fix-up) so a HOST can ask "is
-// this augment's Domain live" WITHOUT rendering the augment's component,
-// needed for a decision like MapView's vanilla-suppression, which must
-// respect Domain availability exactly like rendering does, not just
-// registry presence (a bundled client package registers its augments
-// unconditionally at import time, whether or not the mod is actually
-// running in KSP).
+/**
+ * useAugmentAvailable is AugmentEntry's own gate hook, extracted so a HOST
+ * can ask "is this augment's Domain live" WITHOUT rendering the augment's
+ * component, needed for a decision like MapView's vanilla-suppression, which
+ * must respect Domain availability exactly like rendering does, not just
+ * registry presence (a bundled client package registers its augments
+ * unconditionally at import time, whether or not the mod is actually running
+ * in KSP).
+ */
 describe("useAugmentAvailable", () => {
   function Probe({ augment }: { augment: { id: string; requires?: string } }) {
     const available = useAugmentAvailable(

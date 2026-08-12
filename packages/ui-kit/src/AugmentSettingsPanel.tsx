@@ -2,10 +2,12 @@ import type { NamespacedAugmentSettings } from "./augments";
 import { Field, FieldLabel, FieldRow, Input } from "./Form";
 import { Switch } from "./Switch";
 
-// `AugmentSettingField` / `NamespacedAugmentSettings` (spec §4.7) live in this
-// package's `augments.ts` (the augment model's home). `getAugmentSettings()` /
-// `getMergedSlotSettings()` return `NamespacedAugmentSettings[]`, which this
-// panel renders straight through.
+/**
+ * `AugmentSettingField` / `NamespacedAugmentSettings` live in this package's
+ * `augments.ts` (the augment model's home). `getAugmentSettings()` /
+ * `getMergedSlotSettings()` return `NamespacedAugmentSettings[]`, which this
+ * panel renders straight through.
+ */
 
 export interface AugmentSettingsPanelProps {
   /** Every augment's settings block for the host widget's slot(s); see `getAugmentSettings`/`getFogRevealSourceSettings`. */
@@ -17,7 +19,7 @@ export interface AugmentSettingsPanelProps {
 }
 
 /**
- * Generic renderer for augment-contributed settings (spec §4.7), the
+ * Generic renderer for augment-contributed settings, the
  * read-back half of the loop `registerAugment({ settings: [...] })` writes
  * into. Renders one control per field, namespaced by augment id so two
  * augments' identically-named settings never collide in the host's saved

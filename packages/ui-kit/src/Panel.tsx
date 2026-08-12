@@ -816,9 +816,7 @@ export const ScrollArea = forwardRef<
   );
 });
 
-// ---------------------------------------------------------------------------
 // Sidebar: a second region beside (or below) the body
-// ---------------------------------------------------------------------------
 
 /**
  * Where the sidebar sits relative to the body, in LOGICAL terms rather than
@@ -1136,28 +1134,28 @@ export function PanelGlow({
   );
 }
 
-// ---------------------------------------------------------------------------
-// The compound Panel
-//
-// Governing principle: `Panel` is EXCLUSIVELY the composition of named
-// subcomponents, with no bespoke markup or styling of its own. If it grew a
-// `<div>`, a widget needing a variant could no longer reproduce it by hand.
-// Every piece below is reachable as `Panel.Container` / `.Title` / `.Glow` /
-// `.Body`.
-//
-// `Panel.Glow` WRAPS the scrolling region rather than sitting beside it, so it
-// owns both the glow's behaviour and the inset compensation it needs. That
-// replaces a `--scroll-glow-pad-*` var contract shared between three
-// components with no owner, which is exactly how a unitless `0` sat in the
-// scrollable shell making `calc(-1 * 0)` invalid, so the glow never rendered
-// there at all.
-//
-// Title and toolbar sit inside the glow but BESIDE the body rather than in
-// it, and the body is the scroller, so the header stays pinned while
-// the content scrolls under the glow. (The retired `PanelScrollable` wrapped
-// all its children in the scroll area, so a widget passing a title got a title
-// that scrolled away; that is what this arrangement fixes.)
-// ---------------------------------------------------------------------------
+/**
+ * The compound Panel.
+ *
+ * Governing principle: `Panel` is EXCLUSIVELY the composition of named
+ * subcomponents, with no bespoke markup or styling of its own. If it grew a
+ * `<div>`, a widget needing a variant could no longer reproduce it by hand.
+ * Every piece below is reachable as `Panel.Container` / `.Title` / `.Glow` /
+ * `.Body`.
+ *
+ * `Panel.Glow` WRAPS the scrolling region rather than sitting beside it, so it
+ * owns both the glow's behaviour and the inset compensation it needs. That
+ * replaces a `--scroll-glow-pad-*` var contract shared between three
+ * components with no owner, which is exactly how a unitless `0` sat in the
+ * scrollable shell making `calc(-1 * 0)` invalid, so the glow never rendered
+ * there at all.
+ *
+ * Title and toolbar sit inside the glow but BESIDE the body rather than in
+ * it, and the body is the scroller, so the header stays pinned while the
+ * content scrolls under the glow. (The retired `PanelScrollable` wrapped all
+ * its children in the scroll area, so a widget passing a title got a title
+ * that scrolled away; that is what this arrangement fixes.)
+ */
 
 export interface PanelProps extends ComponentPropsWithoutRef<"div"> {
   /**
@@ -1192,8 +1190,8 @@ export interface PanelProps extends ComponentPropsWithoutRef<"div"> {
   panelAside?: ReactNode;
   /**
    * Standard badge pills rendered in the header aside, sourced from the
-   * widget's automatic `<id>.badges` contribution slot (contribution-slots
-   * spec §13.2) unless explicitly set here. Renders through the kit's own
+   * widget's automatic `<id>.badges` contribution slot unless explicitly set
+   * here. Renders through the kit's own
    * `Badge`, so every widget's badges share one visual vocabulary instead of
    * each widget hand-rolling a pill. An explicit value here REPLACES the
    * ambient context value rather than merging with it (same relationship

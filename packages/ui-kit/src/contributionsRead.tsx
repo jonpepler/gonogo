@@ -10,16 +10,16 @@ import { createPanelStore } from "./store/createPanelStore";
 import { createStore, type Store } from "./store/createStore";
 import { useWidgetMeta } from "./WidgetMetaContext";
 
-// ---------------------------------------------------------------------------
-// The contribution READ seam: the per-widget store plus the hooks that read it.
-// Spine-free by construction (no sitrep-client, no telemetry), so it lives in
-// the published design floor next to the store factory it uses. The WRITE half
-// (the per-frame aggregation that pulls telemetry) stays in `@ksp-gonogo/core`
-// (`contributionsRuntime.tsx`): it needs sitrep-client values and must not sit
-// below the spine. Both halves share this single `ContributionsPanelStore`
-// instance: core's `ContributionsProvider` mounts it and writes, these hooks
-// read it.
-// ---------------------------------------------------------------------------
+/**
+ * The contribution READ seam: the per-widget store plus the hooks that read
+ * it. Spine-free by construction (no sitrep-client, no telemetry), so it
+ * lives in the published design floor next to the store factory it uses. The
+ * WRITE half (the per-frame aggregation that pulls telemetry) stays in
+ * `@ksp-gonogo/core` (`contributionsRuntime.tsx`): it needs sitrep-client
+ * values and must not sit below the spine. Both halves share this single
+ * `ContributionsPanelStore` instance: core's `ContributionsProvider` mounts
+ * it and writes, these hooks read it.
+ */
 
 export interface ContributionSlotEntry {
   id: string; // the slot id
@@ -32,10 +32,12 @@ export interface ContributionSlotEntry {
 
 const EMPTY_ENTRIES: readonly unknown[] = Object.freeze([]);
 
-// Stable empty snapshot for the no-store case (a bare widget or a test
-// rendered without a `ContributionsProvider`). Same referential-stability
-// requirement as `EMPTY_ENTRIES` above, just typed for the whole-slot-array
-// shape `useAllContributionSlots` returns.
+/**
+ * Stable empty snapshot for the no-store case (a bare widget or a test
+ * rendered without a `ContributionsProvider`). Same referential-stability
+ * requirement as `EMPTY_ENTRIES` above, just typed for the whole-slot-array
+ * shape `useAllContributionSlots` returns.
+ */
 const EMPTY_SLOT_ENTRIES: readonly ContributionSlotEntry[] = Object.freeze([]);
 
 export const ContributionsPanelStore = createPanelStore<
@@ -75,11 +77,13 @@ export function useContributionsBySlotId(slot: string): readonly unknown[] {
 export function useContributions<S extends ContributionSlotId>(
   slot: S,
 ): readonly Contributed<ContributionEntry<S>>[];
-// SEGMENT (host-invariant component slot): the additive entry point. A reusable
-// component writes only the segment ("filters"); the hook completes
-// `${componentId}.${segment}` from `useWidgetMeta()` and runs the identical
-// aggregation. Typed against the segment's entry via `ComponentSlotRegistry`
-// (e.g. `filters` -> `string`), which is why `FilterList` gets `string[]` back.
+/**
+ * SEGMENT (host-invariant component slot): the additive entry point. A
+ * reusable component writes only the segment ("filters"); the hook completes
+ * `${componentId}.${segment}` from `useWidgetMeta()` and runs the identical
+ * aggregation. Typed against the segment's entry via `ComponentSlotRegistry`
+ * (e.g. `filters` -> `string`), which is why `FilterList` gets `string[]` back.
+ */
 export function useContributions<Seg extends ComponentSlotSegment>(
   segment: Seg,
 ): readonly ComponentSlotRegistry[Seg][];

@@ -1,23 +1,23 @@
 import { useSyncExternalStore } from "react";
 import { createPanelStore } from "./store/createPanelStore";
 
-// ---------------------------------------------------------------------------
-// Domain-availability seam (augment presence gate).
-//
-// `<AugmentSlot>`'s presence gate (Uplink architecture spec §4.2) asks "is this
-// augment's Domain live right now" and, historically, answered it with a
-// telemetry read: `useTelemetry(`${requires}.available`)`. That made the gate a
-// SPINE read, which stranded `AugmentSlot` in `@ksp-gonogo/core` even though
-// everything else about the augment model is spine-free.
-//
-// The gate now reads a ui-kit-OWNED store instead, exactly the shape
-// `DelayRailContext` uses: ui-kit defines the store + context; the APP injects
-// real `<domain>.available` presence into it from telemetry (see the app's
-// augment-availability feeder). ui-kit gains NO spine dependency, and with no
-// provider mounted the gate falls back to the same answer the old telemetry
-// read gave with no `TelemetryProvider`: a Domain nothing has announced is not
-// available.
-// ---------------------------------------------------------------------------
+/**
+ * Domain-availability seam (augment presence gate).
+ *
+ * `<AugmentSlot>`'s presence gate asks "is this augment's Domain live right
+ * now" and, historically, answered it with a telemetry read:
+ * `useTelemetry(`${requires}.available`)`. That made the gate a SPINE read,
+ * which stranded `AugmentSlot` in `@ksp-gonogo/core` even though everything
+ * else about the augment model is spine-free.
+ *
+ * The gate now reads a ui-kit-OWNED store instead, exactly the shape
+ * `DelayRailContext` uses: ui-kit defines the store + context; the APP
+ * injects real `<domain>.available` presence into it from telemetry (see the
+ * app's augment-availability feeder). ui-kit gains NO spine dependency, and
+ * with no provider mounted the gate falls back to the same answer the old
+ * telemetry read gave with no `TelemetryProvider`: a Domain nothing has
+ * announced is not available.
+ */
 
 /**
  * A tiny off-tree store of which Domains have announced availability, keyed by

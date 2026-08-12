@@ -1,20 +1,20 @@
 import type { TopicId, TopicPayload } from "@ksp-gonogo/sitrep-sdk";
 
-// ---------------------------------------------------------------------------
-// The contribution TYPE surface (contribution-slots-spec.md §3-4): the
-// declaration-merge registries, the entry-shape resolution, and the read
-// entry type. These live in the published design floor (ui-kit) so the
-// contribution READ hooks (`contributionsRead.tsx`) and `FilterList` can be
-// reachable by third-party Uplinks without importing core.
-//
-// The REGISTRATION half (`ContributionDefinition` with its sitrep-client `Dep[]`
-// deps, `registerContribution`, and the live registry) stays in
-// `@ksp-gonogo/core`: it needs a spine type and is the write path, not the read
-// path. `@ksp-gonogo/core` re-exports every type below, so a `declare module
-// "@ksp-gonogo/core" { interface ContributionRegistry ... }` /
-// `ComponentSlotRegistry` augmentation still merges (verified by a test-d and
-// the in-tree augmentations), and every `@ksp-gonogo/core` importer is unchanged.
-// ---------------------------------------------------------------------------
+/**
+ * The contribution TYPE surface: the declaration-merge registries, the
+ * entry-shape resolution, and the read entry type. These live in the
+ * published design floor (ui-kit) so the contribution READ hooks
+ * (`contributionsRead.tsx`) and `FilterList` can be reachable by third-party
+ * Uplinks without importing core.
+ *
+ * The REGISTRATION half (`ContributionDefinition` with its sitrep-client
+ * `Dep[]` deps, `registerContribution`, and the live registry) stays in
+ * `@ksp-gonogo/core`: it needs a spine type and is the write path, not the
+ * read path. `@ksp-gonogo/core` re-exports every type below, so a `declare
+ * module "@ksp-gonogo/core" { interface ContributionRegistry ... }` /
+ * `ComponentSlotRegistry` augmentation still merges (verified by a test-d and
+ * the in-tree augmentations), and every `@ksp-gonogo/core` importer is unchanged.
+ */
 
 /**
  * The provenance identity a read contribution entry carries in `owner`. The
@@ -44,36 +44,36 @@ export interface ContributionRegistry {}
 /** Union of every declared in-tree contribution slot id. `never` until a package merges one in. */
 export type ContributionSlotId = keyof ContributionRegistry;
 
-// ---------------------------------------------------------------------------
-// Segment-keyed registry for HOST-INVARIANT component slot types.
-//
-// A reusable component (mostly ui-kit / `@ksp-gonogo/ui`) cannot write the
-// full slot literal `${componentId}.${segment}`, because it does not know
-// which widget it is mounted in. So it writes only the SEGMENT (e.g.
-// "filters") and the primitives complete `${componentId}.${segment}` from
-// `useWidgetMeta()` at runtime. This registry maps a SEGMENT -> the entry type
-// its contributions carry: the host-invariant sibling of `ContributionRegistry`'s
-// full-id map.
-//
-// Empty here: every reusable component that owns a segment declares its own
-// one-line augmentation co-located in its own file, the same way a widget's
-// other module-load self-registrations sit alongside its `registerComponent`
-// call (see `FilterList.tsx` for the in-tree example, `filters`). A component
-// living in this package targets `./contributions` (this file); a component
-// published from elsewhere targets `@ksp-gonogo/core` instead, the module its
-// consumers actually import:
-//
-//   declare module "@ksp-gonogo/core" {
-//     interface ComponentSlotRegistry { "my-segment": MyEntry }
-//   }
-//
-// OVERRIDE HATCH (documented, unused in this change): a widget that needs a
-// HOST-SPECIFIC entry type for one completed key: the rare component slot whose
-// entry genuinely depends on the host: overrides the host-invariant default by
-// declaring that full key in `ContributionRegistry` in its OWN package. The
-// full-id branch of `ContributionEntry` below wins over the segment branch, so
-// the override is cleanly cordoned, never on the common path.
-// ---------------------------------------------------------------------------
+/**
+ * Segment-keyed registry for HOST-INVARIANT component slot types.
+ *
+ * A reusable component (mostly ui-kit / `@ksp-gonogo/ui`) cannot write the
+ * full slot literal `${componentId}.${segment}`, because it does not know
+ * which widget it is mounted in. So it writes only the SEGMENT (e.g.
+ * "filters") and the primitives complete `${componentId}.${segment}` from
+ * `useWidgetMeta()` at runtime. This registry maps a SEGMENT to the entry type
+ * its contributions carry: the host-invariant sibling of `ContributionRegistry`'s
+ * full-id map.
+ *
+ * Empty here: every reusable component that owns a segment declares its own
+ * one-line augmentation co-located in its own file, the same way a widget's
+ * other module-load self-registrations sit alongside its `registerComponent`
+ * call (see `FilterList.tsx` for the in-tree example, `filters`). A component
+ * living in this package targets `./contributions` (this file); a component
+ * published from elsewhere targets `@ksp-gonogo/core` instead, the module its
+ * consumers actually import:
+ *
+ *   declare module "@ksp-gonogo/core" {
+ *     interface ComponentSlotRegistry { "my-segment": MyEntry }
+ *   }
+ *
+ * Override hatch (documented, unused so far): a widget that needs a
+ * HOST-SPECIFIC entry type for one completed key: the rare component slot whose
+ * entry genuinely depends on the host: overrides the host-invariant default by
+ * declaring that full key in `ContributionRegistry` in its OWN package. The
+ * full-id branch of `ContributionEntry` below wins over the segment branch, so
+ * the override is cleanly cordoned, never on the common path.
+ */
 
 // biome-ignore lint/suspicious/noEmptyInterface: declaration-merging seam, mirrors SlotRegistry
 export interface ComponentSlotRegistry {}

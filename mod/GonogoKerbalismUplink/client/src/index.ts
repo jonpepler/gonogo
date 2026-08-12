@@ -134,6 +134,17 @@ import "./ShipMap/partMeters";
 // which process each row is (see ./ResourceOps/processFilters.ts for what it
 // deliberately does NOT contribute).
 import "./ResourceOps/processFilters";
+// ScienceOfficer/ScienceBench's fill-ins: the base widgets present the
+// Kerbalism-elected `science.*` shape generically (hide the stock fire-once
+// verbs, drop the mits-only figures a non-stock valueModel leaves null), and
+// these four augments are where the actual Kerbalism experience (continuous
+// running state + issue, file-vs-sample, drive capacity, transmit state,
+// per-subject ledger) lands, off the provider extension bag ./science.ts
+// already exposes readers for.
+import "./Science/scienceOfficerSections";
+import "./Science/scienceOfficerBadges";
+import "./Science/scienceBenchAboardRow";
+import "./Science/scienceBenchBadges";
 
 // The CrewSurvival Processor handle + its result types, the single per-frame
 // derivation the `crew-status.survival` augment and its badge both consume.

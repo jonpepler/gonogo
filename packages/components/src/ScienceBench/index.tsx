@@ -1,5 +1,6 @@
 import type { ComponentProps } from "@ksp-gonogo/core";
 import {
+  AugmentSlot,
   registerComponent,
   useGameContext,
   useTelemetry,
@@ -15,7 +16,7 @@ import {
   Value,
 } from "@ksp-gonogo/ui-kit";
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 // Body below keeps styled-components: it styles ScrollArea's internal
 // `[data-scroll-area-inner]` element (a child component's internals, which
 // inline style can't reach and ScrollArea exposes no prop for). Documented.
@@ -49,12 +50,22 @@ const SENSOR_UNITS: Record<SensorType, string> = {
   acc: "g",
 };
 
-/** The mod's `SensorEntry.type` string (`Sitrep.Contract.SensorType` enum name, `TEMP`/`PRES`/`GRAV`/`ACC`) for each widget-facing sensor type. */
-const WIRE_SENSOR_TYPE: Record<SensorType, string> = {
-  temp: "TEMP",
-  pres: "PRES",
-  grav: "GRAV",
-  acc: "ACC",
+/**
+ * The wire `SensorEntry.type` spellings that map onto each widget-facing
+ * bucket. Stock's `ModuleEnviroSensor` reports the `Sitrep.Contract.SensorType`
+ * enum name (`TEMP`/`PRES`/`GRAV`/`ACC`); Kerbalism's `Sensor` module reports
+ * its own free-text dispatch key instead (`temperature`/`pressure`/…, see
+ * `Kerbalism/Modules/Sensor.cs`), the same physical reading under a different
+ * spelling. Only temperature and pressure have a real Kerbalism counterpart;
+ * Kerbalism has no gravity or accelerometer sensor (`gravioli` is a distinct
+ * dark-matter detector, not a gravity reading), so those two buckets stay
+ * stock-only.
+ */
+const WIRE_SENSOR_TYPE: Record<SensorType, readonly string[]> = {
+  temp: ["TEMP", "TEMPERATURE"],
+  pres: ["PRES", "PRESSURE"],
+  grav: ["GRAV"],
+  acc: ["ACC"],
 };
 
 /**
@@ -236,7 +247,16 @@ export interface ExperimentBreakdownEntry {
   biome: string;
   situation: string;
   expTitle: string;
-  dataMits: number;
+  /**
+   * Mits, or `null` when the provider's data isn't in mits (Kerbalism's is
+   * megabytes; the field's unit is compile-time-baked on the wire and
+   * cannot vary by provider, so a non-stock backend leaves it null rather
+   * than putting a megabyte figure under a mits label; see
+   * `ExperimentBreakdownEntry.ValueModel`'s doc comment in
+   * `Sitrep.Contract/SciencePayloads.cs`). `null` renders NULL_DISPLAY, not
+   * "0.0 mits".
+   */
+  dataMits: number | null;
   /** subjectScienceCap - subjectScience; how much science is left in this subject. */
   remainingPotential: number;
 }
@@ -269,7 +289,11 @@ export function parseExperimentBreakdown(
       biome: typeof e.biome === "string" ? e.biome : "",
       situation: typeof e.situation === "string" ? e.situation : "",
       expTitle: typeof e.expTitle === "string" ? e.expTitle : "(unnamed)",
-      dataMits: magnitudeOr(e.dataMits as Quantityish, 0),
+      // Null guard, not magnitudeOr(...,0): a provider whose data isn't in
+      // mits leaves this wire field null on purpose (see the field's own
+      // doc comment above), and collapsing that to 0 renders a lying
+      // "0.0 mits" instead of hiding a figure that was never real.
+      dataMits: magnitudeOf(e.dataMits as Quantityish),
       // The sort below reads this. Left as a `Value`, every entry scored 0
       // and the list held its wire order instead of ranking by what is
       // actually worth recovering.
@@ -280,6 +304,44 @@ export function parseExperimentBreakdown(
   // to extract come first; the operator focuses on what's worth recovering.
   out.sort((a, b) => b.remainingPotential - a.remainingPotential);
   return out;
+}
+
+/**
+ * Slot context for `science-bench.aboard-row`: the per-subject-row slot in
+ * the Aboard list. Carries only the subject id, the join key onto the raw
+ * `science.experiments`/`science.experimentBreakdown` topics; a richer
+ * provider (e.g. Kerbalism, whose per-file kind/size/transmit-rate detail
+ * and per-subject ledger live entirely in its own provider extension bag,
+ * see `KerbalismScienceExt.cs`) reads those itself rather than this widget
+ * re-shaping its bag-reading knowledge into a prop bag here.
+ */
+export interface ScienceBenchAboardRowSlotContext {
+  /** The subject id (`ExperimentBreakdownEntry.subjectId`) this row renders. */
+  subjectId: string;
+}
+
+/**
+ * Slot context for `science-bench.badges`: the header escape-hatch slot next
+ * to the panel title, mirroring ScienceOfficer's own `science-officer.badges`.
+ * Deliberately broad (the whole breakdown list) so a header augment can
+ * summarise vessel-wide science state (e.g. Kerbalism drive capacity/used,
+ * pending-transmit count) without re-reading the topics itself.
+ */
+export interface ScienceBenchBadgesSlotContext {
+  /** Parsed breakdown list, or `null` before telemetry arrives. */
+  breakdown: ExperimentBreakdownEntry[] | null;
+}
+
+// Declaration-merge the slot ids → props types into core's `SlotRegistry`.
+// Same pattern as ScienceOfficer/index.tsx's own merge; see that file's
+// comment for why the facade-sealed-client copy lives in
+// `mod/sitrep-sdk/src/api/slots.ts` rather than a second `declare module
+// "@ksp-gonogo/sitrep-sdk"` block here.
+declare module "@ksp-gonogo/core" {
+  interface SlotRegistry {
+    "science-bench.aboard-row": ScienceBenchAboardRowSlotContext;
+    "science-bench.badges": ScienceBenchBadgesSlotContext;
+  }
 }
 
 const SITUATION_BADGE_MS = 10_000;
@@ -325,9 +387,16 @@ function ScienceBenchComponent({
   // useGameContext.careerMode already resolves both shapes to the same
   // display value.
   const careerEconomy = useTelemetry("career.status")?.economy;
-  const careerScience = careerEconomy?.science;
-  const careerFunds = careerEconomy?.funds;
-  const careerRep = careerEconomy?.reputation;
+  // magnitudeOf, not a bare read: economy.{science,funds,reputation} are
+  // SitrepUnit-tagged (Value<"science">/Value<"funds">/Value<"rep">) and
+  // arrive wrapped, same as every other quantity on the wire. Passing the
+  // wrapped object straight to formatNumber's `typeof value === "number"`
+  // guard always failed it, so this career strip showed NULL_DISPLAY for
+  // every figure regardless of the actual save (found during the render
+  // sweep, not specific to Kerbalism: a stock save hits the same bug).
+  const careerScience = magnitudeOf(careerEconomy?.science as Quantityish);
+  const careerFunds = magnitudeOf(careerEconomy?.funds as Quantityish);
+  const careerRep = magnitudeOf(careerEconomy?.reputation as Quantityish);
 
   // Composite "where am I doing science" key, body / situation / biome.
   // Debounced to suppress momentary biome flickers during low passes; the
@@ -369,7 +438,7 @@ function ScienceBenchComponent({
       ? sensorEntries.filter(
           (e) =>
             typeof e.type === "string" &&
-            e.type.toUpperCase() === WIRE_SENSOR_TYPE[type],
+            WIRE_SENSOR_TYPE[type].includes(e.type.toUpperCase()),
         )
       : null,
   ]);
@@ -380,8 +449,15 @@ function ScienceBenchComponent({
   // pre-aggregated field): derive both client-side from the same
   // already-migrated experiments array instead of a separate read.
   const sciCount = experiments ? experiments.length : undefined;
+  // Null, not a summed 0, when every entry's dataAmount is itself null: a
+  // provider whose data isn't in mits (Kerbalism's is megabytes) leaves
+  // dataAmount null on purpose, and summing nulls-as-zero rendered a lying
+  // "· 0.0 mits" caption on every Kerbalism vessel with experiments aboard,
+  // same bug class as BreakdownList's dataMits fix above.
   const sciDataAmount = experiments
-    ? experiments.reduce((sum, e) => sum + (e.dataAmount ?? 0), 0)
+    ? experiments.some((e) => e.dataAmount !== null)
+      ? experiments.reduce((sum, e) => sum + (e.dataAmount ?? 0), 0)
+      : null
     : undefined;
   const showCareer = careerMode !== "Unknown" && careerMode !== "SANDBOX";
 
@@ -394,7 +470,16 @@ function ScienceBenchComponent({
   const showCareerStrip = showCareer && rows >= 9;
 
   return (
-    <Panel panelTitle="SCIENCE">
+    <Panel
+      panelTitle="SCIENCE"
+      /* Header escape-hatch slot: a broad badge/summary augment composes
+         next to the title, e.g. Kerbalism drive capacity/used. Empty
+         (renders nothing) until an Uplink registers, same contract as
+         ScienceOfficer's own `science-officer.badges`. */
+      panelAside={
+        <AugmentSlot name="science-bench.badges" props={{ breakdown }} />
+      }
+    >
       <DimmedOverlay
         show={dimNonCareer}
         message="Sensors require flight"
@@ -549,27 +634,43 @@ function BreakdownList({
   breakdown: ExperimentBreakdownEntry[];
 }) {
   return (
-    <ul style={EXPERIMENT_LIST_WRAP}>
+    // A plain div, not a <ul>: each row's AugmentSlot sibling below is
+    // provider content of unknown shape, the same "list container isn't a
+    // ul once an augment sibling can land beside a row" precedent
+    // ScienceOfficer's own Stack-wrapped instrument rows already set.
+    <div style={EXPERIMENT_LIST_WRAP}>
       {breakdown.map((b) => (
-        <li key={b.subjectId} style={EXPERIMENT_ROW}>
-          <span style={EXP_SUBJECT}>
-            {b.expTitle}
-            {b.biome ? (
-              <span style={BREAKDOWN_CONTEXT}> · {b.biome}</span>
-            ) : null}
-          </span>
-          <Value tone="accent">
-            {b.dataMits.toFixed(1)} mits
-            {b.remainingPotential > 0 ? (
-              <span style={BREAKDOWN_POTENTIAL}>
-                {" "}
-                · {b.remainingPotential.toFixed(1)} left
-              </span>
-            ) : null}
-          </Value>
-        </li>
+        <Fragment key={b.subjectId}>
+          <li style={EXPERIMENT_ROW}>
+            <span style={EXP_SUBJECT}>
+              {b.expTitle}
+              {b.biome ? (
+                <span style={BREAKDOWN_CONTEXT}> · {b.biome}</span>
+              ) : null}
+            </span>
+            <Value tone="accent">
+              {b.dataMits === null
+                ? NULL_DISPLAY
+                : `${b.dataMits.toFixed(1)} mits`}
+              {b.remainingPotential > 0 ? (
+                <span style={BREAKDOWN_POTENTIAL}>
+                  {" "}
+                  · {b.remainingPotential.toFixed(1)} left
+                </span>
+              ) : null}
+            </Value>
+          </li>
+          {/* Per-subject row slot: a richer provider (Kerbalism) reads its
+              own file/sample detail off `science.experiments`/
+              `science.experimentBreakdown`, keyed by this subjectId. Empty
+              until an Uplink registers, so a stock render is unaffected. */}
+          <AugmentSlot
+            name="science-bench.aboard-row"
+            props={{ subjectId: b.subjectId }}
+          />
+        </Fragment>
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -830,6 +931,7 @@ registerComponent<ScienceBenchConfig>({
   ],
   defaultConfig: {},
   actions: [],
+  augmentSlots: ["science-bench.aboard-row", "science-bench.badges"],
   pushable: true,
 });
 

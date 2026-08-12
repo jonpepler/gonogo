@@ -36,8 +36,26 @@ export interface Instrument {
   expId: string;
   deployed: boolean;
   hasData: boolean;
-  rerunnable: boolean;
+  /**
+   * Tri-state: `null` means "unknown", not "no". A provider whose running
+   * state is a state machine rather than a stock cfg flag (Kerbalism)
+   * reports this null on every row (see `KerbalismScienceMap.Instruments`'s
+   * own doc comment); coercing that to `false` would wrongly claim the
+   * instrument can never be re-run.
+   */
+  rerunnable: boolean | null;
   inoperable: boolean;
+  /**
+   * True when the wire entry carried a non-empty provider extension bag
+   * (`entry.extensions`), the generic, provider-agnostic signal that a
+   * richer science backend than stock produced this row: stock's own
+   * `BuildInstrumentEntry` never sets `extensions` at all. Drives whether
+   * this row shows the stock fire-once Deploy/Transmit verbs (a provider
+   * with no discrete "run this now" command has nothing honest for them to
+   * dispatch) and is the hook a provider's own augment
+   * (`science-officer.sections`) uses to find its matching raw entry.
+   */
+  enriched: boolean;
 }
 
 /**
@@ -105,6 +123,13 @@ declare module "@ksp-gonogo/core" {
  *   reads. `partId` normalizes to a string either way, every consumer
  *   below only ever interpolates it into a key or an action-command
  *   string, never does numeric comparison on it.
+ *
+ * `rerunnable` stays tri-state (see `Instrument`'s own doc comment) and
+ * `enriched` is derived from the RAW entry's `extensions` presence, a
+ * provider-agnostic "is this row richer than stock" signal (stock's own
+ * `BuildInstrumentEntry` never sets `extensions`): neither legacy shape
+ * above carries an `extensions` bag at all, so both parse to `enriched:
+ * false` unchanged.
  */
 export function parseInstruments(raw: unknown): Instrument[] | null {
   if (raw === null || raw === undefined) return null;
@@ -136,14 +161,23 @@ export function parseInstruments(raw: unknown): Instrument[] | null {
       typeof e.dataIsCollectable === "boolean"
         ? e.dataIsCollectable
         : e.hasData === true;
+    const rerunnable =
+      e.rerunnable === true ? true : e.rerunnable === false ? false : null;
+    const extensions = e.extensions;
+    const enriched =
+      !!extensions &&
+      typeof extensions === "object" &&
+      !Array.isArray(extensions) &&
+      Object.keys(extensions).length > 0;
     out.push({
       partId,
       partTitle,
       expId,
       deployed: e.deployed === true,
       hasData,
-      rerunnable: e.rerunnable === true,
+      rerunnable,
       inoperable: e.inoperable === true,
+      enriched,
     });
   }
   return out;
@@ -290,6 +324,7 @@ function ScienceOfficerComponent({
           <Fragment key={inst.partId}>
             <ScienceExperimentRow
               instrument={inst}
+              showActions={!inst.enriched}
               onDeploy={(partId) =>
                 void deployCmd.send(
                   { partId },

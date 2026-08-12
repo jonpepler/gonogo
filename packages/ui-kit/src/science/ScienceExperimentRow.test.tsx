@@ -99,4 +99,26 @@ describe("ScienceExperimentRow", () => {
     );
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
   });
+
+  it("renders no ONE-SHOT badge when rerunnable is null (unknown, not false)", () => {
+    renderRow(
+      <ScienceExperimentRow instrument={instrument({ rerunnable: null })} />,
+    );
+    expect(screen.queryByText("ONE-SHOT")).not.toBeInTheDocument();
+  });
+
+  it("still renders ONE-SHOT when rerunnable is explicitly false", () => {
+    renderRow(
+      <ScienceExperimentRow instrument={instrument({ rerunnable: false })} />,
+    );
+    expect(screen.getByText("ONE-SHOT")).toBeInTheDocument();
+  });
+
+  it("hides the action cluster when showActions is false, even for an operable instrument", () => {
+    renderRow(
+      <ScienceExperimentRow instrument={instrument()} showActions={false} />,
+    );
+    expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transmit")).not.toBeInTheDocument();
+  });
 });

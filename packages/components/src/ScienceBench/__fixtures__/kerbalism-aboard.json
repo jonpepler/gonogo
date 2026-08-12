@@ -1,0 +1,189 @@
+{
+  "_meta": {
+    "capturedAt": "2026-08-12",
+    "body": "Kerbin",
+    "notes": "Kerbalism-elected science.* frames, lifted verbatim from mod/golden-fixtures/science-extensions.json (proven byte-for-byte against the real KerbalismScienceMap + EnvelopeCodec by ScienceExtensionWireTests). In space low over Kerbin; one file (transmitting) and one sample (awaiting analysis) of two different subjects, plus a temperature sensor reading. kerbalism.available is emitted LAST in _stream.emits on purpose: the probe's emit loop is subscription-gated, and the science-bench.aboard-row augment only mounts (and so only subscribes to kerbalism.available) once science.experimentBreakdown has already populated the Aboard list; emitting the gate topic earlier leaves it gated off."
+  },
+  "_stream": {
+    "carriedChannels": [
+      "kerbalism.available",
+      "spaceCenter.scene",
+      "vessel.orbit",
+      "system.bodies",
+      "vessel.identity",
+      "vessel.surface",
+      "science.sensors",
+      "science.experiments",
+      "science.experimentBreakdown",
+      "career.mode",
+      "career.status"
+    ],
+    "pinnedUt": 10,
+    "emits": [
+      { "channel": "spaceCenter.scene", "value": { "scene": "Flight" } },
+      {
+        "channel": "vessel.orbit",
+        "value": {
+          "sma": 682500,
+          "ecc": 0,
+          "inc": 0,
+          "argPe": 0,
+          "mu": 3531600000000.0,
+          "meanAnomalyAtEpoch": 0,
+          "epoch": 10,
+          "referenceBodyIndex": 1
+        }
+      },
+      {
+        "channel": "system.bodies",
+        "value": {
+          "bodies": [
+            {
+              "name": "Kerbin",
+              "index": 1,
+              "parentIndex": 0,
+              "radius": 600000,
+              "orbit": null
+            }
+          ]
+        }
+      },
+      {
+        "channel": "vessel.identity",
+        "value": { "parentBodyIndex": 1, "situation": 3, "launchUt": 0 }
+      },
+      {
+        "channel": "vessel.surface",
+        "value": {}
+      },
+      {
+        "channel": "science.sensors",
+        "value": [
+          {
+            "partName": "2HOT Thermometer",
+            "type": "temperature",
+            "readout": "293.1 K",
+            "active": true
+          }
+        ]
+      },
+      {
+        "channel": "science.experiments",
+        "value": [
+          {
+            "partName": "Hard Drive",
+            "location": "container",
+            "experimentId": "radiationScan",
+            "subjectId": "radiationScan@KerbinInSpaceLow",
+            "title": "Radiation Scan",
+            "dataAmount": null,
+            "scienceValueRatio": 0.75,
+            "baseTransmitValue": null,
+            "transmitBonus": null,
+            "labValue": null,
+            "deployed": null,
+            "inoperable": null,
+            "situation": "Space",
+            "valueModel": "kerbalism-linear",
+            "extensions": {
+              "kerbalism": {
+                "dataSizeMB": 12.5,
+                "sciencePerMB": 1.6,
+                "kind": "file",
+                "sampleMass": null,
+                "analyze": null,
+                "storageCapacityMB": 512,
+                "storageUsedMB": 20,
+                "sampleSlotsTotal": 2,
+                "sampleSlotsUsed": 1,
+                "transmitRateMBps": 0.004,
+                "transmitting": true
+              }
+            }
+          },
+          {
+            "partName": "Hard Drive",
+            "location": "container",
+            "experimentId": "mysteryGoo",
+            "subjectId": "mysteryGoo@KerbinSrfLandedLaunchPad",
+            "title": "Mystery Goo Observation",
+            "dataAmount": null,
+            "scienceValueRatio": 0.4,
+            "baseTransmitValue": null,
+            "transmitBonus": null,
+            "labValue": null,
+            "deployed": null,
+            "inoperable": null,
+            "situation": "Surface",
+            "valueModel": "kerbalism-linear",
+            "extensions": {
+              "kerbalism": {
+                "dataSizeMB": 7.5,
+                "sciencePerMB": 0.8,
+                "kind": "sample",
+                "sampleMass": 0.0125,
+                "analyze": true,
+                "storageCapacityMB": 512,
+                "storageUsedMB": 20,
+                "sampleSlotsTotal": 2,
+                "sampleSlotsUsed": 1,
+                "transmitRateMBps": 0,
+                "transmitting": false
+              }
+            }
+          }
+        ]
+      },
+      {
+        "channel": "science.experimentBreakdown",
+        "value": [
+          {
+            "subjectId": "radiationScan@KerbinInSpaceLow",
+            "biome": null,
+            "situation": "Space",
+            "expTitle": "Radiation Scan",
+            "dataMits": null,
+            "remainingPotential": 30,
+            "valueModel": "kerbalism-linear",
+            "extensions": {
+              "kerbalism": {
+                "scienceRemainingTotal": 30,
+                "percentCollectedTotal": 0.25,
+                "scienceCollectedInFlight": 6.5,
+                "timesCompleted": 1
+              }
+            }
+          },
+          {
+            "subjectId": "mysteryGoo@KerbinSrfLandedLaunchPad",
+            "biome": "LaunchPad",
+            "situation": "Surface",
+            "expTitle": "Mystery Goo Observation",
+            "dataMits": null,
+            "remainingPotential": 4,
+            "valueModel": "kerbalism-linear",
+            "extensions": {
+              "kerbalism": {
+                "scienceRemainingTotal": 4,
+                "percentCollectedTotal": 0.6,
+                "scienceCollectedInFlight": 0,
+                "timesCompleted": 3
+              }
+            }
+          }
+        ]
+      },
+      {
+        "channel": "career.mode",
+        "value": { "mode": 1 }
+      },
+      {
+        "channel": "career.status",
+        "value": {
+          "economy": { "science": 512.4, "funds": 89400.0, "reputation": 62.0 }
+        }
+      },
+      { "channel": "kerbalism.available", "value": true }
+    ]
+  }
+}

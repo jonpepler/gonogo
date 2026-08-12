@@ -533,8 +533,11 @@ export interface ScienceOfficerInstrument {
   expId: string;
   deployed: boolean;
   hasData: boolean;
-  rerunnable: boolean;
+  /** Tri-state: `null` means "unknown" (a state-machine-modelled provider), not "no". */
+  rerunnable: boolean | null;
   inoperable: boolean;
+  /** True when the wire entry carried a non-empty provider extension bag. */
+  enriched: boolean;
 }
 
 /** Mirrors `ScienceOfficerInstrumentSlotContext` (ScienceOfficer/index.tsx). */
@@ -549,6 +552,30 @@ export interface ScienceOfficerSlotContext {
   instruments: ScienceOfficerInstrument[] | null;
   /** Total stored science data across all instruments, in mits. */
   dataAmount: number;
+}
+
+// --- ScienceBench (packages/components/src/ScienceBench) -------------------
+
+/** Mirrors `ScienceBenchAboardRowSlotContext` (ScienceBench/index.tsx). */
+export interface ScienceBenchAboardRowSlotContext {
+  /** The subject id (`ExperimentBreakdownEntry.subjectId`) this row renders. */
+  subjectId: string;
+}
+
+/** Mirrors `ScienceBenchExperimentBreakdownEntry` (ScienceBench/index.tsx's `ExperimentBreakdownEntry`). */
+export interface ScienceBenchExperimentBreakdownEntry {
+  subjectId: string;
+  biome: string;
+  situation: string;
+  expTitle: string;
+  dataMits: number | null;
+  remainingPotential: number;
+}
+
+/** Mirrors `ScienceBenchBadgesSlotContext` (ScienceBench/index.tsx). */
+export interface ScienceBenchBadgesSlotContext {
+  /** Parsed breakdown list, or `null` before telemetry arrives. */
+  breakdown: ScienceBenchExperimentBreakdownEntry[] | null;
 }
 
 // --- DeployedScience (mod/GonogoBreakingGroundUplink/client/src/DeployedScience) ---
@@ -679,6 +706,9 @@ declare module "./types" {
 
     "science-officer.sections": ScienceOfficerInstrumentSlotContext;
     "science-officer.badges": ScienceOfficerSlotContext;
+
+    "science-bench.aboard-row": ScienceBenchAboardRowSlotContext;
+    "science-bench.badges": ScienceBenchBadgesSlotContext;
 
     "deployed-science.sections": DeployedExperimentContext;
     "deployed-science.badges": Record<string, never>;

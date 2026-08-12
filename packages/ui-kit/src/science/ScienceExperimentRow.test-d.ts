@@ -33,10 +33,20 @@ type _InoperableCompatible = Expect<
     ScienceInstrument["inoperable"]
   >
 >;
+// `WireInstrument["rerunnable"]`'s generated type is `boolean | undefined`:
+// reinforced-typings maps C#'s `bool?` to a plain optional boolean, with no
+// `| null` in the STATIC type even though the field genuinely arrives `null`
+// at runtime (a provider whose running state is a state machine rather than
+// a cfg flag reports "unknown" that way, see `ScienceInstrument`'s own doc
+// comment). So this check compares the underlying boolean-ness only, the
+// widest claim the wire's static type can honestly make; the null-preserving
+// half of the contract is proven at runtime instead, by
+// `ScienceOfficer`'s `parseInstruments` tests and
+// `ScienceExperimentRow.test.tsx`'s own null-vs-false-ONE-SHOT assertions.
 type _RerunnableCompatible = Expect<
   Equal<
     NonNullable<WireInstrument["rerunnable"]>,
-    ScienceInstrument["rerunnable"]
+    NonNullable<ScienceInstrument["rerunnable"]>
   >
 >;
 // `hasData` maps onto the wire's `dataIsCollectable` (see the widget's

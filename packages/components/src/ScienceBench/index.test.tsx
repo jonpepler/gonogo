@@ -138,6 +138,30 @@ describe("ScienceBenchComponent", () => {
     expect(screen.getByText("REP")).toBeInTheDocument();
   });
 
+  it("formats the career figures, wrapped Value<Unit> or a bare number alike", async () => {
+    // economy.{science,funds,reputation} are SitrepUnit-tagged
+    // (Value<"science">/Value<"funds">/Value<"rep">) and arrive wrapped on
+    // the real wire. Passing that object straight to a `typeof === "number"`
+    // guard always failed it and the strip showed NULL_DISPLAY for every
+    // figure; this pins the unwrap.
+    const fixture = newFixture();
+    renderBench(fixture);
+    act(() => {
+      fixture.emit("career.mode", { mode: 1 });
+      fixture.emit("career.status", {
+        economy: {
+          science: { magnitude: 1234, unit: "science" },
+          funds: { magnitude: 567_890, unit: "funds" },
+          reputation: { magnitude: 12, unit: "rep" },
+        },
+      });
+    });
+    await waitFor(() => expect(screen.getByText("SCI")).toBeInTheDocument());
+    expect(screen.getByText("1.2k")).toBeInTheDocument();
+    expect(screen.getByText("567.9k")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+  });
+
   it("renders one sensor row per unique part, collapsing duplicates", async () => {
     const fixture = newFixture();
     renderBench(fixture);
@@ -218,6 +242,31 @@ describe("ScienceBenchComponent", () => {
     expect(screen.getByText("PresMat Barometer")).toBeInTheDocument();
     expect(visibleText()).toMatch(/101\.30 kPa/);
     expect(screen.queryByText("Disabled Thermometer")).not.toBeInTheDocument();
+  });
+
+  it("recognises Kerbalism's own sensor type spelling, not just stock's TEMP/PRES", async () => {
+    // Kerbalism's `Sensor` module reports its own dispatch key
+    // ("temperature"/"pressure"), not stock's `SensorType` enum name
+    // ("TEMP"/"PRES"): the same physical reading, a different string. Before
+    // this fix a real Kerbalism sensor read as "None installed".
+    const fixture = newFixture();
+    renderBench(fixture);
+    act(() => {
+      fixture.emit("science.sensors", [
+        {
+          partId: "1",
+          partName: "2HOT Thermometer",
+          type: "temperature",
+          readout: "293.1 K",
+          active: true,
+        },
+      ]);
+    });
+    await waitFor(() => expect(visibleText()).toContain("2HOT Thermometer"));
+    expect(visibleText()).toMatch(/293\.10 K/);
+    // Only pressure/gravity/acceleration read "None installed": temperature
+    // matched, so it shows the reading instead.
+    expect(screen.getAllByText("None installed")).toHaveLength(3);
   });
 
   it("shows experiment title and data amount from science.experiments", async () => {
@@ -456,8 +505,27 @@ describe("parseExperimentBreakdown", () => {
       biome: "",
       situation: "",
       expTitle: "(unnamed)",
-      dataMits: 0,
+      // Null, not 0: a missing dataMits is indistinguishable from a
+      // provider that structurally never fills it (Kerbalism's data isn't
+      // in mits), so it stays null rather than a lying "0.0 mits" figure.
+      dataMits: null,
       remainingPotential: 0,
     });
+  });
+
+  it("keeps dataMits null when the provider's data isn't in mits (Kerbalism)", () => {
+    const parsed = parseExperimentBreakdown([
+      {
+        subjectId: "radiationScan@KerbinInSpaceLow",
+        biome: null,
+        situation: "Space",
+        expTitle: "Radiation Scan",
+        dataMits: null,
+        remainingPotential: 30,
+        valueModel: "kerbalism-linear",
+      },
+    ]);
+    expect(parsed?.[0]?.dataMits).toBeNull();
+    expect(parsed?.[0]?.remainingPotential).toBe(30);
   });
 });

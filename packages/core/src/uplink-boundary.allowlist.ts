@@ -1151,10 +1151,26 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       "packages/components/src/ShipMap/shipTopology.ts",
       "packages/components/src/StaffRoster/index.tsx",
       "packages/components/src/ThermalStatus/index.tsx",
+      // ScienceBench/index.tsx (+ its test): two new `science-bench.aboard-row`
+      // / `science-bench.badges` slots, same "named while documenting a slot"
+      // shape as ScienceOfficer above. The widget itself stays provider-generic
+      // (it reads only the shared `valueModel`/`extensions`-presence signals);
+      // Kerbalism appears only in doc-comment examples of what an augment might
+      // show ("a richer provider (e.g. Kerbalism, whose per-file kind/size/
+      // transmit-rate detail...)") and the fixture's own capture notes.
+      "packages/components/src/ScienceBench/index.test.tsx",
+      "packages/components/src/ScienceBench/index.tsx",
       // DivergingBar.tsx: the kit primitive credits the HTML prototype its
       // design was ported from, which happens to be named after the Domain it
       // was mocked for. A provenance citation.
       "packages/ui-kit/src/DivergingBar.tsx",
+      // ScienceExperimentRow.tsx: the `rerunnable` tri-state doc comment names
+      // Kerbalism as the worked example of "a provider whose running state is a
+      // state machine rather than a cfg flag". The row itself takes no
+      // Kerbalism-typed prop and reads no kerbalism Topic: `rerunnable: boolean
+      // | null` and `showActions` are provider-agnostic booleans a stock caller
+      // can set too.
+      "packages/ui-kit/src/science/ScienceExperimentRow.tsx",
 
       // -- sibling Uplinks + core mod: prose only --
       // ReliabilityCoreUplink.cs / ReliabilityElection.cs /

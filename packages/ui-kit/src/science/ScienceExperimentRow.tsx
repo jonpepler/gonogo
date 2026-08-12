@@ -13,6 +13,13 @@ import { Spinner } from "../Spinner";
  * `InstrumentEntry` (`science.instruments` topic), *not* `ExperimentEntry`
  * (`science.experiments`): the row needs `partId`/`hasData`/`rerunnable`,
  * fields `ExperimentEntry` doesn't carry.
+ *
+ * `rerunnable` is tri-state, not a plain bool: a provider whose running
+ * state is a state machine rather than a cfg flag (Kerbalism) reports it as
+ * `null`, "unknown", never `false`. Coercing that null to false would claim
+ * "this cannot be re-run", which is usually the opposite of the truth (see
+ * `KerbalismScienceMap.Instruments`'s own doc comment). `null` renders no
+ * ONE-SHOT badge, the same as `true`.
  */
 export interface ScienceInstrument {
   partId: string;
@@ -20,7 +27,7 @@ export interface ScienceInstrument {
   expId: string;
   deployed: boolean;
   hasData: boolean;
-  rerunnable: boolean;
+  rerunnable: boolean | null;
   inoperable: boolean;
 }
 
@@ -41,6 +48,17 @@ export interface ScienceExperimentRowProps {
    * fired directly off a bare click.
    */
   onTransmit?: (partId: string) => void;
+  /**
+   * Hides the Deploy/Transmit action cluster entirely. Default `true`
+   * (stock's fire-once verbs). A provider with no discrete "run this now"
+   * command (running is a continuous state started elsewhere, e.g.
+   * Kerbalism) sets this `false` rather than leaving a button that
+   * dispatches a command the backend can only refuse. The provider's own
+   * richer per-instrument state (why it isn't running, its data rate, …)
+   * is a job for that provider's own augment slot contribution, not this
+   * row: it stays presentational and provider-agnostic.
+   */
+  showActions?: boolean;
 }
 
 const ARM_TIMEOUT_MS = 4000;
@@ -60,6 +78,7 @@ export function ScienceExperimentRow({
   instrument,
   onDeploy,
   onTransmit,
+  showActions = true,
 }: Readonly<ScienceExperimentRowProps>) {
   const [armed, setArmed] = useState(false);
   const [pending, setPending] = useState<"deploy" | "transmit" | null>(null);
@@ -94,13 +113,19 @@ export function ScienceExperimentRow({
       <Inline>
         {instrument.hasData && <Badge tone="go">DATA</Badge>}
         {instrument.deployed && <Badge tone="neutral">DEPLOYED</Badge>}
-        {!instrument.rerunnable && <Badge tone="neutral">ONE-SHOT</Badge>}
+        {instrument.rerunnable === false && (
+          <Badge tone="neutral">ONE-SHOT</Badge>
+        )}
         {instrument.inoperable && <Badge tone="nogo">INOPERABLE</Badge>}
       </Inline>
       {/* Inoperable instruments can't deploy or transmit. Hide the controls
           entirely rather than greying them out: the INOPERABLE badge
-          already tells the operator why nothing's available. */}
-      {!instrument.inoperable && (
+          already tells the operator why nothing's available. A provider
+          with no fire-once verb at all (running is a continuous state
+          started elsewhere) sets `showActions={false}` for the same reason:
+          a button that can only dispatch a command the backend refuses is
+          worse than no button. */}
+      {showActions && !instrument.inoperable && (
         <Inline inset>
           {!instrument.deployed && !instrument.hasData && (
             <ActionButton

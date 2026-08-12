@@ -1,0 +1,156 @@
+{
+  "_meta": {
+    "capturedAt": "2026-08-12",
+    "vessel": "science station (Kerbalism)",
+    "notes": "Kerbalism-elected science.* frames, lifted verbatim from mod/golden-fixtures/science-extensions.json (proven byte-for-byte against the real KerbalismScienceMap + EnvelopeCodec by ScienceExtensionWireTests). One blocked file-producing instrument (no storage), one running sample-producing instrument with a depleted sample, a Mobile Processing Lab analysing, and two stored results (one file transmitting, one sample awaiting analysis). kerbalism.available is emitted LAST in _stream.emits on purpose: the probe's emit loop is subscription-gated, and the science-officer.sections/.badges augment slots only mount (and so only subscribe to kerbalism.available) once science.instruments has already populated the instrument list; emitting the gate topic earlier leaves every augment gated off."
+  },
+  "_stream": {
+    "carriedChannels": [
+      "kerbalism.available",
+      "science.instruments",
+      "science.experiments",
+      "science.lab"
+    ],
+    "emits": [
+      {
+        "channel": "science.instruments",
+        "value": [
+          {
+            "partId": "101",
+            "partName": "Geiger Counter",
+            "experimentId": "radiationScan",
+            "title": "Radiation Scan",
+            "deployed": false,
+            "inoperable": false,
+            "rerunnable": null,
+            "resettable": null,
+            "dataIsCollectable": false,
+            "extensions": {
+              "kerbalism": {
+                "issue": "no storage",
+                "runningState": "Running",
+                "expStatus": "Issue",
+                "dataRateMBps": 0.002,
+                "prodFactor": 0.5,
+                "remainingSampleMass": null
+              }
+            }
+          },
+          {
+            "partId": "102",
+            "partName": "Mystery Goo Containment Pod",
+            "experimentId": "mysteryGoo",
+            "title": "Mystery Goo Observation",
+            "deployed": true,
+            "inoperable": true,
+            "rerunnable": null,
+            "resettable": null,
+            "dataIsCollectable": false,
+            "extensions": {
+              "kerbalism": {
+                "issue": "",
+                "runningState": "Running",
+                "expStatus": "Running",
+                "dataRateMBps": 0.0005,
+                "prodFactor": 1,
+                "remainingSampleMass": 0
+              }
+            }
+          }
+        ]
+      },
+      {
+        "channel": "science.experiments",
+        "value": [
+          {
+            "partName": "Hard Drive",
+            "location": "container",
+            "experimentId": "radiationScan",
+            "subjectId": "radiationScan@KerbinInSpaceLow",
+            "title": "Radiation Scan",
+            "dataAmount": null,
+            "scienceValueRatio": 0.75,
+            "baseTransmitValue": null,
+            "transmitBonus": null,
+            "labValue": null,
+            "deployed": null,
+            "inoperable": null,
+            "situation": "Space",
+            "valueModel": "kerbalism-linear",
+            "extensions": {
+              "kerbalism": {
+                "dataSizeMB": 12.5,
+                "sciencePerMB": 1.6,
+                "kind": "file",
+                "sampleMass": null,
+                "analyze": null,
+                "storageCapacityMB": 512,
+                "storageUsedMB": 20,
+                "sampleSlotsTotal": 2,
+                "sampleSlotsUsed": 1,
+                "transmitRateMBps": 0.004,
+                "transmitting": true
+              }
+            }
+          },
+          {
+            "partName": "Hard Drive",
+            "location": "container",
+            "experimentId": "mysteryGoo",
+            "subjectId": "mysteryGoo@KerbinSrfLandedLaunchPad",
+            "title": "Mystery Goo Observation",
+            "dataAmount": null,
+            "scienceValueRatio": 0.4,
+            "baseTransmitValue": null,
+            "transmitBonus": null,
+            "labValue": null,
+            "deployed": null,
+            "inoperable": null,
+            "situation": "Surface",
+            "valueModel": "kerbalism-linear",
+            "extensions": {
+              "kerbalism": {
+                "dataSizeMB": 7.5,
+                "sciencePerMB": 0.8,
+                "kind": "sample",
+                "sampleMass": 0.0125,
+                "analyze": true,
+                "storageCapacityMB": 512,
+                "storageUsedMB": 20,
+                "sampleSlotsTotal": 2,
+                "sampleSlotsUsed": 1,
+                "transmitRateMBps": 0,
+                "transmitting": false
+              }
+            }
+          }
+        ]
+      },
+      {
+        "channel": "science.lab",
+        "value": [
+          {
+            "partName": "Mobile Processing Lab MPL-LG-2",
+            "dataStored": null,
+            "dataStorage": null,
+            "storedScience": null,
+            "processingData": true,
+            "statusText": "RUNNING",
+            "scientistCount": null,
+            "scienceRate": null,
+            "isOperational": true,
+            "valueModel": "kerbalism-linear",
+            "extensions": {
+              "kerbalism": {
+                "analysisRateMBps": 0.0008,
+                "effectiveRateMBps": 0.0012,
+                "status": "RUNNING"
+              }
+            }
+          }
+        ]
+      },
+      { "channel": "kerbalism.available", "value": true }
+    ]
+  }
+}

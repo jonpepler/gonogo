@@ -2,7 +2,7 @@
   "_meta": {
     "capturedAt": "2026-05-29",
     "body": "Kerbin",
-    "notes": "In flight over Water; crew report + thermometer recorded, goo pending. 4 instruments."
+    "notes": "In flight over Water; crew report + thermometer recorded, goo pending. 4 instruments. `_stream` block refreshed 2026-08-12 (stream migration): the render harness/visual-gate probe reads _stream, not the legacy top-level keys below, which stayed stock-shaped legacy keys since before the migration and rendered a permanent empty state. spaceCenter.scene added (without it useGameContext.inFlight stays false and the Sensors section reads permanently dimmed); vessel.orbit's stray quality:1 meta override removed (it forced the measured-basis derivation, which needs vessel.flight this fixture doesn't carry, and left body/situation unresolved)."
   },
   "kc.scene": "Flight",
   "v.name": "tester",
@@ -102,5 +102,125 @@
     }
   ],
   "s.sensor.pres": [["No Sensors of the Appropriate Type"], [0]],
-  "v.body": "Kerbin"
+  "v.body": "Kerbin",
+  "_stream": {
+    "carriedChannels": [
+      "spaceCenter.scene",
+      "vessel.orbit",
+      "system.bodies",
+      "vessel.identity",
+      "vessel.surface",
+      "science.sensors",
+      "science.experiments",
+      "science.experimentBreakdown",
+      "career.mode",
+      "career.status"
+    ],
+    "pinnedUt": 10,
+    "emits": [
+      { "channel": "spaceCenter.scene", "value": { "scene": "Flight" } },
+      {
+        "channel": "vessel.orbit",
+        "value": {
+          "sma": 682500,
+          "ecc": 0,
+          "inc": 0,
+          "argPe": 0,
+          "mu": 3531600000000.0,
+          "meanAnomalyAtEpoch": 0,
+          "epoch": 10,
+          "referenceBodyIndex": 1
+        }
+      },
+      {
+        "channel": "system.bodies",
+        "value": {
+          "bodies": [
+            {
+              "name": "Kerbin",
+              "index": 1,
+              "parentIndex": 0,
+              "radius": 600000,
+              "orbit": null
+            }
+          ]
+        }
+      },
+      {
+        "channel": "vessel.identity",
+        "value": { "parentBodyIndex": 1, "situation": 5, "launchUt": 0 }
+      },
+      {
+        "channel": "vessel.surface",
+        "value": { "biome": "Water" }
+      },
+      {
+        "channel": "science.sensors",
+        "value": [
+          {
+            "partName": "mk1pod.v2 (career-orbital-test)",
+            "type": "TEMP",
+            "readout": "1769.1",
+            "active": true
+          }
+        ]
+      },
+      {
+        "channel": "science.experiments",
+        "value": [
+          {
+            "partName": "Mk1 Command Pod",
+            "location": "experiment",
+            "experimentId": "crewReport",
+            "subjectId": "crewReport@KerbinFlyingHigh",
+            "title": "Crew Report from Kerbin's upper atmosphere",
+            "dataAmount": 5
+          },
+          {
+            "partName": "2HOT Thermometer",
+            "location": "experiment",
+            "experimentId": "temperatureScan",
+            "subjectId": "temperatureScan@KerbinFlyingHigh",
+            "title": "Temperature Scan from Kerbin's upper atmosphere",
+            "dataAmount": 8
+          }
+        ]
+      },
+      {
+        "channel": "science.experimentBreakdown",
+        "value": [
+          {
+            "subjectId": "crewReport@KerbinFlyingHigh",
+            "biome": "",
+            "situation": "FlyingHigh",
+            "expTitle": "Crew Report from Kerbin's upper atmosphere",
+            "dataMits": 5,
+            "remainingPotential": 4.5
+          },
+          {
+            "subjectId": "temperatureScan@KerbinFlyingHigh",
+            "biome": "",
+            "situation": "FlyingHigh",
+            "expTitle": "Temperature Scan from Kerbin's upper atmosphere",
+            "dataMits": 8,
+            "remainingPotential": 7.2
+          }
+        ]
+      },
+      {
+        "channel": "career.mode",
+        "value": { "mode": 1 }
+      },
+      {
+        "channel": "career.status",
+        "value": {
+          "economy": {
+            "science": 4853.60009765625,
+            "funds": 1329895.7555027,
+            "reputation": 888.801818847656
+          }
+        }
+      }
+    ]
+  }
 }

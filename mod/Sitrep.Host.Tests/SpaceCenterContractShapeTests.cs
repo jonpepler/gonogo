@@ -230,6 +230,45 @@ namespace Sitrep.Host.Tests
         }
 
         [Fact]
+        public void AstronautComplexTypesMirrorProviderWireShape()
+        {
+            var snapshot = new KspSnapshot
+            {
+                Ut = 0.0,
+                Values = new Dictionary<string, object?>
+                {
+                    ["spaceCenter"] = new Dictionary<string, object?>
+                    {
+                        ["astronautComplex"] = new Dictionary<string, object?>
+                        {
+                            ["applicants"] = new List<object?>
+                            {
+                                new Dictionary<string, object?>
+                                {
+                                    ["name"] = "Desdin Kerman",
+                                    ["trait"] = "Scientist",
+                                    ["level"] = 0,
+                                    ["hireCost"] = 24000.0,
+                                },
+                            },
+                            ["activeCrew"] = 4,
+                            ["crewCapacity"] = 13,
+                        },
+                    },
+                },
+            };
+
+            var root = Assert.IsType<Dictionary<string, object?>>(SpaceCenterViewProvider.BuildAstronautComplex(snapshot));
+            AssertKeysMatchType(typeof(AstronautComplexInfo), root);
+            Assert.IsType<int>(root["activeCrew"]);
+            Assert.IsType<int>(root["crewCapacity"]);
+
+            var applicants = Assert.IsType<List<object?>>(root["applicants"]);
+            var entry = Assert.IsType<Dictionary<string, object?>>(Assert.Single(applicants));
+            AssertEntryMirrors(typeof(ApplicantEntry), entry);
+        }
+
+        [Fact]
         public void PayloadTypesAreTaggedWithTheirTopics()
         {
             AssertTopicTag(typeof(LaunchSiteEntry), "spaceCenter.launchSites", expectArray: true);
@@ -238,6 +277,7 @@ namespace Sitrep.Host.Tests
             AssertTopicTag(typeof(SavedShipEntry), "spaceCenter.savedShips", expectArray: true);
             AssertTopicTag(typeof(SpaceCenterPartsAvailable), "spaceCenter.partsAvailable", expectArray: false);
             AssertTopicTag(typeof(SpaceCenterPoiEntry), "spaceCenter.pois", expectArray: true);
+            AssertTopicTag(typeof(AstronautComplexInfo), "spaceCenter.astronautComplex", expectArray: false);
         }
 
         // ----------------------------------------------------------------

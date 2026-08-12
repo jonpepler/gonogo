@@ -101,6 +101,9 @@ namespace Sitrep.Host
         /// <summary>The map points-of-interest channel (a BARE ARRAY, <c>isArray: true</c>).</summary>
         public const string PoisTopic = "spaceCenter.pois";
 
+        /// <summary>The Astronaut Complex hire channel (a wrapper object: applicant pool + roster cap + active-crew count).</summary>
+        public const string AstronautComplexTopic = "spaceCenter.astronautComplex";
+
         /// <summary>
         /// Maps <paramref name="snapshot"/>'s raw
         /// <c>Values["spaceCenter"]["launchSites"]</c> list to the
@@ -261,6 +264,65 @@ namespace Sitrep.Host
             }
 
             return crew;
+        }
+
+        /// <summary>
+        /// Maps <paramref name="snapshot"/>'s raw
+        /// <c>Values["spaceCenter"]["astronautComplex"]</c> dict to the
+        /// <c>spaceCenter.astronautComplex</c> payload: a wrapper object mirroring
+        /// <see cref="AstronautComplexInfo"/> (the applicant pool plus the
+        /// facility-cap context a hire is gated on). Every value is already a
+        /// primitive KspHost read off <c>KerbalRoster</c>/<c>GameVariables</c>, so
+        /// this is a straight re-map through <see cref="SnapshotDict"/>'s readers,
+        /// with <c>applicants</c> copied to a fresh list of per-applicant dicts.
+        /// Returns <c>null</c> (the SANDBOX / no-career / no-game case) when the
+        /// snapshot carries no <c>astronautComplex</c> key at all, distinct from a
+        /// career save whose pool is genuinely empty (a non-null payload with an
+        /// empty <c>applicants</c> list).
+        /// </summary>
+        public static object? BuildAstronautComplex(KspSnapshot? snapshot)
+        {
+            if (snapshot?.Values == null)
+            {
+                return null;
+            }
+
+            if (!snapshot.Values.TryGetValue("spaceCenter", out var rawGroup) || rawGroup is not IDictionary<string, object?> group)
+            {
+                return null;
+            }
+
+            if (!group.TryGetValue("astronautComplex", out var rawComplex) || rawComplex is not IDictionary<string, object?> raw)
+            {
+                return null;
+            }
+
+            var applicants = new List<object?>();
+            if (raw.TryGetValue("applicants", out var rawApplicants) && rawApplicants is IEnumerable<object?> applicantList)
+            {
+                foreach (var rawEntry in applicantList)
+                {
+                    if (rawEntry is not IDictionary<string, object?> entry)
+                    {
+                        continue;
+                    }
+
+                    applicants.Add(new Dictionary<string, object?>
+                    {
+                        ["name"] = SnapshotDict.GetString(entry, "name"),
+                        ["trait"] = SnapshotDict.GetString(entry, "trait"),
+                        ["level"] = SnapshotDict.GetInt(entry, "level"),
+                        ["hireCost"] = SnapshotDict.GetDouble(entry, "hireCost"),
+                    });
+                }
+            }
+
+            return new Dictionary<string, object?>
+            {
+                ["applicants"] = applicants,
+                ["activeCrew"] = SnapshotDict.GetInt(raw, "activeCrew"),
+                ["crewCapacity"] = SnapshotDict.GetInt(raw, "crewCapacity"),
+            };
         }
 
         /// <summary>

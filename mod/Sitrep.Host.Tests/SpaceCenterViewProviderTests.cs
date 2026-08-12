@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Sitrep.Contract;
 using Sitrep.Core.Serialization;
@@ -658,6 +659,145 @@ namespace Sitrep.Host.Tests
             var list = Assert.IsType<List<object?>>(SpaceCenterViewProvider.BuildPois(snapshot));
             var entry = Assert.IsType<Dictionary<string, object?>>(Assert.Single(list));
             Assert.Equal(98765.0, entry["contractDateDeadline"]);
+        }
+
+        // ----------------------------------------------------------------
+        // spaceCenter.astronautComplex
+        // ----------------------------------------------------------------
+
+        [Fact]
+        public void BuildAstronautComplexMapsEveryApplicantAndTheCapContext()
+        {
+            var snapshot = new KspSnapshot
+            {
+                Ut = 0.0,
+                Values = new Dictionary<string, object?>
+                {
+                    ["spaceCenter"] = new Dictionary<string, object?>
+                    {
+                        ["astronautComplex"] = new Dictionary<string, object?>
+                        {
+                            ["applicants"] = new List<object?>
+                            {
+                                new Dictionary<string, object?>
+                                {
+                                    ["name"] = "Desdin Kerman",
+                                    ["trait"] = "Scientist",
+                                    ["level"] = 0,
+                                    ["hireCost"] = 24000.0,
+                                },
+                                new Dictionary<string, object?>
+                                {
+                                    ["name"] = "Limmy Kerman",
+                                    ["trait"] = "Pilot",
+                                    ["level"] = 0,
+                                    ["hireCost"] = 24000.0,
+                                },
+                            },
+                            ["activeCrew"] = 4,
+                            ["crewCapacity"] = 13,
+                        },
+                    },
+                },
+            };
+
+            var info = Assert.IsType<Dictionary<string, object?>>(SpaceCenterViewProvider.BuildAstronautComplex(snapshot));
+            Assert.Equal(4, info["activeCrew"]);
+            Assert.Equal(13, info["crewCapacity"]);
+
+            var applicants = Assert.IsType<List<object?>>(info["applicants"]);
+            Assert.Equal(2, applicants.Count);
+
+            var first = Assert.IsType<Dictionary<string, object?>>(applicants[0]);
+            Assert.Equal("Desdin Kerman", first["name"]);
+            Assert.Equal("Scientist", first["trait"]);
+            Assert.Equal(0, first["level"]);
+            Assert.Equal(24000.0, first["hireCost"]);
+
+            var second = Assert.IsType<Dictionary<string, object?>>(applicants[1]);
+            Assert.Equal("Limmy Kerman", second["name"]);
+            Assert.Equal("Pilot", second["trait"]);
+        }
+
+        [Fact]
+        public void BuildAstronautComplexReturnsNullOffCareerButANonNullEmptyPoolInCareer()
+        {
+            // No astronautComplex key at all: "not in career" -> whole payload null.
+            Assert.Null(SpaceCenterViewProvider.BuildAstronautComplex(new KspSnapshot { Ut = 0.0, Values = new Dictionary<string, object?>() }));
+            Assert.Null(SpaceCenterViewProvider.BuildAstronautComplex(null));
+            Assert.Null(SpaceCenterViewProvider.BuildAstronautComplex(new KspSnapshot
+            {
+                Ut = 0.0,
+                Values = new Dictionary<string, object?> { ["spaceCenter"] = new Dictionary<string, object?>() },
+            }));
+
+            // Career with an empty pool: non-null payload, empty applicants list.
+            var info = Assert.IsType<Dictionary<string, object?>>(SpaceCenterViewProvider.BuildAstronautComplex(new KspSnapshot
+            {
+                Ut = 0.0,
+                Values = new Dictionary<string, object?>
+                {
+                    ["spaceCenter"] = new Dictionary<string, object?>
+                    {
+                        ["astronautComplex"] = new Dictionary<string, object?>
+                        {
+                            ["applicants"] = new List<object?>(),
+                            ["activeCrew"] = 0,
+                            ["crewCapacity"] = 5,
+                        },
+                    },
+                },
+            }));
+            Assert.Empty(Assert.IsType<List<object?>>(info["applicants"]));
+            Assert.Equal(0, info["activeCrew"]);
+            Assert.Equal(5, info["crewCapacity"]);
+        }
+
+        [Fact]
+        public void BuildAstronautComplexSerializesCleanlyThroughTheRealWirePath()
+        {
+            var snapshot = new KspSnapshot
+            {
+                Ut = 0.0,
+                Values = new Dictionary<string, object?>
+                {
+                    ["spaceCenter"] = new Dictionary<string, object?>
+                    {
+                        ["astronautComplex"] = new Dictionary<string, object?>
+                        {
+                            ["applicants"] = new List<object?>
+                            {
+                                new Dictionary<string, object?>
+                                {
+                                    ["name"] = "Valentina Kerman",
+                                    ["trait"] = "Pilot",
+                                    ["level"] = 0,
+                                    ["hireCost"] = 24000.0,
+                                },
+                            },
+                            ["activeCrew"] = 4,
+                            ["crewCapacity"] = 13,
+                        },
+                    },
+                },
+            };
+
+            var streamData = new StreamData<object?>
+            {
+                Topic = SpaceCenterViewProvider.AstronautComplexTopic,
+                Payload = SpaceCenterViewProvider.BuildAstronautComplex(snapshot),
+                Meta = new Meta { Source = "spaceCenter", ValidAt = 0, Vantage = "host", Quality = Quality.Loaded, Active = true, Staleness = Staleness.Fresh },
+            };
+
+            var parsed = EnvelopeCodec.ParseStreamData(EnvelopeCodec.WriteStreamData(streamData));
+            var info = Assert.IsType<Dictionary<string, object?>>(parsed.Payload);
+            // Numbers arrive from the JSON round-trip widened (long/double), so
+            // compare via Convert rather than an exact CLR-type Assert.Equal.
+            Assert.Equal(13, Convert.ToInt32(info["crewCapacity"]));
+            var applicants = Assert.IsType<List<object?>>(info["applicants"]);
+            var val = Assert.IsType<Dictionary<string, object?>>(Assert.Single(applicants));
+            Assert.Equal("Valentina Kerman", val["name"]);
+            Assert.Equal(24000.0, Convert.ToDouble(val["hireCost"]));
         }
     }
 }

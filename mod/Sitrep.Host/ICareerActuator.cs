@@ -40,5 +40,15 @@ namespace Sitrep.Host
         CommandResult CancelContract(string contractId);
 
         CommandResult UpgradeFacility(string facilityId);
+
+        /// <summary>
+        /// Hire an applicant from the Astronaut Complex pool by name, spending the
+        /// current recruit cost from funds. Fails <see cref="CommandErrorCode.NotFound"/>
+        /// when no applicant carries the name (a stale pool: someone hired since,
+        /// or KSP refreshed it), <see cref="CommandErrorCode.Range"/> when funds
+        /// are short, and <see cref="CommandErrorCode.ModeUnavailable"/> outside
+        /// career mode or when the roster is at the Astronaut Complex cap.
+        /// </summary>
+        CommandResult HireApplicant(string applicantName);
     }
 }

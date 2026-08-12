@@ -89,3 +89,24 @@ public class UpgradeFacilityArgs
     [SitrepUnit(Units.Id)]
     public string FacilityId { get; set; } = "";
 }
+
+/// <summary>
+/// <c>career.crew.hire</c>'s args: the applicant's <c>ProtoCrewMember.name</c>,
+/// the same id the READ side emits for each applicant
+/// (<c>spaceCenter.astronautComplex</c>'s <c>applicants[].name</c>), so a client
+/// hires the applicant it read. Hiring debits the current recruit cost from
+/// funds and moves the applicant into the crew roster. An applicant that has
+/// left the pool since (a stale pool, someone else hired, KSP refreshed it)
+/// comes back <see cref="CommandErrorCode.NotFound"/>; an unaffordable hire
+/// <see cref="CommandErrorCode.Range"/>; a full roster (Astronaut Complex cap)
+/// or a non-career save <see cref="CommandErrorCode.ModeUnavailable"/>.
+/// </summary>
+[SitrepContract]
+#if NETSTANDARD2_0
+[TsInterface]
+#endif
+public class HireApplicantArgs
+{
+    [SitrepUnit(Units.Id)]
+    public string ApplicantName { get; set; } = "";
+}

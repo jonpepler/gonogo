@@ -102,6 +102,7 @@ namespace Gonogo.KSP
                 Command(CareerCommandProvider.DeclineContractCommand, delayed: false),
                 Command(CareerCommandProvider.CancelContractCommand, delayed: false),
                 Command(CareerCommandProvider.UpgradeFacilityCommand, delayed: false),
+                Command(CareerCommandProvider.HireApplicantCommand, delayed: false),
             },
         };
 
@@ -121,6 +122,7 @@ namespace Gonogo.KSP
             host.AddCommandHandler<ContractActionArgs, CommandResult>(CareerCommandProvider.DeclineContractCommand, args => CareerCommandProvider.HandleDeclineContract(_actuator, args));
             host.AddCommandHandler<ContractActionArgs, CommandResult>(CareerCommandProvider.CancelContractCommand, args => CareerCommandProvider.HandleCancelContract(_actuator, args));
             host.AddCommandHandler<UpgradeFacilityArgs, CommandResult>(CareerCommandProvider.UpgradeFacilityCommand, args => CareerCommandProvider.HandleUpgradeFacility(_actuator, args));
+            host.AddCommandHandler<HireApplicantArgs, CommandResult>(CareerCommandProvider.HireApplicantCommand, args => CareerCommandProvider.HandleHireApplicant(_actuator, args));
         }
 
         private static CommandDeclaration Command(string command, bool delayed) => new CommandDeclaration

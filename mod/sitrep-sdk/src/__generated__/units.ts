@@ -99,6 +99,16 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
     partId: "id",
     partName: "text",
   },
+  "ApplicantEntry": {
+    hireCost: "funds",
+    level: "count",
+    name: "text",
+    trait: "text",
+  },
+  "AstronautComplexInfo": {
+    activeCrew: "count",
+    crewCapacity: "count",
+  },
   "AtmosphereEntry": {
     depth: "m",
     hasOxygen: "flag",
@@ -403,6 +413,9 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
   "GameDlc": {
     breakingGround: "flag",
     makingHistory: "flag",
+  },
+  "HireApplicantArgs": {
+    applicantName: "id",
   },
   "InstrumentEntry": {
     dataIsCollectable: "flag",
@@ -1306,6 +1319,10 @@ export const GENERATED_TOPIC_UNITS: Readonly<Record<string, UnitsByField>> = {
     readout: "text",
     type: "id",
   },
+  "spaceCenter.astronautComplex": {
+    activeCrew: "count",
+    crewCapacity: "count",
+  },
   "spaceCenter.crewRoster": {
     available: "flag",
     experienceLevel: "count",
@@ -1538,6 +1555,9 @@ export type ShapesByField = Readonly<Record<string, string>>;
  * unit map already follows for an array Topic.
  */
 export const GENERATED_TYPE_SHAPES: Readonly<Record<string, ShapesByField>> = {
+  "AstronautComplexInfo": {
+    applicants: "ApplicantEntry",
+  },
   "BodyEntry": {
     atmosphere: "AtmosphereEntry",
     orbit: "OrbitEntry",
@@ -1805,6 +1825,9 @@ export const GENERATED_TOPIC_SHAPES: Readonly<Record<string, ShapesByField>> = {
     partBreakdown: "RecoveryPartEntry",
     resourceBreakdown: "RecoveryResourceEntry",
     scienceBreakdown: "RecoveryScienceEntry",
+  },
+  "spaceCenter.astronautComplex": {
+    applicants: "ApplicantEntry",
   },
   "system.bodies": {
     bodies: "BodyEntry",

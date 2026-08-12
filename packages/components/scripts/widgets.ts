@@ -328,6 +328,23 @@ const WIDGETS: WidgetRenderConfig[] = [
     ],
   },
   {
+    // Astronaut Complex hiring: the applicant pool with per-row hire cost +
+    // arm-then-confirm Hire buttons, the in-widget funds balance, the roster
+    // cap line, and the hired-crew roster below.
+    widgetId: "astronaut-complex",
+    fixturesPath: "AstronautComplex/__render__",
+    outPath: "renders/astronaut-complex-widget",
+    fullContent: true,
+    modes: [
+      // Default registered size: applicants + roster both visible.
+      { name: "default-6x8", w: 6, h: 8 },
+      // Narrow: rows compress; confirms the Hire button doesn't clip.
+      { name: "narrow-4x8", w: 4, h: 8 },
+      // Tall: full pool + roster with room to breathe.
+      { name: "tall-6x12", w: 6, h: 12 },
+    ],
+  },
+  {
     widgetId: "thermal-status",
     fixturesPath: "ThermalStatus/__fixtures__",
     outPath: "renders/thermal-status-widget",

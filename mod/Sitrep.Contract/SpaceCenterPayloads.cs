@@ -1,6 +1,7 @@
 #if NETSTANDARD2_0
 using Reinforced.Typings.Attributes;
 #endif
+using System.Collections.Generic;
 
 namespace Sitrep.Contract;
 
@@ -220,6 +221,73 @@ public class SpaceCenterPartsAvailable
     /// <summary>Count of buildable parts.</summary>
     [SitrepUnit(Units.Count)]
     public int? Count { get; set; }
+}
+
+/// <summary>
+/// The <c>spaceCenter.astronautComplex</c> channel payload: the Astronaut
+/// Complex hire tab, the rolling pool of applicants the operator can recruit,
+/// plus the roster-cap context a hire is gated on. Produced by
+/// <c>Sitrep.Host.SpaceCenterViewProvider.BuildAstronautComplex</c>.
+///
+/// <para>A wrapper object (not a bare array) because the applicant list rides
+/// alongside the facility-level cap and the current active-crew count, both of
+/// which the hire affordance needs: the current roster comes from the separate
+/// <c>spaceCenter.crewRoster</c> channel, this one carries the hire side. The
+/// whole payload is <c>null</c> in the SANDBOX / no-career / no-game case (no
+/// applicant pool exists), the provider's "no data" signal, distinct from a
+/// career save whose pool is genuinely empty (a non-null payload with an empty
+/// <see cref="Applicants"/> list).</para>
+///
+/// <para>A TS-shape-only typing/codegen marker: the provider hand-builds the
+/// dict and <c>JsonWriter</c> walks that live tree, this POCO never serializes.
+/// Classified <c>DelayRole.TrueNow</c>: the Astronaut Complex is at KSC, known
+/// independent of any vessel's comms link, same class as
+/// <see cref="CrewRosterEntry"/>.</para>
+/// </summary>
+[SitrepContract]
+[SitrepTopic("spaceCenter.astronautComplex")]
+#if NETSTANDARD2_0
+[TsInterface]
+#endif
+public class AstronautComplexInfo
+{
+    /// <summary>The hireable applicant pool (<c>KerbalRoster.Applicants</c>), one entry each. Always present (empty, never null) once the payload itself is non-null.</summary>
+    public List<ApplicantEntry> Applicants { get; set; } = new();
+
+    /// <summary>Current active (Crew-type) count (<c>KerbalRoster.GetActiveCrewCount</c>): the number counted against <see cref="CrewCapacity"/>. Null when the roster isn't queryable.</summary>
+    [SitrepUnit(Units.Count)]
+    public int? ActiveCrew { get; set; }
+
+    /// <summary>Active-crew cap set by the Astronaut Complex facility tier (<c>GameVariables.GetActiveCrewLimit</c>). A hire is blocked once <see cref="ActiveCrew"/> reaches it. Very large (effectively unlimited) at the top facility tier; null when the facility isn't queryable.</summary>
+    [SitrepUnit(Units.Count)]
+    public int? CrewCapacity { get; set; }
+}
+
+/// <summary>
+/// One hireable applicant in <see cref="AstronautComplexInfo.Applicants"/>.
+/// A TS-shape-only typing/codegen marker; never serialized on its own.
+/// </summary>
+[SitrepContract]
+#if NETSTANDARD2_0
+[TsInterface]
+#endif
+public class ApplicantEntry
+{
+    /// <summary>Applicant name (<c>ProtoCrewMember.name</c>): the id the hire command resolves against the live pool.</summary>
+    [SitrepUnit(Units.Text)]
+    public string? Name { get; set; }
+
+    /// <summary>Specialisation (<c>ProtoCrewMember.trait</c>): <c>"Pilot"</c>/<c>"Engineer"</c>/<c>"Scientist"</c>/<c>"Tourist"</c>.</summary>
+    [SitrepUnit(Units.Text)]
+    public string? Trait { get; set; }
+
+    /// <summary>Experience level (<c>ProtoCrewMember.experienceLevel</c>), 0 for a fresh applicant.</summary>
+    [SitrepUnit(Units.Count)]
+    public int? Level { get; set; }
+
+    /// <summary>Funds cost to hire this applicant (<c>GameVariables.GetRecruitHireCost</c>): the same figure for every applicant, rising with the current roster size.</summary>
+    [SitrepUnit(Units.Funds)]
+    public double? HireCost { get; set; }
 }
 
 /// <summary>

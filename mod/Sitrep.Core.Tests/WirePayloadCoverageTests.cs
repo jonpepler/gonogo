@@ -107,6 +107,10 @@ namespace Sitrep.Core.Tests
             "LaunchSiteEntry", "SpaceCenterScene",
             "CrewRosterEntry", "SavedShipEntry", "SpaceCenterPartsAvailable",
             "SpaceCenterPoiEntry",
+            // spaceCenter.astronautComplex: SpaceCenterViewProvider.BuildAstronautComplex
+            // hand-builds the { applicants: [...], activeCrew, crewCapacity }
+            // Dictionary/List tree; these POCOs are TS-shape-only.
+            "AstronautComplexInfo", "ApplicantEntry",
             // commandCentre.roster: the command-centre enumeration pass
             // hand-flattens each centre to a Dictionary; this POCO is TS-shape-only.
             "CommandCentreEntry",
@@ -147,7 +151,7 @@ namespace Sitrep.Core.Tests
             "SetPausedArgs", "SetSasModeArgs", "SetTargetArgs", "SetThrottleArgs",
             "SetWarpIndexArgs", "SetFlyByWireArgs", "SetControlAxesArgs",
             "ActivateStrategyArgs", "DeactivateStrategyArgs", "UnlockTechArgs",
-            "ContractActionArgs", "UpgradeFacilityArgs", "RevertToEditorArgs",
+            "ContractActionArgs", "UpgradeFacilityArgs", "HireApplicantArgs", "RevertToEditorArgs",
             "SwitchVesselArgs", "LaunchArgs", "ServoSetTargetArgs", "ServoSetEnabledArgs",
             "RotorSetValueArgs", "RotorReverseArgs", "ExperimentActionArgs",
             "InvokePartActionArgs",

@@ -26,6 +26,10 @@ export interface UpgradeFacilityArgs
 {
 	facilityId: string;
 }
+export interface HireApplicantArgs
+{
+	applicantName: string;
+}
 export enum GameMode {
 	Sandbox = 0,
 	Career = 1,
@@ -801,6 +805,19 @@ export interface SavedShipEntry
 export interface SpaceCenterPartsAvailable
 {
 	count?: Value<"count">;
+}
+export interface AstronautComplexInfo
+{
+	applicants: ApplicantEntry[];
+	activeCrew?: Value<"count">;
+	crewCapacity?: Value<"count">;
+}
+export interface ApplicantEntry
+{
+	name?: string;
+	trait?: string;
+	level?: Value<"count">;
+	hireCost?: Value<"funds">;
 }
 export interface SpaceCenterPoiEntry
 {

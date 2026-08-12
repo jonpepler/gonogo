@@ -787,7 +787,21 @@ namespace Sitrep.Contract
         /// <c>vesselId</c>: the dynamic namespace is keyed by the part's flight id
         /// and the subject boundary belongs at the ledger, the same conclusion the
         /// withdrawal above records.</para>
+        ///
+        /// <para>Bumped 8 -&gt; 9: Astronaut Complex hiring. Adds
+        /// <see cref="AstronautComplexInfo"/>/<see cref="ApplicantEntry"/> (the
+        /// payload of the new <c>spaceCenter.astronautComplex</c> channel, the
+        /// hireable applicant pool plus the roster cap + active-crew count) and
+        /// <see cref="HireApplicantArgs"/> (the args of the new
+        /// <c>career.crew.hire</c> command that recruits one, spending funds).
+        /// Purely additive: two new payload types, one new command-arg type, a new
+        /// channel and a new command, no existing member gains, loses or retypes
+        /// anything, so an Uplink built against any earlier Major-12 minor is
+        /// unaffected and the frozen Major-12 floor is NOT re-frozen. The applicant
+        /// pool rides <c>DelayRole.TrueNow</c> (the Astronaut Complex is at KSC),
+        /// same class as <c>spaceCenter.crewRoster</c>. See
+        /// <c>local_docs/design/2026-08-12-astronaut-hiring-build-spec.md</c>.</para>
         /// </summary>
-        public const int Minor = 8;
+        public const int Minor = 9;
     }
 }

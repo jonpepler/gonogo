@@ -141,6 +141,10 @@ export const DEFAULT_SITREP_CARRIED_TOPICS: readonly string[] = [
   // a brand-new topic with no legacy Telemachus equivalent, so the stream is
   // its only source of data.
   "spaceCenter.pois",
+  // spaceCenter.astronautComplex: AstronautComplex's applicant pool + roster
+  // cap + active-crew count, a brand-new topic with no legacy Telemachus
+  // equivalent, so the stream is its only source of data.
+  "spaceCenter.astronautComplex",
   // Crash event stream (CrashUplink, ReliableOrdered): the crashed-vessel
   // record and its companion "a notable crash happened recently" flag. Raw
   // wire topics; the gate promotes at raw-topic granularity, so a widget

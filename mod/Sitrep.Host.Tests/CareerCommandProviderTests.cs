@@ -249,5 +249,52 @@ namespace Sitrep.Host.Tests
             Assert.False(result.Success);
             Assert.Equal(CommandErrorCode.Range, result.ErrorCode);
         }
+
+        [Fact]
+        public void HandleHireApplicantPassesApplicantNameThrough()
+        {
+            var actuator = new FakeCareerActuator();
+
+            var result = CareerCommandProvider.HandleHireApplicant(actuator, new HireApplicantArgs { ApplicantName = "Jebediah Kerman" });
+
+            Assert.Equal("Jebediah Kerman", actuator.LastHireApplicantName);
+            Assert.True(result.Success);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void HandleHireApplicantRejectsEmptyNameBeforeEverCallingTheActuator(string name)
+        {
+            var actuator = new FakeCareerActuator();
+
+            var result = CareerCommandProvider.HandleHireApplicant(actuator, new HireApplicantArgs { ApplicantName = name });
+
+            Assert.False(result.Success);
+            Assert.Equal(CommandErrorCode.NotFound, result.ErrorCode);
+            Assert.Null(actuator.LastHireApplicantName);
+        }
+
+        [Fact]
+        public void HandleHireApplicantSurfacesTheActuatorsUnaffordableRangeError()
+        {
+            var actuator = new FakeCareerActuator { HireApplicantResult = CommandResult.Fail(CommandErrorCode.Range) };
+
+            var result = CareerCommandProvider.HandleHireApplicant(actuator, new HireApplicantArgs { ApplicantName = "Valentina Kerman" });
+
+            Assert.False(result.Success);
+            Assert.Equal(CommandErrorCode.Range, result.ErrorCode);
+        }
+
+        [Fact]
+        public void HandleHireApplicantSurfacesTheActuatorsRosterFullModeUnavailableError()
+        {
+            var actuator = new FakeCareerActuator { HireApplicantResult = CommandResult.Fail(CommandErrorCode.ModeUnavailable) };
+
+            var result = CareerCommandProvider.HandleHireApplicant(actuator, new HireApplicantArgs { ApplicantName = "Bill Kerman" });
+
+            Assert.False(result.Success);
+            Assert.Equal(CommandErrorCode.ModeUnavailable, result.ErrorCode);
+        }
     }
 }

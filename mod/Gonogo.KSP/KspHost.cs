@@ -390,6 +390,7 @@ namespace Gonogo.KSP
                 // The saved-ships disk walk is throttled to the keyframe cadence
                 // inside its builder; the rest are in-memory reads.
                 AttachSpaceCenterGroup(values, "crewRoster", BuildCrewRoster);
+                AttachSpaceCenterGroup(values, "astronautComplex", BuildAstronautComplex);
                 AttachSpaceCenterGroup(values, "savedShips", () => BuildSavedShips(ut));
                 AttachSpaceCenterGroup(values, "partsAvailable", () => BuildPartsAvailable());
                 AttachSpaceCenterGroup(values, "contractTargets", BuildContractTargets);
@@ -2556,6 +2557,66 @@ namespace Gonogo.KSP
             }
 
             return crew;
+        }
+
+        /// <summary>
+        /// Primitives-only snapshot of the Astronaut Complex hire tab, the live
+        /// applicant pool (<c>KerbalRoster.Applicants</c>) plus the two numbers a
+        /// hire is gated on: the current active-crew count
+        /// (<c>KerbalRoster.GetActiveCrewCount</c>) and the facility-tier cap
+        /// (<c>GameVariables.GetActiveCrewLimit</c> over the Astronaut Complex's
+        /// normalised level). Each applicant's <c>hireCost</c> is the current
+        /// recruit price (<c>GameVariables.GetRecruitHireCost</c>, a function of
+        /// the active-crew count, so the SAME figure for every applicant this
+        /// tick). CAREER-gated on <c>Funding.Instance</c> (hiring spends funds;
+        /// sandbox/science have no funds affordance), so this returns <c>null</c>
+        /// (the whole group omitted) outside career, letting
+        /// <c>SpaceCenterViewProvider.BuildAstronautComplex</c> distinguish "not
+        /// in career" from "career with an empty pool." The cost/cap numbers are
+        /// captured raw; the KSP-free provider owns any presentation fold.
+        /// </summary>
+        private static Dictionary<string, object?>? BuildAstronautComplex()
+        {
+            var roster = HighLogic.CurrentGame?.CrewRoster;
+            if (roster == null || Funding.Instance == null)
+            {
+                return null;
+            }
+
+            var gameVariables = GameVariables.Instance;
+            var activeCrew = roster.GetActiveCrewCount();
+            double? hireCost = gameVariables != null ? (double?)gameVariables.GetRecruitHireCost(activeCrew) : null;
+
+            int? crewCapacity = null;
+            if (gameVariables != null && ScenarioUpgradeableFacilities.Instance != null)
+            {
+                var norm = ScenarioUpgradeableFacilities.GetFacilityLevel(SpaceCenterFacility.AstronautComplex);
+                crewCapacity = gameVariables.GetActiveCrewLimit(norm);
+            }
+
+            var applicants = new List<object?>();
+            foreach (var pcm in roster.Applicants)
+            {
+                if (pcm == null)
+                {
+                    continue;
+                }
+
+                applicants.Add(new Dictionary<string, object?>
+                {
+                    ["name"] = pcm.name,
+                    ["trait"] = pcm.trait,
+                    ["level"] = pcm.experienceLevel,
+                    ["hireCost"] = hireCost,
+                });
+            }
+
+            return new Dictionary<string, object?>
+            {
+                ["applicants"] = applicants,
+                ["activeCrew"] = activeCrew,
+                ["crewCapacity"] = crewCapacity,
+            };
         }
 
         /// <summary>

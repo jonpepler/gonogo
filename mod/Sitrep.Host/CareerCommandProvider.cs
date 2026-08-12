@@ -30,6 +30,7 @@ namespace Sitrep.Host
         public const string DeclineContractCommand = "career.contract.decline";
         public const string CancelContractCommand = "career.contract.cancel";
         public const string UpgradeFacilityCommand = "career.facility.upgrade";
+        public const string HireApplicantCommand = "career.crew.hire";
 
         public static CommandResult HandleActivateStrategy(ICareerActuator actuator, ActivateStrategyArgs args)
         {
@@ -92,6 +93,15 @@ namespace Sitrep.Host
                 return CommandResult.Fail(CommandErrorCode.NotFound);
             }
             return actuator.UpgradeFacility(args.FacilityId);
+        }
+
+        public static CommandResult HandleHireApplicant(ICareerActuator actuator, HireApplicantArgs args)
+        {
+            if (string.IsNullOrWhiteSpace(args.ApplicantName))
+            {
+                return CommandResult.Fail(CommandErrorCode.NotFound);
+            }
+            return actuator.HireApplicant(args.ApplicantName);
         }
     }
 }

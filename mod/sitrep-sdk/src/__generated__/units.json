@@ -65,6 +65,16 @@
       "partId": "id",
       "partName": "text"
     },
+    "ApplicantEntry": {
+      "hireCost": "funds",
+      "level": "count",
+      "name": "text",
+      "trait": "text"
+    },
+    "AstronautComplexInfo": {
+      "activeCrew": "count",
+      "crewCapacity": "count"
+    },
     "AtmosphereEntry": {
       "depth": "m",
       "hasOxygen": "flag",
@@ -369,6 +379,9 @@
     "GameDlc": {
       "breakingGround": "flag",
       "makingHistory": "flag"
+    },
+    "HireApplicantArgs": {
+      "applicantName": "id"
     },
     "InstrumentEntry": {
       "dataIsCollectable": "flag",
@@ -1267,6 +1280,10 @@
       "readout": "text",
       "type": "id"
     },
+    "spaceCenter.astronautComplex": {
+      "activeCrew": "count",
+      "crewCapacity": "count"
+    },
     "spaceCenter.crewRoster": {
       "available": "flag",
       "experienceLevel": "count",
@@ -1481,6 +1498,9 @@
     }
   },
   "typeShapes": {
+    "AstronautComplexInfo": {
+      "applicants": "ApplicantEntry"
+    },
     "BodyEntry": {
       "atmosphere": "AtmosphereEntry",
       "orbit": "OrbitEntry"
@@ -1746,6 +1766,9 @@
       "partBreakdown": "RecoveryPartEntry",
       "resourceBreakdown": "RecoveryResourceEntry",
       "scienceBreakdown": "RecoveryScienceEntry"
+    },
+    "spaceCenter.astronautComplex": {
+      "applicants": "ApplicantEntry"
     },
     "system.bodies": {
       "bodies": "BodyEntry"

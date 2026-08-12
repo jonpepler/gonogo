@@ -38,15 +38,23 @@ export {
   type ActionMenuProps,
 } from "./ActionMenu";
 export {
-  type AugmentSettingField,
   AugmentSettingsPanel,
   type AugmentSettingsPanelProps,
-  type NamespacedAugmentSettings,
 } from "./AugmentSettingsPanel";
+export { AugmentSlot, useAugmentAvailable } from "./AugmentSlot";
 export {
   AutoEmptyState,
   type AutoEmptyStateProps,
 } from "./AutoEmptyState";
+// ── Augment seam (relocated from @ksp-gonogo/core) ────────────────────────────
+// The augment registry + declaration-merge type surface (`SlotRegistry`,
+// `SlotProps`, the segment seam, the setting types), the `<AugmentSlot>`
+// composition point, and the ui-kit-owned domain-availability store its
+// presence gate reads. Spine-free (sdk types only); the frame-batched evaluator
+// stays in core (spec §14). `@ksp-gonogo/core` re-exports every symbol below, so
+// existing importers are byte-identical and a `declare module "@ksp-gonogo/core"`
+// augmentation of `SlotRegistry` still merges.
+export * from "./augments";
 export {
   Badge,
   type BadgeProps,
@@ -164,6 +172,14 @@ export {
 export { Disclosure, type DisclosureProps } from "./Disclosure";
 export { DivergingBar, type DivergingBarProps } from "./DivergingBar";
 export { Divider, type DividerProps } from "./Divider";
+export {
+  createDomainAvailabilityStore,
+  DomainAvailabilityContext,
+  DomainAvailabilityProvider,
+  type DomainAvailabilityStore,
+  useDomainAvailabilityStore,
+  useDomainAvailable,
+} from "./domainAvailability";
 // ── Leaf components ──────────────────────────────────────────────────────────
 export {
   EmptyState,

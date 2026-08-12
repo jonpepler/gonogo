@@ -7,8 +7,10 @@
 // entry type, not the loose `Record<string, unknown>` fallback.
 //
 // Checked by `tsc` (the package `typecheck`), NOT the vitest runner (see the
-// sibling `Objectives/slot-contract.test-d.ts`, which proves the same for the
-// `SlotRegistry` augment seam that stayed in core).
+// sibling `slot-registry-augmentation.test-d.ts`, which proves the same for the
+// `SlotRegistry` augment seam now that it too lives in ui-kit, and
+// `Objectives/slot-contract.test-d.ts`, which proves it for a real widget's
+// typed-contract slot).
 
 import type { ContributionEntry } from "@ksp-gonogo/core";
 

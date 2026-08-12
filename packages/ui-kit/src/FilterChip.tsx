@@ -5,6 +5,13 @@ export interface FilterChipProps {
   selected: boolean;
   count?: number;
   onToggle: () => void;
+  /**
+   * Visual size. Defaults to `md`, the original size, so existing chip
+   * consumers (MissionProfiles scene bindings, ComponentOverlay tag filters)
+   * are unaffected. `sm` is a tighter pill for a dense filter row, e.g.
+   * ResourceOps's process list, where the default size crowds the header.
+   */
+  size?: "md" | "sm";
 }
 
 export function FilterChip({
@@ -12,11 +19,13 @@ export function FilterChip({
   selected,
   count,
   onToggle,
+  size = "md",
 }: FilterChipProps) {
   return (
     <ChipButton
       type="button"
       $selected={selected}
+      $size={size}
       onClick={onToggle}
       aria-pressed={selected}
     >
@@ -26,16 +35,20 @@ export function FilterChip({
   );
 }
 
-const ChipButton = styled.button<{ $selected: boolean }>`
+const ChipButton = styled.button<{ $selected: boolean; $size: "md" | "sm" }>`
   display: inline-flex;
   align-items: center;
-  gap: var(--space-6);
-  padding: var(--space-2) var(--space-8);
+  gap: ${({ $size }) => ($size === "sm" ? "var(--space-4)" : "var(--space-6)")};
+  padding: ${({ $size }) =>
+    $size === "sm"
+      ? "var(--space-hair) var(--space-6)"
+      : "var(--space-2) var(--space-8)"};
   /* Stadium, not a corner: with 2px vertical padding the old 12px already
      exceeded half the rendered height. --radius-pill renders identically and
      survives a padding change. */
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
+  font-size: ${({ $size }) =>
+    $size === "sm" ? "var(--font-size-2xs)" : "var(--font-size-xs)"};
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;

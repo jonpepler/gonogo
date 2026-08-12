@@ -38,6 +38,13 @@ export interface FilterListProps {
    * block.
    */
   rowGap?: SpaceToken;
+  /**
+   * Size of the contributed filter chips. Defaults to `md`, the original
+   * chip size, so existing FilterList consumers are unaffected. A widget
+   * whose header is already dense (e.g. ResourceOps's stats + search + chips
+   * stack) wants `sm`.
+   */
+  chipSize?: "md" | "sm";
 }
 
 /**
@@ -55,6 +62,7 @@ export function FilterList({
   rows,
   emptyLabel = "Nothing matches the filter",
   rowGap = "xs",
+  chipSize = "md",
 }: FilterListProps) {
   const terms = useContributions("filters");
   // Distinct terms, in contribution order: two providers can land the same
@@ -85,36 +93,43 @@ export function FilterList({
   });
 
   return (
+    // The outer gap ("sm") sits between the search+chips group and the row
+    // list below it, exactly double the inner gap ("xs") between the search
+    // box and the chip row: the three list zones (search, chips, rows) read
+    // as increasingly separated, not a single fused block.
     <Stack gap="sm">
-      <Field>
-        <FieldLabel htmlFor={searchId}>Search</FieldLabel>
-        <Input
-          id={searchId}
-          type="search"
-          value={typed}
-          placeholder="Filter…"
-          onChange={(event) => setTyped(event.target.value)}
-        />
-      </Field>
+      <Stack gap="xs">
+        <Field>
+          <FieldLabel htmlFor={searchId}>Search</FieldLabel>
+          <Input
+            id={searchId}
+            type="search"
+            value={typed}
+            placeholder="Filter…"
+            onChange={(event) => setTyped(event.target.value)}
+          />
+        </Field>
 
-      {uniqueTerms.length > 0 && (
-        <Cluster
-          justify="start"
-          gap="xs"
-          wrap
-          role="group"
-          aria-label="Filters"
-        >
-          {uniqueTerms.map((term) => (
-            <FilterChip
-              key={term}
-              label={term}
-              selected={active.has(term)}
-              onToggle={() => toggle(term)}
-            />
-          ))}
-        </Cluster>
-      )}
+        {uniqueTerms.length > 0 && (
+          <Cluster
+            justify="start"
+            gap="xs"
+            wrap
+            role="group"
+            aria-label="Filters"
+          >
+            {uniqueTerms.map((term) => (
+              <FilterChip
+                key={term}
+                label={term}
+                selected={active.has(term)}
+                onToggle={() => toggle(term)}
+                size={chipSize}
+              />
+            ))}
+          </Cluster>
+        )}
+      </Stack>
 
       {shown.length > 0 ? (
         <Stack gap={rowGap}>

@@ -162,7 +162,14 @@ public class CommsPath
     public PayloadMeta Meta { get; set; } = new();
 }
 
-/// <summary>One node in the <see cref="CommsNetwork"/> relay graph.</summary>
+/// <summary>
+/// One node in the <see cref="CommsNetwork"/> relay graph. <see cref="Id"/> is
+/// a UNIQUE, stable join key (the owning vessel's persistent id, or
+/// <c>"home"</c> for KSC), the same id space <see cref="CommsHop.From"/>/
+/// <see cref="CommsHop.To"/> use: never the display name, which duplicate
+/// vessel names make unsafe as a key. <see cref="DisplayName"/> carries the
+/// label for the UI.
+/// </summary>
 [SitrepContract]
 #if NETSTANDARD2_0
 [TsInterface]
@@ -171,6 +178,8 @@ public class CommsNetworkNode
 {
     [SitrepUnit(Units.Id)]
     public string Id { get; set; } = "";
+    [SitrepUnit(Units.Text)]
+    public string DisplayName { get; set; } = "";
     [SitrepUnit(Units.Enumeration)]
     public CommsHopKind Kind { get; set; }
 }

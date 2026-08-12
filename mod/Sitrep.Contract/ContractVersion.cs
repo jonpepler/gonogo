@@ -787,7 +787,24 @@ namespace Sitrep.Contract
         /// <c>vesselId</c>: the dynamic namespace is keyed by the part's flight id
         /// and the subject boundary belongs at the ledger, the same conclusion the
         /// withdrawal above records.</para>
+        ///
+        /// <para><b>Bumped 8 -&gt; 9: the SystemView shape-contribution
+        /// foundation.</b> Two additive changes. First, the new
+        /// <see cref="VesselRosterEntry.Orbit"/> (the vessel's own orbital
+        /// elements, same shape and same <c>SystemViewProvider.BuildOrbit</c>
+        /// routine as <see cref="BodyEntry.Orbit"/>): the join a SystemView graph
+        /// node needs to derive its position, so no separate node-position field
+        /// was added. Second, the new <see cref="CommsNetworkNode.DisplayName"/>:
+        /// <see cref="CommsNetworkNode.Id"/> stopped being the vessel display
+        /// name (duplicate names made it unsafe as a graph/roster join key) and
+        /// became the vessel's persistent id instead (<c>"home"</c> unchanged for
+        /// KSC); <see cref="CommsHop.From"/>/<see cref="CommsHop.To"/> carry the
+        /// same id space and needed no shape change. Both changes are new
+        /// nullable/additional members on existing wire types, nothing removed or
+        /// retyped, so an Uplink built against Major 12.0-12.8 is unaffected and
+        /// the frozen Major-12 floor is NOT re-frozen. See
+        /// <c>.superpowers/sdd/2026-08-12-systemview-shape-contributions/</c>.</para>
         /// </summary>
-        public const int Minor = 8;
+        public const int Minor = 9;
     }
 }

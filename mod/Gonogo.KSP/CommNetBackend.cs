@@ -212,11 +212,23 @@ namespace Gonogo.KSP
                 nodes.Add(new CommsNetworkNode
                 {
                     Id = id,
+                    DisplayName = NodeDisplayName(node),
                     Kind = node.isHome ? CommsHopKind.Home : CommsHopKind.Relay,
                 });
             }
         }
 
+        /// <summary>
+        /// A UNIQUE, stable join key for <paramref name="node"/>: the owning
+        /// vessel's persistent id for a vessel node, <c>"home"</c> for KSC.
+        /// The old implementation returned <c>node.displayName</c>, which
+        /// duplicate vessel names (common) made unsafe as a graph/roster join
+        /// key -- see <see cref="ResolveOwningVessel"/> for how the vessel is
+        /// found. Falls back to the display name only for a node this backend
+        /// cannot attribute to any loaded/known <see cref="Vessel"/> (e.g. a
+        /// mod-added ground relay that isn't itself a vessel): the same
+        /// pre-existing, non-unique fallback, unchanged for that edge case.
+        /// </summary>
         private static string NodeId(CommNode node)
         {
             if (node == null)
@@ -227,7 +239,49 @@ namespace Gonogo.KSP
             {
                 return "home";
             }
+            var vessel = ResolveOwningVessel(node);
+            if (vessel != null)
+            {
+                return vessel.id.ToString();
+            }
             return string.IsNullOrEmpty(node.displayName) ? node.name ?? "node" : node.displayName;
+        }
+
+        /// <summary>The human label for <paramref name="node"/>, independent of its (now unique) <see cref="NodeId"/>.</summary>
+        private static string NodeDisplayName(CommNode node)
+        {
+            if (node == null)
+            {
+                return "unknown";
+            }
+            return string.IsNullOrEmpty(node.displayName) ? node.name ?? "node" : node.displayName;
+        }
+
+        /// <summary>
+        /// Finds the <see cref="Vessel"/> that owns <paramref name="node"/> by
+        /// reference-comparing it against every known vessel's own CommNet
+        /// node (<c>Vessel.connection.Comm</c>): stock <see cref="CommNode"/>
+        /// carries no back-reference to its owning vessel, so this is the only
+        /// way to recover it. Returns null for a non-vessel node (home/ground
+        /// station) or one whose owning vessel has no live connection right
+        /// now.
+        /// </summary>
+        private static Vessel? ResolveOwningVessel(CommNode node)
+        {
+            var vessels = FlightGlobals.Vessels;
+            if (vessels == null)
+            {
+                return null;
+            }
+            foreach (var candidate in vessels)
+            {
+                var conn = candidate?.connection;
+                if (conn != null && ReferenceEquals(conn.Comm, node))
+                {
+                    return candidate;
+                }
+            }
+            return null;
         }
 
         private static CommsControlSource MapControlSource(Vessel.ControlLevel level)

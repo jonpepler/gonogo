@@ -204,6 +204,7 @@ export interface CommsPath
 export interface CommsNetworkNode
 {
 	id: string;
+	displayName: string;
 	kind: CommsHopKind;
 }
 export interface CommsNetworkEdge
@@ -898,6 +899,7 @@ export interface VesselRosterEntry
 	crewCapacity?: Value<"count">;
 	commsConnected?: boolean;
 	commsControlSource?: RosterCommsControlSource;
+	orbit?: OrbitEntry;
 }
 export interface TargetListEntry
 {

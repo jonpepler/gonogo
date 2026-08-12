@@ -123,15 +123,51 @@ namespace Gonogo.RealAntennasUplink
             var id = NodeId(node);
             if (seen.Add(id))
             {
-                nodes.Add(new CommsNetworkNode { Id = id, Kind = node.isHome ? CommsHopKind.Home : CommsHopKind.Relay });
+                nodes.Add(new CommsNetworkNode
+                {
+                    Id = id,
+                    DisplayName = NodeDisplayName(node),
+                    Kind = node.isHome ? CommsHopKind.Home : CommsHopKind.Relay,
+                });
             }
         }
 
+        /// <summary>
+        /// A UNIQUE, stable join key: the owning vessel's persistent id for a
+        /// vessel node, <c>"home"</c> for KSC. Same fix as
+        /// <c>Gonogo.KSP.CommNetBackend.NodeId</c> (that backend's own doc
+        /// comment has the full rationale): stock <see cref="CommNode"/> has no
+        /// vessel back-reference, so <see cref="ResolveOwningVessel"/>
+        /// reference-compares against every known vessel's own node.
+        /// </summary>
         private static string NodeId(CommNode node)
         {
             if (node == null) return "unknown";
             if (node.isHome) return "home";
+            var vessel = ResolveOwningVessel(node);
+            if (vessel != null) return vessel.id.ToString();
             return string.IsNullOrEmpty(node.displayName) ? node.name ?? "node" : node.displayName;
+        }
+
+        private static string NodeDisplayName(CommNode node)
+        {
+            if (node == null) return "unknown";
+            return string.IsNullOrEmpty(node.displayName) ? node.name ?? "node" : node.displayName;
+        }
+
+        private static Vessel? ResolveOwningVessel(CommNode node)
+        {
+            var vessels = FlightGlobals.Vessels;
+            if (vessels == null) return null;
+            foreach (var candidate in vessels)
+            {
+                var conn = candidate?.connection;
+                if (conn != null && ReferenceEquals(conn.Comm, node))
+                {
+                    return candidate;
+                }
+            }
+            return null;
         }
 
         private static CommsControlSource MapSource(Vessel.ControlLevel level) => level switch

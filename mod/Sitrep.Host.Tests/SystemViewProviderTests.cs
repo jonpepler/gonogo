@@ -453,6 +453,63 @@ namespace Sitrep.Host.Tests
         }
 
         [Fact]
+        public void BuildSystemVesselsMapsEachVesselsOwnOrbitViaTheSharedBuildOrbitRoutine()
+        {
+            // The join a SystemView graph node uses to derive its position:
+            // no separate node-position field, see VesselRosterEntry.Orbit's
+            // own doc comment. Reuses the same raw key set (and the same
+            // BuildOrbit helper) BuildBody uses for BodyEntry.Orbit.
+            var snapshot = new KspSnapshot
+            {
+                Ut = 0.0,
+                Values = new Dictionary<string, object?>
+                {
+                    ["vessels"] = new List<object?>
+                    {
+                        new Dictionary<string, object?>
+                        {
+                            ["id"] = "11111111-2222-3333-4444-555555555555",
+                            ["name"] = "Kerbal X",
+                            ["sma"] = 700000.0,
+                            ["ecc"] = 0.01,
+                            ["inc"] = 0.05,
+                            ["lan"] = 12.0,
+                            ["argPe"] = 34.0,
+                            ["meanAnomalyAtEpoch"] = 1.2,
+                            ["epoch"] = 500.0,
+                        },
+                        new Dictionary<string, object?>
+                        {
+                            // No orbitDriver to read (e.g. a settling scene
+                            // transition): the producer omits the orbit keys
+                            // entirely rather than emit an all-null block.
+                            ["id"] = "22222222-0000-0000-0000-000000000000",
+                            ["name"] = "No Orbit Yet",
+                        },
+                    },
+                },
+            };
+
+            var payload = SystemViewProvider.BuildSystemVessels(snapshot);
+
+            var root = Assert.IsType<Dictionary<string, object?>>(payload);
+            var vessels = Assert.IsType<List<object?>>(root["vessels"]);
+
+            var withOrbit = Assert.IsType<Dictionary<string, object?>>(vessels[0]);
+            var orbit = Assert.IsType<Dictionary<string, object?>>(withOrbit["orbit"]);
+            Assert.Equal(700000.0, orbit["sma"]);
+            Assert.Equal(0.01, orbit["ecc"]);
+            Assert.Equal(0.05, orbit["inc"]);
+            Assert.Equal(12.0, orbit["lan"]);
+            Assert.Equal(34.0, orbit["argPe"]);
+            Assert.Equal(1.2, orbit["meanAnomalyAtEpoch"]);
+            Assert.Equal(500.0, orbit["epoch"]);
+
+            var withoutOrbit = Assert.IsType<Dictionary<string, object?>>(vessels[1]);
+            Assert.Null(withoutOrbit["orbit"]);
+        }
+
+        [Fact]
         public void BuildSystemVesselsDropsAnEntryWithNoResolvableIdRatherThanFabricatingOne()
         {
             var snapshot = new KspSnapshot

@@ -295,4 +295,15 @@ public class VesselRosterEntry
     /// </summary>
     [SitrepUnit(Units.Enumeration)]
     public RosterCommsControlSource? CommsControlSource { get; set; }
+
+    /// <summary>
+    /// This vessel's own orbital elements, the same shape (and the same
+    /// <c>SystemViewProvider.BuildOrbit</c> routine) that fills
+    /// <see cref="BodyEntry.Orbit"/>. This is what positions a roster vessel
+    /// (and a SystemView graph node keyed to it via <see cref="VesselId"/>):
+    /// no separate node-position field exists, a client derives position by
+    /// joining a node's id to this orbit. Null when the vessel has no
+    /// orbitDriver yet (a scene-transition race), never a sentinel.
+    /// </summary>
+    public OrbitEntry? Orbit { get; set; }
 }

@@ -216,12 +216,34 @@ function CommSignalComponent({
           side by side, each taking half the row, rather than clustering
           top-left. Portrait: the same two blocks stack vertically. Neither
           Cluster nor Stack has an even-split "each child grows" mode, so the
-          two children get that via a direct style override in landscape. */}
+          two children get that via a direct style override in landscape.
+
+          Dropping this wrapper's `minHeight: 0` (it used to sit alongside
+          `flex: 1`) is the fix for a real overlap bug, not a no-op tidy-up.
+          A flex item's AUTOMATIC min-height (the spec default, "auto")
+          floors it at its own content size, exactly what stops it being
+          crushed by a sibling; explicit `minHeight: 0` cancels that floor.
+          With the floor cancelled, whenever a sibling below asked for more
+          room than the panel body had spare (an `AugmentSlot`-composed
+          section, e.g. RealAntennas' link-budget panel, pushing total
+          content past the tile height), the flexbox shrink pass was free to
+          crush this block's box past zero, and its real content (bars,
+          control/delay rows) painted straight through its collapsed box
+          into that sibling. Removing the override restores the automatic
+          floor, so this block never shrinks below its own content and an
+          augment section always starts cleanly below it. At every size
+          WITHOUT an augment this changes nothing: the floor only ever
+          engages during a shrink (negative free space), and the no-augment
+          case always has spare room (positive free space, pure grow), so
+          the clamp never activates and every existing render is
+          byte-identical. If combined content still outgrows the tile,
+          Panel.Body's own `overflow: auto` (with its scroll glow) handles
+          it instead of the two overlapping. */}
       {isLandscape ? (
         <Cluster
           justify="between"
           align="center"
-          style={{ flex: 1, minHeight: 0, gap: "var(--space-24)" }}
+          style={{ flex: 1, gap: "var(--space-24)" }}
         >
           <Cluster justify="start" wrap style={{ flex: "1 1 0", minWidth: 0 }}>
             <SignalBars bars={bars} tone={control.tone} />
@@ -241,7 +263,7 @@ function CommSignalComponent({
           )}
         </Cluster>
       ) : (
-        <Stack gap="md" style={{ flex: 1, minHeight: 0 }}>
+        <Stack gap="md" style={{ flex: 1 }}>
           <Cluster justify="start" wrap>
             <SignalBars bars={bars} tone={control.tone} />
             <SignalHeadline headline={headline} lost={connected === false} />

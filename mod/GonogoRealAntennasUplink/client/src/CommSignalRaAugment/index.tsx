@@ -53,7 +53,10 @@ function CommSignalRaBadges() {
   if (down === undefined && !ext?.band) return null;
 
   return (
-    <Cluster gap="xs" align="center">
+    // `sm` (not `xs`): the band pill and the rate value are two distinct
+    // readings, not one run-on label, and `xs`'s 2px gap read as the rate
+    // crowding the pill's rounded edge rather than sitting beside it.
+    <Cluster gap="sm" align="center">
       {ext?.band ? <Badge tone="info">{ext.band}-band</Badge> : null}
       {down !== undefined ? (
         <Value size="xs" tone="muted">
@@ -87,9 +90,11 @@ function CommSignalRaSection() {
   if (!hasMargin && !hasExt) return null;
 
   return (
-    <Stack gap="xs" aria-label="RealAntennas link detail">
+    // Labelled "LINK BUDGET", not "RealAntennas": the operator gets the link
+    // data this section presents, not which mod computed it.
+    <Stack gap="xs" aria-label="Link budget detail">
       <Value size="xs" tone="muted" style={LABEL_STYLE}>
-        RealAntennas
+        Link budget
       </Value>
       <Grid cols="auto 1fr" gap="md" rowGap="xs" align="baseline">
         {hasMargin ? (

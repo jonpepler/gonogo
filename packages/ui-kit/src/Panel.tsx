@@ -161,7 +161,7 @@ export const PanelTitle = styled.h3`
      one-character button centres in a fixed height"). Left at "normal", the
      line box carries descender headroom this all-caps title never uses, so
      the glyphs visually ride higher than the box's own geometric centre.
-     PanelHeader__Row's align-items:center centres the dots/chevron summary
+     PanelHeader__TitleRow's align-items:center centres the dots/chevron summary
      against that geometric centre, which is math-exact against the box but
      reads as too LOW against the glyphs sitting above it. Flush shrinks the
      line box down to the font's own metrics and removes most of that
@@ -170,7 +170,7 @@ export const PanelTitle = styled.h3`
   /* One line, always. A long title (a widget name plus context, e.g. a
      Strategies aside label) used to wrap to a second line, which pushed the
      chevron/aside down with it and broke the "aside never drops to its own
-     row" invariant PanelHeader__Row already enforces on the OTHER side of the
+     row" invariant PanelHeader__TitleRow already enforces on the OTHER side of the
      row. min-width:0 lives on PanelHeader__Titles (the flex item), which is
      what lets this actually shrink and truncate instead of forcing the row
      wider. */
@@ -179,7 +179,51 @@ export const PanelTitle = styled.h3`
   text-overflow: ellipsis;
 `;
 
+/**
+ * The header's OUTER box: stacks the title row above an optional toolbar
+ * row. Two separate flex rows (this one column-direction, the title row
+ * below it row-direction) rather than one, because `PanelToolbar`'s own
+ * `flex-basis: 100%` (see its doc comment, "always takes a line of its own
+ * below the title") only forces a new line when the flex container is
+ * allowed to wrap. The title row below is deliberately `nowrap` (an aside
+ * that stops fitting COLLAPSES rather than drops to a second row, see
+ * `PanelHeader__TitleRow`), so a toolbar sharing that same nowrap row had
+ * nowhere to wrap TO: it fought Titles/Aside for space on one line instead,
+ * and (both of those refusing to shrink below their own content) the
+ * squeeze landed entirely on Titles, crushing the title to a sliver even
+ * though the toolbar was about to claim its own line anyway. Splitting the
+ * toolbar into its own box, outside the nowrap row entirely, removes it from
+ * that fight: nothing about the title/aside fit calculation ever sees it.
+ */
 const PanelHeader__Row = styled.div<{ $overlay?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Never shrink: at very short widget heights the flex column would squeeze
+     the header toward zero and the body would overprint the title. */
+  flex-shrink: 0;
+  /* Overlay: the header stops reserving a row and floats over the content, so
+     a map/plot/globe fills the whole tile and the title sits on top of its
+     quiet corner. Anchors to PanelGlow__Root, which is already positioned.
+     The row itself goes transparent to hit-testing (see OVERLAY_BOX). */
+  ${({ $overlay }) =>
+    $overlay
+      ? `position: absolute;
+         top: 0;
+         left: 0;
+         right: 0;
+         pointer-events: none;
+         /* Local sibling ordering inside the panel's own stacking context,
+            the same rung the scroll glow uses and for the same reason: it is
+            widget-internal, so it stays off the app-global z ladder. */
+         z-index: 1;`
+      : ""}
+`;
+
+/** The title + aside line, inside `PanelHeader__Row`. Its own nowrap flex
+ *  context, isolated from the toolbar row below (see `PanelHeader__Row`'s
+ *  doc comment for why that isolation is load-bearing). */
+const PanelHeader__TitleRow = styled.div`
   display: flex;
   /* Centre, not flex-start: the title is now single-line and truncates
      rather than wrapping (see PanelTitle's overflow rules below), so its box
@@ -201,25 +245,10 @@ const PanelHeader__Row = styled.div<{ $overlay?: boolean }>`
      row, always. The title column (min-width:0) truncates within its own box
      instead. */
   flex-wrap: nowrap;
-  /* Never shrink: at very short widget heights the flex column would squeeze
-     the header toward zero and the body would overprint the title. */
+  /* Never shrink vertically: a flex item of PanelHeader__Row's column now,
+     same guard that row carried for itself before the toolbar split out
+     into its own sibling box. */
   flex-shrink: 0;
-  /* Overlay: the header stops reserving a row and floats over the content, so
-     a map/plot/globe fills the whole tile and the title sits on top of its
-     quiet corner. Anchors to PanelGlow__Root, which is already positioned.
-     The row itself goes transparent to hit-testing (see OVERLAY_BOX). */
-  ${({ $overlay }) =>
-    $overlay
-      ? `position: absolute;
-         top: 0;
-         left: 0;
-         right: 0;
-         pointer-events: none;
-         /* Local sibling ordering inside the panel's own stacking context,
-            the same rung the scroll glow uses and for the same reason: it is
-            widget-internal, so it stays off the app-global z ladder. */
-         z-index: 1;`
-      : ""}
 `;
 
 /* Applied to the two header boxes (not to the row) when the header floats over
@@ -482,47 +511,49 @@ export function PanelHeader({
 
   return (
     /* `data-panel-header` is a stable targeting hook, the same contract as
-       ScrollArea's `data-scroll-area-inner`. The row splits titles and aside
-       into two boxes so they can align independently. */
-    <PanelHeader__Row
-      ref={rowRef}
-      data-panel-header=""
-      $overlay={overlay}
-      {...rest}
-    >
-      <PanelHeader__Titles $overlay={overlay}>
-        {title !== undefined && <PanelTitle ref={titleRef}>{title}</PanelTitle>}
-      </PanelHeader__Titles>
-      {aside !== undefined && (
-        <PanelHeader__Aside $overlay={overlay}>
-          {/* The aside lives in a measured-fit collapse box: while it fits it
-              shows inline; once it does not it collapses to the summary (the
-              per-severity status dots + a chevron) and the FULL aside, badges
-              AND controls, floats open on toggle. jsdom never completes a
-              measurement cycle, so it sees the wide default (the aside inline
-              in the box). */}
-          {/* A native `<details>`: it carries an implicit `role="group"`, so a
-              widget aside that itself uses `getByRole("group")` must scope that
-              query to its own subtree (this box is the panel-level group). */}
-          <PanelAsideExpand data-panel-aside-expand="" $collapsed={collapsed}>
-            <summary aria-label="Panel status and controls">
-              {breakdown.map((e) => (
-                <PanelStatusDot
-                  key={e.severity}
-                  severity={e.severity}
-                  count={e.count}
-                />
-              ))}
-              <span data-panel-aside-chevron="" aria-hidden="true" />
-            </summary>
-            <PanelAsideSizeProvider value={collapsed ? "collapsed" : "full"}>
-              <div data-panel-aside-full="" ref={asideFullRef}>
-                {aside}
-              </div>
-            </PanelAsideSizeProvider>
-          </PanelAsideExpand>
-        </PanelHeader__Aside>
-      )}
+       ScrollArea's `data-scroll-area-inner`. Two nested rows: the outer
+       column stacks the title row above an optional toolbar row (see
+       PanelHeader__Row's doc comment for why the toolbar needs a flex
+       context of its own); the inner row splits titles and aside into two
+       boxes so they can align independently. */
+    <PanelHeader__Row data-panel-header="" $overlay={overlay} {...rest}>
+      <PanelHeader__TitleRow ref={rowRef}>
+        <PanelHeader__Titles $overlay={overlay}>
+          {title !== undefined && (
+            <PanelTitle ref={titleRef}>{title}</PanelTitle>
+          )}
+        </PanelHeader__Titles>
+        {aside !== undefined && (
+          <PanelHeader__Aside $overlay={overlay}>
+            {/* The aside lives in a measured-fit collapse box: while it fits it
+                shows inline; once it does not it collapses to the summary (the
+                per-severity status dots + a chevron) and the FULL aside, badges
+                AND controls, floats open on toggle. jsdom never completes a
+                measurement cycle, so it sees the wide default (the aside inline
+                in the box). */}
+            {/* A native `<details>`: it carries an implicit `role="group"`, so a
+                widget aside that itself uses `getByRole("group")` must scope that
+                query to its own subtree (this box is the panel-level group). */}
+            <PanelAsideExpand data-panel-aside-expand="" $collapsed={collapsed}>
+              <summary aria-label="Panel status and controls">
+                {breakdown.map((e) => (
+                  <PanelStatusDot
+                    key={e.severity}
+                    severity={e.severity}
+                    count={e.count}
+                  />
+                ))}
+                <span data-panel-aside-chevron="" aria-hidden="true" />
+              </summary>
+              <PanelAsideSizeProvider value={collapsed ? "collapsed" : "full"}>
+                <div data-panel-aside-full="" ref={asideFullRef}>
+                  {aside}
+                </div>
+              </PanelAsideSizeProvider>
+            </PanelAsideExpand>
+          </PanelHeader__Aside>
+        )}
+      </PanelHeader__TitleRow>
       {toolbar !== undefined && (
         <PanelToolbar $overlay={overlay}>{toolbar}</PanelToolbar>
       )}
@@ -558,11 +589,13 @@ export const PanelToolbar = styled.div<{ $overlay?: boolean }>`
   /* Same reason as the header row: at short tile heights the flex column would
      otherwise squeeze the controls toward zero. */
   flex-shrink: 0;
-  /* A full basis inside the wrapping header row, so the toolbar always takes a
-     line of its own below the title rather than competing with the aside for
-     the first one. Living inside that row (rather than beside it) is what makes
-     it float correctly under an overlay header instead of colliding with it. */
-  flex-basis: 100%;
+  /* A block of its own below the title row (PanelHeader__Row, the outer
+     header box, stacks them column-wise), rather than a same-row flex item
+     competing with the title/aside for space, that competition is exactly
+     what used to crush the title down to a sliver whenever a toolbar was
+     present (see PanelHeader__Row's doc comment). The plain width rule below
+     is enough to span the header on its own line; no flex-basis wrap trick
+     needed once it is out of that row entirely. */
   width: 100%;
   ${({ $overlay }) => ($overlay ? OVERLAY_BOX : "")}
 `;

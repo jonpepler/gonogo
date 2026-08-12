@@ -417,4 +417,109 @@ describe("ResourceOps", () => {
 
     expect(await screen.findByText("not supported")).toBeInTheDocument();
   });
+
+  it("labels a card by its body when it is the only vessel occupying that body (a surface base)", async () => {
+    const { fixture } = renderWidget([...CARRIED, "system.bodies"]);
+    act(() => {
+      fixture.emit("isru.drills", [
+        {
+          partId: "601",
+          partTitle: "Mun Base Drill A",
+          resource: "Ore",
+          running: true,
+          deployed: true,
+          abundance: 0.05,
+          rate: 0.001,
+          vesselId: "mun-base-1",
+          vesselName: "Mun Base",
+          parentBodyIndex: 3,
+        },
+        {
+          partId: "602",
+          partTitle: "Mun Base Drill B",
+          resource: "Ore",
+          running: true,
+          deployed: true,
+          abundance: 0.04,
+          rate: 0.001,
+          vesselId: "mun-base-1",
+          vesselName: "Mun Base",
+          parentBodyIndex: 3,
+        },
+        {
+          partId: "603",
+          partTitle: "Lone Rover Drill",
+          resource: "Water",
+          running: false,
+          deployed: false,
+          abundance: 0.01,
+          rate: 0,
+          vesselId: "rover-1",
+          vesselName: "Wandering Rover",
+          parentBodyIndex: 5,
+        },
+      ]);
+      fixture.emit("isru.converters", []);
+      fixture.emit("system.bodies", {
+        bodies: [
+          { name: "Mun", index: 3, parentIndex: 0, radius: 200000 },
+          { name: "Ike", index: 5, parentIndex: 0, radius: 130000 },
+        ],
+      });
+    });
+
+    await screen.findByText("Mun Base Drill A");
+    // Two drills share ONE vessel on Mun: the body alone already says which
+    // installation this is, so both cards read "Mun", never the repeated
+    // vessel name.
+    expect(screen.getAllByText("Mun")).toHaveLength(2);
+    expect(screen.queryByText("Mun Base")).not.toBeInTheDocument();
+    // The third drill is also the only vessel on ITS body (Ike): body-only
+    // there too, even though it is a totally different vessel/body pair.
+    expect(screen.getByText("Ike")).toBeInTheDocument();
+    expect(screen.queryByText("Wandering Rover")).not.toBeInTheDocument();
+  });
+
+  it("labels a card by its own vessel when it shares a body with another distinct vessel", async () => {
+    const { fixture } = renderWidget([...CARRIED, "system.bodies"]);
+    act(() => {
+      fixture.emit("isru.drills", [
+        {
+          partId: "701",
+          partTitle: "Duna Base Drill",
+          resource: "Water",
+          running: true,
+          deployed: true,
+          abundance: 0.02,
+          rate: 0.0005,
+          vesselId: "duna-base-1",
+          vesselName: "Duna Base",
+          parentBodyIndex: 2,
+        },
+        {
+          partId: "702",
+          partTitle: "Duna Rover Drill",
+          resource: "Water",
+          running: false,
+          deployed: false,
+          abundance: 0.01,
+          rate: 0,
+          vesselId: "duna-rover-1",
+          vesselName: "Duna Rover",
+          parentBodyIndex: 2,
+        },
+      ]);
+      fixture.emit("isru.converters", []);
+      fixture.emit("system.bodies", {
+        bodies: [{ name: "Duna", index: 2, parentIndex: 0, radius: 320000 }],
+      });
+    });
+
+    await screen.findByText("Duna Base Drill");
+    // Two DISTINCT vessels share Duna: body alone would conflate them, so
+    // each card reads its own vessel name instead of the shared body.
+    expect(screen.getByText("Duna Base")).toBeInTheDocument();
+    expect(screen.getByText("Duna Rover")).toBeInTheDocument();
+    expect(screen.queryByText("Duna", { exact: true })).not.toBeInTheDocument();
+  });
 });

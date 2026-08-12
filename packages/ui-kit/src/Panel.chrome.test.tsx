@@ -51,11 +51,19 @@ describe("Panel toolbar", () => {
         body
       </Panel>,
     );
+    const header = document.querySelector("[data-panel-header]");
     const toolbar = screen.getByRole("button", { name: "Layers" })
       .parentElement as HTMLElement;
-    // A full basis is what wraps it below the title/aside pair in the header's
-    // wrapping row; without it the controls compete for the first line.
-    expect(getComputedStyle(toolbar).flexBasis).toBe("100%");
+    const title = screen.getByText("MAP");
+    // The toolbar is a DIRECT child of the header; the title lives one level
+    // deeper, inside its own title+aside row. Two separate flex contexts, so
+    // the toolbar can never end up sharing the title row's nowrap layout and
+    // fighting it for space, that fight used to crush the title down to a
+    // sliver whenever a toolbar was present (see PanelHeader__Row's own doc
+    // comment in Panel.tsx for the bug this structure fixes).
+    expect(toolbar.parentElement).toBe(header);
+    expect(title.parentElement?.parentElement?.parentElement).toBe(header);
+    expect(getComputedStyle(toolbar).width).toBe("100%");
   });
 });
 

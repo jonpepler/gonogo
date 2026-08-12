@@ -93,12 +93,13 @@ export function FilterList({
   });
 
   return (
-    // The outer gap ("sm") sits between the search+chips group and the row
-    // list below it, exactly double the inner gap ("xs") between the search
-    // box and the chip row: the three list zones (search, chips, rows) read
-    // as increasingly separated, not a single fused block.
-    <Stack gap="sm">
-      <Stack gap="xs">
+    // The outer gap ("xl") sits between the search+chips group and the row
+    // list below it, exactly double the inner gap ("md") between the search
+    // box and the chip row: at xs/sm the two gaps read as the same margin,
+    // which is the bug this pair fixes. The three list zones (search, chips,
+    // rows) now read as increasingly separated, not a single fused block.
+    <Stack gap="xl">
+      <Stack gap="md">
         <Field>
           <FieldLabel htmlFor={searchId}>Search</FieldLabel>
           <Input

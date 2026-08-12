@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "scenario": "multi-vessel-locations",
+    "notes": "A widened capture (more than one distinct vessel across the two lists), the day mentioned in the class doc's LOCATION note: the header's single 'at' line no longer covers everything, so each card grows its own body-or-vessel caption. Mun Outpost is the ONLY vessel on Mun, so its two drills read the body alone ('Mun'). Duna hosts two DISTINCT vessels, Duna Base One and Prospector Rover, so their processes read their own vessel names instead, body alone would conflate them."
+  },
+  "_stream": {
+    "carriedChannels": [
+      "isru.drills",
+      "isru.converters",
+      "vessel.identity",
+      "system.bodies"
+    ],
+    "emits": [
+      {
+        "channel": "system.bodies",
+        "value": {
+          "bodies": [
+            {
+              "name": "Mun",
+              "index": 3,
+              "parentIndex": 0,
+              "radius": 200000,
+              "orbit": null
+            },
+            {
+              "name": "Duna",
+              "index": 2,
+              "parentIndex": 0,
+              "radius": 320000,
+              "orbit": null
+            }
+          ]
+        }
+      },
+      {
+        "channel": "vessel.identity",
+        "value": {
+          "vesselId": "duna-base-1",
+          "name": "Duna Base One",
+          "vesselType": 3,
+          "situation": 1,
+          "parentBodyIndex": 2,
+          "launchUt": 0
+        }
+      },
+      {
+        "channel": "isru.drills",
+        "value": [
+          {
+            "partId": "801",
+            "partTitle": "Outpost Drill A",
+            "resource": "Ore",
+            "deployed": true,
+            "running": true,
+            "abundance": 0.061,
+            "rate": 0.0021,
+            "vesselId": "mun-outpost-1",
+            "vesselName": "Mun Outpost",
+            "parentBodyIndex": 3
+          },
+          {
+            "partId": "802",
+            "partTitle": "Outpost Drill B",
+            "resource": "Ore",
+            "deployed": true,
+            "running": false,
+            "abundance": 0.058,
+            "rate": 0,
+            "vesselId": "mun-outpost-1",
+            "vesselName": "Mun Outpost",
+            "parentBodyIndex": 3
+          },
+          {
+            "partId": "803",
+            "partTitle": "Prospector Drill",
+            "resource": "Water",
+            "deployed": true,
+            "running": true,
+            "abundance": 0.019,
+            "rate": 0.00038,
+            "vesselId": "duna-rover-1",
+            "vesselName": "Prospector Rover",
+            "parentBodyIndex": 2
+          }
+        ]
+      },
+      {
+        "channel": "isru.converters",
+        "value": [
+          {
+            "partId": "901",
+            "partTitle": "Convert-O-Tron 125",
+            "running": true,
+            "inputs": [{ "resource": "Ore", "rate": 0.2 }],
+            "outputs": [{ "resource": "LiquidFuel", "rate": 0.18 }],
+            "vesselId": "duna-base-1",
+            "vesselName": "Duna Base One",
+            "parentBodyIndex": 2
+          }
+        ]
+      }
+    ]
+  }
+}

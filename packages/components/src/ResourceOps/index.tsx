@@ -80,6 +80,16 @@ import { magnitudeOf, type Quantityish } from "../shared/magnitude";
  * line would be a lie for a mixed list), so nothing about the widget's steady
  * state today changes.
  *
+ * BODY OR VESSEL, NEVER BOTH: a per-card caption reads best at whichever half
+ * actually disambiguates it. A body hosting exactly one distinct vessel among
+ * the shown processes reads as that vessel's surface base, "on Duna" already
+ * says everything, the vessel name would just repeat itself across every one
+ * of that base's own cards. A body hosting more than one distinct vessel (a
+ * base and a rover parked on the same ground) needs the vessel name instead,
+ * body alone would conflate two separate craft. Never fabricated: a card
+ * with no body falls back to its vessel, a card with no vessel falls back to
+ * its body, and a card with neither shows nothing, exactly as before.
+ *
  * DEVICE CONTROL: each card carries a start/stop toggle
  * (`isru.setDrillEnabled`/`isru.setConverterEnabled`), firing stock's own
  * `ModuleResourceHarvester`/`ModuleResourceConverter.StartResourceConverter`/
@@ -189,15 +199,56 @@ function bodyNameOf(
   return index != null ? bodyNames.get(index) : undefined;
 }
 
-/** A card's own location caption: "<vessel> · <body>", either half optional. */
+/**
+ * How many distinct vessels sit on each body, across every drill and
+ * converter currently shown. Feeds `locationCaption`'s body-or-vessel
+ * choice: a body with exactly one vessel on it is unambiguous by body
+ * alone, a body with more than one needs the vessel name to tell its
+ * processes apart.
+ */
+function vesselCountByBody(
+  drills: readonly IsruDrillEntry[],
+  converters: readonly IsruConverterEntry[],
+): ReadonlyMap<number, number> {
+  const vesselsByBody = new Map<number, Set<string>>();
+  const record = (
+    bodyIndex: number | null | undefined,
+    vesselId: string | null | undefined,
+  ) => {
+    if (bodyIndex == null || !vesselId) return;
+    let vessels = vesselsByBody.get(bodyIndex);
+    if (!vessels) {
+      vessels = new Set();
+      vesselsByBody.set(bodyIndex, vessels);
+    }
+    vessels.add(vesselId);
+  };
+  for (const drill of drills) record(drill.parentBodyIndex, drill.vesselId);
+  for (const converter of converters) {
+    record(converter.parentBodyIndex, converter.vesselId);
+  }
+  return new Map(
+    [...vesselsByBody].map(([bodyIndex, vessels]) => [bodyIndex, vessels.size]),
+  );
+}
+
+/**
+ * A card's own location: body OR vessel, never both (see the class doc's
+ * BODY OR VESSEL note). Falls back to whichever half is actually populated
+ * when the other is missing; never invents either.
+ */
 function locationCaption(
   vesselName: string | null | undefined,
   parentBodyIndex: number | null | undefined,
   bodyNames: ReadonlyMap<number, string | undefined>,
+  vesselCounts: ReadonlyMap<number, number>,
 ): string | undefined {
   const body = bodyNameOf(parentBodyIndex, bodyNames);
   if (!vesselName) return body;
-  return body ? `${vesselName} · ${body}` : vesselName;
+  if (!body || parentBodyIndex == null) return vesselName;
+  const sharesBodyWithAnotherVessel =
+    (vesselCounts.get(parentBodyIndex) ?? 0) > 1;
+  return sharesBodyWithAnotherVessel ? vesselName : body;
 }
 
 /**
@@ -307,14 +358,21 @@ function DrillCard({
   highlighted,
   showLocation,
   bodyNames,
+  vesselCounts,
 }: Readonly<{
   drill: IsruDrillEntry;
   highlighted: boolean;
   showLocation: boolean;
   bodyNames: ReadonlyMap<number, string | undefined>;
+  vesselCounts: ReadonlyMap<number, number>;
 }>) {
   const location = showLocation
-    ? locationCaption(drill.vesselName, drill.parentBodyIndex, bodyNames)
+    ? locationCaption(
+        drill.vesselName,
+        drill.parentBodyIndex,
+        bodyNames,
+        vesselCounts,
+      )
     : undefined;
 
   return (
@@ -384,11 +442,13 @@ function ConverterCard({
   highlighted,
   showLocation,
   bodyNames,
+  vesselCounts,
 }: Readonly<{
   converter: IsruConverterEntry;
   highlighted: boolean;
   showLocation: boolean;
   bodyNames: ReadonlyMap<number, string | undefined>;
+  vesselCounts: ReadonlyMap<number, number>;
 }>) {
   // A converter that is on but moving nothing is a starved recipe. That is the
   // derived diagnostic the shared shape is meant to carry, rather than a string
@@ -412,6 +472,7 @@ function ConverterCard({
         converter.vesselName,
         converter.parentBodyIndex,
         bodyNames,
+        vesselCounts,
       )
     : undefined;
 
@@ -645,6 +706,13 @@ function ResourceOpsComponent(
     return ids.size > 1;
   }, [allDrills, allConverters]);
 
+  // Per-body vessel diversity, feeding each card's body-or-vessel choice
+  // (see the class doc's BODY OR VESSEL note).
+  const vesselCounts = useMemo(
+    () => vesselCountByBody(allDrills, allConverters),
+    [allDrills, allConverters],
+  );
+
   // The row list handed to FilterList. `searchText` is baked from the SHARED
   // fields only (part title, kind, resource names), which is the widget's whole
   // say over searchability: a contributed term (a mod's process title, itself
@@ -662,6 +730,7 @@ function ResourceOpsComponent(
           highlighted={index === current}
           showLocation={showLocation}
           bodyNames={bodyNames}
+          vesselCounts={vesselCounts}
         />
       ),
     }));
@@ -676,11 +745,19 @@ function ResourceOpsComponent(
           highlighted={allDrills.length + index === current}
           showLocation={showLocation}
           bodyNames={bodyNames}
+          vesselCounts={vesselCounts}
         />
       ),
     }));
     return [...drillRows, ...converterRows];
-  }, [allDrills, allConverters, current, showLocation, bodyNames]);
+  }, [
+    allDrills,
+    allConverters,
+    current,
+    showLocation,
+    bodyNames,
+    vesselCounts,
+  ]);
 
   if (!anything) {
     return (

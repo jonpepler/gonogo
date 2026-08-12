@@ -408,15 +408,29 @@ function FleetSignalCell({
  * active-vessel-only gate): collapse the block's own padding/gap in that
  * case, so it doesn't leave an empty gap under every other row. Mirrors the
  * `&:empty` CSS rule this replaces: `:empty` doesn't survive outside a
- * stylesheet rule, so the same check runs against the committed DOM here
- * instead, via a ref + layout effect.
+ * stylesheet rule, so the same check runs against the committed DOM instead.
+ *
+ * A `useLayoutEffect` with no dependency array only re-fires when THIS
+ * component re-renders, and an augment's own telemetry arriving later
+ * re-renders the augment itself, not this wrapper - the row stayed
+ * collapsed forever once an augment first mounted empty and only filled in
+ * asynchronously (e.g. `FleetReliabilityUpdates` waiting on
+ * `reliability.parts`). A `MutationObserver` on the ref watches the
+ * subtree directly, so it reacts to whichever component's re-render added
+ * or removed the content, not just this one's.
  */
 function UpdatesRow({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [hasContent, setHasContent] = useState(true);
   useLayoutEffect(() => {
-    setHasContent((ref.current?.childNodes.length ?? 0) > 0);
-  });
+    const node = ref.current;
+    if (!node) return;
+    const measure = () => setHasContent(node.childNodes.length > 0);
+    measure();
+    const observer = new MutationObserver(measure);
+    observer.observe(node, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
   return (
     <div
       ref={ref}

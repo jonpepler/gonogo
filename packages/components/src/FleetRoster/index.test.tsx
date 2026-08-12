@@ -8,6 +8,7 @@ import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
 import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { visibleText } from "@ksp-gonogo/ui-kit/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { FleetReliabilityUpdates } from "../FleetReliability";
 import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { FleetRosterComponent } from "./index";
@@ -369,6 +370,60 @@ describe("FleetRosterComponent", () => {
     const updates = await screen.findAllByTestId("fleet-update");
     expect(updates).toHaveLength(3);
     expect(updates.map((u) => u.dataset.vessel)).toEqual(["v-a", "v-b", "v-c"]);
+  });
+
+  it("shows an augment's own row once its content arrives asynchronously after the row has already mounted empty", async () => {
+    // Reproduces the real FleetReliabilityUpdates path: the row mounts before
+    // reliability.summary/reliability.parts ever arrive (the augment renders
+    // null on its first pass, so UpdatesRow collapses), then the reliability
+    // data lands on its own later tick, entirely inside the augment's own
+    // subtree, without system.vessels emitting again and without
+    // FleetRosterComponent itself re-rendering.
+    registerAugment({
+      id: "fleet-reliability-updates",
+      augments: "fleet-roster.updates",
+      component: FleetReliabilityUpdates,
+      channels: ["reliability.summary", "reliability.parts", "vessel.identity"],
+    });
+
+    const fixture = setupStreamFixture({
+      carriedChannels: [
+        "system.vessels",
+        "system.bodies",
+        "vessel.identity",
+        "reliability.summary",
+        "reliability.parts",
+      ],
+    });
+    renderRoster(fixture);
+
+    act(() => {
+      fixture.emit("system.bodies", BODIES);
+      fixture.emit("system.vessels", ALL_LINKED);
+    });
+    // Row mounts with the augment rendering nothing yet: UpdatesRow collapses.
+    expect(await screen.findByText("Station Alpha")).toBeInTheDocument();
+
+    // The reliability feed lands later, on its own tick, entirely inside the
+    // FleetReliabilityUpdates augment's own subtree.
+    act(() => {
+      fixture.emit("vessel.identity", {
+        vesselId: "v-a",
+        name: "Station Alpha",
+        vesselType: 1,
+        situation: 3,
+      });
+      fixture.emit("reliability.summary", {
+        source: "testflight",
+        malfunction: true,
+      });
+      fixture.emit("reliability.parts", [
+        { partId: "p1", title: "Reaction Wheel", broken: true },
+      ]);
+    });
+
+    const marker = await screen.findByText("Reaction Wheel");
+    expect(marker).toBeVisible();
   });
 
   it("shows a genuinely-empty state once a real empty roster has arrived", async () => {

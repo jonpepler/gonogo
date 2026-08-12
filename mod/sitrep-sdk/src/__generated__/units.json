@@ -173,6 +173,12 @@
       "errorCode": "enum",
       "success": "flag"
     },
+    "CommsCommandCentre": {
+      "bodyIndex": "id",
+      "displayName": "text",
+      "id": "id",
+      "kind": "text"
+    },
     "CommsConnectivity": {
       "connected": "flag",
       "controlSource": "enum",
@@ -1029,6 +1035,12 @@
       "latitude": "°",
       "longitude": "°"
     },
+    "comms.commandCentre": {
+      "bodyIndex": "id",
+      "displayName": "text",
+      "id": "id",
+      "kind": "text"
+    },
     "comms.connectivity": {
       "connected": "flag",
       "controlSource": "enum",
@@ -1517,6 +1529,9 @@
     "CommandResponse`1": {
       "meta": "Meta"
     },
+    "CommsCommandCentre": {
+      "meta": "PayloadMeta"
+    },
     "CommsConnectivity": {
       "meta": "PayloadMeta"
     },
@@ -1699,6 +1714,9 @@
       "facilities": "*CareerFacility",
       "strategies": "CareerStrategies",
       "tech": "CareerTech"
+    },
+    "comms.commandCentre": {
+      "meta": "PayloadMeta"
     },
     "comms.connectivity": {
       "meta": "PayloadMeta"

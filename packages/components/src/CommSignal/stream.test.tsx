@@ -289,4 +289,60 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
     // formatDuration(1.2, { ms: true }) -> "1s".
     expect(visibleText()).toContain("1s");
   });
+
+  it("names the current command centre instead of assuming KSC (comms-command-centre-experiment)", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.commandCentre"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider value={{ instanceId: "comm-centre" }}>
+          <CommSignalComponent id="comm-centre" w={6} h={5} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      // The vessel's path resolved to a crewed control-source vessel, not
+      // KSC (the vanilla "6-kerbal command center" case): the caption must
+      // name it, not fall back to the KSC default.
+      fixture.emit("comms.commandCentre", {
+        id: "vessel:abc-123",
+        displayName: "Constant Companion",
+        kind: "CrewedVessel",
+        bodyIndex: null,
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Signal to Constant Companion")).toBeTruthy(),
+    );
+    expect(screen.queryByText("Signal to KSC")).toBeNull();
+  });
+
+  it("falls back to Signal to KSC when no command-centre identity has arrived", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.commandCentre"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-centre-default" }}
+        >
+          <CommSignalComponent id="comm-centre-default" w={6} h={5} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+    });
+
+    await waitFor(() => expect(screen.getByText("Signal to KSC")).toBeTruthy());
+  });
 });

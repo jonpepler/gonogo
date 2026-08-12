@@ -116,6 +116,9 @@ public static class RtConfig
                 typeof(CommsDelay),
                 // comms.link connectivity MetaTopic (Delayed, freeze-exempt)
                 typeof(CommsLink),
+                // comms.commandCentre: identifies the active vessel's current
+                // command centre (comms-command-centre-experiment).
+                typeof(CommsCommandCentre),
                 // The three provider-private comms channels (comms.linkQuality /
                 // comms.dataRate / comms.linkMargin) used to be listed right here.
                 // They moved OUT of core into GonogoRealAntennasUplink.Contract:

@@ -91,6 +91,16 @@ function CommSignalComponent({
   //    same ordinal resolved to its enum NAME string)
   //  - `comm.signalDelay`   -> `comms.delay.oneWaySeconds` (gonogo's own
   //    SignalDelay authority, live via CommsCoreUplink)
+  //
+  // comms-command-centre-experiment: `comms.commandCentre` names WHICH
+  // centre (KSC, or a crewed control-source vessel under the stock
+  // "6-kerbal command center" mechanic) the active vessel's own path
+  // resolved to this tick. Every other read above is already relative to
+  // that centre (stock always prefers a route home, falling back to the
+  // nearest control source only when no home is reachable), this is only
+  // the label. Absent/unknown falls back to "KSC", the honest default: it's
+  // the only centre the game itself ever creates without a mod or a crewed
+  // vessel meeting the control-source threshold.
   const connected = useTelemetry("comms.link")?.connected;
   const strength = useTelemetry("vessel.comms")?.signalStrength;
   const vesselState = useStream<VesselState>("vessel.state");
@@ -100,6 +110,11 @@ function CommSignalComponent({
   const controlState = vesselState?.commsControlStateOrdinal ?? undefined;
   const controlStateName = vesselState?.commsControlStateName ?? undefined;
   const delay = useTelemetry("comms.delay")?.oneWaySeconds;
+  const commandCentreName = useTelemetry("comms.commandCentre")?.displayName;
+  const centreLabel =
+    commandCentreName && commandCentreName.length > 0
+      ? commandCentreName
+      : "KSC";
 
   const hasData =
     connected !== undefined ||
@@ -208,7 +223,7 @@ function CommSignalComponent({
             letterSpacing: "0.04em",
           }}
         >
-          {connected === false ? "No signal" : "Signal to KSC"}
+          {connected === false ? "No signal" : `Signal to ${centreLabel}`}
         </span>
       )}
 
@@ -409,6 +424,7 @@ registerComponent<CommSignalConfig>({
     "comm.controlState",
     "comm.controlStateName",
     "comm.signalDelay",
+    "comms.commandCentre",
   ],
   defaultConfig: {},
   actions: [],

@@ -223,6 +223,59 @@ namespace Sitrep.Core.Tests
             Write(new CommsControlState());
             Write(new CommsPath());
             Write(new CommsNetwork());
+            Write(new CommsCommandCentre());
+        }
+
+        [Fact]
+        public void CommandCentreWithNoResolvedCentreSerializesAllFieldsAsJsonNull()
+        {
+            // No live remote centre this tick (no connection, or the terminal
+            // node matched neither a ground station nor a crewed control
+            // source): every identity field is null, not an empty string.
+            var el = Write(new CommsCommandCentre { Meta = new PayloadMeta() });
+
+            Assert.Equal(JsonValueKind.Null, el.GetProperty("id").ValueKind);
+            Assert.Equal(JsonValueKind.Null, el.GetProperty("displayName").ValueKind);
+            Assert.Equal(JsonValueKind.Null, el.GetProperty("kind").ValueKind);
+            Assert.Equal(JsonValueKind.Null, el.GetProperty("bodyIndex").ValueKind);
+        }
+
+        [Fact]
+        public void CommandCentreForKscSerializesIdentity()
+        {
+            var el = Write(new CommsCommandCentre
+            {
+                Id = "ksc",
+                DisplayName = "Kerbin Space Center",
+                Kind = "GroundStation",
+                BodyIndex = 1,
+                Meta = new PayloadMeta { Source = "vessel:1", Quality = Quality.Loaded },
+            });
+
+            Assert.Equal("ksc", el.GetProperty("id").GetString());
+            Assert.Equal("Kerbin Space Center", el.GetProperty("displayName").GetString());
+            Assert.Equal("GroundStation", el.GetProperty("kind").GetString());
+            Assert.Equal(1, el.GetProperty("bodyIndex").GetInt32());
+        }
+
+        [Fact]
+        public void CommandCentreForCrewedVesselSerializesIdentityWithNullBodyIndex()
+        {
+            // A moving crewed-vessel centre: BodyIndex is legitimately null
+            // (the roster's own convention for a non-surface-anchored centre).
+            var el = Write(new CommsCommandCentre
+            {
+                Id = "vessel:abc-123",
+                DisplayName = "Constant Companion",
+                Kind = "CrewedVessel",
+                BodyIndex = null,
+                Meta = new PayloadMeta(),
+            });
+
+            Assert.Equal("vessel:abc-123", el.GetProperty("id").GetString());
+            Assert.Equal("Constant Companion", el.GetProperty("displayName").GetString());
+            Assert.Equal("CrewedVessel", el.GetProperty("kind").GetString());
+            Assert.Equal(JsonValueKind.Null, el.GetProperty("bodyIndex").ValueKind);
         }
 
         [Fact]

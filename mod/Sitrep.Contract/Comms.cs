@@ -289,6 +289,42 @@ public class CommsLink
     public PayloadMeta Meta { get; set; } = new();
 }
 
+/// <summary>
+/// The <c>comms.commandCentre</c> payload (comms-command-centre-experiment):
+/// identifies WHICH command centre the active vessel's control path currently
+/// terminates at, vanilla KSC or a crewed control-source vessel (the stock
+/// "6-kerbal command center" mechanic), so a client can show its own stats
+/// against the right name instead of assuming KSC. Shares its id/kind scheme
+/// with <see cref="CommandCentreEntry"/> (the <c>commandCentre.roster</c>
+/// union): it names ONE entry from that same set, whichever one the vessel's
+/// own <c>ControlPath</c> resolved to this tick. Every field is null when
+/// there is no live remote centre right now (no connection, or the terminal
+/// node matches neither a ground station nor a crewed control source), the
+/// existing comms.link/comms.connectivity "No signal" case already covers
+/// that for a reader.
+/// </summary>
+[SitrepContract]
+#if NETSTANDARD2_0
+[TsInterface]
+#endif
+[SitrepTopic("comms.commandCentre")]
+public class CommsCommandCentre
+{
+    /// <summary>Stable authority/vantage key, same scheme as <see cref="CommandCentreEntry.Id"/>: "ksc" | "ground:&lt;name&gt;" | "kk:&lt;site&gt;" | "vessel:&lt;guid&gt;". Null when no remote centre resolved.</summary>
+    [SitrepUnit(Units.Id)]
+    public string? Id { get; set; }
+    /// <summary>Human-facing name.</summary>
+    [SitrepUnit(Units.Text)]
+    public string? DisplayName { get; set; }
+    /// <summary>One of <c>GroundStation</c> / <c>CrewedVessel</c> / <c>Colony</c> / <c>Custom</c> (the <c>CommandCentreKind</c> name), same as <see cref="CommandCentreEntry.Kind"/>.</summary>
+    [SitrepUnit(Units.Text)]
+    public string? Kind { get; set; }
+    /// <summary>Index into system.bodies of the body this centre sits on; null when unknown, not surface-anchored, or the centre is a moving vessel.</summary>
+    [SitrepUnit(Units.Id)]
+    public int? BodyIndex { get; set; }
+    public PayloadMeta Meta { get; set; } = new();
+}
+
 // The three provider-private payloads this file used to end with
 // (comms.linkQuality / comms.dataRate / comms.linkMargin) are no longer
 // declared here. They were the one part of the comms family only ONE backend

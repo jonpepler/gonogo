@@ -4,11 +4,20 @@ import {
   registerContribution,
   WidgetMetaContext,
 } from "@ksp-gonogo/core";
-import { act, fireEvent, render, screen } from "@ksp-gonogo/test-utils";
+import { act, fireEvent, render, screen, within } from "@ksp-gonogo/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { ResourceOpsComponent } from "./index";
+
+/**
+ * Redesign note: processes now render as `Card`s with a tabular
+ * resource/rate/direction table (`in`/`out`/`extract`), grouped under a
+ * global stats header (process count, active count, net EC draw, and an
+ * optional vessel/body "at" line). The cases below are updated for that
+ * structure; the underlying claims (shared-fields-only, starved detection,
+ * sub-milli rates, filtering) are unchanged.
+ */
 
 /**
  * Resource Ops consumes the ONE elected `isru.*` topic pair, so every case below
@@ -90,8 +99,8 @@ afterEach(() => {
   uplinkTermOn = false;
 });
 
-function renderWidget() {
-  const fixture = setupStreamFixture({ carriedChannels: CARRIED });
+function renderWidget(carriedChannels: readonly string[] = CARRIED) {
+  const fixture = setupStreamFixture({ carriedChannels });
   const utils = render(
     <fixture.Provider>
       <DashboardItemContext.Provider value={{ instanceId: "resource-ops" }}>
@@ -104,6 +113,12 @@ function renderWidget() {
     </fixture.Provider>,
   );
   return { fixture, ...utils };
+}
+
+/** The global stats header, scoped so a header stat ("30.00") is never
+ *  confused with the same number appearing in a card's own resource row. */
+async function findStatsHeader(): Promise<HTMLElement> {
+  return screen.findByRole("group", { name: "Resource ops summary" });
 }
 
 describe("ResourceOps", () => {
@@ -262,5 +277,89 @@ describe("ResourceOps", () => {
 
     await screen.findByText("Drill-O-Matic");
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("shows a global stats header: process count, active count, and net EC draw", async () => {
+    const { fixture } = renderWidget();
+    act(() => {
+      fixture.emit("isru.drills", DRILLS);
+      fixture.emit("isru.converters", CONVERTERS);
+    });
+
+    const header = await findStatsHeader();
+    // 2 drills + 2 converters = 4 processes; one drill is stopped, so 3 active.
+    expect(within(header).getByText("4")).toBeInTheDocument();
+    expect(within(header).getByText("processes")).toBeInTheDocument();
+    expect(within(header).getByText("3")).toBeInTheDocument();
+    expect(within(header).getByText("active")).toBeInTheDocument();
+    // Only Convert-O-Tron 250 (running) touches ElectricCharge, at 30/s in.
+    expect(within(header).getByText("net EC")).toBeInTheDocument();
+    expect(within(header).getByText(/30\.00/)).toBeInTheDocument();
+  });
+
+  it("omits the net EC stat when nothing on the vessel touches ElectricCharge", async () => {
+    const { fixture } = renderWidget();
+    act(() => {
+      fixture.emit("isru.drills", DRILLS);
+      // Neither converter's recipe below ever names ElectricCharge, unlike
+      // the shared CONVERTERS fixture: the stat must read as "not
+      // applicable", not a fabricated zero draw.
+      fixture.emit("isru.converters", [
+        {
+          partId: "501",
+          partTitle: "Ore Processor",
+          running: true,
+          inputs: [{ resource: "Ore", rate: 0.5 }],
+          outputs: [{ resource: "LiquidFuel", rate: 0.4 }],
+        },
+      ]);
+    });
+
+    const header = await findStatsHeader();
+    expect(within(header).getByText("processes")).toBeInTheDocument();
+    expect(within(header).queryByText("net EC")).not.toBeInTheDocument();
+  });
+
+  it("answers 'is this on a vessel, on Duna' with an at-a-glance location line when vessel telemetry is mounted", async () => {
+    const { fixture } = renderWidget([
+      ...CARRIED,
+      "vessel.identity",
+      "system.bodies",
+    ]);
+    act(() => {
+      fixture.emit("isru.drills", DRILLS);
+      fixture.emit("isru.converters", []);
+      fixture.emit("system.bodies", {
+        bodies: [{ name: "Duna", index: 2, parentIndex: 0, radius: 320000 }],
+      });
+      fixture.emit("vessel.identity", {
+        vesselId: "v1",
+        name: "Prospector One",
+        vesselType: 0,
+        situation: 1,
+        parentBodyIndex: 2,
+      });
+    });
+
+    const header = await findStatsHeader();
+    expect(within(header).getByText("at")).toBeInTheDocument();
+    expect(
+      within(header).getByText(/Prospector One.*Duna/),
+    ).toBeInTheDocument();
+  });
+
+  it("degrades gracefully with no location line when vessel telemetry is not carried", async () => {
+    // The default `renderWidget()` never carries `vessel.identity`/
+    // `system.bodies`, mirroring a mount where an Uplink hasn't wired them:
+    // the widget's core drill/converter list must render untouched, just
+    // without the "at" line, never a stuck-loading state.
+    const { fixture } = renderWidget();
+    act(() => {
+      fixture.emit("isru.drills", DRILLS);
+      fixture.emit("isru.converters", CONVERTERS);
+    });
+
+    const header = await findStatsHeader();
+    expect(within(header).queryByText("at")).not.toBeInTheDocument();
   });
 });

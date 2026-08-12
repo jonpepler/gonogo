@@ -49,16 +49,19 @@ export type ContributionSlotId = keyof ContributionRegistry;
 //
 // A reusable component (mostly ui-kit / `@ksp-gonogo/ui`) cannot write the
 // full slot literal `${componentId}.${segment}`, because it does not know
-// which widget it is mounted in. So it writes only the SEGMENT ("filters") and
-// the primitives complete `${componentId}.${segment}` from `useWidgetMeta()`
-// at runtime. This registry maps a SEGMENT -> the entry type its contributions
-// carry: the host-invariant sibling of `ContributionRegistry`'s full-id map.
+// which widget it is mounted in. So it writes only the SEGMENT (e.g.
+// "filters") and the primitives complete `${componentId}.${segment}` from
+// `useWidgetMeta()` at runtime. This registry maps a SEGMENT -> the entry type
+// its contributions carry: the host-invariant sibling of `ContributionRegistry`'s
+// full-id map.
 //
-// The framework owns the universal `filters` segment here, once, forever, so
-// every component / widget / contributor writes nothing. A component inventing
-// a NOVEL host-invariant segment declares its one line co-located at the
-// bottom of its own file, the same way a widget's other module-load
-// self-registrations sit alongside its `registerComponent` call:
+// Empty here: every reusable component that owns a segment declares its own
+// one-line augmentation co-located in its own file, the same way a widget's
+// other module-load self-registrations sit alongside its `registerComponent`
+// call (see `FilterList.tsx` for the in-tree example, `filters`). A component
+// living in this package targets `./contributions` (this file); a component
+// published from elsewhere targets `@ksp-gonogo/core` instead, the module its
+// consumers actually import:
 //
 //   declare module "@ksp-gonogo/core" {
 //     interface ComponentSlotRegistry { "my-segment": MyEntry }
@@ -72,14 +75,8 @@ export type ContributionSlotId = keyof ContributionRegistry;
 // the override is cleanly cordoned, never on the common path.
 // ---------------------------------------------------------------------------
 
-export interface ComponentSlotRegistry {
-  /**
-   * The framework-universal filter segment: a contribution is a pre-filled
-   * SEARCH TERM (a plain string) that `FilterList` shows as a toggle. Host-
-   * invariant, the same string means the same thing in any widget.
-   */
-  filters: string;
-}
+// biome-ignore lint/suspicious/noEmptyInterface: declaration-merging seam, mirrors SlotRegistry
+export interface ComponentSlotRegistry {}
 
 /** Every segment declared as a host-invariant component slot. */
 export type ComponentSlotSegment = keyof ComponentSlotRegistry;

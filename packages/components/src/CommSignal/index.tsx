@@ -5,8 +5,12 @@ import {
   registerComponent,
   useTelemetry,
 } from "@ksp-gonogo/core";
-import { useStream, type VesselState } from "@ksp-gonogo/sitrep-client";
-import { value } from "@ksp-gonogo/sitrep-sdk";
+import {
+  useLatestValue,
+  useStream,
+  type VesselState,
+} from "@ksp-gonogo/sitrep-client";
+import { type CommsHop, type CommsPath, value } from "@ksp-gonogo/sitrep-sdk";
 import {
   Cluster,
   Countdown,
@@ -19,7 +23,8 @@ import {
   Value,
   VisuallyHidden,
 } from "@ksp-gonogo/ui-kit";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+import { buildCommsRouteNodes, commsRouteRelayCount } from "./commsRoute";
 
 type CommSignalConfig = Record<string, never>;
 
@@ -101,6 +106,15 @@ function CommSignalComponent({
   // the label. Absent/unknown falls back to "KSC", the honest default: it's
   // the only centre the game itself ever creates without a mod or a crewed
   // vessel meeting the control-source threshold.
+  //
+  // `comms.path` names the ROUTE that centre label is relative to: the
+  // ordered hops from the active vessel to the centre (direct, or via one
+  // or more relays), each with a distance and, under RealAntennas, a
+  // per-hop band/rate annotation. It's command-centre dispatch-time
+  // bookkeeping, not delayed craft telemetry (same class as
+  // `comms.commandCentre` above), so it rides `useLatestValue` rather than
+  // `useTelemetry`'s delay-gated view sample: see `FleetComms/index.tsx`'s
+  // doc comment for why a TrueNow topic needs the un-gated read.
   const connected = useTelemetry("comms.link")?.connected;
   const strength = useTelemetry("vessel.comms")?.signalStrength;
   const vesselState = useStream<VesselState>("vessel.state");
@@ -115,6 +129,8 @@ function CommSignalComponent({
     commandCentreName && commandCentreName.length > 0
       ? commandCentreName
       : "KSC";
+  const hops = useLatestValue<CommsPath>("comms.path")?.hops ?? [];
+  const relayCount = commsRouteRelayCount(hops);
 
   const hasData =
     connected !== undefined ||
@@ -173,6 +189,22 @@ function CommSignalComponent({
   const isLandscape = getWidgetShape(w, h).shape === "landscape";
   const showSubtitle = rows >= 4;
   const showDetailGrid = rows >= 4 && cols >= 4;
+  // The full hop-by-hop route needs more vertical room than the detail grid
+  // alone: it's a fourth block stacked below bars+headline+grid. Landscape
+  // frees that room sideways (bars/grid sit side by side, see below), so it
+  // only needs the detail grid's own rows>=4 floor; portrait/square stacks
+  // everything in one column and needs real headroom above that, or the
+  // route gets clipped at the registered default (6x5) with nothing to show
+  // for it. Below the threshold the subtitle still names the centre, just
+  // with a hop-count hint instead of the chain (`hopHint` below), so a
+  // cramped tile never loses the route entirely, only its detail.
+  const showFullPath = cols >= 5 && (isLandscape ? rows >= 4 : rows >= 6);
+  const hopHint =
+    connected !== false && hops.length > 0 && !showFullPath
+      ? relayCount === 0
+        ? " (direct)"
+        : ` (${relayCount} relay${relayCount === 1 ? "" : "s"})`
+      : "";
   // "LOS" (loss of signal) vs NULL_DISPLAY (no telemetry), both render zero
   // bars, so the headline label is the only differentiator at tiny
   // sizes where subtitle + detail grid are suppressed. Without this
@@ -223,7 +255,9 @@ function CommSignalComponent({
             letterSpacing: "0.04em",
           }}
         >
-          {connected === false ? "No signal" : `Signal to ${centreLabel}`}
+          {connected === false
+            ? "No signal"
+            : `Signal to ${centreLabel}${hopHint}`}
         </span>
       )}
 
@@ -231,30 +265,50 @@ function CommSignalComponent({
           side by side, each taking half the row, rather than clustering
           top-left. Portrait: the same two blocks stack vertically. Neither
           Cluster nor Stack has an even-split "each child grows" mode, so the
-          two children get that via a direct style override in landscape. */}
+          two children get that via a direct style override in landscape.
+          The route, when it fits (`showFullPath`), is a THIRD child of this
+          same outer flex column rather than a sibling after it: the outer
+          element is the one carrying `minHeight: 0` (so it can shrink below
+          its natural content size at a cramped registered default), and a
+          sibling positioned after a box that's free to shrink like that gets
+          its layout box computed from the SHRUNK size while the shrunk box's
+          own overflowing content keeps painting at full size, visually
+          overlapping whatever comes next. Keeping the route inside the same
+          box sidesteps that: it's third in the box's own internal flow, not
+          competing with the box for space one level up. */}
       {isLandscape ? (
-        <Cluster
-          justify="between"
-          align="center"
-          style={{ flex: 1, minHeight: 0, gap: "var(--space-24)" }}
-        >
-          <Cluster justify="start" wrap style={{ flex: "1 1 0", minWidth: 0 }}>
-            <SignalBars bars={bars} tone={control.tone} />
-            <SignalHeadline headline={headline} lost={connected === false} />
-          </Cluster>
-
-          {showDetailGrid && (
-            <Grid
-              cols="auto 1fr"
-              gap="md"
-              rowGap="xs"
-              align="baseline"
+        <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
+          <Cluster
+            justify="between"
+            align="center"
+            style={{ gap: "var(--space-24)" }}
+          >
+            <Cluster
+              justify="start"
+              wrap
               style={{ flex: "1 1 0", minWidth: 0 }}
             >
-              <CommSignalDetailRows control={control} delay={delay} />
-            </Grid>
+              <SignalBars bars={bars} tone={control.tone} />
+              <SignalHeadline headline={headline} lost={connected === false} />
+            </Cluster>
+
+            {showDetailGrid && (
+              <Grid
+                cols="auto 1fr"
+                gap="md"
+                rowGap="xs"
+                align="baseline"
+                style={{ flex: "1 1 0", minWidth: 0 }}
+              >
+                <CommSignalDetailRows control={control} delay={delay} />
+              </Grid>
+            )}
+          </Cluster>
+
+          {showFullPath && (
+            <CommsPathRoute hops={hops} centreLabel={centreLabel} />
           )}
-        </Cluster>
+        </Stack>
       ) : (
         <Stack gap="md" style={{ flex: 1, minHeight: 0 }}>
           <Cluster justify="start" wrap>
@@ -267,6 +321,10 @@ function CommSignalComponent({
               <CommSignalDetailRows control={control} delay={delay} />
             </Grid>
           )}
+
+          {showFullPath && (
+            <CommsPathRoute hops={hops} centreLabel={centreLabel} />
+          )}
         </Stack>
       )}
 
@@ -275,6 +333,86 @@ function CommSignalComponent({
           Renders nothing until an augment binds this slot. */}
       <AugmentSlot name="comm-signal.sections" props={{}} />
     </Panel>
+  );
+}
+
+// ── Comms-path route (vessel -> relay(s) -> centre) ─────────────────────────
+
+const ROUTE_LABEL_STYLE = {
+  color: "var(--color-text-dim)",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase" as const,
+};
+
+/**
+ * The full hop chain: "You -> Relay Sat -> KSC", each leg annotated with its
+ * distance and, under RealAntennas, its band rate. Renders nothing for an
+ * empty `hops` list (no path home is already covered by the LOS headline).
+ */
+function CommsPathRoute({
+  hops,
+  centreLabel,
+}: {
+  hops: readonly CommsHop[];
+  centreLabel: string;
+}) {
+  const nodes = buildCommsRouteNodes(hops, centreLabel);
+  if (nodes.length === 0) return null;
+  return (
+    <Stack gap="xs">
+      <Value tone="muted" size="xs" style={ROUTE_LABEL_STYLE}>
+        Route
+      </Value>
+      <Cluster gap="xs" wrap align="center">
+        {nodes.map((node, i) => (
+          <Fragment
+            key={
+              i === 0
+                ? "route-origin"
+                : `${hops[i - 1].from}=>${hops[i - 1].to}`
+            }
+          >
+            {i > 0 && <CommsPathLeg hop={hops[i - 1]} />}
+            <Value
+              tone="default"
+              size="sm"
+              title={node.title}
+              style={{
+                fontWeight: i === 0 || i === nodes.length - 1 ? 600 : 400,
+              }}
+            >
+              {node.label}
+            </Value>
+          </Fragment>
+        ))}
+      </Cluster>
+    </Stack>
+  );
+}
+
+/** One leg's distance (+ RA band rate, when present) between two route nodes. */
+function CommsPathLeg({ hop }: { hop: CommsHop }) {
+  return (
+    <Cluster
+      gap="xs"
+      align="baseline"
+      style={{ color: "var(--color-text-dim)" }}
+    >
+      <span aria-hidden="true">{"->"}</span>
+      {hop.distanceMeters !== undefined && (
+        <Value tone="muted" size="xs">
+          <Unit value={hop.distanceMeters} />
+        </Value>
+      )}
+      {/* RealAntennas-only per-hop rate annotation (Comms.cs's own doc):
+          absent under bare CommNet, so this simply never renders there. */}
+      {hop.bandRateBitsPerSec !== undefined && (
+        <Value tone="muted" size="xs">
+          <Unit value={hop.bandRateBitsPerSec} />
+        </Value>
+      )}
+      <span aria-hidden="true">{"->"}</span>
+    </Cluster>
   );
 }
 
@@ -409,7 +547,7 @@ registerComponent<CommSignalConfig>({
   id: "comm-signal",
   name: "CommNet Signal",
   description:
-    "Signal bars, percentage, probe control state (full / partial / none), and signal delay from KSP's CommNet.",
+    "Signal bars, percentage, probe control state (full / partial / none), signal delay, and the comms-path route (vessel -> relay(s) -> command centre) from KSP's CommNet.",
   tags: ["telemetry", "comms"],
   defaultSize: { w: 6, h: 5 },
   minSize: { w: 3, h: 3 },
@@ -425,6 +563,7 @@ registerComponent<CommSignalConfig>({
     "comm.controlStateName",
     "comm.signalDelay",
     "comms.commandCentre",
+    "comms.path",
   ],
   defaultConfig: {},
   actions: [],

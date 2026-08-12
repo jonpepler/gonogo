@@ -799,8 +799,11 @@ function pointsToPath(points: readonly ProjectedPoint[]): string {
  * which is exact for an elliptical orbit. The 2D projection is a
  * top-down view ignoring inclination: the inclination axis is
  * rendered separately as a stroke gradient.
+ *
+ * Exported so `systemEntities.ts` projects contributed shapes through the
+ * same conic-section math instead of reimplementing it.
  */
-function bodyPosition(
+export function bodyPosition(
   sma: number,
   eccentricity: number,
   lanDeg: number,

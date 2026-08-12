@@ -7,6 +7,7 @@ import {
   AugmentSlot,
   registerComponent,
   resolveTargetName,
+  useContributions,
   useTelemetry,
 } from "@ksp-gonogo/core";
 import {
@@ -27,10 +28,11 @@ import {
 } from "@ksp-gonogo/ui";
 import { FramedDisplay, NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { quantiseUt } from "../MapView/predictionThrottle";
 import { AlmanacPanel } from "./AlmanacPanel";
 import { SystemDiagram } from "./SystemDiagram";
+import { SystemEntitiesLayer } from "./SystemEntitiesLayer";
 import {
   angleDelta,
   hohmannPhaseAngle,
@@ -243,6 +245,21 @@ function SystemViewComponent({
   // View-UT: the SDK view time the propagation already evaluates at
   // (`t.universalTime` was never a stream; it IS `sdk.view.ut()`).
   const universalTime = useViewUt();
+
+  // Shape-contribution foundation: every `system-view.entities` contribution
+  // (vessel orbits, the CommNet graph, a future CME front, ...), aggregated
+  // and z-ordered by `SystemEntitiesLayer`, projected through the SAME
+  // auto-fit `overlayContext` an overlay augment already draws against
+  // (built further down). SystemView owns the one piece of dynamic state a
+  // contribution can't: which entity, if any, is selected. The click/
+  // keyboard wiring lives now; the brighten-on-select visuals are a later
+  // task's job (they'll read `selectedVesselId` here to drive the entities
+  // layer's `decorate` hook).
+  const entities = useContributions("system-view.entities");
+  const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
+  const handleEntityActivate = useCallback((id: string) => {
+    setSelectedVesselId((prev) => (prev === id ? null : id));
+  }, []);
 
   // Stable body-index → NAME map (from `system.bodies`' stable `index`, never
   // array position): the display-map behind `v.body` / `o.encounterBody`.
@@ -618,6 +635,18 @@ function SystemViewComponent({
                 height={size.h}
               />
             )}
+            {/* Shape-contribution entities: host-drawn (not an augment), same
+                auto-fit projection as the overlay slot below it. Renders
+                nothing when the slot is empty or nothing on it projects onto
+                the current frame. */}
+            {overlayContext !== null && (
+              <SystemEntitiesLayer
+                entities={entities}
+                ctx={overlayContext}
+                selectedId={selectedVesselId}
+                onEntityActivate={handleEntityActivate}
+              />
+            )}
             {/* Overlay slot: layered over the body diagram, passed the diagram's
                 parent-centric projection so an augment draws in its coordinate
                 space. The layer is pointer-transparent so an empty slot is
@@ -812,6 +841,10 @@ registerComponent<SystemViewConfig>({
     "system-view.overlay",
     "system-view.badges",
   ],
+  // The shape-contribution foundation: aggregated by `ContributionsAggregation`
+  // via `WidgetMetaContext` (`GridItemContent.tsx` reads this list to build
+  // that context), then read back here through `useContributions`.
+  contributionSlots: ["system-view.entities"],
   // The body table + phase angles still fan out over the shared `b.*` hooks
   // (`useCelestialBodies`/`usePhaseAngles`): a separate, shared-hook migration.
   // Everything else reads the streamed `vessel.*`/`system.bodies` Topics below.
@@ -828,6 +861,26 @@ registerComponent<SystemViewConfig>({
 });
 
 export { AlmanacPanel } from "./AlmanacPanel";
+export { SystemEntitiesLayer } from "./SystemEntitiesLayer";
+export type {
+  OrbitRingGeometry,
+  ResolvedSystemEntity,
+  SystemEntitiesContext,
+  SystemEntity,
+  SystemEntityEmphasis,
+  SystemEntityFixedPosition,
+  SystemEntityMeta,
+  SystemEntityOrbitPosition,
+  SystemEntityPosition,
+  SystemEntityShape,
+  SystemEntityStyle,
+} from "./systemEntities";
+export {
+  projectEntityPosition,
+  projectOrbitRing,
+  resolveSystemEntities,
+  SYSTEM_ENTITY_DEFAULT_LAYER,
+} from "./systemEntities";
 export type { CelestialBody } from "./useCelestialBodies";
 export { useCelestialBodies } from "./useCelestialBodies";
 export { usePhaseAngles } from "./usePhaseAngles";

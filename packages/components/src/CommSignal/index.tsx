@@ -35,6 +35,7 @@ import {
 import {
   buildCommsRouteNodes,
   type CommsRouteNode,
+  commsLegTimeSeconds,
   commsRouteRelayCount,
 } from "./commsRoute";
 
@@ -401,6 +402,7 @@ function CommSignalComponent({
                 hops={hops}
                 vesselLabel={vesselLabel}
                 centreLabel={centreLabel}
+                delaySeconds={delay?.magnitude}
               />
             </div>
           )}
@@ -429,6 +431,7 @@ function CommSignalComponent({
               hops={hops}
               vesselLabel={vesselLabel}
               centreLabel={centreLabel}
+              delaySeconds={delay?.magnitude}
             />
           )}
 
@@ -461,18 +464,21 @@ const RAIL_STOP_DIAMETER_PX = 10;
 /**
  * The vertical train-schedule: the source vessel at the top, each relay as a
  * circle on the rail, the command centre at the bottom. Each leg's distance
- * (and RA band rate, when present) sits in the gap between its two stops,
- * against the rail. Renders nothing for an empty `hops` list (no path home
- * is already covered by the LOS headline).
+ * AND light-time (and RA band rate, when present) sit in the gap between its
+ * two stops, against the rail. Renders nothing for an empty `hops` list (no
+ * path home is already covered by the LOS headline).
  */
 function CommsPathRoute({
   hops,
   vesselLabel,
   centreLabel,
+  delaySeconds,
 }: {
   hops: readonly CommsHop[];
   vesselLabel: string;
   centreLabel: string;
+  /** The path's total one-way delay: apportioned across legs by distance, see `commsLegTimeSeconds`. */
+  delaySeconds: number | undefined;
 }) {
   const nodes = buildCommsRouteNodes(hops, vesselLabel, centreLabel);
   if (nodes.length === 0) return null;
@@ -489,7 +495,13 @@ function CommsPathRoute({
               node={node}
               emphasize={i === 0 || i === nodes.length - 1}
             />
-            {i < hops.length && <CommsPathLeg hop={hops[i]} />}
+            {i < hops.length && (
+              <CommsPathLeg
+                hop={hops[i]}
+                hops={hops}
+                delaySeconds={delaySeconds}
+              />
+            )}
           </Fragment>
         ))}
       </div>
@@ -526,8 +538,17 @@ function CommsPathStop({
   );
 }
 
-/** One leg's distance (+ RA band rate, when present), in the gap against the rail. */
-function CommsPathLeg({ hop }: { hop: CommsHop }) {
+/** One leg's distance AND light-time (+ RA band rate, when present), in the gap against the rail. */
+function CommsPathLeg({
+  hop,
+  hops,
+  delaySeconds,
+}: {
+  hop: CommsHop;
+  hops: readonly CommsHop[];
+  delaySeconds: number | undefined;
+}) {
+  const legSeconds = commsLegTimeSeconds(hop, hops, delaySeconds);
   const hasDetail =
     hop.distanceMeters !== undefined || hop.bandRateBitsPerSec !== undefined;
   return (
@@ -549,6 +570,15 @@ function CommsPathLeg({ hop }: { hop: CommsHop }) {
           {hop.distanceMeters !== undefined && (
             <Value tone="muted" size="xs">
               <Unit value={hop.distanceMeters} />
+            </Value>
+          )}
+          {legSeconds !== undefined && (
+            // nowrap: `Countdown`'s "0 ms" is plain text with a breaking
+            // space, unlike `Unit`'s own number+symbol pairing (which
+            // carries its own nowrap), so a narrow column could otherwise
+            // split it mid-value across two lines.
+            <Value tone="muted" size="xs" style={{ whiteSpace: "nowrap" }}>
+              <Countdown value={legSeconds} precise />
             </Value>
           )}
           {/* RealAntennas-only per-hop rate annotation (Comms.cs's own doc):
@@ -600,6 +630,11 @@ function RailSlot({ stop }: { stop: boolean }) {
             transform: "translateY(-50%)",
             width: RAIL_STOP_DIAMETER_PX,
             height: RAIL_STOP_DIAMETER_PX,
+            // border-box: the 2px border must be INCLUDED in the diameter,
+            // not added on top of it. Content-box (the default) rendered a
+            // 14px circle (10px content + 2px border each side) whose centre
+            // sat 2px right of the rail's dashed line, off-centre.
+            boxSizing: "border-box",
             borderRadius: "50%",
             background: "var(--color-surface-panel)",
             border: "2px solid var(--color-text-dim)",

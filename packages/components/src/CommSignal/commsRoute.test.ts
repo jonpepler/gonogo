@@ -1,9 +1,17 @@
-import type { CommsHop } from "@ksp-gonogo/sitrep-sdk";
+import { type CommsHop, value } from "@ksp-gonogo/sitrep-sdk";
 import { describe, expect, it } from "vitest";
-import { buildCommsRouteNodes, commsRouteRelayCount } from "./commsRoute";
+import {
+  buildCommsRouteNodes,
+  commsLegTimeSeconds,
+  commsRouteRelayCount,
+} from "./commsRoute";
 
 function hop(from: string, to: string): CommsHop {
   return { from, to, kind: 0 };
+}
+
+function hopWithDistance(from: string, to: string, meters: number): CommsHop {
+  return { from, to, kind: 0, distanceMeters: value("m", meters) };
 }
 
 describe("buildCommsRouteNodes", () => {
@@ -62,5 +70,44 @@ describe("commsRouteRelayCount", () => {
 
   it("is 0 for an empty (no-path-home) hop list", () => {
     expect(commsRouteRelayCount([])).toBe(0);
+  });
+});
+
+describe("commsLegTimeSeconds", () => {
+  it("apportions the path's total delay across legs by distance", () => {
+    const hops = [
+      hopWithDistance("Active Vessel", "Relay Sat 1", 1_250_000),
+      hopWithDistance("Relay Sat 1", "Relay Sat 2", 2_400_000),
+      hopWithDistance("Relay Sat 2", "home", 640_000),
+    ];
+    const totalMeters = 1_250_000 + 2_400_000 + 640_000;
+    const totalDelay = 6.2;
+
+    const legTimes = hops.map((h) => commsLegTimeSeconds(h, hops, totalDelay));
+
+    expect(legTimes[0]).toBeCloseTo((1_250_000 / totalMeters) * totalDelay, 9);
+    expect(legTimes[1]).toBeCloseTo((2_400_000 / totalMeters) * totalDelay, 9);
+    expect(legTimes[2]).toBeCloseTo((640_000 / totalMeters) * totalDelay, 9);
+    // The apportioned legs always sum back to the total DELAY row above them.
+    expect(
+      (legTimes[0] ?? 0) + (legTimes[1] ?? 0) + (legTimes[2] ?? 0),
+    ).toBeCloseTo(totalDelay, 9);
+  });
+
+  it("falls back to real light-time (distance / c) with no path delay to apportion against", () => {
+    const hops = [hopWithDistance("Active Vessel", "home", 299_792_458)];
+    expect(commsLegTimeSeconds(hops[0], hops, undefined)).toBeCloseTo(1, 9);
+    expect(commsLegTimeSeconds(hops[0], hops, null)).toBeCloseTo(1, 9);
+  });
+
+  it("returns undefined for a hop with no distance to derive from", () => {
+    const hops = [hop("Active Vessel", "home")];
+    expect(commsLegTimeSeconds(hops[0], hops, 6.2)).toBeUndefined();
+  });
+
+  it("falls back to light-time when the total delay is non-positive", () => {
+    const hops = [hopWithDistance("Active Vessel", "home", 299_792_458)];
+    expect(commsLegTimeSeconds(hops[0], hops, 0)).toBeCloseTo(1, 9);
+    expect(commsLegTimeSeconds(hops[0], hops, -3)).toBeCloseTo(1, 9);
   });
 });

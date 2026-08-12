@@ -144,6 +144,20 @@ public class CommsHop
     public double? DistanceMeters { get; set; }
     [SitrepUnit(Units.BitsPerSecond)]
     public double? BandRateBitsPerSec { get; set; }
+
+    /// <summary>
+    /// The provider-namespaced extension bag: how the elected comms backend
+    /// carries per-hop facts this shared shape does not declare, WITHOUT a PR
+    /// against core (see <see cref="ProviderExtensionBagAttribute"/> for the
+    /// whole mechanism). Null under the vanilla CommNet backend, which has
+    /// nothing stock does not already say; a RealAntennas install fills
+    /// <c>Extensions["realantennas"]</c> with band, tech level, modulation,
+    /// encoder, required Eb/N0, beamwidth, EC draw and the reverse-direction
+    /// rate, typed by the RA client's own <c>RealAntennasHopExt</c>. It rides
+    /// <c>comms.path</c>, so it inherits that channel's TrueNow classification.
+    /// </summary>
+    [ProviderExtensionBag]
+    public Dictionary<string, object?>? Extensions { get; set; }
 }
 
 /// <summary>

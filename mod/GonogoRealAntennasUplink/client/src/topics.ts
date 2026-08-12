@@ -47,6 +47,15 @@ import {
 } from "./__generated__/units";
 
 /**
+ * The Domain presence gate: a bare JSON boolean the RA uplink emits (TrueNow)
+ * while RealAntennas is loaded. Its value MUST match
+ * `RealAntennasUplink.AvailableTopic` in ../../RealAntennasUplink.cs. The RA
+ * augments bind `requires: "realantennas"`, which resolves to this Topic, so
+ * their detail composes into CommSignal only when RA is actually running.
+ */
+export const REALANTENNAS_AVAILABLE_TOPIC = "realantennas.available";
+
+/**
  * Link margin normalised to 0..1. Its value MUST match
  * `RealAntennasUplink.LinkQualityTopic` in ../../RealAntennasUplink.cs:
  * `topics.test.ts` asserts that.
@@ -61,12 +70,14 @@ export const COMMS_LINK_MARGIN_TOPIC = "comms.linkMargin";
 
 declare module "@ksp-gonogo/sitrep-sdk" {
   interface TopicPayloadMap {
+    "realantennas.available": boolean;
     "comms.linkQuality": CommsLinkQuality;
     "comms.dataRate": CommsDataRate;
     "comms.linkMargin": CommsLinkMargin;
   }
 }
 
+registerBarePrimitiveTopic(REALANTENNAS_AVAILABLE_TOPIC);
 registerBarePrimitiveTopic(COMMS_LINK_QUALITY_TOPIC);
 registerBarePrimitiveTopic(COMMS_DATA_RATE_TOPIC);
 registerBarePrimitiveTopic(COMMS_LINK_MARGIN_TOPIC);
@@ -107,6 +118,9 @@ type Equal<A, B> =
     ? true
     : false;
 type Expect<T extends true> = T;
+export type _ResolvesRealAntennasAvailable = Expect<
+  Equal<TopicPayload<"realantennas.available">, boolean>
+>;
 export type _ResolvesLinkQuality = Expect<
   Equal<TopicPayload<"comms.linkQuality">, CommsLinkQuality>
 >;

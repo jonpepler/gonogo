@@ -801,7 +801,31 @@ namespace Sitrep.Contract
         /// pool rides <c>DelayRole.TrueNow</c> (the Astronaut Complex is at KSC),
         /// same class as <c>spaceCenter.crewRoster</c>. See
         /// <c>local_docs/design/2026-08-12-astronaut-hiring-build-spec.md</c>.</para>
+        ///
+        /// <para>Bumped 9 -&gt; 10: the RealAntennas per-hop provider extension bag.
+        /// <see cref="CommsHop"/> gains one nullable <c>Extensions</c> member, the
+        /// provider-namespaced hole that lets the elected comms backend carry
+        /// per-hop facts core does not declare without a PR against it (see
+        /// <c>Sitrep.Contract/ProviderExtensions.cs</c>). The RealAntennas backend
+        /// fills <c>Extensions["realantennas"]</c> with band, tech level,
+        /// modulation, encoder, coding rate, required Eb/N0, beamwidth, EC draw and
+        /// the reverse-direction rate, typed by the RA client's own
+        /// <c>RealAntennasHopExt</c> (declared in
+        /// <c>GonogoRealAntennasUplink.Contract</c>, not here). Additive and
+        /// nullable: one new member on one existing shape plus a new RA-owned type,
+        /// nothing removed or retyped, so it cannot break an Uplink built against
+        /// Major 12 and the frozen Major-12 floor is NOT re-frozen. The wire is
+        /// additive too: the <c>extensions</c> key is omitted entirely when no
+        /// provider filled a bag, so a bare-CommNet hop is byte-for-byte what it was
+        /// (<c>CommsHopExtensionWireTests</c> pins that). <c>CommsHop.Extensions</c>
+        /// is the LAST hand-listed provider-facing addition that type should take:
+        /// <c>Sitrep.Host.Tests.CommsHopContractShapeTests</c> now pins its member
+        /// set, so a new provider field lands in the bag instead. The augment that
+        /// renders it also gains a bare-boolean <c>realantennas.available</c>
+        /// presence-gate channel (no POCO, so it never reaches the shape baseline).
+        /// See
+        /// <c>local_docs/design/2026-08-12-realantennas-extension-build-spec.md</c>.</para>
         /// </summary>
-        public const int Minor = 9;
+        public const int Minor = 10;
     }
 }

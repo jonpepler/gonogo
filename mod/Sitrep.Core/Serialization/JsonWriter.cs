@@ -1022,6 +1022,10 @@ namespace Sitrep.Core.Serialization
             {
                 AppendNull(sb);
             }
+            // Omitted entirely when no provider filled a bag, so a bare-CommNet hop
+            // is byte-for-byte what it was before the bag existed (see
+            // AppendProviderExtensions).
+            AppendProviderExtensions(sb, h.Extensions);
             sb.Append('}');
         }
 

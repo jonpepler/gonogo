@@ -121,12 +121,14 @@ const ALLOWED_TRUENOW: Record<string, number> = {
   // call-site regex) = 7 helper matches. 1 explicit + 7 helper = 8.
   "mod/Gonogo.KSP/CommsCoreUplink.cs": 8,
 
-  // RealAntennas link-quality/data-rate/link-margin: same "facts about
-  // the link" class as CommsCoreUplink above, same helper shape: 1
-  // explicit `Delay =` line inside the helper body + 3 call sites + the
-  // helper's own declaration line = 4 helper matches. 1 explicit + 4
-  // helper = 5.
-  "mod/GonogoRealAntennasUplink/RealAntennasUplink.cs": 5,
+  // RealAntennas link-quality/data-rate/link-margin, plus
+  // realantennas.available (whether RA is installed, same install-fact
+  // class as scansat/kerbcast .available): same "facts about the link
+  // (or its presence)" class as CommsCoreUplink above, same helper
+  // shape: 1 explicit `Delay =` line inside the helper body + 4 call
+  // sites + the helper's own declaration line = 5 helper matches. 1
+  // explicit + 5 helper = 6.
+  "mod/GonogoRealAntennasUplink/RealAntennasUplink.cs": 6,
 
   // SCANsat scan-coverage availability: ground-side (the map data the
   // centre already has), not a live vessel reading. 1 explicit

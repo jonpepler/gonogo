@@ -86,6 +86,17 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
   "CommsLinkQuality": {
     value: "ratio",
   },
+  "RealAntennasHopExt": {
+    band: "text",
+    beamwidth: "°",
+    codingRate: "ratio",
+    encoder: "text",
+    modulationBits: "count",
+    powerDrawEc: "units/s",
+    requiredEbN0: "dB",
+    reverseBitsPerSec: "bit/s",
+    techLevel: "count",
+  },
 };
 
 /**

@@ -36,9 +36,21 @@ namespace Gonogo.RealAntennasUplink
         public const string DataRateTopic = "comms.dataRate";
         public const string LinkMarginTopic = "comms.linkMargin";
 
-        // Best-effort link-budget inputs RA does not expose publicly on the live
-        // graph (§4.3: margin is computed in RA's internal Precompute job). These
-        // are documented display estimates, NOT RA's negotiated values.
+        /// <summary>
+        /// The Domain presence gate: a bare-boolean TrueNow channel emitting
+        /// <c>true</c> whenever RealAntennas is loaded. The RA client augments bind
+        /// this via <c>requires: "realantennas"</c>, so its detail composes into
+        /// CommSignal only on an install that actually runs RA.
+        /// </summary>
+        public const string AvailableTopic = "realantennas.available";
+
+        // Fallback link-budget inputs, used only when the live per-link read
+        // returns null. RA exposes both per antenna: the receiver noise
+        // temperature via RealAntenna.AMWTemp (tech-level driven, TL0 ~27000 K, TL9
+        // ~200 K) and the required Eb/N0 via RealAntenna.RequiredCI
+        // (= Encoder.RequiredEbN0). CaptureOnMain wires those in below and only
+        // falls back to these constants (the pre-wiring display estimates) when a
+        // read fails, the existing fail-soft posture.
         private const double DefaultReceiverNoiseTempKelvin = 200.0;
         private const double DefaultRequiredEbN0Db = 2.5;
 
@@ -62,6 +74,7 @@ namespace Gonogo.RealAntennasUplink
             Version = "1.0.0",
             Channels = new List<ChannelDeclaration>
             {
+                TrueNow(AvailableTopic),
                 TrueNow(LinkQualityTopic),
                 TrueNow(DataRateTopic),
                 TrueNow(LinkMarginTopic),
@@ -114,6 +127,11 @@ namespace Gonogo.RealAntennasUplink
                 Console.Error.WriteLine("[RealAntennasUplink] could not register comms provider: " + ex.Message);
             }
 
+            // Bare-boolean presence gate: true while RA is loaded. Same shape as
+            // any Uplink's <domain>.available, and what the RA client augments'
+            // `requires` resolves against.
+            host.AddChannelSource(AvailableTopic, _ => _ra != null && _ra.IsAvailable);
+
             _linkQuality = host.Publisher(LinkQualityTopic);
             _dataRate = host.Publisher(DataRateTopic);
             _linkMargin = host.Publisher(LinkMarginTopic);
@@ -162,17 +180,22 @@ namespace Gonogo.RealAntennasUplink
             // honest choice: the channel simply reports no value that tick rather
             // than a fabricated zero.
             //
-            // LOG-ONLY (needs live RA to validate): the up/down direction mapping
-            // below (UpBitsPerSec = REVERSE rate, DownBitsPerSec = FORWARD rate)
-            // is assumed from the RA node identity but not yet confirmed against a
-            // live link: it may be swapped. Verify on a real RA install before
-            // relying on the per-direction figures.
+            // Orientation-aware up/down. RA's FwdDataRate is the rate in the link's
+            // stored a->b direction, and RA assigns a/b by NODE INDEX, not by
+            // vessel-vs-home role (Precompute's MakeLink is called with a=Nodes[x],
+            // b=Nodes[y], x<=y). So a fixed "Down = Fwd" is a coin-flip per link,
+            // which is exactly what the old in-code note flagged as possibly
+            // swapped. RaLinkDirection resolves it the way RA's own
+            // MaxDataRateToHome does: Fwd is the downlink (vessel->home) only when
+            // link.a is the active vessel's own comm node. Falls back to the old
+            // Down=Fwd mapping when the vessel node cannot be identified.
             if (fwd != null && rev != null)
             {
+                var (up, down) = RaLinkDirection.Resolve(ForwardIsDownlink(link), fwd.Value, rev.Value);
                 capture.DataRate = new CommsDataRate
                 {
-                    UpBitsPerSec = rev.Value,
-                    DownBitsPerSec = fwd.Value,
+                    UpBitsPerSec = up,
+                    DownBitsPerSec = down,
                     Meta = new PayloadMeta { Source = capture.Source, Quality = Quality.Loaded },
                 };
             }
@@ -189,17 +212,21 @@ namespace Gonogo.RealAntennasUplink
                 double? freq = _ra.Frequency(tx);
                 double? symbolRate = _ra.SymbolRate(tx);
 
-                // LOG-ONLY (needs live RA to validate): DefaultReceiverNoiseTempKelvin
-                // (200 K) and DefaultRequiredEbN0Db (2.5 dB) are hardcoded display
-                // estimates. RA exposes more accurate per-link figures via
-                // reachable public members (RealAntenna.RequiredCI →
-                // Encoder.RequiredEbN0, Physics.NoiseTemperature per the RA
-                // playbook); wiring those in would sharpen the margin. Acceptable
-                // as-is pending live validation, left as constants for now.
+                // RA's own per-link numbers, replacing the hardcoded estimates:
+                // the receiver noise temperature off the RX antenna's AMWTemp, and
+                // the required Eb/N0 off its RequiredCI
+                // (= Encoder.RequiredEbN0). Both fail soft to the constants when a
+                // read returns null, so a moved RA surface degrades the margin's
+                // FIDELITY rather than breaking it. The re-derivation is still
+                // best-effort (it does not reproduce RA's negotiated-modulation
+                // tie-break), and the absolute margin wants live-RA confirmation
+                // before the fallbacks are removed.
                 if (txPower != null && txGain != null && rxGain != null && freq != null && symbolRate != null)
                 {
+                    double noiseTempKelvin = _ra.NoiseTemperatureKelvin(rx) ?? DefaultReceiverNoiseTempKelvin;
+                    double requiredEbN0Db = _ra.RequiredEbN0Db(rx) ?? DefaultRequiredEbN0Db;
                     double pr = RaLinkBudget.ReceivedPowerDbm(txPower.Value, txGain.Value, rxGain.Value, distance, freq.Value);
-                    double margin = RaLinkBudget.LinkMarginDb(pr, DefaultReceiverNoiseTempKelvin, symbolRate.Value, DefaultRequiredEbN0Db);
+                    double margin = RaLinkBudget.LinkMarginDb(pr, noiseTempKelvin, symbolRate.Value, requiredEbN0Db);
 
                     // Typed absence over a non-finite sentinel: LinkMarginDb
                     // returns double.NegativeInfinity for a non-positive symbol
@@ -276,6 +303,20 @@ namespace Gonogo.RealAntennasUplink
                 return link; // first hop
             }
             return null;
+        }
+
+        /// <summary>
+        /// Whether a link's FORWARD direction (its stored <c>a -&gt; b</c>) is the
+        /// operator's DOWNLINK (vessel -&gt; home). True when <c>link.a</c> is the
+        /// active vessel's own comm node, so <c>a -&gt; b</c> runs away from the
+        /// vessel toward home. Falls back to true (the pre-fix Down=Fwd mapping)
+        /// when the vessel node cannot be identified, so an unresolvable case is no
+        /// worse than before rather than a confident swap.
+        /// </summary>
+        private static bool ForwardIsDownlink(CommLink link)
+        {
+            var vesselNode = FlightGlobals.ActiveVessel?.connection?.Comm;
+            return vesselNode == null || ReferenceEquals(link.a, vesselNode);
         }
 
         private static string Source()

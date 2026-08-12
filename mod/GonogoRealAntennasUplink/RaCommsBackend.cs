@@ -89,6 +89,12 @@ namespace Gonogo.RealAntennasUplink
                         // RA enrichment: per-hop forward data rate off the live
                         // RACommLink (§1 "path hops gain RA band/rate annotations").
                         BandRateBitsPerSec = _ra.ForwardDataRate(link),
+                        // The RA-only per-hop extras (band, tech level, modulation,
+                        // encoder, required Eb/N0, beamwidth, EC draw, reverse rate)
+                        // ride the provider extension bag under "realantennas",
+                        // typed client-side by RealAntennasHopExt. Null under bare
+                        // CommNet, where this backend is not even elected.
+                        Extensions = RaHopExtensions.ForHop(_ra, link),
                     });
                 }
             }

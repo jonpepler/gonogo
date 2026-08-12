@@ -72,6 +72,12 @@ public static class RealAntennasRtConfig
             typeof(CommsDataRate),
             // comms.linkMargin: re-derived link budget, dB + does-it-close
             typeof(CommsLinkMargin),
+            // The RealAntennas namespace of CommsHop's provider extension bag. No
+            // [SitrepTopic] (it is a nested bag type, reached through comms.path's
+            // hops, not a channel of its own), so EmitTopicMap ignores it while
+            // ApplyUnitValueTypes still retypes its annotated quantities and the
+            // TYPE unit/shape maps carry it for the client's hydration walk.
+            typeof(RealAntennasHopExt),
         };
 
         builder.ExportAsInterfaces(wireTypes, c => c.AutoI(false).WithPublicProperties());

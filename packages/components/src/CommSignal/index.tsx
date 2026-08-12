@@ -252,6 +252,25 @@ function CommSignalComponent({
       : connected === true
         ? "Signal connected"
         : "";
+
+  // Extracted (rather than inlined at its one call site) because landscape
+  // mode with an augment column present renders it from a SECOND spot, inside
+  // the readout Stack; see the top-alignment comment further down.
+  const subtitle = showSubtitle && (
+    <span
+      style={{
+        fontSize: "var(--font-size-xs)",
+        color:
+          connected === false
+            ? "var(--color-status-nogo-fg)"
+            : "var(--color-text-dim)",
+        letterSpacing: "0.04em",
+      }}
+    >
+      {connected === false ? "No signal" : "Signal to KSC"}
+    </span>
+  );
+
   return (
     <Panel
       panelTitle="COMMNET"
@@ -273,21 +292,13 @@ function CommSignalComponent({
       ))}
 
       {/* Link caption relocated out of the panel subtitle into the body
-          (staging change), carried by a plain span so the title stands alone. */}
-      {showSubtitle && (
-        <span
-          style={{
-            fontSize: "var(--font-size-xs)",
-            color:
-              connected === false
-                ? "var(--color-status-nogo-fg)"
-                : "var(--color-text-dim)",
-            letterSpacing: "0.04em",
-          }}
-        >
-          {connected === false ? "No signal" : "Signal to KSC"}
-        </span>
-      )}
+          (staging change), carried by a plain span so the title stands alone.
+          Rendered here for every branch EXCEPT landscape-with-augment: that
+          one needs the subtitle INSIDE the readout column instead (see
+          `subtitle` below), so its own top line lines up with the augment
+          column's "LINK BUDGET" header rather than sitting a line above both
+          columns. */}
+      {!(isLandscape && sectionsAugmentPresent) && subtitle}
 
       {/* With no comms Uplink bound to `comm-signal.sections` (the common
           case), this is the ORIGINAL two-mode layout, unchanged: landscape
@@ -324,7 +335,15 @@ function CommSignalComponent({
           override anywhere below), so the same overlap protection applies:
           in portrait the augment section stacks inside the SAME Stack as
           the readout; in landscape it sits beside it instead, so the two
-          never compete for vertical space to begin with. */}
+          never compete for vertical space to begin with.
+
+          In landscape the readout Stack also picks up the subtitle as its
+          OWN first line (dropped from above via the `!(isLandscape &&
+          sectionsAugmentPresent)` guard), so it top-aligns with the augment
+          column's "LINK BUDGET" header instead of sitting a line above the
+          whole row: "Signal to KSC" and "LINK BUDGET" read as two column
+          headers on the same line, each column's content flowing down from
+          there. */}
       {sectionsAugmentPresent ? (
         isLandscape ? (
           <Cluster
@@ -333,6 +352,7 @@ function CommSignalComponent({
             style={{ flex: 1, gap: "var(--space-24)" }}
           >
             <Stack gap="md" style={{ flex: "0 1 auto", minWidth: 0 }}>
+              {subtitle}
               <Cluster justify="start" wrap>
                 <SignalBars bars={bars} tone={control.tone} />
                 <SignalHeadline

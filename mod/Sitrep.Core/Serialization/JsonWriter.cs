@@ -227,6 +227,16 @@ namespace Sitrep.Core.Serialization
                     // camelCase keys, matching every sibling below.
                     AppendCommsLink(sb, link);
                     break;
+                case Sitrep.Contract.CommsCommandCentre commandCentre:
+                    // Same "producer owns the flatten" boundary as CommsLink
+                    // above: comms.commandCentre publishes a CommsCommandCentre
+                    // POCO directly (see Gonogo.KSP.CommsCoreUplink's
+                    // command-centre publisher). Without this case a populated
+                    // payload would throw NotSupportedException at the wire
+                    // boundary. Flattened to { id, displayName, kind, bodyIndex,
+                    // meta } with camelCase keys, matching every sibling here.
+                    AppendCommsCommandCentre(sb, commandCentre);
+                    break;
                 case Sitrep.Contract.CommsConnectivity connectivity:
                     // Same "producer owns the flatten" boundary as CommsDelay
                     // above: the comms.connectivity channel
@@ -925,6 +935,38 @@ namespace Sitrep.Core.Serialization
             AppendString(sb, "meta");
             sb.Append(':');
             AppendPayloadMeta(sb, l.Meta);
+            sb.Append('}');
+        }
+
+        private static void AppendCommsCommandCentre(StringBuilder sb, Sitrep.Contract.CommsCommandCentre c)
+        {
+            sb.Append('{');
+            AppendString(sb, "id");
+            sb.Append(':');
+            AppendNullableString(sb, c.Id);
+            sb.Append(',');
+            AppendString(sb, "displayName");
+            sb.Append(':');
+            AppendNullableString(sb, c.DisplayName);
+            sb.Append(',');
+            AppendString(sb, "kind");
+            sb.Append(':');
+            AppendNullableString(sb, c.Kind);
+            sb.Append(',');
+            AppendString(sb, "bodyIndex");
+            sb.Append(':');
+            if (c.BodyIndex.HasValue)
+            {
+                AppendInteger(sb, c.BodyIndex.Value);
+            }
+            else
+            {
+                AppendNull(sb);
+            }
+            sb.Append(',');
+            AppendString(sb, "meta");
+            sb.Append(':');
+            AppendPayloadMeta(sb, c.Meta);
             sb.Append('}');
         }
 

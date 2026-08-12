@@ -825,7 +825,16 @@ namespace Sitrep.Contract
         /// presence-gate channel (no POCO, so it never reaches the shape baseline).
         /// See
         /// <c>local_docs/design/2026-08-12-realantennas-extension-build-spec.md</c>.</para>
+        ///
+        /// <para><b>Bumped 10 -&gt; 11:</b> the new <see cref="CommsCommandCentre"/>
+        /// type on the new <c>comms.commandCentre</c> topic, identifying which
+        /// command centre the active vessel's control path currently terminates at
+        /// (KSC or a crewed control-source vessel), so a client can label its own
+        /// comms readout correctly instead of assuming KSC. A new wire type on a
+        /// new topic, additive-only, never touches an existing member, so an Uplink
+        /// built against any earlier Major-12 minor is unaffected and the frozen
+        /// Major-12 floor is NOT re-frozen.</para>
         /// </summary>
-        public const int Minor = 10;
+        public const int Minor = 11;
     }
 }

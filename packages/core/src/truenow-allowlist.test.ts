@@ -113,13 +113,17 @@ const ALLOWED_TRUENOW: Record<string, number> = {
   "mod/GonogoKerbcastUplink/KerbcastUplink.cs": 1,
 
   // Comms-LINK meta (connectivity, signal strength, control state, path,
-  // network, and the live delay value itself), facts ABOUT the link the
-  // delay is computed from, so they can't ride their own delay without a
-  // circular dependency. Declared via the `TrueNow(topic)` helper: 1
-  // explicit `Delay =` line inside the helper body + 6 call sites (one
-  // per topic) + the helper's own declaration line (also matches the
-  // call-site regex) = 7 helper matches. 1 explicit + 7 helper = 8.
-  "mod/Gonogo.KSP/CommsCoreUplink.cs": 8,
+  // network, the live delay value itself, and comms.commandCentre), facts
+  // ABOUT the link the delay is computed from, so they can't ride their own
+  // delay without a circular dependency. comms.commandCentre
+  // (comms-command-centre-experiment) names WHICH centre the active
+  // vessel's OWN path resolved to, the same class: it names a node its own
+  // comms.path already discloses raw, not a fact about some other vessel.
+  // Declared via the `TrueNow(topic)` helper: 1 explicit `Delay =` line
+  // inside the helper body + 7 call sites (one per topic) + the helper's
+  // own declaration line (also matches the call-site regex) = 8 helper
+  // matches. 1 explicit + 8 helper = 9.
+  "mod/Gonogo.KSP/CommsCoreUplink.cs": 9,
 
   // RealAntennas link-quality/data-rate/link-margin, plus
   // realantennas.available (whether RA is installed, same install-fact

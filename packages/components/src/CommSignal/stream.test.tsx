@@ -289,4 +289,257 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
     // formatDuration(1.2, { ms: true }) -> "1s".
     expect(visibleText()).toContain("1s");
   });
+
+  it("names the current command centre instead of assuming KSC (comms-command-centre-experiment)", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.commandCentre"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider value={{ instanceId: "comm-centre" }}>
+          <CommSignalComponent id="comm-centre" w={6} h={5} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      // The vessel's path resolved to a crewed control-source vessel, not
+      // KSC (the vanilla "6-kerbal command center" case): the caption must
+      // name it, not fall back to the KSC default.
+      fixture.emit("comms.commandCentre", {
+        id: "vessel:abc-123",
+        displayName: "Constant Companion",
+        kind: "CrewedVessel",
+        bodyIndex: null,
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Signal to Constant Companion")).toBeTruthy(),
+    );
+    expect(screen.queryByText("Signal to KSC")).toBeNull();
+  });
+
+  it("falls back to Signal to KSC when no command-centre identity has arrived", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.commandCentre"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-centre-default" }}
+        >
+          <CommSignalComponent id="comm-centre-default" w={6} h={5} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+    });
+
+    await waitFor(() => expect(screen.getByText("Signal to KSC")).toBeTruthy());
+  });
+
+  it("renders the full hop chain with per-leg distances at a comfortable size", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.commandCentre", "comms.path"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider value={{ instanceId: "comm-route" }}>
+          <CommSignalComponent id="comm-route" w={8} h={8} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("comms.path", {
+        hops: [
+          {
+            from: "Active Vessel",
+            to: "Relay Sat 1",
+            kind: 1,
+            distanceMeters: 1_850_000,
+          },
+          { from: "Relay Sat 1", to: "home", kind: 0, distanceMeters: 640_000 },
+        ],
+      });
+    });
+
+    await waitFor(() => expect(screen.getByText("You")).toBeTruthy());
+    expect(screen.getByText("Relay Sat 1")).toBeTruthy();
+    expect(screen.getByText("KSC")).toBeTruthy();
+    // Subtitle keeps the plain centre name once the full chain has room to
+    // render below it: the "(N relays)" hint is the cramped-size fallback,
+    // not a duplicate of the chain.
+    expect(screen.getByText("Signal to KSC")).toBeTruthy();
+  });
+
+  it("stays on the hop-count hint (not the full chain) at the registered default size", async () => {
+    // 6x5 is the widget's own registered `defaultSize`. Stacked vertically
+    // (bars, headline, detail grid, then the route), it doesn't have the
+    // headroom for a fourth block: showing the chain there would clip
+    // against the panel's bottom edge with nothing useful visible. The hint
+    // stays legible at any size the subtitle itself shows.
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.path"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-route-default" }}
+        >
+          <CommSignalComponent id="comm-route-default" w={6} h={5} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("comms.path", {
+        hops: [
+          { from: "Active Vessel", to: "Relay Sat 1", kind: 1 },
+          { from: "Relay Sat 1", to: "home", kind: 0 },
+        ],
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Signal to KSC (1 relay)")).toBeTruthy(),
+    );
+    expect(screen.queryByText("Relay Sat 1")).toBeNull();
+  });
+
+  it("degrades to a hop-count hint beside the centre name when cramped", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.path"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-route-small" }}
+        >
+          <CommSignalComponent id="comm-route-small" w={4} h={4} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("comms.path", {
+        hops: [
+          { from: "Active Vessel", to: "Relay Sat 1", kind: 1 },
+          { from: "Relay Sat 1", to: "home", kind: 0 },
+        ],
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Signal to KSC (1 relay)")).toBeTruthy(),
+    );
+    // Too cramped for the full chain: the relay's own name never renders.
+    expect(screen.queryByText("Relay Sat 1")).toBeNull();
+  });
+
+  it("names a direct link with no relay hint", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.path"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-route-direct" }}
+        >
+          <CommSignalComponent id="comm-route-direct" w={4} h={4} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("comms.path", {
+        hops: [{ from: "Active Vessel", to: "home", kind: 0 }],
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Signal to KSC (direct)")).toBeTruthy(),
+    );
+  });
+
+  it("shows the RA per-hop band rate only when the wire annotates it", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.path"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-route-rate" }}
+        >
+          <CommSignalComponent id="comm-route-rate" w={8} h={6} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("comms.path", {
+        hops: [
+          {
+            from: "Active Vessel",
+            to: "home",
+            kind: 0,
+            distanceMeters: 400_000,
+            bandRateBitsPerSec: 96_000,
+          },
+        ],
+      });
+    });
+
+    await waitFor(() => expect(screen.getByText("You")).toBeTruthy());
+    expect(visibleText()).toContain("kbit/s");
+  });
+
+  it("renders no route section when there is no path home", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.link", "comms.path"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-route-none" }}
+        >
+          <CommSignalComponent id="comm-route-none" w={6} h={5} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("comms.link", { connected: false });
+      fixture.emit("vessel.comms", { connected: false, signalStrength: 0 });
+      fixture.emit("comms.path", { hops: [] });
+    });
+
+    await waitFor(() => expect(screen.getByText("LOS")).toBeTruthy());
+    expect(screen.queryByText("You")).toBeNull();
+  });
 });

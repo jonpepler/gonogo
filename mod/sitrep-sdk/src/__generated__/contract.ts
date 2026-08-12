@@ -238,6 +238,14 @@ export interface CommsLink
 	connected: boolean;
 	meta: PayloadMeta;
 }
+export interface CommsCommandCentre
+{
+	id?: string;
+	displayName?: string;
+	kind?: string;
+	bodyIndex?: number;
+	meta: PayloadMeta;
+}
 export interface CrashReport
 {
 	vesselId: string;

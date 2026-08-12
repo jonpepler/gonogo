@@ -22,6 +22,8 @@ import {
 import { useWidgetMeta } from "./contexts/WidgetMetaContext";
 import {
   type AnyContribution,
+  type ComponentSlotRegistry,
+  type ComponentSlotSegment,
   type Contributed,
   type ContributionEntry,
   type ContributionSlotId,
@@ -56,10 +58,14 @@ function getSlotPerfBudget(slot: string): PerfBudget {
 
 interface ContributionSlotEntry {
   id: string; // the slot id
-  entries: readonly Contributed<unknown>[];
+  // Object contributions are stamped into `Contributed<>` rows; a PRIMITIVE
+  // contribution (a `filters` segment's search terms, plain strings) is stored
+  // verbatim, since a primitive cannot carry a provenance stamp. Hence the
+  // loose element type, narrowed back per slot by the public read overloads.
+  entries: readonly unknown[];
 }
 
-const EMPTY_ENTRIES: readonly Contributed<unknown>[] = Object.freeze([]);
+const EMPTY_ENTRIES: readonly unknown[] = Object.freeze([]);
 
 // Stable empty snapshot for the no-store case (a bare widget or a test
 // rendered without a `ContributionsProvider`). Same referential-stability
@@ -100,10 +106,10 @@ function getContributionsForSlotCached(slot: string): AnyContribution[] {
   return cached;
 }
 
-/** Element-wise reference equality: true when every entry is the SAME object as before. */
+/** Element-wise reference equality: true when every entry is the SAME value as before. */
 function entriesUnchanged(
-  a: readonly Contributed<unknown>[],
-  b: readonly Contributed<unknown>[],
+  a: readonly unknown[],
+  b: readonly unknown[],
 ): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -241,7 +247,7 @@ function SlotAggregator({
   const budget = useMemo(() => getSlotPerfBudget(slot), [slot]);
 
   useEffect(() => {
-    const collected: Contributed<unknown>[] = [];
+    const collected: unknown[] = [];
     for (const def of contribs) {
       if (
         def.requires &&
@@ -253,11 +259,18 @@ function SlotAggregator({
         const result = def.compute(topicValues as never);
         if (result) {
           for (const entry of result) {
-            collected.push({
-              ...entry,
-              contributionId: def.id,
-              owner: def.owner,
-            });
+            if (entry !== null && typeof entry === "object") {
+              collected.push({
+                ...entry,
+                contributionId: def.id,
+                owner: def.owner,
+              });
+            } else {
+              // A PRIMITIVE contribution (a `filters` segment's search terms):
+              // stored verbatim. It cannot carry the provenance stamp, and the
+              // segment's consumer (`FilterList`) reads plain values, not rows.
+              collected.push(entry);
+            }
           }
         }
       } catch (err) {
@@ -291,20 +304,27 @@ export function ContributionsProvider({
   );
 }
 
+// Framework-universal segments aggregated for EVERY widget, on top of whatever
+// it declared, so a component that owns one of these slots (a mounted
+// `FilterList`, a badge) gets its contributions without the host widget writing
+// anything. `badges` is the original auto-slot (spec §13.2); `filters` is the
+// component-extension-slot generalisation, completed the same `${componentId}.
+// ${segment}` way. A widget that also lists one of these in `contributionSlots`
+// is harmlessly deduped below.
+const FRAMEWORK_SEGMENTS = ["badges", "filters"] as const;
+
 function ContributionsAggregation({ children }: { children?: ReactNode }) {
   const meta = useWidgetMeta();
   const store = ContributionsPanelStore.useStore();
-  // The standard badges slot is ALWAYS aggregated, on top of whatever the
-  // widget itself declared (contribution-slots-spec §13.2: automatic, zero
-  // widget-side input). Deduped in case a widget also explicitly lists its
-  // own badges slot in contributionSlots (harmless either way).
   const slots = useMemo(() => {
     const declared = meta?.contributionSlots ?? [];
     if (!meta) return declared;
-    const badgesSlot = `${meta.componentId}.badges`;
-    return declared.includes(badgesSlot as never)
-      ? declared
-      : [...declared, badgesSlot as never];
+    const merged = [...declared];
+    for (const segment of FRAMEWORK_SEGMENTS) {
+      const slot = `${meta.componentId}.${segment}`;
+      if (!merged.includes(slot as never)) merged.push(slot as never);
+    }
+    return merged;
   }, [meta]);
 
   if (!store) return <>{children}</>;
@@ -342,25 +362,43 @@ function useAllContributionSlots(): readonly ContributionSlotEntry[] {
 }
 
 /** Untyped-by-slot-string read, shared by both public useContributions overloads and Task 2.3's useWidgetBadges. */
-export function useContributionsBySlotId(
-  slot: string,
-): readonly Contributed<unknown>[] {
+export function useContributionsBySlotId(slot: string): readonly unknown[] {
   const snapshot = useAllContributionSlots();
   return snapshot.find((e) => e.id === slot)?.entries ?? EMPTY_ENTRIES;
 }
 
+// Full slot id (host-specific / widget-led): unchanged, typed against the
+// slot's declared entry via `ContributionRegistry`.
 export function useContributions<S extends ContributionSlotId>(
   slot: S,
 ): readonly Contributed<ContributionEntry<S>>[];
+// SEGMENT (host-invariant component slot): the additive entry point. A reusable
+// component writes only the segment ("filters"); the hook completes
+// `${componentId}.${segment}` from `useWidgetMeta()` and runs the identical
+// aggregation. Typed against the segment's entry via `ComponentSlotRegistry`
+// (e.g. `filters` -> `string`), which is why `FilterList` gets `string[]` back.
+export function useContributions<Seg extends ComponentSlotSegment>(
+  segment: Seg,
+): readonly ComponentSlotRegistry[Seg][];
+// Array of full slot ids: unchanged.
 export function useContributions<const T extends readonly ContributionSlotId[]>(
   slots: T,
 ): { [K in T[number]]: readonly Contributed<ContributionEntry<K>>[] };
 export function useContributions(
   slotOrSlots: string | readonly string[],
 ): unknown {
+  const meta = useWidgetMeta();
   const snapshot = useAllContributionSlots();
-  const read = (slot: string): readonly Contributed<unknown>[] =>
-    snapshot.find((e) => e.id === slot)?.entries ?? EMPTY_ENTRIES;
+  // A bare SEGMENT (no dot, what a reusable component writes) is completed to
+  // `${componentId}.${segment}` from the mounting widget's meta: the runtime
+  // half of the segment entry point. A full slot id (dotted, what every
+  // existing caller passes) is used as-is, so those callers stay byte-
+  // unchanged. Outside a widget context there is nothing to complete against,
+  // so a bare segment resolves to nothing (stable empty pass-through).
+  const complete = (slot: string): string =>
+    meta && !slot.includes(".") ? `${meta.componentId}.${slot}` : slot;
+  const read = (slot: string): readonly unknown[] =>
+    snapshot.find((e) => e.id === complete(slot))?.entries ?? EMPTY_ENTRIES;
 
   if (typeof slotOrSlots === "string") return read(slotOrSlots);
   return Object.fromEntries(slotOrSlots.map((slot) => [slot, read(slot)]));

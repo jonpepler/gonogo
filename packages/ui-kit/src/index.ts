@@ -157,12 +157,6 @@ export {
 } from "./EmptyState";
 export { Fill, type FillProps } from "./Fill";
 export {
-  FilterBar,
-  type FilterBarGroup,
-  type FilterBarOption,
-  type FilterBarProps,
-} from "./FilterBar";
-export {
   ConfigForm,
   Field,
   FieldHint,

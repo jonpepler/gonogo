@@ -2,10 +2,12 @@ import type { TopicId } from "@ksp-gonogo/sitrep-sdk";
 import { type ReactElement, useSyncExternalStore } from "react";
 import {
   type AnyAugment,
+  type AugmentSegmentProps,
   getAugmentsForSlot,
   onAugmentsChange,
   type SlotProps,
 } from "./augments";
+import { useWidgetMeta } from "./contexts/WidgetMetaContext";
 import { useTelemetry } from "./hooks/useTelemetry";
 
 /**
@@ -24,20 +26,34 @@ import { useTelemetry } from "./hooks/useTelemetry";
  * renders only while that Domain's `<domain>.available` Topic is live. Each
  * augment's gate is evaluated inside its own {@link AugmentEntry} so the hook
  * count per rendered augment is stable even as the registered set changes.
+ *
+ * Two mutually-exclusive prop forms (component-extension-slots design §1):
+ *  - `name`: the widget-led form, UNCHANGED. The host writes the full slot
+ *    literal (`"power-systems.sections"`) and its props type resolves via
+ *    {@link SlotRegistry}. Existing callers are byte-identical.
+ *  - `segment`: the component-led form. A reusable component writes only the
+ *    SEGMENT (`"overlay"`) and this completes `${componentId}.${segment}` from
+ *    `useWidgetMeta()`; props resolve via {@link AugmentSegmentProps}. Outside
+ *    a widget context (`useWidgetMeta()` null) the segment slot renders nothing.
  */
-export function AugmentSlot<S extends string>({
-  name,
-  props,
-}: {
-  name: S;
-  props: SlotProps<S>;
-}): ReactElement {
+export function AugmentSlot<S extends string>(
+  args:
+    | { name: S; props: SlotProps<S>; segment?: never }
+    | { segment: S; props: AugmentSegmentProps<S>; name?: never },
+): ReactElement {
+  // Read the mounting widget's meta unconditionally (stable hook order). Only
+  // the `segment` form consults it, to complete `${componentId}.${segment}`;
+  // the `name` form ignores meta entirely, so its render is unchanged.
+  const meta = useWidgetMeta();
+  const slotName =
+    args.name ?? (meta ? `${meta.componentId}.${args.segment}` : undefined);
+
   // Re-render when augments register/unregister so a slot mounted before an
   // augment's module loads still picks it up (mirrors onDataSourcesChange).
   const augments = useSyncExternalStore(
     onAugmentsChange,
-    () => getAugmentsForSlotCached(name),
-    () => getAugmentsForSlotCached(name),
+    () => (slotName ? getAugmentsForSlotCached(slotName) : EMPTY_AUGMENTS),
+    () => (slotName ? getAugmentsForSlotCached(slotName) : EMPTY_AUGMENTS),
   );
 
   return (
@@ -46,12 +62,16 @@ export function AugmentSlot<S extends string>({
         <AugmentEntry
           key={augment.id}
           augment={augment}
-          slotProps={props as Record<string, unknown>}
+          slotProps={args.props as Record<string, unknown>}
         />
       ))}
     </>
   );
 }
+
+// Stable empty snapshot for a `segment` slot mounted outside a widget context:
+// `useSyncExternalStore` needs a referentially-stable value between changes.
+const EMPTY_AUGMENTS: AnyAugment[] = [];
 
 // useSyncExternalStore requires a referentially-stable snapshot between changes,
 // else it loops. getAugmentsForSlot builds a fresh array each call, so memoise

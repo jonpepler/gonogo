@@ -65,6 +65,29 @@ export type SlotProps<S extends string> = S extends keyof SlotRegistry
   : Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
+// Segment-keyed augment-props seam, the parallel of `SlotRegistry` for the
+// component-led `<AugmentSlot segment>` form. A reusable component writes only
+// the SEGMENT and `<AugmentSlot>` completes `${componentId}.${segment}` from
+// `useWidgetMeta()`; this maps a SEGMENT -> the props that augment slot passes
+// down. Empty for v1: only the CONTRIBUTION `filters` segment is exercised, so
+// no augment segment needs precise props yet, and an undeclared segment falls
+// back to the same loose record `SlotProps` uses. Declare a line here (or via
+// `declare module "@ksp-gonogo/core"`) if and when an augment segment lands.
+// ---------------------------------------------------------------------------
+// biome-ignore lint/suspicious/noEmptyInterface: parallel segment seam to SlotRegistry, empty until an augment segment lands
+export interface AugmentSegmentRegistry {}
+
+/**
+ * The props a component-led augment SEGMENT passes to its augments, resolved
+ * from {@link AugmentSegmentRegistry}; loose fallback until a segment is
+ * declared, mirroring {@link SlotProps}.
+ */
+export type AugmentSegmentProps<Seg extends string> =
+  Seg extends keyof AugmentSegmentRegistry
+    ? AugmentSegmentRegistry[Seg]
+    : Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
 // Augment settings (spec §4.7)
 // ---------------------------------------------------------------------------
 

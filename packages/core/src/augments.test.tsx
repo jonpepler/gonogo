@@ -14,6 +14,7 @@ import {
   getMergedSlotSettings,
   registerAugment,
 } from "./augments";
+import { WidgetMetaContext } from "./contexts/WidgetMetaContext";
 import { clearContributions, registerContribution } from "./contributions";
 
 // The augment registry is intentionally NOT reset by `clearRegistry` (see its
@@ -370,5 +371,49 @@ describe("getMergedSlotSettings", () => {
       "aug-with-settings",
       "contrib-with-settings",
     ]);
+  });
+});
+
+describe("AugmentSlot segment mode", () => {
+  it("completes `${componentId}.${segment}` from widget meta and renders the augment", () => {
+    registerAugment({
+      id: "overlay-aug",
+      augments: "host-widget.overlay",
+      component: () => <div>overlay</div>,
+    });
+
+    const { container } = render(
+      <WidgetMetaContext.Provider
+        value={{ componentId: "host-widget", contributionSlots: [] }}
+      >
+        <AugmentSlot segment="overlay" props={{}} />
+      </WidgetMetaContext.Provider>,
+    );
+
+    expect(container.textContent).toBe("overlay");
+  });
+
+  it("renders nothing for a segment slot mounted outside a widget context", () => {
+    registerAugment({
+      id: "overlay-aug-orphan",
+      augments: "host-widget.overlay",
+      component: () => <div>overlay</div>,
+    });
+
+    const { container } = render(<AugmentSlot segment="overlay" props={{}} />);
+    expect(container.textContent).toBe("");
+  });
+
+  it("leaves the `name` form untouched: no meta needed", () => {
+    registerAugment({
+      id: "named-aug",
+      augments: "power-systems.sections",
+      component: () => <div>named</div>,
+    });
+
+    const { container } = render(
+      <AugmentSlot name="power-systems.sections" props={{}} />,
+    );
+    expect(container.textContent).toBe("named");
   });
 });

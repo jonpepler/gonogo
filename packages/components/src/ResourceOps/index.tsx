@@ -1,40 +1,28 @@
-import type {
-  ActionDefinition,
-  ComponentProps,
-  FilterEntry,
-} from "@ksp-gonogo/core";
+import type { ActionDefinition, ComponentProps } from "@ksp-gonogo/core";
 import {
   registerComponent,
   useActionInput,
-  useContributedFilters,
   useTelemetry,
 } from "@ksp-gonogo/core";
 import type {
   IsruConverterEntry,
   IsruDrillEntry,
 } from "@ksp-gonogo/sitrep-sdk";
+import { FilterList, type FilterRow } from "@ksp-gonogo/ui";
 import {
   Badge,
   Cluster,
   EmptyState,
-  FilterBar,
   Inline,
   Panel,
   ReadoutCaption,
   ScrollArea,
-  Section,
-  SectionTitle,
   Stack,
   Unit,
   Value,
 } from "@ksp-gonogo/ui-kit";
 import { useMemo, useState } from "react";
 import { magnitudeOf, type Quantityish } from "../shared/magnitude";
-// Side-effect import: the built-in half of the `resource-ops.filters`
-// self-contribution (the by-resource axis), on the same slot an Uplink
-// contributes its own axis to.
-import "./resourceFilters";
-import type { ResourceOpsUnit } from "./unit";
 
 /**
  * In-situ resource operations: every drill and every chemical converter on the
@@ -55,6 +43,15 @@ import type { ResourceOpsUnit } from "./unit";
  * empty-looking provider-shaped hole to explain on a stock install. Layering that
  * detail on is an augment's job, in the provider's own package.
  *
+ * FILTERS ARE CONTRIBUTED, NEVER HARDCODED. The list is filtered by a mounted
+ * `FilterList`, which owns its own `filters` contribution slot: a provider that
+ * knows how these rows divide up (a mod's per-process axis) contributes
+ * pre-filled SEARCH TERMS to that slot from its own Uplink, and they filter
+ * against the `searchText` this widget bakes from its SHARED fields alone
+ * (`partTitle`, kind, resource names). The widget holds no taxonomy: it could
+ * not assert a life-support-versus-ISRU split even if it wanted to, and the
+ * operator can always type a resource or part name into the same box.
+ *
  * ACTIVE-VESSEL SCOPED: both channels capture off the active vessel only, the same
  * carry-gap `reliability.*` has. An empty list means this vessel has no drills or
  * converters, never that ISRU is untracked: stock genuinely models ISRU, so the
@@ -62,20 +59,6 @@ import type { ResourceOpsUnit } from "./unit";
  */
 
 type ResourceOpsConfig = Record<string, never>;
-
-// This widget's filter slot (contribution-slots-spec §15), co-located with the
-// widget the same way ShipMap's contribution slots are. The widget declares
-// that its list is filterable and renders whatever arrives; it never learns
-// what any contributed filter MEANS, which is the entire point. Mirrored for
-// facade-sealed Uplinks in `mod/sitrep-sdk/src/api/contribution-slots.ts`.
-declare module "@ksp-gonogo/core" {
-  interface ContributionRegistry {
-    "resource-ops.filters": {
-      entry: FilterEntry<ResourceOpsUnit>;
-      topics: "isru.drills" | "isru.converters";
-    };
-  }
-}
 
 const resourceOpsActions = [
   {
@@ -221,6 +204,13 @@ function ConverterRow({
   );
 }
 
+/** The resources a converter touches, both recipe sides, as a searchable run. */
+function converterResources(converter: IsruConverterEntry): string {
+  return [...converter.inputs, ...converter.outputs]
+    .map((flow) => flow.resource ?? "")
+    .join(" ");
+}
+
 function ResourceOpsComponent(
   _props: Readonly<ComponentProps<ResourceOpsConfig>>,
 ) {
@@ -231,47 +221,11 @@ function ResourceOpsComponent(
   const allConverters = useMemo(() => converters ?? [], [converters]);
   const anything = allDrills.length + allConverters.length > 0;
 
-  // Both lists as one tagged row set, which is what a contributed filter runs
-  // against: an axis that only makes sense for converters (a mod's own process
-  // identity) has to be able to say so, and one that spans both (a resource)
-  // has to see both.
-  const units = useMemo<ResourceOpsUnit[]>(
-    () => [
-      ...allDrills.map((drill) => ({ kind: "drill" as const, drill })),
-      ...allConverters.map((converter) => ({
-        kind: "converter" as const,
-        converter,
-      })),
-    ],
-    [allDrills, allConverters],
-  );
-
-  // Filters are CONTRIBUTED, never hardcoded here. The generic by-resource axis
-  // is a built-in contribution (`./resourceFilters.ts`); a mod that knows how
-  // its own converters divide up contributes that axis from its own Uplink, on
-  // this same slot. So no taxonomy lives in this widget: it could not assert a
-  // life-support-versus-ISRU split even if it wanted to, because it has no idea
-  // which of these facets is which.
-  const filters = useContributedFilters("resource-ops.filters");
-  const filtered = filters.apply(units);
-
-  const drillList = useMemo(
-    () =>
-      filtered.flatMap((unit) => (unit.kind === "drill" ? [unit.drill] : [])),
-    [filtered],
-  );
-  const converterList = useMemo(
-    () =>
-      filtered.flatMap((unit) =>
-        unit.kind === "converter" ? [unit.converter] : [],
-      ),
-    [filtered],
-  );
-
-  const total = drillList.length + converterList.length;
-
-  // Index into the two lists read end to end, so one button walks the whole
-  // vessel rather than needing a separate control per section.
+  // Drills then converters, read end to end, so one "next" button walks the
+  // whole vessel. The index is into this full order, not the currently-shown
+  // subset: a hardware walk-through and an active text filter are not usually
+  // driven at the same time, and the returned unit name stays correct either way.
+  const total = allDrills.length + allConverters.length;
   const [highlighted, setHighlighted] = useState(0);
   const current = total > 0 ? highlighted % total : 0;
 
@@ -285,20 +239,40 @@ function ResourceOpsComponent(
       setHighlighted(nextIndex);
 
       const entry =
-        nextIndex < drillList.length
-          ? drillList[nextIndex]
-          : converterList[nextIndex - drillList.length];
+        nextIndex < allDrills.length
+          ? allDrills[nextIndex]
+          : allConverters[nextIndex - allDrills.length];
       return { unit: entry?.partTitle ?? entry?.partId ?? "unknown" };
     },
   });
 
-  const filter = (
-    <FilterBar
-      groups={filters.groups}
-      onChange={filters.onChange}
-      allLabel="All resources"
-    />
-  );
+  // The row list handed to FilterList. `searchText` is baked from the SHARED
+  // fields only (part title, kind, resource names), which is the widget's whole
+  // say over searchability: a contributed term (a mod's process title, itself
+  // a substring of the shared part title) matches against this without the
+  // widget ever reading a provider's extension bag.
+  const rows = useMemo<FilterRow[]>(() => {
+    const drillRows = allDrills.map((drill, index) => ({
+      id: drill.partId ?? `drill-${index}`,
+      searchText: `${drill.partTitle ?? drill.partId ?? "Drill"} drill ${
+        drill.resource ?? ""
+      }`,
+      node: <DrillRow drill={drill} highlighted={index === current} />,
+    }));
+    const converterRows = allConverters.map((converter, index) => ({
+      id: converter.partId ?? `converter-${index}`,
+      searchText: `${
+        converter.partTitle ?? converter.partId ?? "Converter"
+      } converter ${converterResources(converter)}`,
+      node: (
+        <ConverterRow
+          converter={converter}
+          highlighted={allDrills.length + index === current}
+        />
+      ),
+    }));
+    return [...drillRows, ...converterRows];
+  }, [allDrills, allConverters, current]);
 
   if (!anything) {
     return (
@@ -315,40 +289,10 @@ function ResourceOpsComponent(
   return (
     <Panel panelTitle="RESOURCE OPS">
       <ScrollArea>
-        <Stack gap="sm">
-          {filter}
-          {total === 0 && (
-            <EmptyState>Nothing on this vessel matches the filter</EmptyState>
-          )}
-          {drillList.length > 0 && (
-            <Section as="section" aria-label="Drills">
-              <SectionTitle>Drills</SectionTitle>
-              <Stack gap="xs">
-                {drillList.map((drill, index) => (
-                  <DrillRow
-                    key={drill.partId ?? `drill-${index}`}
-                    drill={drill}
-                    highlighted={index === current}
-                  />
-                ))}
-              </Stack>
-            </Section>
-          )}
-          {converterList.length > 0 && (
-            <Section as="section" aria-label="Converters">
-              <SectionTitle>Converters</SectionTitle>
-              <Stack gap="xs">
-                {converterList.map((converter, index) => (
-                  <ConverterRow
-                    key={converter.partId ?? `converter-${index}`}
-                    converter={converter}
-                    highlighted={drillList.length + index === current}
-                  />
-                ))}
-              </Stack>
-            </Section>
-          )}
-        </Stack>
+        <FilterList
+          rows={rows}
+          emptyLabel="Nothing on this vessel matches the filter"
+        />
       </ScrollArea>
     </Panel>
   );
@@ -366,14 +310,9 @@ registerComponent<ResourceOpsConfig>({
   minSize: { w: 3, h: 4 },
   component: ResourceOpsComponent,
   dataRequirements: ["isru.drills", "isru.converters"],
-  contributionSlots: ["resource-ops.filters"],
   defaultConfig: {},
   actions: resourceOpsActions,
   pushable: true,
 });
 
-// Re-exported so the sdk mirror's drift guard
-// (`contribution-slot-registry.conformance.test-d.ts`) can check this slot's
-// entry type against the real one, the same way ShipMap's entry types are.
-export type { ResourceOpsUnit } from "./unit";
 export { ResourceOpsComponent };

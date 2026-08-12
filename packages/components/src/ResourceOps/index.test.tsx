@@ -4,29 +4,22 @@ import {
   registerContribution,
   WidgetMetaContext,
 } from "@ksp-gonogo/core";
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@ksp-gonogo/test-utils";
+import { act, fireEvent, render, screen } from "@ksp-gonogo/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
-// Importing the real module runs its module-load registration of the built-in
-// `resource-ops.filters` contribution (./resourceFilters.ts, a side-effect
-// import inside this file), the same way importing any widget runs its own
-// `registerComponent`.
 import { ResourceOpsComponent } from "./index";
-import { resetResourceFilterCache } from "./resourceFilters";
 
 /**
  * Resource Ops consumes the ONE elected `isru.*` topic pair, so every case below
  * is written against the SHARED shape only. That is the claim the widget makes:
  * a row is complete without reading any provider's extension namespace, so the
  * same frames render identically whichever backend the mod elected.
+ *
+ * Filtering is delegated to a mounted `FilterList`: the widget bakes each row's
+ * `searchText` from shared fields and renders whatever search terms are
+ * contributed to its `resource-ops.filters` slot, knowing nothing about what any
+ * of them mean.
  */
 const CARRIED = ["isru.drills", "isru.converters"];
 
@@ -72,40 +65,29 @@ const CONVERTERS = [
   },
 ];
 
-// The contributed filters need the same wrapper the dashboard puts around
-// every widget (`GridItemContent.tsx`'s `WidgetContributions`): without a
-// contribution store the widget renders with no filters at all, which is also
-// the honest behaviour for a bare widget with no dashboard around it.
+// The widget declares no filter slot: the framework auto-aggregates
+// `resource-ops.filters` for every widget from this meta's componentId, the
+// same way it does the badges slot, so FilterList's terms flow with no
+// widget-side declaration.
 const META = {
   componentId: "resource-ops",
-  contributionSlots: ["resource-ops.filters"],
+  contributionSlots: [],
 } as const;
 
-afterEach(() => {
-  resetResourceFilterCache();
-  uplinkFilterOn = false;
-});
-
-// A stand-in for an Uplink's own contributed axis. Registered once at module
-// load (the registry has no unregister, and clearing it would take the
-// built-in by-resource contribution with it), gated on a flag so only the test
-// that wants it sees it.
-let uplinkFilterOn = false;
+// A stand-in for an Uplink's own contributed axis, registered once at module
+// load (the registry has no unregister) and gated on a flag so only the test
+// that wants it sees it. The term is a plain string, matched as a substring
+// against a row's baked searchText.
+let uplinkTermOn = false;
 
 registerContribution({
-  id: "fixture-uplink",
+  id: "fixture-uplink-term",
   contributes: "resource-ops.filters",
-  compute: () =>
-    uplinkFilterOn
-      ? [
-          {
-            id: "hydroponics",
-            label: "Hydroponics",
-            predicate: (unit) =>
-              unit.kind === "converter" && unit.converter.partId === "202",
-          },
-        ]
-      : [],
+  compute: () => (uplinkTermOn ? ["Monopropellant"] : []),
+});
+
+afterEach(() => {
+  uplinkTermOn = false;
 });
 
 function renderWidget() {
@@ -135,76 +117,52 @@ describe("ResourceOps", () => {
     expect(await screen.findByText("Drill-O-Matic")).toBeInTheDocument();
     expect(screen.getByText("Drill-O-Matic Junior")).toBeInTheDocument();
     expect(screen.getByText("Convert-O-Tron 250")).toBeInTheDocument();
-
-    // The recipe reads as resources, both sides. Scoped to the converters
-    // section because the resource filter's own options carry the same names.
-    const converters = screen.getByRole("region", { name: "Converters" });
-    expect(within(converters).getByText(/LiquidFuel/)).toBeInTheDocument();
-    expect(within(converters).getByText(/ElectricCharge/)).toBeInTheDocument();
+    expect(screen.getByText("Convert-O-Tron 125")).toBeInTheDocument();
+    // The recipe reads as resources, both sides.
+    expect(screen.getByText(/LiquidFuel/)).toBeInTheDocument();
   });
 
-  // The filter list is CONTRIBUTED, never hardcoded here: the widget holds no
-  // taxonomy, so it could not offer a "hide life support" preset even if we
-  // wanted one. The by-resource axis below is the built-in contribution; a
-  // provider that knows how its own converters divide up contributes its axis
-  // to this same slot from its own Uplink package.
-  it("shows everything until the operator narrows it", async () => {
+  it("shows everything until the operator narrows it with the search box", async () => {
     const { fixture } = renderWidget();
     act(() => {
       fixture.emit("isru.drills", DRILLS);
       fixture.emit("isru.converters", CONVERTERS);
     });
 
-    const filter = await screen.findByLabelText("Resource");
-    expect(filter).toHaveValue("");
-    expect(screen.getByText("Drill-O-Matic")).toBeInTheDocument();
+    await screen.findByText("Drill-O-Matic");
+    const search = screen.getByLabelText("Search");
+    expect(search).toHaveValue("");
     expect(screen.getByText("Convert-O-Tron 250")).toBeInTheDocument();
-  });
 
-  it("narrows to the units that handle one resource, drills and converters alike", async () => {
-    const { fixture } = renderWidget();
+    // Typing a resource narrows to the units that touch it, drills and
+    // converters alike, matched against the searchText the widget baked.
     act(() => {
-      fixture.emit("isru.drills", DRILLS);
-      fixture.emit("isru.converters", CONVERTERS);
+      fireEvent.change(search, { target: { value: "Monopropellant" } });
     });
-
-    const filter = await screen.findByLabelText("Resource");
-    // The option's value is a host-side id namespaced by whichever
-    // contribution supplied the facet, so the test picks it by its label the
-    // way an operator does rather than pinning that id's shape.
-    const option = within(filter).getByRole("option", {
-      name: "Monopropellant",
-    }) as HTMLOptionElement;
-    act(() => {
-      fireEvent.change(filter, { target: { value: option.value } });
-    });
-
-    // Only the converter whose recipe names it survives, on either side.
     expect(screen.getByText("Convert-O-Tron 125")).toBeInTheDocument();
     expect(screen.queryByText("Convert-O-Tron 250")).not.toBeInTheDocument();
-    // And the ore drills go, because they handle a different resource.
     expect(screen.queryByText("Drill-O-Matic")).not.toBeInTheDocument();
   });
 
-  it("renders a contributed filter it knows nothing about, and applies it", async () => {
-    // The widget has never heard of "hydroponics": it renders it as a toggle
-    // because it arrived on its slot, and applies the predicate it was handed.
-    uplinkFilterOn = true;
+  it("renders a contributed term it knows nothing about, and applies it", async () => {
+    // The widget has never heard of this filter: it renders it as a toggle
+    // because it arrived on its slot, and narrows by plain substring.
+    uplinkTermOn = true;
     const { fixture } = renderWidget();
     act(() => {
       fixture.emit("isru.drills", DRILLS);
       fixture.emit("isru.converters", CONVERTERS);
     });
 
-    const toggle = await screen.findByRole("button", { name: "Hydroponics" });
+    const toggle = await screen.findByRole("button", {
+      name: "Monopropellant",
+    });
     act(() => {
       fireEvent.click(toggle);
     });
 
-    await waitFor(() =>
-      expect(screen.queryByText("Convert-O-Tron 250")).not.toBeInTheDocument(),
-    );
     expect(screen.getByText("Convert-O-Tron 125")).toBeInTheDocument();
+    expect(screen.queryByText("Convert-O-Tron 250")).not.toBeInTheDocument();
     expect(screen.queryByText("Drill-O-Matic")).not.toBeInTheDocument();
   });
 
@@ -302,6 +260,7 @@ describe("ResourceOps", () => {
       fixture.emit("isru.converters", CONVERTERS);
     });
 
+    await screen.findByText("Drill-O-Matic");
     expect(await axe(container)).toHaveNoViolations();
   });
 });

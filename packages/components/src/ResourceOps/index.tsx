@@ -104,8 +104,24 @@ const RIGHT_ALIGN = { textAlign: "right" } as const;
  * fix on its own name column).
  */
 const RESOURCE_NAME_STYLE = {
-  fontSize: "var(--font-size-sm)",
+  fontSize: "var(--font-size-xs)",
   color: "var(--color-text-primary)",
+} as const;
+
+/**
+ * A touch roomier VERTICALLY than `Card`'s own default (`--space-6
+ * --space-8`, tuned for a compact single-line row): a process card stacks a
+ * whole table, so the top/bottom inset steps up to `--space-8` to keep the
+ * table off the card's edge. The horizontal inset is left at the card
+ * default: the resource-name column is already squeezed to a `minmax(0,
+ * 1fr)` track against two `auto`-width columns (rate, direction) at this
+ * widget's registered 6-column default width, and widening the horizontal
+ * inset directly steals from that track, making names truncate harder. A
+ * `style` override rather than a `Card` prop change, so the bump stays
+ * scoped to this widget's cards instead of every `Card` in the app.
+ */
+const CARD_PADDING = {
+  padding: "var(--space-8) var(--space-8)",
 } as const;
 
 /**
@@ -168,11 +184,13 @@ function ResourceCells({
       <Truncate style={RESOURCE_NAME_STYLE} title={flow.resource ?? undefined}>
         {flow.resource ?? "?"}
       </Truncate>
-      <Value size="sm" tone="default" style={RIGHT_ALIGN}>
+      <Value size="xs" tone="default" style={RIGHT_ALIGN}>
         {flow.rate !== null && flow.rate !== undefined ? (
           <Unit value={flow.rate} decimals={rateDecimals(flow.rate, 3)} />
         ) : (
-          <Value tone="faint">unknown</Value>
+          <Value size="xs" tone="faint">
+            unknown
+          </Value>
         )}
       </Value>
       <ReadoutCaption style={RIGHT_ALIGN}>{direction}</ReadoutCaption>
@@ -189,27 +207,28 @@ function DrillCard({
       aria-current={highlighted ? "true" : undefined}
       tone={drill.running ? "go" : "default"}
       categoryColor={drill.resource ? resourceColor(drill.resource) : undefined}
+      style={CARD_PADDING}
     >
-      <Stack gap="xs">
+      <Stack gap="sm">
         {/* Wraps rather than clips: a no-wrap Cluster cut badges off at the
             default tile width. */}
-        <Cluster justify="start" gap="xs" wrap>
-          <Value size="sm" tone="default" weight="semibold">
+        <Cluster justify="start" gap="sm" wrap>
+          <Value size="xs" tone="default" weight="semibold">
             {drill.partTitle ?? drill.partId ?? "Drill"}
           </Value>
           {/* Deployed is genuinely absent on a harvester with no deploy
               animation, so the chip is omitted rather than shown as a false
               "retracted". */}
           {drill.deployed !== null && drill.deployed !== undefined && (
-            <Badge severity={drill.deployed ? "nominal" : "info"}>
+            <Badge size="sm" severity={drill.deployed ? "nominal" : "info"}>
               {drill.deployed ? "deployed" : "retracted"}
             </Badge>
           )}
-          <Badge severity={drill.running ? "nominal" : "info"}>
+          <Badge size="sm" severity={drill.running ? "nominal" : "info"}>
             {drill.running ? "running" : "stopped"}
           </Badge>
         </Cluster>
-        <Grid cols={RESOURCE_TABLE_COLS} gap="sm" rowGap="xs" align="baseline">
+        <Grid cols={RESOURCE_TABLE_COLS} gap="sm" rowGap="sm" align="baseline">
           <ResourceCells
             flow={{ resource: drill.resource, rate: drill.rate }}
             direction="extract"
@@ -218,9 +237,13 @@ function DrillCard({
         <Inline gap="xs">
           <ReadoutCaption>abundance</ReadoutCaption>
           {drill.abundance !== null && drill.abundance !== undefined ? (
-            <Unit value={drill.abundance} as="%" decimals={2} />
+            <Value size="xs" tone="default">
+              <Unit value={drill.abundance} as="%" decimals={2} />
+            </Value>
           ) : (
-            <Value tone="faint">unknown</Value>
+            <Value size="xs" tone="faint">
+              unknown
+            </Value>
           )}
         </Inline>
       </Stack>
@@ -256,16 +279,21 @@ function ConverterCard({
       categoryColor={
         primaryResource ? resourceColor(primaryResource) : undefined
       }
+      style={CARD_PADDING}
     >
-      <Stack gap="xs">
-        <Cluster justify="start" gap="xs" wrap>
-          <Value size="sm" tone="default" weight="semibold">
+      <Stack gap="sm">
+        <Cluster justify="start" gap="sm" wrap>
+          <Value size="xs" tone="default" weight="semibold">
             {converter.partTitle ?? converter.partId ?? "Converter"}
           </Value>
-          <Badge severity={converter.running ? "nominal" : "info"}>
+          <Badge size="sm" severity={converter.running ? "nominal" : "info"}>
             {converter.running ? "running" : "stopped"}
           </Badge>
-          {starved && <Badge severity="warning">no output</Badge>}
+          {starved && (
+            <Badge size="sm" severity="warning">
+              no output
+            </Badge>
+          )}
         </Cluster>
         {/* The recipe table is the card's core content: every input then every
             output, one row each, columns aligned by the shared Grid template
@@ -273,7 +301,7 @@ function ConverterCard({
             genuinely empty (a scrubber has no output; a hypothetical pure
             generator would have no input), and reads as that fact via a
             "none" row rather than a blank gap in the table. */}
-        <Grid cols={RESOURCE_TABLE_COLS} gap="sm" rowGap="xs" align="baseline">
+        <Grid cols={RESOURCE_TABLE_COLS} gap="sm" rowGap="sm" align="baseline">
           {converter.inputs.length > 0 ? (
             converter.inputs.map((flow, index) => (
               <ResourceCells
@@ -283,7 +311,7 @@ function ConverterCard({
               />
             ))
           ) : (
-            <Value tone="faint" size="sm">
+            <Value tone="faint" size="xs">
               none
             </Value>
           )}
@@ -298,7 +326,7 @@ function ConverterCard({
           ) : (
             // A consume-and-dump process (a scrubber) has no output side by
             // design: this reads as a fact, not a blank row.
-            <Value tone="faint" size="sm">
+            <Value tone="faint" size="xs">
               none
             </Value>
           )}
@@ -342,13 +370,13 @@ function ResourceOpsStats({
       aria-label="Resource ops summary"
     >
       <Inline gap="xs">
-        <Value size="sm" tone="default" weight="semibold">
+        <Value size="xs" tone="default" weight="semibold">
           {total}
         </Value>
         <ReadoutCaption>{total === 1 ? "process" : "processes"}</ReadoutCaption>
       </Inline>
       <Inline gap="xs">
-        <Value size="sm" tone="default" weight="semibold">
+        <Value size="xs" tone="default" weight="semibold">
           {activeCount}
         </Value>
         <ReadoutCaption>active</ReadoutCaption>
@@ -356,16 +384,18 @@ function ResourceOpsStats({
       {netEc !== null && (
         <Inline gap="xs">
           <ReadoutCaption>net EC</ReadoutCaption>
-          <Unit
-            value={value("units/s", netEc)}
-            decimals={rateDecimals(netEc, 2)}
-          />
+          <Value size="xs" tone="default">
+            <Unit
+              value={value("units/s", netEc)}
+              decimals={rateDecimals(netEc, 2)}
+            />
+          </Value>
         </Inline>
       )}
       {location && (
         <Inline gap="xs">
           <ReadoutCaption>at</ReadoutCaption>
-          <Value size="sm" tone="default">
+          <Value size="xs" tone="default">
             {location}
           </Value>
         </Inline>
@@ -489,6 +519,7 @@ function ResourceOpsComponent(
         <FilterList
           rows={rows}
           emptyLabel="Nothing on this vessel matches the filter"
+          rowGap="md"
         />
       </ScrollArea>
     </Panel>

@@ -4,7 +4,7 @@ import { useContributions } from "./contributionsRead";
 import { EmptyState } from "./EmptyState";
 import { FilterChip } from "./FilterChip";
 import { Field, FieldLabel, Input } from "./Form";
-import { Stack } from "./Stack";
+import { type SpaceToken, Stack } from "./Stack";
 
 // FilterList owns its `filters` slot: a provider contributes pre-filled
 // SEARCH TERMS (plain strings) via `registerContribution`, and this shows
@@ -30,6 +30,14 @@ export interface FilterListProps {
   rows: readonly FilterRow[];
   /** Shown when a filter is active but matches nothing. */
   emptyLabel?: ReactNode;
+  /**
+   * Gap between rendered rows, snapped to the space scale. Defaults to `xs`,
+   * the original tight-list spacing. A widget whose rows are their own cards
+   * (rather than plain list lines) wants more separation between them, e.g.
+   * `md`, so neighbouring cards read as distinct records rather than a fused
+   * block.
+   */
+  rowGap?: SpaceToken;
 }
 
 /**
@@ -46,6 +54,7 @@ export interface FilterListProps {
 export function FilterList({
   rows,
   emptyLabel = "Nothing matches the filter",
+  rowGap = "xs",
 }: FilterListProps) {
   const terms = useContributions("filters");
   // Distinct terms, in contribution order: two providers can land the same
@@ -108,7 +117,7 @@ export function FilterList({
       )}
 
       {shown.length > 0 ? (
-        <Stack gap="xs">
+        <Stack gap={rowGap}>
           {shown.map((row) => (
             <div key={row.id}>{row.node}</div>
           ))}

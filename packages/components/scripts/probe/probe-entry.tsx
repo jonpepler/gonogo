@@ -57,6 +57,10 @@ import "@ksp-gonogo/gonogo-kos-uplink";
 // Side-effect import: the Kerbalism Uplink's own widgets (Ship Systems,
 // its Greenhouse augment, …) self-register on module load, same contract.
 import "@ksp-gonogo/gonogo-kerbalism-uplink";
+// Side-effect import: RealAntennas registers no standalone widget, but wires
+// its comm-signal.badges/sections augments (+ the Topic registrations they
+// read) at module load, same contract.
+import "@ksp-gonogo/gonogo-realantennas-uplink";
 import { defaultDarkTheme } from "@ksp-gonogo/ui-kit";
 import { createElement, Fragment } from "react";
 import { createRoot, type Root } from "react-dom/client";

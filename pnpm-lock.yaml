@@ -787,6 +787,9 @@ importers:
       '@ksp-gonogo/gonogo-kos-uplink':
         specifier: workspace:*
         version: link:../../mod/GonogoKosUplink/client
+      '@ksp-gonogo/gonogo-realantennas-uplink':
+        specifier: workspace:*
+        version: link:../../mod/GonogoRealAntennasUplink/client
       '@ksp-gonogo/sitrep-sdk':
         specifier: workspace:*
         version: link:../../mod/sitrep-sdk

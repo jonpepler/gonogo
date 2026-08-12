@@ -4,13 +4,16 @@ import {
   useActionInput,
   useTelemetry,
 } from "@ksp-gonogo/core";
+import { useCommand } from "@ksp-gonogo/sitrep-client";
 import type {
+  CommandResult,
   IsruConverterEntry,
   IsruDrillEntry,
   IsruResourceFlow,
 } from "@ksp-gonogo/sitrep-sdk";
-import { value } from "@ksp-gonogo/sitrep-sdk";
+import { CommandErrorCode, value } from "@ksp-gonogo/sitrep-sdk";
 import {
+  ActionButton,
   Badge,
   Card,
   Cluster,
@@ -26,6 +29,7 @@ import {
   Stack,
   Truncate,
   Unit,
+  usePanelDelay,
   Value,
 } from "@ksp-gonogo/ui-kit";
 import { useMemo, useState } from "react";
@@ -64,16 +68,28 @@ import { magnitudeOf, type Quantityish } from "../shared/magnitude";
  * converters, never that ISRU is untracked: stock genuinely models ISRU, so the
  * elected backend always has a real answer.
  *
- * LOCATION: neither `IsruDrillEntry` nor `IsruConverterEntry` carries a vessel or
- * body field, so a process can never say WHICH vessel it is on beyond the
- * active-vessel-scoped guarantee above. Since every entry on this stream is
- * necessarily the active vessel's, the header below answers "is this all in one
- * place, on a vessel, on Duna" honestly with data the shared shape already has
- * elsewhere: `vessel.identity` (name) resolved against `system.bodies`
- * (current body), both optional so a vanilla install with neither still renders
- * the list untouched. A genuine per-process location (e.g. a future multi-vessel
- * view) is NOT representable today; that needs a contract change adding a
- * `vesselId`/`vesselName` field to both entry types, mod-side.
+ * LOCATION: both `IsruDrillEntry` and `IsruConverterEntry` carry `vesselId`/
+ * `vesselName`/`parentBodyIndex`, populated mod-side from each part's own live
+ * vessel (not `FlightGlobals.ActiveVessel`), so a row's location is correct even
+ * the day a capture widens past the single active vessel. Today every row's
+ * value is identical (both channels are still active-vessel-scoped, see above),
+ * so the SINGLE-vessel case keeps the plain header line below: "is this all in
+ * one place, on a vessel, on Duna", sourced from `vessel.identity`/`system.bodies`
+ * exactly as before. The moment more than one distinct `vesselId` shows up across
+ * the two lists, each card grows its own location caption instead (the header
+ * line would be a lie for a mixed list), so nothing about the widget's steady
+ * state today changes.
+ *
+ * DEVICE CONTROL: each card carries a start/stop toggle
+ * (`isru.setDrillEnabled`/`isru.setConverterEnabled`), firing stock's own
+ * `ModuleResourceHarvester`/`ModuleResourceConverter.StartResourceConverter`/
+ * `StopResourceConverter` (both inherited unmodified from `BaseConverter`, so one
+ * mod-side write path serves both entry kinds). FAIL-SOFT: a backend with no
+ * write path (Kerbalism, today) reports `CommandErrorCode.ModeUnavailable`
+ * rather than the button silently doing nothing. Deploy/retract (drills only,
+ * `ModuleAnimationGroup`) and the harvester/converter's other KSP-side surface
+ * (`AutoShutdown`, `SetEfficiencyBonus`, multi-recipe parts) are NOT built here;
+ * start/stop is the obvious control, the rest is a follow-up.
  */
 
 type ResourceOpsConfig = Record<string, never>;
@@ -165,6 +181,94 @@ function netElectricChargeDraw(
   return touched ? net : null;
 }
 
+/** `parentBodyIndex` -> body name, the same `system.bodies` join the header's own `bodyName` uses. */
+function bodyNameOf(
+  index: number | null | undefined,
+  bodyNames: ReadonlyMap<number, string | undefined>,
+): string | undefined {
+  return index != null ? bodyNames.get(index) : undefined;
+}
+
+/** A card's own location caption: "<vessel> · <body>", either half optional. */
+function locationCaption(
+  vesselName: string | null | undefined,
+  parentBodyIndex: number | null | undefined,
+  bodyNames: ReadonlyMap<number, string | undefined>,
+): string | undefined {
+  const body = bodyNameOf(parentBodyIndex, bodyNames);
+  if (!vesselName) return body;
+  return body ? `${vesselName} · ${body}` : vesselName;
+}
+
+/**
+ * Start/stop toggle for one drill or converter. Fires
+ * `isru.setDrillEnabled`/`isru.setConverterEnabled` with an ABSOLUTE state
+ * (never a bare toggle, matching every other actuation command in the
+ * contract): `{ partId, enabled: !running }`. Mod-side this reaches stock's
+ * own `StartResourceConverter`/`StopResourceConverter`, inherited unmodified
+ * by both `ModuleResourceHarvester` and `ModuleResourceConverter` from
+ * `BaseConverter`, so the same command shape serves either card kind.
+ *
+ * FAIL-SOFT: a backend with no real write path (Kerbalism, today) answers
+ * `CommandErrorCode.ModeUnavailable` rather than the button silently doing
+ * nothing; that comes back as a confirmed `CommandResult` with `success:
+ * false`, surfaced here as a small warning badge rather than swallowed.
+ */
+function ProcessToggle({
+  command,
+  partId,
+  running,
+}: Readonly<{
+  command: "isru.setDrillEnabled" | "isru.setConverterEnabled";
+  partId: string | null | undefined;
+  running: boolean | null | undefined;
+}>) {
+  const cmd = useCommand(command);
+  // Mandatory: `useCommand`'s own dispatch-time assertion requires every
+  // handle be wired to the panel's shared delay rail, no opt-out, so a
+  // per-card toggle's signal delay is exactly as visible as any other
+  // command in the widget.
+  usePanelDelay(cmd);
+  const pending = cmd.status.phase === "in-flight";
+  const result =
+    cmd.status.phase === "confirmed"
+      ? (cmd.status.result as CommandResult | undefined)
+      : undefined;
+  const failed = result !== undefined && result.success === false;
+
+  // No id at all can never round-trip to a real part on the vessel: nothing
+  // to command, so no control to show (matches PartActionCommandProvider's
+  // own NotFound-on-empty-id posture, one layer up).
+  if (!partId) {
+    return null;
+  }
+
+  return (
+    <>
+      <ActionButton
+        type="button"
+        tone={running ? "ghost" : "go"}
+        disabled={pending}
+        onClick={() =>
+          void cmd.send(
+            { partId, enabled: !running },
+            { label: running ? "Stop" : "Start" },
+          )
+        }
+      >
+        {pending ? "…" : running ? "Stop" : "Start"}
+      </ActionButton>
+      {failed && (
+        <Badge size="sm" severity="warning">
+          {result.errorCode === CommandErrorCode.ModeUnavailable
+            ? "not supported"
+            : "command failed"}
+        </Badge>
+      )}
+    </>
+  );
+}
+
 /**
  * One row of a process's resource table: resource name, its rate, and which
  * way it flows ("in" / "out" / "extract"). Returns a FRAGMENT of three flat
@@ -201,7 +305,18 @@ function ResourceCells({
 function DrillCard({
   drill,
   highlighted,
-}: Readonly<{ drill: IsruDrillEntry; highlighted: boolean }>) {
+  showLocation,
+  bodyNames,
+}: Readonly<{
+  drill: IsruDrillEntry;
+  highlighted: boolean;
+  showLocation: boolean;
+  bodyNames: ReadonlyMap<number, string | undefined>;
+}>) {
+  const location = showLocation
+    ? locationCaption(drill.vesselName, drill.parentBodyIndex, bodyNames)
+    : undefined;
+
   return (
     <Card
       aria-current={highlighted ? "true" : undefined}
@@ -227,7 +342,20 @@ function DrillCard({
           <Badge size="sm" severity={drill.running ? "nominal" : "info"}>
             {drill.running ? "running" : "stopped"}
           </Badge>
+          <ProcessToggle
+            command="isru.setDrillEnabled"
+            partId={drill.partId}
+            running={drill.running}
+          />
         </Cluster>
+        {location && (
+          <Inline gap="xs">
+            <ReadoutCaption>at</ReadoutCaption>
+            <Value size="xs" tone="default">
+              {location}
+            </Value>
+          </Inline>
+        )}
         <Grid cols={RESOURCE_TABLE_COLS} gap="sm" rowGap="sm" align="baseline">
           <ResourceCells
             flow={{ resource: drill.resource, rate: drill.rate }}
@@ -254,7 +382,14 @@ function DrillCard({
 function ConverterCard({
   converter,
   highlighted,
-}: Readonly<{ converter: IsruConverterEntry; highlighted: boolean }>) {
+  showLocation,
+  bodyNames,
+}: Readonly<{
+  converter: IsruConverterEntry;
+  highlighted: boolean;
+  showLocation: boolean;
+  bodyNames: ReadonlyMap<number, string | undefined>;
+}>) {
   // A converter that is on but moving nothing is a starved recipe. That is the
   // derived diagnostic the shared shape is meant to carry, rather than a string
   // no engine actually reports, so it is spelled out here rather than on the wire.
@@ -271,6 +406,14 @@ function ConverterCard({
   // never a status signal, that's `tone` below.
   const primaryResource =
     converter.outputs[0]?.resource ?? converter.inputs[0]?.resource;
+
+  const location = showLocation
+    ? locationCaption(
+        converter.vesselName,
+        converter.parentBodyIndex,
+        bodyNames,
+      )
+    : undefined;
 
   return (
     <Card
@@ -294,7 +437,20 @@ function ConverterCard({
               no output
             </Badge>
           )}
+          <ProcessToggle
+            command="isru.setConverterEnabled"
+            partId={converter.partId}
+            running={converter.running}
+          />
         </Cluster>
+        {location && (
+          <Inline gap="xs">
+            <ReadoutCaption>at</ReadoutCaption>
+            <Value size="xs" tone="default">
+              {location}
+            </Value>
+          </Inline>
+        )}
         {/* The recipe table is the card's core content: every input then every
             output, one row each, columns aligned by the shared Grid template
             rather than the old wrapping inline runs. Either side can be
@@ -467,6 +623,28 @@ function ResourceOpsComponent(
       : identity.name
     : undefined;
 
+  // Index -> name, the same join `bodyName` above performs, shared down to
+  // every card's own per-row location caption.
+  const bodyNames = useMemo(
+    () =>
+      new Map(
+        (systemBodies?.bodies ?? []).map((b) => [b.index, b.name] as const),
+      ),
+    [systemBodies],
+  );
+
+  // More than one distinct vessel across the two lists flips every card into
+  // showing its OWN location: the single header line above would otherwise
+  // claim one place for a list that is no longer scoped to just one. Today
+  // both channels are still active-vessel-scoped (see the class doc), so this
+  // is always false in practice; it activates itself the day a capture widens.
+  const showLocation = useMemo(() => {
+    const ids = new Set<string>();
+    for (const d of allDrills) if (d.vesselId) ids.add(d.vesselId);
+    for (const c of allConverters) if (c.vesselId) ids.add(c.vesselId);
+    return ids.size > 1;
+  }, [allDrills, allConverters]);
+
   // The row list handed to FilterList. `searchText` is baked from the SHARED
   // fields only (part title, kind, resource names), which is the widget's whole
   // say over searchability: a contributed term (a mod's process title, itself
@@ -478,7 +656,14 @@ function ResourceOpsComponent(
       searchText: `${drill.partTitle ?? drill.partId ?? "Drill"} drill ${
         drill.resource ?? ""
       }`,
-      node: <DrillCard drill={drill} highlighted={index === current} />,
+      node: (
+        <DrillCard
+          drill={drill}
+          highlighted={index === current}
+          showLocation={showLocation}
+          bodyNames={bodyNames}
+        />
+      ),
     }));
     const converterRows = allConverters.map((converter, index) => ({
       id: converter.partId ?? `converter-${index}`,
@@ -489,11 +674,13 @@ function ResourceOpsComponent(
         <ConverterCard
           converter={converter}
           highlighted={allDrills.length + index === current}
+          showLocation={showLocation}
+          bodyNames={bodyNames}
         />
       ),
     }));
     return [...drillRows, ...converterRows];
-  }, [allDrills, allConverters, current]);
+  }, [allDrills, allConverters, current, showLocation, bodyNames]);
 
   if (!anything) {
     return (
@@ -520,6 +707,7 @@ function ResourceOpsComponent(
           rows={rows}
           emptyLabel="Nothing on this vessel matches the filter"
           rowGap="md"
+          chipSize="sm"
         />
       </ScrollArea>
     </Panel>
@@ -532,7 +720,7 @@ registerComponent<ResourceOpsConfig>({
   id: "resource-ops",
   name: "Resource Ops",
   description:
-    "Every drill and chemical converter on the active vessel, grouped into cards: resource, live abundance and extraction rate, deploy and run state, and each converter's recipe as an aligned input/output table. A summary header shows process count, active count, and net EC draw. Renders identically whichever ISRU backend the mod elected.",
+    "Every drill and chemical converter on the active vessel, grouped into cards: resource, live abundance and extraction rate, deploy and run state, each converter's recipe as an aligned input/output table, and a start/stop toggle. A summary header shows process count, active count, and net EC draw. Renders identically whichever ISRU backend the mod elected.",
   tags: ["telemetry", "resources"],
   defaultSize: { w: 6, h: 8 },
   minSize: { w: 3, h: 4 },

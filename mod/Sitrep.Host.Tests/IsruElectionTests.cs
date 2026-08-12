@@ -33,6 +33,8 @@ namespace Sitrep.Host.Tests
             public string BackendId { get; }
             public IReadOnlyList<IsruDrillEntry> Drills() => new List<IsruDrillEntry>();
             public IReadOnlyList<IsruConverterEntry> Converters() => new List<IsruConverterEntry>();
+            public CommandResult SetDrillEnabled(string partId, bool enabled) => CommandResult.Fail(CommandErrorCode.ModeUnavailable);
+            public CommandResult SetConverterEnabled(string partId, bool enabled) => CommandResult.Fail(CommandErrorCode.ModeUnavailable);
         }
 
         private static Kernel ResolvedKernel(bool providerPresent)

@@ -5,6 +5,7 @@ import {
   WidgetMetaContext,
 } from "@ksp-gonogo/core";
 import { act, fireEvent, render, screen, within } from "@ksp-gonogo/test-utils";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
@@ -361,5 +362,59 @@ describe("ResourceOps", () => {
 
     const header = await findStatsHeader();
     expect(within(header).queryByText("at")).not.toBeInTheDocument();
+  });
+
+  it("dispatches isru.setConverterEnabled with an absolute state when the toggle is fired", async () => {
+    const user = userEvent.setup();
+    const { fixture } = renderWidget([...CARRIED, "isru.setConverterEnabled"]);
+    act(() => {
+      fixture.emit("isru.drills", []);
+      fixture.emit("isru.converters", [CONVERTERS[0]]);
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Stop" }));
+
+    const sent = fixture.transport.sentCommands;
+    expect(sent).toHaveLength(1);
+    expect(sent[0].command).toBe("isru.setConverterEnabled");
+    // The converter is running, so the button commands the OPPOSITE absolute
+    // state (stop), never a bare toggle.
+    expect(sent[0].args).toEqual({ partId: "201", enabled: false });
+  });
+
+  it("dispatches isru.setDrillEnabled the same way for a stopped drill", async () => {
+    const user = userEvent.setup();
+    const { fixture } = renderWidget([...CARRIED, "isru.setDrillEnabled"]);
+    act(() => {
+      fixture.emit("isru.drills", [DRILLS[1]]); // stopped
+      fixture.emit("isru.converters", []);
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Start" }));
+
+    const sent = fixture.transport.sentCommands;
+    expect(sent).toHaveLength(1);
+    expect(sent[0].command).toBe("isru.setDrillEnabled");
+    expect(sent[0].args).toEqual({ partId: "102", enabled: true });
+  });
+
+  it("surfaces a fail-soft ModeUnavailable response rather than swallowing it", async () => {
+    const user = userEvent.setup();
+    const { fixture } = renderWidget([...CARRIED, "isru.setConverterEnabled"]);
+    // ModeUnavailable = 3: the backend has no write path (e.g. Kerbalism
+    // today), the same code IsruCoreUplink.HandleSetEnabled returns when no
+    // backend is elected.
+    fixture.transport.setCommandHandler(() => ({
+      success: false,
+      errorCode: 3,
+    }));
+    act(() => {
+      fixture.emit("isru.drills", []);
+      fixture.emit("isru.converters", [CONVERTERS[0]]);
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Stop" }));
+
+    expect(await screen.findByText("not supported")).toBeInTheDocument();
   });
 });

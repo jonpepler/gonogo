@@ -44,6 +44,12 @@ namespace Gonogo.KerbalismUplink
 
             var entries = KerbalismIsruMap.Drills(_k.Harvesters(v));
             ApplyPartTitles(v, entries, e => e.PartId, (e, title) => e.PartTitle = title);
+            ApplyVesselInfo(v, entries, (e, id, name, body) =>
+            {
+                e.VesselId = id;
+                e.VesselName = name;
+                e.ParentBodyIndex = body;
+            });
             return entries;
         }
 
@@ -64,8 +70,31 @@ namespace Gonogo.KerbalismUplink
 
             var entries = KerbalismIsruMap.Converters(processes, profile.Processes);
             ApplyPartTitles(v, entries, e => e.PartId, (e, title) => e.PartTitle = title);
+            ApplyVesselInfo(v, entries, (e, id, name, body) =>
+            {
+                e.VesselId = id;
+                e.VesselName = name;
+                e.ParentBodyIndex = body;
+            });
             return entries;
         }
+
+        /// <summary>
+        /// Start or stop stops here: Kerbalism deletes stock's
+        /// <c>ModuleResourceHarvester</c>/<c>ModuleResourceConverter</c> outright
+        /// (see the class doc), so the stock write path
+        /// (<c>StockIsruBackend.SetDrillEnabled</c>/<c>SetConverterEnabled</c>) has
+        /// nothing to call. Kerbalism's own process on/off toggle is a separate
+        /// reflection surface this pass does not build; a genuinely typed write
+        /// there is follow-up work. Fail-soft rather than throw, the same
+        /// contract every other backend write in this Uplink keeps.
+        /// </summary>
+        public CommandResult SetDrillEnabled(string partId, bool enabled) =>
+            CommandResult.Fail(CommandErrorCode.ModeUnavailable);
+
+        /// <summary>Same not-yet-built posture as <see cref="SetDrillEnabled"/>.</summary>
+        public CommandResult SetConverterEnabled(string partId, bool enabled) =>
+            CommandResult.Fail(CommandErrorCode.ModeUnavailable);
 
         /// <summary>
         /// Fills each entry's part title from the live vessel. The mappers leave it
@@ -104,6 +133,34 @@ namespace Gonogo.KerbalismUplink
                 {
                     setTitle(entry, title);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Fills each entry's vessel/body location fields. This backend only ever
+        /// reads <c>FlightGlobals.ActiveVessel</c> (see the class doc: no capture
+        /// bundle, no multi-vessel walk), so every entry gets the SAME vessel here
+        /// today; the per-entry write (rather than a single header-level value)
+        /// keeps this correct if a future capture ever widens to more than one
+        /// vessel, the same forward-looking posture <c>StockIsruBackend</c> takes.
+        /// </summary>
+        private static void ApplyVesselInfo<T>(
+            Vessel vessel,
+            List<T> entries,
+            System.Action<T, string?, string?, int?> setInfo)
+        {
+            if (entries.Count == 0)
+            {
+                return;
+            }
+
+            var id = vessel.id.ToString();
+            var name = vessel.vesselName;
+            var body = vessel.mainBody != null ? vessel.mainBody.flightGlobalsIndex : (int?)null;
+
+            foreach (var entry in entries)
+            {
+                setInfo(entry, id, name, body);
             }
         }
     }

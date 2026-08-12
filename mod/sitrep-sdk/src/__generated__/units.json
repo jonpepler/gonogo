@@ -386,22 +386,32 @@
       "partId": "id"
     },
     "IsruConverterEntry": {
+      "parentBodyIndex": "id",
       "partId": "id",
       "partTitle": "text",
-      "running": "flag"
+      "running": "flag",
+      "vesselId": "id",
+      "vesselName": "text"
     },
     "IsruDrillEntry": {
       "abundance": "ratio",
       "deployed": "flag",
+      "parentBodyIndex": "id",
       "partId": "id",
       "partTitle": "text",
       "rate": "units/s",
       "resource": "text",
-      "running": "flag"
+      "running": "flag",
+      "vesselId": "id",
+      "vesselName": "text"
     },
     "IsruResourceFlow": {
       "rate": "units/s",
       "resource": "text"
+    },
+    "IsruSetEnabledArgs": {
+      "enabled": "flag",
+      "partId": "id"
     },
     "LabEntry": {
       "dataStorage": "Mit",
@@ -1135,18 +1145,24 @@
       "makingHistory": "flag"
     },
     "isru.converters": {
+      "parentBodyIndex": "id",
       "partId": "id",
       "partTitle": "text",
-      "running": "flag"
+      "running": "flag",
+      "vesselId": "id",
+      "vesselName": "text"
     },
     "isru.drills": {
       "abundance": "ratio",
       "deployed": "flag",
+      "parentBodyIndex": "id",
       "partId": "id",
       "partTitle": "text",
       "rate": "units/s",
       "resource": "text",
-      "running": "flag"
+      "running": "flag",
+      "vesselId": "id",
+      "vesselName": "text"
     },
     "ksp.revertAvailability": {
       "canRevertToEditor": "flag",

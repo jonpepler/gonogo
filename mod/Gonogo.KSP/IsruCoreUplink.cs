@@ -28,6 +28,19 @@ namespace Gonogo.KSP
         public const string DrillsTopic = "isru.drills";
         public const string ConvertersTopic = "isru.converters";
 
+        /// <summary>
+        /// Start/stop toggle commands, one per entry kind (matching the two
+        /// isru.* channels): the obvious control surface stock's own
+        /// <c>ModuleResourceHarvester</c>/<c>ModuleResourceConverter</c> expose
+        /// (<c>StartResourceConverter</c>/<c>StopResourceConverter</c>, inherited
+        /// from the same <c>BaseConverter</c> base by both). <c>delayed: true</c>,
+        /// the same class as <c>vessel.invokePartAction</c>: commanding a part ON
+        /// the craft rides light-time.
+        /// </summary>
+        public const string SetDrillEnabledCommand = "isru.setDrillEnabled";
+
+        public const string SetConverterEnabledCommand = "isru.setConverterEnabled";
+
         private IChannelPublisher? _drills;
         private IChannelPublisher? _converters;
         private Kernel? _kernel;
@@ -40,6 +53,11 @@ namespace Gonogo.KSP
             {
                 Delayed(DrillsTopic),
                 Delayed(ConvertersTopic),
+            },
+            Commands = new List<CommandDeclaration>
+            {
+                new CommandDeclaration { Command = SetDrillEnabledCommand, Delayed = true },
+                new CommandDeclaration { Command = SetConverterEnabledCommand, Delayed = true },
             },
         };
 
@@ -68,6 +86,44 @@ namespace Gonogo.KSP
             _drills = host.Publisher(DrillsTopic);
             _converters = host.Publisher(ConvertersTopic);
             host.AddSampledSource(CaptureOnMain, HandleOnCourier, DrillsTopic, ConvertersTopic);
+            host.AddCommandHandler<IsruSetEnabledArgs, CommandResult>(
+                SetDrillEnabledCommand, args => HandleSetEnabled(args, isDrill: true));
+            host.AddCommandHandler<IsruSetEnabledArgs, CommandResult>(
+                SetConverterEnabledCommand, args => HandleSetEnabled(args, isDrill: false));
+        }
+
+        /// <summary>
+        /// Both commands' handler: resolve the elected backend and forward the
+        /// toggle. Called from the engine's command-handler pump (main thread,
+        /// exactly like <see cref="CaptureOnMain"/>), so the fail-soft backend
+        /// call below is safe to touch live KSP.
+        /// </summary>
+        private CommandResult HandleSetEnabled(IsruSetEnabledArgs args, bool isDrill)
+        {
+            var backend = _kernel != null ? IsruElection.Elected(_kernel) : null;
+            if (backend == null)
+            {
+                return CommandResult.Fail(CommandErrorCode.ModeUnavailable);
+            }
+
+            if (string.IsNullOrEmpty(args.PartId))
+            {
+                return CommandResult.Fail(CommandErrorCode.NotFound);
+            }
+
+            try
+            {
+                return isDrill
+                    ? backend.SetDrillEnabled(args.PartId, args.Enabled)
+                    : backend.SetConverterEnabled(args.PartId, args.Enabled);
+            }
+            catch (Exception)
+            {
+                // FAIL-SOFT: a backend write that throws (transient/unloaded
+                // vessel) reports as a typed failure, never crashes the command
+                // pump.
+                return CommandResult.Fail(CommandErrorCode.ModeUnavailable);
+            }
         }
 
         /// <summary>MAIN-THREAD capture: resolve the elected backend and walk its part modules (live KSP, safe here).</summary>

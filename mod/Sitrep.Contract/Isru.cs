@@ -65,6 +65,31 @@ public class IsruDrillEntry
     public string? PartTitle { get; set; }
 
     /// <summary>
+    /// The vessel this drill is on: <c>Vessel.id</c> stringified, the same join
+    /// key <see cref="VesselIdentity.VesselId"/> uses. Populated from the part's
+    /// OWN live vessel rather than assumed to be the active vessel, so a future
+    /// capture that walks more than one vessel still reports each drill's real
+    /// location. Today every entry on this channel is active-vessel-scoped (see
+    /// the class doc), so every row's <see cref="VesselId"/> is currently the
+    /// same value; the field exists so a per-process location is representable
+    /// the moment that scope widens.
+    /// </summary>
+    [SitrepUnit(Units.Id)]
+    public string? VesselId { get; set; }
+
+    /// <summary>Vessel.vesselName, for display without a <c>vessel.identity</c> join.</summary>
+    [SitrepUnit(Units.Text)]
+    public string? VesselName { get; set; }
+
+    /// <summary>
+    /// Index into the <c>system.bodies</c> collection, the same join key
+    /// <see cref="VesselIdentity.ParentBodyIndex"/> uses. Null when the vessel
+    /// has no orbit driver yet.
+    /// </summary>
+    [SitrepUnit(Units.Id)]
+    public int? ParentBodyIndex { get; set; }
+
+    /// <summary>
     /// Resource this drill extracts (e.g. "Ore"). Free text, not a closed enum:
     /// whatever the running install's configs and profiles name, the same posture
     /// every other resource-identity field in this contract takes.
@@ -149,6 +174,21 @@ public class IsruConverterEntry
     [SitrepUnit(Units.Text)]
     public string? PartTitle { get; set; }
 
+    /// <summary>
+    /// The vessel this converter is on. Same join key, same population rule, and
+    /// same current active-vessel-scoped caveat as <see cref="IsruDrillEntry.VesselId"/>.
+    /// </summary>
+    [SitrepUnit(Units.Id)]
+    public string? VesselId { get; set; }
+
+    /// <summary>Vessel.vesselName, for display without a <c>vessel.identity</c> join.</summary>
+    [SitrepUnit(Units.Text)]
+    public string? VesselName { get; set; }
+
+    /// <summary>Index into the <c>system.bodies</c> collection. Null when the vessel has no orbit driver yet.</summary>
+    [SitrepUnit(Units.Id)]
+    public int? ParentBodyIndex { get; set; }
+
     /// <summary>Actively converting this tick.</summary>
     [SitrepUnit(Units.Flag)]
     public bool? Running { get; set; }
@@ -174,6 +214,27 @@ public class IsruConverterEntry
 }
 
 /// <summary>
+/// <c>isru.setDrillEnabled</c>/<c>isru.setConverterEnabled</c>'s args: an
+/// ABSOLUTE state to apply, the same set-not-toggle discipline every actuation
+/// command in this contract follows (<see cref="SetEnabledArgs"/>'s doc explains
+/// why). <see cref="PartId"/> is the same <c>flightID.ToString()</c> join key
+/// <see cref="IsruDrillEntry.PartId"/>/<see cref="IsruConverterEntry.PartId"/>
+/// already carry, so a widget round-trips the id it already holds.
+/// </summary>
+[SitrepContract]
+#if NETSTANDARD2_0
+[TsInterface]
+#endif
+public class IsruSetEnabledArgs
+{
+    [SitrepUnit(Units.Id)]
+    public string PartId { get; set; } = "";
+
+    [SitrepUnit(Units.Flag)]
+    public bool Enabled { get; set; }
+}
+
+/// <summary>
 /// The "isru" capability's active-instance interface (parallel to
 /// <see cref="IReliabilityBackend"/>). Parameterless + KSP-free: implementations
 /// live in the KSP-referencing uplink projects and read the active vessel
@@ -182,7 +243,9 @@ public class IsruConverterEntry
 ///
 /// <para><b>Main thread only.</b> Both readers walk live PartModules, so the core
 /// registrar calls them from its main-thread capture and never from a channel
-/// mapper (which runs on the Courier thread).</para>
+/// mapper (which runs on the Courier thread). The two write methods below are
+/// called from the engine's command-handler pump, also main-thread, for the same
+/// reason <see cref="IPartActionActuator"/>'s <c>Invoke</c> is.</para>
 /// </summary>
 public interface IIsruBackend
 {
@@ -194,4 +257,16 @@ public interface IIsruBackend
 
     /// <summary>Every chemical converter on the active vessel. Empty, never null, when there are none.</summary>
     IReadOnlyList<IsruConverterEntry> Converters();
+
+    /// <summary>
+    /// Start or stop the drill with this <c>flightID.ToString()</c>. Fail-soft: a
+    /// backend with no real write path (nothing in this contract requires one)
+    /// returns <see cref="CommandErrorCode.ModeUnavailable"/> rather than
+    /// throwing; an id that does not resolve on the live vessel returns
+    /// <see cref="CommandErrorCode.NotFound"/>.
+    /// </summary>
+    CommandResult SetDrillEnabled(string partId, bool enabled);
+
+    /// <summary>Start or stop the converter with this <c>flightID.ToString()</c>. Same fail-soft/NotFound rules as <see cref="SetDrillEnabled"/>.</summary>
+    CommandResult SetConverterEnabled(string partId, bool enabled);
 }

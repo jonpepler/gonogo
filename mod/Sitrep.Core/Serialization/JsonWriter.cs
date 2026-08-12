@@ -468,6 +468,23 @@ namespace Sitrep.Core.Serialization
         }
 
         /// <summary>
+        /// Same idiom as <see cref="AppendNullableBool"/>/<see cref="AppendNullableNumber"/>,
+        /// for the join-index fields (e.g. <c>IsruDrillEntry.ParentBodyIndex</c>)
+        /// that are genuinely integer rather than floating point.
+        /// </summary>
+        private static void AppendNullableInt(StringBuilder sb, int? value)
+        {
+            if (value.HasValue)
+            {
+                AppendNumber(sb, value.Value);
+            }
+            else
+            {
+                AppendNull(sb);
+            }
+        }
+
+        /// <summary>
         /// Flattens a <see cref="Sitrep.Contract.ReliabilitySummary"/> to the wire
         /// object <c>{ unmodeled, malfunction, critical, source,
         /// worstReliabilityFraction }</c>, plus <c>extensions</c> when a provider
@@ -601,9 +618,10 @@ namespace Sitrep.Core.Serialization
 
         /// <summary>
         /// Flattens a <see cref="Sitrep.Contract.IsruDrillEntry"/> to the wire
-        /// object <c>{ partId, partTitle, resource, deployed, running, abundance,
-        /// rate }</c>, plus <c>extensions</c> when a provider filled its namespace
-        /// (see <see cref="AppendProviderExtensions"/>, and note that key is OMITTED
+        /// object <c>{ partId, partTitle, vesselId, vesselName, parentBodyIndex,
+        /// resource, deployed, running, abundance, rate }</c>, plus
+        /// <c>extensions</c> when a provider filled its namespace (see
+        /// <see cref="AppendProviderExtensions"/>, and note that key is OMITTED
         /// rather than null when empty): camelCase keys, JSON null for absent
         /// nullable fields, matching the generated SDK interface. <c>isru.drills</c>
         /// publishes a <c>List&lt;IsruDrillEntry&gt;</c> raw, whose elements route
@@ -619,6 +637,18 @@ namespace Sitrep.Core.Serialization
             AppendString(sb, "partTitle");
             sb.Append(':');
             AppendNullableString(sb, d.PartTitle);
+            sb.Append(',');
+            AppendString(sb, "vesselId");
+            sb.Append(':');
+            AppendNullableString(sb, d.VesselId);
+            sb.Append(',');
+            AppendString(sb, "vesselName");
+            sb.Append(':');
+            AppendNullableString(sb, d.VesselName);
+            sb.Append(',');
+            AppendString(sb, "parentBodyIndex");
+            sb.Append(':');
+            AppendNullableInt(sb, d.ParentBodyIndex);
             sb.Append(',');
             AppendString(sb, "resource");
             sb.Append(':');
@@ -645,11 +675,12 @@ namespace Sitrep.Core.Serialization
 
         /// <summary>
         /// Flattens a <see cref="Sitrep.Contract.IsruConverterEntry"/> to the wire
-        /// object <c>{ partId, partTitle, running, inputs, outputs }</c>, plus
-        /// <c>extensions</c> when a provider filled its namespace. The two recipe
-        /// sides are ALWAYS written as arrays, empty rather than null, because the
-        /// contract declares them non-nullable lists: a converter with no recipe has
-        /// no flows, which is an empty recipe rather than an unknown one.
+        /// object <c>{ partId, partTitle, vesselId, vesselName, parentBodyIndex,
+        /// running, inputs, outputs }</c>, plus <c>extensions</c> when a provider
+        /// filled its namespace. The two recipe sides are ALWAYS written as arrays,
+        /// empty rather than null, because the contract declares them non-nullable
+        /// lists: a converter with no recipe has no flows, which is an empty recipe
+        /// rather than an unknown one.
         /// </summary>
         private static void AppendIsruConverterEntry(StringBuilder sb, Sitrep.Contract.IsruConverterEntry c)
         {
@@ -661,6 +692,18 @@ namespace Sitrep.Core.Serialization
             AppendString(sb, "partTitle");
             sb.Append(':');
             AppendNullableString(sb, c.PartTitle);
+            sb.Append(',');
+            AppendString(sb, "vesselId");
+            sb.Append(':');
+            AppendNullableString(sb, c.VesselId);
+            sb.Append(',');
+            AppendString(sb, "vesselName");
+            sb.Append(':');
+            AppendNullableString(sb, c.VesselName);
+            sb.Append(',');
+            AppendString(sb, "parentBodyIndex");
+            sb.Append(':');
+            AppendNullableInt(sb, c.ParentBodyIndex);
             sb.Append(',');
             AppendString(sb, "running");
             sb.Append(':');

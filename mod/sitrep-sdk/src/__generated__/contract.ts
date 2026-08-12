@@ -429,6 +429,9 @@ export interface IsruDrillEntry
 {
 	partId?: string;
 	partTitle?: string;
+	vesselId?: string;
+	vesselName?: string;
+	parentBodyIndex?: number;
 	resource?: string;
 	deployed?: boolean;
 	running?: boolean;
@@ -445,10 +448,18 @@ export interface IsruConverterEntry
 {
 	partId?: string;
 	partTitle?: string;
+	vesselId?: string;
+	vesselName?: string;
+	parentBodyIndex?: number;
 	running?: boolean;
 	inputs: IsruResourceFlow[];
 	outputs: IsruResourceFlow[];
 	extensions?: ProviderExtensions;
+}
+export interface IsruSetEnabledArgs
+{
+	partId: string;
+	enabled: boolean;
 }
 export enum Quality {
 	OnRails = 0,

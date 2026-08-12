@@ -29,14 +29,20 @@ namespace Sitrep.Host.Tests
     public class IsruContractShapeTests
     {
         /// <summary>
-        /// <see cref="IsruDrillEntry"/> as frozen when the capability landed: the
-        /// two identification fields every list-shaped payload carries, the four
-        /// operationally-meaningful drill numbers stock itself has, and the bag.
+        /// <see cref="IsruDrillEntry"/> as frozen when the capability landed, plus
+        /// <see cref="IsruDrillEntry.VesselId"/>/<see cref="IsruDrillEntry.VesselName"/>/
+        /// <see cref="IsruDrillEntry.ParentBodyIndex"/>, added deliberately: every
+        /// backend (stock and Kerbalism) fills them from the part's own live
+        /// vessel, so they are source-agnostic by construction, the one case this
+        /// ratchet's own failure message calls out as belonging here.
         /// </summary>
         private static readonly string[] FrozenDrillMembers =
         {
             nameof(IsruDrillEntry.PartId),
             nameof(IsruDrillEntry.PartTitle),
+            nameof(IsruDrillEntry.VesselId),
+            nameof(IsruDrillEntry.VesselName),
+            nameof(IsruDrillEntry.ParentBodyIndex),
             nameof(IsruDrillEntry.Resource),
             nameof(IsruDrillEntry.Deployed),
             nameof(IsruDrillEntry.Running),
@@ -46,15 +52,20 @@ namespace Sitrep.Host.Tests
         };
 
         /// <summary>
-        /// <see cref="IsruConverterEntry"/> as frozen when the capability landed.
-        /// Note what is absent and must stay absent: a blocking-reason string for a
-        /// starved recipe. Running true alongside zero rates already says it, so a
-        /// field would be a fabricated diagnostic rather than a reported one.
+        /// <see cref="IsruConverterEntry"/> as frozen when the capability landed,
+        /// plus the same source-agnostic vessel/body trio <see cref="FrozenDrillMembers"/>
+        /// documents. Note what is absent and must stay absent: a blocking-reason
+        /// string for a starved recipe. Running true alongside zero rates already
+        /// says it, so a field would be a fabricated diagnostic rather than a
+        /// reported one.
         /// </summary>
         private static readonly string[] FrozenConverterMembers =
         {
             nameof(IsruConverterEntry.PartId),
             nameof(IsruConverterEntry.PartTitle),
+            nameof(IsruConverterEntry.VesselId),
+            nameof(IsruConverterEntry.VesselName),
+            nameof(IsruConverterEntry.ParentBodyIndex),
             nameof(IsruConverterEntry.Running),
             nameof(IsruConverterEntry.Inputs),
             nameof(IsruConverterEntry.Outputs),

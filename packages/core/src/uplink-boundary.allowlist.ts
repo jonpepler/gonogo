@@ -1083,6 +1083,21 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // "TestFlight fills it; null for Kerbalism" and vice versa. Naming both is
       // the contract's job.
       "mod/Sitrep.Contract/Reliability.cs",
+      // isru.setDrillEnabled/isru.setConverterEnabled's fail-soft posture:
+      // Kerbalism deletes stock's ModuleResourceHarvester/ModuleResourceConverter
+      // outright, so its backend has no equivalent write path and answers
+      // ModeUnavailable rather than the button doing nothing (built here;
+      // Kerbalism-side reflection control is a follow-up, not built). Naming the
+      // one backend that fails soft is exactly the source-agnostic contract's
+      // job, the same reasoning Reliability.cs's own entry above records. Zero
+      // code coupling: no Kerbalism type, import or Topic is referenced.
+      "packages/components/src/ResourceOps/index.tsx",
+      "packages/components/src/ResourceOps/index.test.tsx",
+      // IsruContractShapeTests.cs: the drill/converter ratchet's own doc comment
+      // records why vesselId/vesselName/parentBodyIndex are additive-safe
+      // (every backend, stock and Kerbalism, fills them from the part's own live
+      // vessel). Same prose-only posture as the entries above.
+      "mod/Sitrep.Host.Tests/IsruContractShapeTests.cs",
       // contribution-slots.ts: the SDK's mirror of the host-declared
       // contribution slots. `ship-map.part-meters` / `ship-map.part-meta`
       // declare `kerbalism.profile` / `kerbalism.lifesupport` as the Topics a

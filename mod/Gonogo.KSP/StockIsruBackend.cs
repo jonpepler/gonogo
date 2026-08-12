@@ -129,6 +129,9 @@ namespace Gonogo.KSP
             {
                 PartId = part.flightID.ToString(),
                 PartTitle = TitleOf(part),
+                VesselId = VesselIdOf(part),
+                VesselName = VesselNameOf(part),
+                ParentBodyIndex = ParentBodyIndexOf(part),
                 Resource = string.IsNullOrEmpty(harvester.ResourceName) ? null : harvester.ResourceName,
                 Deployed = DeployedState(part),
                 Running = running,
@@ -146,6 +149,9 @@ namespace Gonogo.KSP
             {
                 PartId = part.flightID.ToString(),
                 PartTitle = TitleOf(part),
+                VesselId = VesselIdOf(part),
+                VesselName = VesselNameOf(part),
+                ParentBodyIndex = ParentBodyIndexOf(part),
                 Running = converter.IsActivated,
             };
 
@@ -292,5 +298,93 @@ namespace Gonogo.KSP
 
         private static string? TitleOf(Part part) =>
             part.partInfo != null ? part.partInfo.title : part.name;
+
+        /// <summary>
+        /// The part's OWN live vessel, the same <c>Vessel.id.ToString()</c> join
+        /// key <c>VesselIdentity.VesselId</c> uses. Read off <c>part.vessel</c>
+        /// rather than <c>FlightGlobals.ActiveVessel</c>: today the two are always
+        /// the same (this backend only ever walks the active vessel's parts), but
+        /// keying off the part keeps this correct the moment a future capture
+        /// walks more than one vessel.
+        /// </summary>
+        private static string? VesselIdOf(Part part) =>
+            part.vessel != null ? part.vessel.id.ToString() : null;
+
+        private static string? VesselNameOf(Part part) =>
+            part.vessel != null ? part.vessel.vesselName : null;
+
+        /// <summary>Same join key <c>VesselIdentity.ParentBodyIndex</c> uses. Null when the vessel has no orbit driver yet.</summary>
+        private static int? ParentBodyIndexOf(Part part)
+        {
+            var body = part.vessel != null ? part.vessel.mainBody : null;
+            return body != null ? body.flightGlobalsIndex : (int?)null;
+        }
+
+        public CommandResult SetDrillEnabled(string partId, bool enabled) =>
+            SetModuleEnabled<ModuleResourceHarvester>(partId, enabled);
+
+        public CommandResult SetConverterEnabled(string partId, bool enabled) =>
+            SetModuleEnabled<ModuleResourceConverter>(partId, enabled);
+
+        /// <summary>
+        /// Shared start/stop write path for both entry kinds: <c>ModuleResourceHarvester</c>
+        /// (drills) and <c>ModuleResourceConverter</c> (converters) both inherit
+        /// <c>StartResourceConverter</c>/<c>StopResourceConverter</c> unmodified
+        /// from the same <c>BaseConverter</c> base (confirmed by decompile), so one
+        /// generic-typed walk serves either module type. Called from the command
+        /// pump's main thread, same as every other live-KSP write in this Uplink.
+        /// </summary>
+        private static CommandResult SetModuleEnabled<TModule>(string partId, bool enabled)
+            where TModule : BaseConverter
+        {
+            var vessel = FlightGlobals.ActiveVessel;
+            if (vessel == null)
+            {
+                return CommandResult.Fail(CommandErrorCode.NoVessel);
+            }
+
+            var module = FindModule<TModule>(vessel, partId);
+            if (module == null)
+            {
+                return CommandResult.Fail(CommandErrorCode.NotFound);
+            }
+
+            if (enabled)
+            {
+                module.StartResourceConverter();
+            }
+            else
+            {
+                module.StopResourceConverter();
+            }
+
+            return CommandResult.Ok();
+        }
+
+        private static TModule? FindModule<TModule>(Vessel vessel, string partId)
+            where TModule : BaseConverter
+        {
+            if (vessel.parts == null)
+            {
+                return null;
+            }
+
+            for (var i = 0; i < vessel.parts.Count; i++)
+            {
+                var part = vessel.parts[i];
+                if (part == null || part.flightID.ToString() != partId)
+                {
+                    continue;
+                }
+
+                var modules = part.FindModulesImplementing<TModule>();
+                if (modules != null && modules.Count > 0)
+                {
+                    return modules[0];
+                }
+            }
+
+            return null;
+        }
     }
 }

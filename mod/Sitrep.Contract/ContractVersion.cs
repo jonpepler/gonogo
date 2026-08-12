@@ -787,7 +787,35 @@ namespace Sitrep.Contract
         /// <c>vesselId</c>: the dynamic namespace is keyed by the part's flight id
         /// and the subject boundary belongs at the ledger, the same conclusion the
         /// withdrawal above records.</para>
+        ///
+        /// <para><b>Bumped 8 -&gt; 9: a per-ENTRY <c>vesselId</c>/<c>vesselName</c>/
+        /// <c>parentBodyIndex</c> back on <see cref="IsruDrillEntry"/>/
+        /// <see cref="IsruConverterEntry"/>, plus <see cref="IsruSetEnabledArgs"/>
+        /// and the two <c>isru.setDrillEnabled</c>/<c>isru.setConverterEnabled</c>
+        /// commands.</b> This is deliberately the SAME shape the 6-&gt;7 withdrawal
+        /// above removed from these same two types, added back with eyes open, and
+        /// worth reading side by side with that note rather than past it. The
+        /// withdrawal solved a TEMPORAL problem: one field, constant across every
+        /// entry in a single-vessel-scoped channel, existing only to say "which
+        /// vessel is this the active one for" after a mid-flight switch, a job
+        /// <c>Meta.Source</c>'s per-MESSAGE "vessel:&lt;guid&gt;" stamp already does at
+        /// the envelope, one level up, without per-entry repetition. This addition
+        /// answers a different question the withdrawal never posed: which vessel
+        /// does THIS row belong to when the array holds rows from more than one.
+        /// <c>isru.drills</c>/<c>isru.converters</c> still publish one
+        /// <c>Meta</c> per whole array today (active-vessel-scoped, so every row's
+        /// value is genuinely identical right now, same as the withdrawn case), but
+        /// a message-level field cannot ever distinguish two vessels' rows inside
+        /// ONE array the way a per-row field can; that is a structural gap
+        /// <c>Meta.Source</c> has no shape to close no matter how the temporal
+        /// half is solved. Populated mod-side from each part's own live
+        /// <c>Part.vessel</c> (both <c>StockIsruBackend</c> and
+        /// <c>KerbalismIsruBackend</c>), not from <c>FlightGlobals.ActiveVessel</c>,
+        /// so the value is already correct the day a capture widens past one
+        /// vessel. Purely additive: three new members per type plus a new args
+        /// type and two new commands, nothing existing gains, loses or retypes, so
+        /// the frozen Major-12 floor is NOT re-frozen.</para>
         /// </summary>
-        public const int Minor = 8;
+        public const int Minor = 9;
     }
 }

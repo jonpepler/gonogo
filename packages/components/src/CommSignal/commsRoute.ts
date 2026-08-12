@@ -9,10 +9,12 @@ export interface CommsRouteNode {
 
 /**
  * Builds the display chain for a `comms.path` hop list: the active vessel
- * (always "You", `comms.path` is always the reader's OWN path, never
- * another vessel's), each intermediate relay (the hop's own raw node name),
- * and the resolved command centre (`centreLabel`, the same name the panel
- * subtitle already uses, not the hop's own opaque "home" id).
+ * (`vesselLabel`, its own name, `comms.path` is always the reader's OWN
+ * path, never another vessel's), each intermediate relay (the hop's own raw
+ * node name), and the resolved command centre (`centreLabel`, the same name
+ * the panel subtitle already uses, not the hop's own opaque "home" id).
+ * Gonogo is the experience FROM the command centre, so the vessel is named
+ * rather than addressed as "you", the centre is the implicit reader.
  *
  * `hops` is ordered vessel-to-centre (`CommNetBackend.Path`/`RaCommsBackend`
  * in `mod/`), so node `i+1` is hop `i`'s `to`: an N-hop path always yields
@@ -21,10 +23,13 @@ export interface CommsRouteNode {
  */
 export function buildCommsRouteNodes(
   hops: readonly CommsHop[],
+  vesselLabel: string,
   centreLabel: string,
 ): CommsRouteNode[] {
   if (hops.length === 0) return [];
-  const nodes: CommsRouteNode[] = [{ label: "You", title: "Your vessel" }];
+  const nodes: CommsRouteNode[] = [
+    { label: vesselLabel, title: "Source vessel" },
+  ];
   for (let i = 0; i < hops.length - 1; i++) {
     nodes.push({ label: hops[i].to, title: "Relay" });
   }

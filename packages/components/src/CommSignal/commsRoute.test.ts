@@ -8,28 +8,41 @@ function hop(from: string, to: string): CommsHop {
 
 describe("buildCommsRouteNodes", () => {
   it("returns an empty chain for an empty hop list (no path home)", () => {
-    expect(buildCommsRouteNodes([], "KSC")).toEqual([]);
+    expect(buildCommsRouteNodes([], "Active Vessel", "KSC")).toEqual([]);
   });
 
-  it("labels a direct link as You -> centre", () => {
-    const nodes = buildCommsRouteNodes([hop("Active Vessel", "home")], "KSC");
-    expect(nodes.map((n) => n.label)).toEqual(["You", "KSC"]);
+  it("labels the source node by the vessel's own name, not 'You'", () => {
+    const nodes = buildCommsRouteNodes(
+      [hop("Active Vessel", "home")],
+      "Active Vessel",
+      "KSC",
+    );
+    expect(nodes.map((n) => n.label)).toEqual(["Active Vessel", "KSC"]);
   });
 
   it("names each intermediate relay by its own raw hop id, not the centre label", () => {
     const nodes = buildCommsRouteNodes(
       [hop("Active Vessel", "Relay Sat 1"), hop("Relay Sat 1", "home")],
+      "Active Vessel",
       "KSC",
     );
-    expect(nodes.map((n) => n.label)).toEqual(["You", "Relay Sat 1", "KSC"]);
+    expect(nodes.map((n) => n.label)).toEqual([
+      "Active Vessel",
+      "Relay Sat 1",
+      "KSC",
+    ]);
   });
 
   it("uses the centre label for the terminal node even when the centre is a crewed vessel", () => {
     const nodes = buildCommsRouteNodes(
       [hop("Active Vessel", "Constant Companion")],
+      "Active Vessel",
       "Constant Companion",
     );
-    expect(nodes.map((n) => n.label)).toEqual(["You", "Constant Companion"]);
+    expect(nodes.map((n) => n.label)).toEqual([
+      "Active Vessel",
+      "Constant Companion",
+    ]);
   });
 });
 

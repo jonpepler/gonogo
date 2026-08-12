@@ -346,9 +346,14 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
     await waitFor(() => expect(screen.getByText("Signal to KSC")).toBeTruthy());
   });
 
-  it("renders the full hop chain with per-leg distances at a comfortable size", async () => {
+  it("renders the full train-schedule with per-leg distances at a comfortable size", async () => {
     const fixture = setupStreamFixture({
-      carriedChannels: ["vessel.comms", "comms.commandCentre", "comms.path"],
+      carriedChannels: [
+        "vessel.comms",
+        "comms.commandCentre",
+        "comms.path",
+        "vessel.identity",
+      ],
       pinnedUt: 10,
     });
 
@@ -362,6 +367,14 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
 
     act(() => {
       fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("vessel.identity", {
+        vesselId: "v1",
+        name: "Active Vessel",
+        vesselType: 0,
+        situation: 1,
+        parentBodyIndex: 1,
+        launchUt: 0,
+      });
       fixture.emit("comms.path", {
         hops: [
           {
@@ -375,12 +388,14 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
       });
     });
 
-    await waitFor(() => expect(screen.getByText("You")).toBeTruthy());
+    // The top stop is the source vessel's own name, never "You": Gonogo is
+    // the experience FROM the command centre.
+    await waitFor(() => expect(screen.getByText("Active Vessel")).toBeTruthy());
     expect(screen.getByText("Relay Sat 1")).toBeTruthy();
     expect(screen.getByText("KSC")).toBeTruthy();
-    // Subtitle keeps the plain centre name once the full chain has room to
-    // render below it: the "(N relays)" hint is the cramped-size fallback,
-    // not a duplicate of the chain.
+    // Subtitle keeps the plain centre name once the full schedule has room
+    // to render below it: the "(N relays)" hint is the cramped-size
+    // fallback, not a duplicate of the schedule.
     expect(screen.getByText("Signal to KSC")).toBeTruthy();
   });
 
@@ -484,7 +499,7 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
 
   it("shows the RA per-hop band rate only when the wire annotates it", async () => {
     const fixture = setupStreamFixture({
-      carriedChannels: ["vessel.comms", "comms.path"],
+      carriedChannels: ["vessel.comms", "comms.path", "vessel.identity"],
       pinnedUt: 10,
     });
 
@@ -500,6 +515,14 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
 
     act(() => {
       fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("vessel.identity", {
+        vesselId: "v1",
+        name: "Active Vessel",
+        vesselType: 0,
+        situation: 1,
+        parentBodyIndex: 1,
+        launchUt: 0,
+      });
       fixture.emit("comms.path", {
         hops: [
           {
@@ -513,8 +536,35 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
       });
     });
 
-    await waitFor(() => expect(screen.getByText("You")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Active Vessel")).toBeTruthy());
     expect(visibleText()).toContain("kbit/s");
+  });
+
+  it("falls back to a generic vessel label before vessel.identity has resolved", async () => {
+    const fixture = setupStreamFixture({
+      carriedChannels: ["vessel.comms", "comms.path"],
+      pinnedUt: 10,
+    });
+
+    render(
+      <fixture.Provider>
+        <DashboardItemContext.Provider
+          value={{ instanceId: "comm-route-no-identity" }}
+        >
+          <CommSignalComponent id="comm-route-no-identity" w={8} h={8} />
+        </DashboardItemContext.Provider>
+      </fixture.Provider>,
+    );
+
+    act(() => {
+      fixture.emit("vessel.comms", { connected: true, signalStrength: 0.6 });
+      fixture.emit("comms.path", {
+        hops: [{ from: "Active Vessel", to: "home", kind: 0 }],
+      });
+    });
+
+    await waitFor(() => expect(screen.getByText("Vessel")).toBeTruthy());
+    expect(screen.getByText("KSC")).toBeTruthy();
   });
 
   it("renders no route section when there is no path home", async () => {
@@ -540,6 +590,6 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
     });
 
     await waitFor(() => expect(screen.getByText("LOS")).toBeTruthy());
-    expect(screen.queryByText("You")).toBeNull();
+    expect(screen.queryByText("Route")).toBeNull();
   });
 });

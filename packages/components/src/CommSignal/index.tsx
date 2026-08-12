@@ -32,7 +32,11 @@ import {
   useEffect,
   useState,
 } from "react";
-import { buildCommsRouteNodes, commsRouteRelayCount } from "./commsRoute";
+import {
+  buildCommsRouteNodes,
+  type CommsRouteNode,
+  commsRouteRelayCount,
+} from "./commsRoute";
 
 type CommSignalConfig = Record<string, never>;
 
@@ -173,6 +177,14 @@ function CommSignalComponent({
       : "KSC";
   const hops = useLatestValue<CommsPath>("comms.path")?.hops ?? [];
   const relayCount = commsRouteRelayCount(hops);
+  // Gonogo is the experience FROM the command centre: the route's source
+  // stop is named for the active vessel, never "you". Falls back to a
+  // generic label on the rare tick `vessel.identity` hasn't resolved yet
+  // (e.g. right at scene load), same shape as the `centreLabel` fallback
+  // above.
+  const vesselName = useTelemetry("vessel.identity")?.name;
+  const vesselLabel =
+    vesselName && vesselName.length > 0 ? vesselName : "Vessel";
 
   // Live (not merely registered) `comm-signal.sections` augments, fed by
   // `SectionsAvailabilityProbe` below, one per candidate augment. Declared
@@ -248,8 +260,8 @@ function CommSignalComponent({
   // detail grid drop as height shrinks.
   const cols = w ?? 6;
   const rows = h ?? 5;
-  // Wide-short: put the bars/headline cluster and the detail grid side-by-side
-  // so the width is used instead of clustering top-left.
+  // Wide-short: the signal readout, route, and LINK BUDGET column (when
+  // present) sit side by side instead of clustering top-left.
   const isLandscape = getWidgetShape(w, h).shape === "landscape";
   const showSubtitle = rows >= 4;
   const showDetailGrid = rows >= 4 && cols >= 4;
@@ -261,15 +273,14 @@ function CommSignalComponent({
   // bundled-but-not-running Uplink client would otherwise still claim the
   // column.
   const sectionsAugmentPresent = availableSectionIds.size > 0;
-  // The full hop-by-hop route needs more vertical room than the detail grid
-  // alone: it's a fourth block stacked below bars+headline+grid. Landscape
-  // frees that room sideways (bars/grid sit side by side, see below), so it
-  // only needs the detail grid's own rows>=4 floor; portrait/square stacks
-  // everything in one column and needs real headroom above that, or the
-  // route gets clipped at the registered default (6x5) with nothing to show
-  // for it. Below the threshold the subtitle still names the centre, just
-  // with a hop-count hint instead of the chain (`hopHint` below), so a
-  // cramped tile never loses the route entirely, only its detail.
+  // The vertical train-schedule needs more room than the detail grid alone:
+  // in landscape it's a whole extra column beside the readout, so it only
+  // needs the detail grid's own rows>=4 floor; portrait/square stacks it
+  // below the readout instead and needs real headroom above that, or the
+  // schedule gets clipped at the registered default (6x5) with nothing to
+  // show for it. Below the threshold the subtitle still names the centre,
+  // just with a hop-count hint instead of the schedule (`hopHint` below), so
+  // a cramped tile never loses the route entirely, only its detail.
   const showFullPath = cols >= 5 && (isLandscape ? rows >= 4 : rows >= 6);
   const hopHint =
     connected !== false && hops.length > 0 && !showFullPath
@@ -307,8 +318,9 @@ function CommSignalComponent({
         : "";
 
   // Extracted (rather than inlined at its one call site) because landscape
-  // mode with an augment column present renders it from a SECOND spot, inside
-  // the readout Stack; see the top-alignment comment further down.
+  // mode renders it from a SECOND spot, as the readout column's own first
+  // line, so it top-aligns with the route/LINK BUDGET columns beside it
+  // instead of sitting above the whole row; see the comment further down.
   const subtitle = showSubtitle && (
     <span
       style={{
@@ -345,89 +357,32 @@ function CommSignalComponent({
       ))}
 
       {/* Link caption relocated out of the panel subtitle into the body
-          (staging change), carried by a plain span so the title stands alone.
-          Rendered here for every branch EXCEPT landscape-with-augment: that
-          one needs the subtitle INSIDE the readout column instead (see
-          `subtitle` below), so its own top line lines up with the augment
-          column's "LINK BUDGET" header rather than sitting a line above both
-          columns. */}
-      {!(isLandscape && sectionsAugmentPresent) && subtitle}
+          (staging change), carried by a plain span so the title stands
+          alone. Rendered here in portrait; landscape carries it as the
+          readout column's OWN first line instead (see below), so it
+          top-aligns with the other columns' headers rather than sitting a
+          line above the whole row. */}
+      {!isLandscape && subtitle}
 
-      {/* Landscape (wide-short) puts the bars/headline cluster and the
-          detail grid side by side; portrait stacks them. Neither Cluster nor
-          Stack has an even-split "each child grows" mode, so the two
-          children get that via a direct style override in landscape. The
-          route, when it fits (`showFullPath`), is always a further child of
-          whichever box carries bars+grid, never a sibling positioned after
-          it: a sibling after a box that's free to shrink gets its layout box
-          computed from the SHRUNK size while the shrunk box's own
-          overflowing content keeps painting at full size, visually
-          overlapping whatever comes next. Keeping the route inside the same
-          box sidesteps that.
-
-          When a comms Uplink DOES bind the slot (e.g. RealAntennas' LINK
-          BUDGET panel), the branch below composes it as a SECOND main block
-          beside (landscape) or below (portrait) the signal readout, gated on
-          `sectionsAugmentPresent` so the column is reserved only when
-          there's something to put in it (see that const's comment). In
-          landscape the signal readout drops its OWN bars-vs-grid side-by-side
-          split and stacks instead, there isn't width for two levels of
-          side-by-side split at once (doing both at once visibly collided the
-          detail grid into the augment column at 9-wide). The readout and the
-          LINK BUDGET column pack to the left with the normal cluster gap
-          between them, each sized to its own content rather than stretched
-          to fill the row: they read as one adjacent pair, not two blocks
-          pinned to opposite edges, and any width left over on a very wide
-          tile just sits empty on the right. In portrait the augment section
-          stacks inside the SAME Stack as the readout; in landscape it sits
-          beside it instead, so the two never compete for vertical space to
-          begin with.
-
-          In landscape the readout Stack also picks up the subtitle as its
-          OWN first line (dropped from above via the `!(isLandscape &&
-          sectionsAugmentPresent)` guard), so it top-aligns with the augment
-          column's "LINK BUDGET" header instead of sitting a line above the
-          whole row: "Signal to <centre>" and "LINK BUDGET" read as two
-          column headers on the same line, each column's content flowing
-          down from there. The route sits inside this SAME readout column,
-          for the same shrink-then-overlap reason the no-augment landscape
-          case below keeps it inside its own Stack rather than as a
-          trailing sibling. */}
-      {sectionsAugmentPresent ? (
-        isLandscape ? (
-          <Cluster
-            justify="start"
-            align="start"
-            style={{ flex: 1, gap: "var(--space-24)" }}
-          >
-            <Stack gap="md" style={{ flex: "0 1 auto", minWidth: 0 }}>
-              {subtitle}
-              <Cluster justify="start" wrap>
-                <SignalBars bars={bars} tone={control.tone} />
-                <SignalHeadline
-                  headline={headline}
-                  lost={connected === false}
-                />
-              </Cluster>
-
-              {showDetailGrid && (
-                <Grid cols="auto 1fr" gap="md" rowGap="xs" align="baseline">
-                  <CommSignalDetailRows control={control} delay={delay} />
-                </Grid>
-              )}
-
-              {showFullPath && (
-                <CommsPathRoute hops={hops} centreLabel={centreLabel} />
-              )}
-            </Stack>
-
-            {/* LINK BUDGET column, packed beside the signal readout. */}
-            <div style={{ flex: "0 1 auto", minWidth: 0 }}>
-              <AugmentSlot name="comm-signal.sections" props={{}} />
-            </div>
-          </Cluster>
-        ) : (
-          <Stack gap="md" style={{ flex: 1 }}>
+      {/* The widget reflows at the CONTAINER level, never internally: the
+          train-schedule route is ALWAYS vertical, it does not rotate.
+          Landscape (wide) lays the signal readout, the route, and (when a
+          comms Uplink binds the slot) the LINK BUDGET column out as
+          side-by-side flex columns, each sized to its own content
+          (`flex: "0 1 auto"`) rather than stretched to fill the row: they
+          read as an adjacent row of panels, not blocks pinned to opposite
+          edges, and any width left over on a very wide tile just sits empty
+          on the right. Portrait (narrow) stacks the same three blocks
+          vertically instead, the route's own internal rail unchanged either
+          way. */}
+      {isLandscape ? (
+        <Cluster
+          justify="start"
+          align="start"
+          style={{ flex: 1, gap: "var(--space-24)" }}
+        >
+          <Stack gap="md" style={{ flex: "0 1 auto", minWidth: 0 }}>
+            {subtitle}
             <Cluster justify="start" wrap>
               <SignalBars bars={bars} tone={control.tone} />
               <SignalHeadline headline={headline} lost={connected === false} />
@@ -438,48 +393,24 @@ function CommSignalComponent({
                 <CommSignalDetailRows control={control} delay={delay} />
               </Grid>
             )}
-
-            {showFullPath && (
-              <CommsPathRoute hops={hops} centreLabel={centreLabel} />
-            )}
-
-            {/* Stacked below the signal readout for narrow tiles. */}
-            <AugmentSlot name="comm-signal.sections" props={{}} />
           </Stack>
-        )
-      ) : isLandscape ? (
-        <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
-          <Cluster
-            justify="between"
-            align="center"
-            style={{ gap: "var(--space-24)" }}
-          >
-            <Cluster
-              justify="start"
-              wrap
-              style={{ flex: "1 1 0", minWidth: 0 }}
-            >
-              <SignalBars bars={bars} tone={control.tone} />
-              <SignalHeadline headline={headline} lost={connected === false} />
-            </Cluster>
-
-            {showDetailGrid && (
-              <Grid
-                cols="auto 1fr"
-                gap="md"
-                rowGap="xs"
-                align="baseline"
-                style={{ flex: "1 1 0", minWidth: 0 }}
-              >
-                <CommSignalDetailRows control={control} delay={delay} />
-              </Grid>
-            )}
-          </Cluster>
 
           {showFullPath && (
-            <CommsPathRoute hops={hops} centreLabel={centreLabel} />
+            <div style={{ flex: "0 1 auto", minWidth: 0 }}>
+              <CommsPathRoute
+                hops={hops}
+                vesselLabel={vesselLabel}
+                centreLabel={centreLabel}
+              />
+            </div>
           )}
-        </Stack>
+
+          {sectionsAugmentPresent && (
+            <div style={{ flex: "0 1 auto", minWidth: 0 }}>
+              <AugmentSlot name="comm-signal.sections" props={{}} />
+            </div>
+          )}
+        </Cluster>
       ) : (
         <Stack gap="md" style={{ flex: 1 }}>
           <Cluster justify="start" wrap>
@@ -494,7 +425,15 @@ function CommSignalComponent({
           )}
 
           {showFullPath && (
-            <CommsPathRoute hops={hops} centreLabel={centreLabel} />
+            <CommsPathRoute
+              hops={hops}
+              vesselLabel={vesselLabel}
+              centreLabel={centreLabel}
+            />
+          )}
+
+          {sectionsAugmentPresent && (
+            <AugmentSlot name="comm-signal.sections" props={{}} />
           )}
         </Stack>
       )}
@@ -502,7 +441,8 @@ function CommSignalComponent({
   );
 }
 
-// ── Comms-path route (vessel -> relay(s) -> centre) ─────────────────────────
+// ── Comms-path route: a vertical train-schedule (vessel at top, centre at
+//    bottom) ───────────────────────────────────────────────────────────────
 
 const ROUTE_LABEL_STYLE = {
   color: "var(--color-text-dim)",
@@ -510,75 +450,163 @@ const ROUTE_LABEL_STYLE = {
   textTransform: "uppercase" as const,
 };
 
+// Rail geometry: a dashed vertical line down the left edge with a circle at
+// each stop, train-schedule style. The line is a `borderLeft` on every row's
+// rail slot (stop rows AND leg rows): adjoining slots share an edge, so the
+// dash pattern reads as one continuous rail down the column rather than a
+// broken segment per row.
+const RAIL_WIDTH_PX = 20;
+const RAIL_STOP_DIAMETER_PX = 10;
+
 /**
- * The full hop chain: "You -> Relay Sat -> KSC", each leg annotated with its
- * distance and, under RealAntennas, its band rate. Renders nothing for an
- * empty `hops` list (no path home is already covered by the LOS headline).
+ * The vertical train-schedule: the source vessel at the top, each relay as a
+ * circle on the rail, the command centre at the bottom. Each leg's distance
+ * (and RA band rate, when present) sits in the gap between its two stops,
+ * against the rail. Renders nothing for an empty `hops` list (no path home
+ * is already covered by the LOS headline).
  */
 function CommsPathRoute({
   hops,
+  vesselLabel,
   centreLabel,
 }: {
   hops: readonly CommsHop[];
+  vesselLabel: string;
   centreLabel: string;
 }) {
-  const nodes = buildCommsRouteNodes(hops, centreLabel);
+  const nodes = buildCommsRouteNodes(hops, vesselLabel, centreLabel);
   if (nodes.length === 0) return null;
   return (
-    <Stack gap="xs">
+    <Stack gap="xs" style={{ minWidth: 0 }}>
       <Value tone="muted" size="xs" style={ROUTE_LABEL_STYLE}>
         Route
       </Value>
-      <Cluster gap="xs" wrap align="center">
+      <div>
         {nodes.map((node, i) => (
-          <Fragment
-            key={
-              i === 0
-                ? "route-origin"
-                : `${hops[i - 1].from}=>${hops[i - 1].to}`
-            }
-          >
-            {i > 0 && <CommsPathLeg hop={hops[i - 1]} />}
-            <Value
-              tone="default"
-              size="sm"
-              title={node.title}
-              style={{
-                fontWeight: i === 0 || i === nodes.length - 1 ? 600 : 400,
-              }}
-            >
-              {node.label}
-            </Value>
+          // biome-ignore lint/suspicious/noArrayIndexKey: stops have no stable identity beyond their position along the rail
+          <Fragment key={i}>
+            <CommsPathStop
+              node={node}
+              emphasize={i === 0 || i === nodes.length - 1}
+            />
+            {i < hops.length && <CommsPathLeg hop={hops[i]} />}
           </Fragment>
         ))}
-      </Cluster>
+      </div>
     </Stack>
   );
 }
 
-/** One leg's distance (+ RA band rate, when present) between two route nodes. */
-function CommsPathLeg({ hop }: { hop: CommsHop }) {
+/** One stop on the rail: a circle marker plus the stop's label. */
+function CommsPathStop({
+  node,
+  emphasize,
+}: {
+  node: CommsRouteNode;
+  emphasize: boolean;
+}) {
   return (
-    <Cluster
-      gap="xs"
-      align="baseline"
-      style={{ color: "var(--color-text-dim)" }}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-8)",
+      }}
     >
-      <span aria-hidden="true">{"->"}</span>
-      {hop.distanceMeters !== undefined && (
-        <Value tone="muted" size="xs">
-          <Unit value={hop.distanceMeters} />
-        </Value>
+      <RailSlot stop />
+      <Value
+        tone="default"
+        size="sm"
+        title={node.title}
+        style={{ fontWeight: emphasize ? 600 : 400 }}
+      >
+        {node.label}
+      </Value>
+    </div>
+  );
+}
+
+/** One leg's distance (+ RA band rate, when present), in the gap against the rail. */
+function CommsPathLeg({ hop }: { hop: CommsHop }) {
+  const hasDetail =
+    hop.distanceMeters !== undefined || hop.bandRateBitsPerSec !== undefined;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-8)",
+        minHeight: hasDetail ? undefined : "var(--space-16)",
+      }}
+    >
+      <RailSlot stop={false} />
+      {hasDetail && (
+        <Cluster
+          gap="xs"
+          align="baseline"
+          style={{ color: "var(--color-text-dim)" }}
+        >
+          {hop.distanceMeters !== undefined && (
+            <Value tone="muted" size="xs">
+              <Unit value={hop.distanceMeters} />
+            </Value>
+          )}
+          {/* RealAntennas-only per-hop rate annotation (Comms.cs's own doc):
+              absent under bare CommNet, so this simply never renders there. */}
+          {hop.bandRateBitsPerSec !== undefined && (
+            <Value tone="muted" size="xs">
+              <Unit value={hop.bandRateBitsPerSec} />
+            </Value>
+          )}
+        </Cluster>
       )}
-      {/* RealAntennas-only per-hop rate annotation (Comms.cs's own doc):
-          absent under bare CommNet, so this simply never renders there. */}
-      {hop.bandRateBitsPerSec !== undefined && (
-        <Value tone="muted" size="xs">
-          <Unit value={hop.bandRateBitsPerSec} />
-        </Value>
+    </div>
+  );
+}
+
+/**
+ * One row's slice of the dashed vertical rail: the line itself (a
+ * `borderLeft` stretched the row's full height) plus, at a stop row, the
+ * circle marker centred on it. Purely decorative, the stop label beside it
+ * already carries the same information, so this is hidden from assistive
+ * tech rather than duplicated into it.
+ */
+function RailSlot({ stop }: { stop: boolean }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: "relative",
+        width: RAIL_WIDTH_PX,
+        alignSelf: "stretch",
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: RAIL_WIDTH_PX / 2 - 1,
+          top: 0,
+          bottom: 0,
+          borderLeft: "2px dashed var(--color-border-subtle)",
+        }}
+      />
+      {stop && (
+        <div
+          style={{
+            position: "absolute",
+            left: (RAIL_WIDTH_PX - RAIL_STOP_DIAMETER_PX) / 2,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: RAIL_STOP_DIAMETER_PX,
+            height: RAIL_STOP_DIAMETER_PX,
+            borderRadius: "50%",
+            background: "var(--color-surface-panel)",
+            border: "2px solid var(--color-text-dim)",
+          }}
+        />
       )}
-      <span aria-hidden="true">{"->"}</span>
-    </Cluster>
+    </div>
   );
 }
 
@@ -730,6 +758,7 @@ registerComponent<CommSignalConfig>({
     "comm.signalDelay",
     "comms.commandCentre",
     "comms.path",
+    "vessel.identity",
   ],
   defaultConfig: {},
   actions: [],

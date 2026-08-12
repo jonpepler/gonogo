@@ -312,20 +312,27 @@ function CommSignalComponent({
           `sectionsAugmentPresent` so the column is reserved only when
           there's something to put in it (see that const's comment). In
           landscape the signal readout drops its OWN bars-vs-grid side-by-side
-          split and stacks instead: it only owns half the row once the LINK
-          BUDGET column sits beside it, and there isn't width for two levels
-          of side-by-side split at once (doing both at once visibly collided
-          the detail grid into the augment column at 9-wide). The automatic
-          min-height floor still holds on every child in both arrangements
-          (no `minHeight: 0` override anywhere below), so the same overlap
-          protection applies: in portrait the augment section stacks inside
-          the SAME Stack as the readout; in landscape it sits beside it
-          instead, so the two never compete for vertical space to begin
-          with. */}
+          split and stacks instead, there isn't width for two levels of
+          side-by-side split at once (doing both at once visibly collided the
+          detail grid into the augment column at 9-wide). The readout and the
+          LINK BUDGET column pack to the left with the normal cluster gap
+          between them, each sized to its own content rather than stretched
+          to fill the row: they read as one adjacent pair, not two blocks
+          pinned to opposite edges, and any width left over on a very wide
+          tile just sits empty on the right. The automatic min-height floor
+          still holds on every child in both arrangements (no `minHeight: 0`
+          override anywhere below), so the same overlap protection applies:
+          in portrait the augment section stacks inside the SAME Stack as
+          the readout; in landscape it sits beside it instead, so the two
+          never compete for vertical space to begin with. */}
       {sectionsAugmentPresent ? (
         isLandscape ? (
-          <Cluster align="start" style={{ flex: 1, gap: "var(--space-24)" }}>
-            <Stack gap="md" style={{ flex: "1 1 0", minWidth: 0 }}>
+          <Cluster
+            justify="start"
+            align="start"
+            style={{ flex: 1, gap: "var(--space-24)" }}
+          >
+            <Stack gap="md" style={{ flex: "0 1 auto", minWidth: 0 }}>
               <Cluster justify="start" wrap>
                 <SignalBars bars={bars} tone={control.tone} />
                 <SignalHeadline
@@ -341,8 +348,8 @@ function CommSignalComponent({
               )}
             </Stack>
 
-            {/* LINK BUDGET column, beside the signal readout. */}
-            <div style={{ flex: "1 1 0", minWidth: 0 }}>
+            {/* LINK BUDGET column, packed beside the signal readout. */}
+            <div style={{ flex: "0 1 auto", minWidth: 0 }}>
               <AugmentSlot name="comm-signal.sections" props={{}} />
             </div>
           </Cluster>

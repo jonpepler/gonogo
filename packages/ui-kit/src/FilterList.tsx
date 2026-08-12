@@ -1,40 +1,20 @@
 import { type ReactNode, useId, useState } from "react";
 import { Cluster } from "./Cluster";
-import type { ComponentSlotSegment } from "./contributions";
 import { useContributions } from "./contributionsRead";
 import { EmptyState } from "./EmptyState";
 import { FilterChip } from "./FilterChip";
 import { Field, FieldLabel, Input } from "./Form";
 import { Stack } from "./Stack";
 
-// ---------------------------------------------------------------------------
-// A widget-agnostic filterable list (component-extension-slots design §4).
-//
-// The widget hands it a PRE-PROCESSED row list: each row already carries the
-// text it is searchable by (`searchText`) and its rendered node. FilterList has
-// no generic over the host's element type and never learns it is handling
-// resources, parts, or anything else, it only matches strings.
-//
-// Contributions arrive through the framework-universal `filters` SEGMENT: a
-// reusable component owns its own slot, so a provider adds pre-filled SEARCH
-// TERMS (plain strings) that this shows as toggles, using the exact same
-// `registerContribution` interface a widget-led slot uses. `useContributions`
-// completes `${componentId}.filters` from the mounting widget's context, so a
-// widget mounting this declares nothing. Outside a widget context (bare mount /
-// probe / test without meta) the term list is stably empty and every row passes
-// through, so mounting is the whole lifecycle.
-//
-// Filter model: contributed toggles STACK (AND with each other), the free-text
-// box is ANDed on top and applied last, every needle a case-insensitive
-// substring. Nothing selected and nothing typed shows everything, the resting
-// state, so the list hides nothing until an operator narrows it.
-//
-// Lives in `@ksp-gonogo/ui-kit`: the contribution read seam (`useContributions`)
-// moved into the design floor, so a published, third-party-reachable component
-// can own its own `filters` slot without reaching up into `@ksp-gonogo/core`.
-// The read hook is spine-free; the per-frame aggregation that feeds it stays in
-// core (`ContributionsProvider`), mounted by the host.
-// ---------------------------------------------------------------------------
+// FilterList owns its `filters` slot: a provider contributes pre-filled
+// SEARCH TERMS (plain strings) via `registerContribution`, and this shows
+// them as toggle chips. Co-located declaration-merge so the slot travels
+// with the component that renders it, rather than sitting in a shared file.
+declare module "./contributions" {
+  interface ComponentSlotRegistry {
+    filters: string;
+  }
+}
 
 export interface FilterRow {
   /** Stable React key for the row. */
@@ -48,19 +28,26 @@ export interface FilterRow {
 
 export interface FilterListProps {
   rows: readonly FilterRow[];
-  /** The contribution SEGMENT to pull toggle terms from. Defaults to the
-   *  framework-universal `filters`; override only for a novel declared segment. */
-  segment?: ComponentSlotSegment;
   /** Shown when a filter is active but matches nothing. */
   emptyLabel?: ReactNode;
 }
 
+/**
+ * A row list already pre-processed by the widget (`searchText` baked, `node`
+ * rendered), filtered by a free-text search box ANDed with any toggled chips
+ * contributed to this component's `filters` slot. Toggles stack with each
+ * other; every needle is a case-insensitive substring match. Nothing
+ * selected and nothing typed shows every row.
+ *
+ * Mounted outside a widget context (bare mount, probe, test with no meta)
+ * `useContributions` resolves no widget id to complete against, so the term
+ * list is stably empty and every row passes through.
+ */
 export function FilterList({
   rows,
-  segment = "filters",
   emptyLabel = "Nothing matches the filter",
 }: FilterListProps) {
-  const terms = useContributions(segment);
+  const terms = useContributions("filters");
   // Distinct terms, in contribution order: two providers can land the same
   // word, and a doubled toggle is just noise.
   const uniqueTerms = [...new Set(terms)];
@@ -90,6 +77,17 @@ export function FilterList({
 
   return (
     <Stack gap="sm">
+      <Field>
+        <FieldLabel htmlFor={searchId}>Search</FieldLabel>
+        <Input
+          id={searchId}
+          type="search"
+          value={typed}
+          placeholder="Filter…"
+          onChange={(event) => setTyped(event.target.value)}
+        />
+      </Field>
+
       {uniqueTerms.length > 0 && (
         <Cluster
           justify="start"
@@ -118,18 +116,6 @@ export function FilterList({
       ) : (
         <EmptyState>{emptyLabel}</EmptyState>
       )}
-
-      {/* Search box rendered last (design §4). */}
-      <Field>
-        <FieldLabel htmlFor={searchId}>Search</FieldLabel>
-        <Input
-          id={searchId}
-          type="search"
-          value={typed}
-          placeholder="Filter…"
-          onChange={(event) => setTyped(event.target.value)}
-        />
-      </Field>
     </Stack>
   );
 }

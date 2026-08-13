@@ -11,7 +11,7 @@ import { KERBALISM } from "../uplink";
 // CME / solar-activity overlay: a `system-view.entities` contribution off
 // `kerbalism.spaceweather`, the same shape-contribution seam the built-in
 // vessel-orbit and CommNet-graph entries ride (`SystemView/
-// vesselOrbitsContribution.ts`). One faint directional `plume` per active
+// vesselOrbitsContribution.ts`). One faint `travelling-pulse` per active
 // storm slot, so SystemView renders it without knowing Kerbalism exists.
 //
 // `KerbalismSpaceWeather.storms` is scoped to the ACTIVE VESSEL's current SOI
@@ -22,21 +22,32 @@ import { KERBALISM } from "../uplink";
 // zeroes them) and is skipped outright, never drawn from a fabricated
 // position.
 //
-// HONESTY NOTE on the plume's geometry: a CME is a targeted mass ejection
-// from ONE point on the star travelling in ONE direction, not a spherical
-// front, so this used to be wrong even before we had a bearing to draw it
-// with (an earlier version drew a `blob`, a concentric circle, purely
-// because that was the only directional-less shape available).
-// `KerbalismStormEntry.dist` is the LIVE sun-to-body distance (`Storm.
-// Update`'s own geometry), not a tracked position of the CME's leading edge,
-// Kerbalism's contract has no field for "how far has the ejecta travelled so
-// far". A literal expanding shockwave would have to interpolate that from
-// wall-clock time, which a contribution's `compute()` never receives
-// (contribution-slots-spec: pure function of Topics/Processors only, see
-// `contributions.ts`'s own doc comment). Rather than fabricate a travelled
-// distance, the plume's LENGTH is still just `dist`: a faint wedge reaching
-// from the star out to the body currently in that storm's scope. The NEW
-// part is its bearing: `KerbalismSpaceWeather.stars` carries each star's
+// HONESTY NOTE on the travelling pulse's geometry: a CME is a targeted mass
+// ejection from ONE point on the star travelling in ONE direction, not a
+// spherical front (an earlier version drew a `blob`, a concentric circle,
+// purely because that was the only directional-less shape available; the
+// version right before this one drew a static wedge from star to body,
+// which then just switched on and off rather than reading as something in
+// transit). `KerbalismStormEntry.dist` is the LIVE sun-to-body distance
+// (`Storm.Update`'s own geometry), not a tracked position of the CME's
+// leading edge, Kerbalism's contract has no field for "how far has the
+// ejecta travelled so far", and a contribution's `compute()` never receives
+// a wall clock to interpolate one from (contribution-slots-spec: pure
+// function of Topics/Processors only, see `contributions.ts`'s own doc
+// comment). So the ACTUAL travel is rendered, not computed: SystemView's
+// `travelling-pulse` shape is a moving segment that loops from the apex
+// toward the tip on a fixed, purely decorative CSS period (see
+// `SystemEntitiesLayer.tsx`'s own doc comment on that constant); this
+// contribution supplies only what IS real: the bearing (below) and the
+// segment's LENGTH. That length is `stormEjectionSpeed * stormDuration`
+// (clamped to `dist`): the physical distance the ejecta covers, at its real
+// ejection speed, over the real span the storm stays active at the target
+// body, `stormDuration`. Both a storm entry with no resolvable duration or
+// no ejection speed are skipped outright, the same "no data, no draw"
+// discipline every other field on this entity already follows, rather than
+// a fabricated segment length.
+//
+// The bearing: `KerbalismSpaceWeather.stars` carries each star's
 // vessel-to-star unit `direction` (`VesselData.SunInfo.Direction`), captured
 // on the same reflection pass as the storm slot itself, so a star entry is
 // always present alongside a storm entry for that star. Negating it gives a
@@ -50,7 +61,7 @@ import { KERBALISM } from "../uplink";
 // lists come off the same reflection loop, so this shouldn't happen in
 // practice) is skipped outright rather than drawn with a fabricated bearing.
 // `stormState` still distinguishes inbound (faint, neutral) from arrived
-// (faint, warn-tinted) so the plume shows the storm progressing between
+// (faint, warn-tinted) so the pulse shows the storm progressing between
 // those two real, known states.
 // ---------------------------------------------------------------------------
 
@@ -69,10 +80,6 @@ function stormStateLabel(state: number): string {
   if (state === STORM_STATE_IN_PROGRESS) return "in progress";
   return "unknown";
 }
-
-/** Fraction of `dist` the plume's tip half-width resolves to: a ~20 degree
- *  full cone, wide enough to read as "aimed at a body" rather than a hairline. */
-const PLUME_HALF_WIDTH_RATIO = 0.18;
 
 /**
  * The star-to-body bearing, in the diagram's own parent-centric metres, from
@@ -142,36 +149,45 @@ function computeStormEntity(
   const bearing = bearingMetres(starInfo?.direction, dist);
   if (!bearing) return null;
 
-  const arrivalUt = magnitudeOf(storm.stormTime);
+  // The pulse's segment length is real physics, not a stylistic ratio: how
+  // far the ejecta covers, at its real speed, over the real span the storm
+  // stays active at the target body. Either input missing/non-positive
+  // means the length can't be honestly derived, so the whole entity is
+  // skipped, same discipline as a missing bearing above.
   const durationS = magnitudeOf(storm.stormDuration);
+  if (durationS == null || !(durationS > 0)) return null;
+  if (ejectionSpeedMps == null || !(ejectionSpeedMps > 0)) return null;
+  const segmentLengthMetres = Math.min(durationS * ejectionSpeedMps, dist);
+
+  const arrivalUt = magnitudeOf(storm.stormTime);
   const meta: CmeEntityMeta = {
     star: storm.star,
     state: stormStateLabel(state),
     distM: dist,
+    durationS,
+    ejectionSpeedMps,
     ...(arrivalUt != null ? { arrivalUt } : {}),
-    ...(durationS != null ? { durationS } : {}),
-    ...(ejectionSpeedMps != null ? { ejectionSpeedMps } : {}),
   };
 
   return {
     id: `cme:${storm.star}`,
-    // Fixed at the star's own position (the plume's apex): this entity only
+    // Fixed at the star's own position (the pulse's apex): this entity only
     // projects when the diagram's current frame IS that star (SystemView's
     // "root parent" frame setting, the whole-system view a CME threatening
     // the whole neighbourhood belongs on), same off-frame degrade every
     // other entity gets.
     position: { kind: "fixed", parentName: storm.star, xMetres: 0, yMetres: 0 },
     shape: {
-      kind: "plume",
+      kind: "travelling-pulse",
       to: { kind: "fixed", parentName: storm.star, ...bearing },
-      halfWidthMetres: dist * PLUME_HALF_WIDTH_RATIO,
+      segmentLengthMetres,
     },
     // Faint by default, always: an ambient effect that stacks under the
     // CommNet graph and point markers (SYSTEM_ENTITY_DEFAULT_LAYER's
-    // plume=1, below connection-line=2/point=3), never a bright alarm
-    // competing with them. `stormState === 2` shifts the hue toward the
-    // shared warn token rather than raising emphasis, so "arrived" reads as
-    // distinct without the marker ever cutting off what's drawn on top of it.
+    // travelling-pulse=1, below connection-line=2/point=3), never a bright
+    // alarm competing with them. `stormState === 2` shifts the hue toward
+    // the shared warn token rather than raising emphasis, so "arrived" reads
+    // as distinct without the marker ever cutting off what's drawn on top.
     style: {
       emphasis: "faint",
       ...(state === STORM_STATE_IN_PROGRESS ? { colour: CME_WARN_COLOUR } : {}),

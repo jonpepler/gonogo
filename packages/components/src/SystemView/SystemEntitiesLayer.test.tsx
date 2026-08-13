@@ -72,13 +72,13 @@ const BLOB: SystemEntity = {
   shape: { kind: "blob", radiusMetres: 300_000 },
 };
 
-const PLUME: SystemEntity = {
-  id: "cme-plume-1",
+const TRAVELLING_PULSE: SystemEntity = {
+  id: "cme-pulse-1",
   position: { kind: "fixed", parentName: "Kerbin", xMetres: 0, yMetres: 0 },
   shape: {
-    kind: "plume",
+    kind: "travelling-pulse",
     to: { kind: "fixed", parentName: "Kerbin", xMetres: 500_000, yMetres: 0 },
-    halfWidthMetres: 100_000,
+    segmentLengthMetres: 100_000,
   },
 };
 
@@ -111,6 +111,23 @@ describe("SystemEntitiesLayer", () => {
     expect(g?.querySelector("ellipse")).not.toBeNull();
   });
 
+  it("also draws a small dot at the orbit-path entity's own declared anomaly, OUTSIDE the ring's rotated group", () => {
+    const { container } = render(
+      <SystemEntitiesLayer entities={[RING]} ctx={CTX} />,
+    );
+    const g = container.querySelector('g[data-entity-id="ring-1"]');
+    // The dot is NOT a child of the rotated ellipse group: its own
+    // coordinates are already fully resolved (bodyPosition bakes in
+    // lan+argPe+trueAnomaly), so nesting it inside a second `rotate()`
+    // would rotate an already-rotated point a second time.
+    expect(g?.querySelector("circle")).toBeNull();
+    const dot = container.querySelector('circle[data-entity-dot-id="ring-1"]');
+    expect(dot).not.toBeNull();
+    // RING: sma=1e6, ecc=0.3, lan=10, argPe=5, trueAnomaly=0, plotScale=1e-5.
+    expect(Number(dot?.getAttribute("cx"))).toBeCloseTo(6.7615, 3);
+    expect(Number(dot?.getAttribute("cy"))).toBeCloseTo(1.8117, 3);
+  });
+
   it("draws a connection-line between its two projected endpoints", () => {
     const { container } = render(
       <SystemEntitiesLayer entities={[LINK]} ctx={CTX} />,
@@ -128,16 +145,46 @@ describe("SystemEntitiesLayer", () => {
     expect(Number(circle?.getAttribute("r"))).toBeCloseTo(3, 6);
   });
 
-  it("draws a plume as a directional path from its apex toward its tip, not a circle", () => {
+  it("draws a travelling-pulse as a segment positioned+rotated onto its apex->tip bearing, not a static path shape", () => {
     const { container } = render(
-      <SystemEntitiesLayer entities={[PLUME]} ctx={CTX} />,
+      <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
     );
-    const path = container.querySelector('path[data-entity-id="cme-plume-1"]');
-    expect(path).not.toBeNull();
-    // Apex (0,0) -> tip (5,0): the path string starts at the apex.
-    expect(path?.getAttribute("d")).toMatch(/^M 0 0 L/);
+    const group = container.querySelector('[data-entity-id="cme-pulse-1"]');
+    expect(group?.tagName).toBe("g");
+    // Apex (0,0) -> tip (5,0): a purely horizontal bearing, angle 0.
+    expect(group?.getAttribute("transform")).toBe("translate(0 0) rotate(0)");
+    const line = group?.querySelector("line");
+    expect(line).not.toBeNull();
+    // The segment is drawn in the group's own LOCAL frame (0 -> segment
+    // length), clamped to the apex->tip span (5 user units here): the
+    // group's transform does the positioning, not the line's own endpoints.
+    expect(line?.getAttribute("x1")).toBe("0");
+    expect(Number(line?.getAttribute("x2"))).toBeCloseTo(1, 6); // 100_000m * 1e-5
+    expect(line?.getAttribute("y1")).toBe("0");
+    expect(line?.getAttribute("y2")).toBe("0");
     expect(
-      container.querySelector('circle[data-entity-id="cme-plume-1"]'),
+      container.querySelector('path[data-entity-id="cme-pulse-1"]'),
+    ).toBeNull();
+  });
+
+  it("never draws the travelling-pulse when its apex and tip coincide (zero-length bearing)", () => {
+    const { container } = render(
+      <SystemEntitiesLayer
+        entities={[
+          {
+            ...TRAVELLING_PULSE,
+            shape: {
+              kind: "travelling-pulse",
+              to: TRAVELLING_PULSE.position,
+              segmentLengthMetres: 100_000,
+            },
+          },
+        ]}
+        ctx={CTX}
+      />,
+    );
+    expect(
+      container.querySelector('[data-entity-id="cme-pulse-1"]'),
     ).toBeNull();
   });
 
@@ -227,7 +274,7 @@ describe("SystemEntitiesLayer", () => {
   it("has no axe violations with an interactive point marker rendered", async () => {
     const { container } = render(
       <SystemEntitiesLayer
-        entities={[POINT, RING, LINK, BLOB, PLUME]}
+        entities={[POINT, RING, LINK, BLOB, TRAVELLING_PULSE]}
         ctx={CTX}
         onEntityActivate={() => {}}
         selectedId="vessel-1"
@@ -263,6 +310,25 @@ describe("SystemEntitiesLayer", () => {
     fireEvent.keyDown(button, { key: " " });
     expect(onEntityActivate).toHaveBeenCalledTimes(3);
     expect(onEntityActivate).toHaveBeenCalledWith("vessel-orbit:v-relay");
+  });
+
+  it("draws the interactive vessel ring's dot as a non-interactive sibling, outside the clickable marker", () => {
+    const { container } = render(
+      <SystemEntitiesLayer
+        entities={[VESSEL_RING]}
+        ctx={CTX}
+        onEntityActivate={() => {}}
+      />,
+    );
+    const dot = container.querySelector(
+      'circle[data-entity-dot-id="vessel-orbit:v-relay"]',
+    );
+    expect(dot).not.toBeNull();
+    expect(dot).toHaveAttribute("pointer-events", "none");
+    // Not nested inside the button-role marker: a decoration, not a second
+    // hit target riding the same rotated frame as the ring's own geometry.
+    const button = screen.getByRole("button", { name: /Comsat Relay-1/ });
+    expect(button.contains(dot)).toBe(false);
   });
 
   it("reflects selectedId as aria-pressed on the matching vessel orbit-path ring", () => {

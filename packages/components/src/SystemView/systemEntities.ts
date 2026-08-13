@@ -99,15 +99,25 @@ export type SystemEntityShape =
   /** A physically-scaled disc: `radiusMetres` is projected by `plotScale` like any other distance, so it grows/shrinks correctly on zoom (e.g. an expanding CME front). */
   | { kind: "blob"; radiusMetres: number }
   /**
-   * A directional cone/wedge from this entity's own `position` (the apex,
-   * e.g. a star) out toward `to` (a bearing + distance, e.g. the body a CME
-   * is headed for), widening as it travels: `halfWidthMetres` is the
-   * physical half-width AT THE TIP, projected by `plotScale` like `blob`'s
-   * radius so it scales on zoom. Use this instead of `blob` for anything
-   * that comes from ONE direction rather than expanding equally in every
-   * direction, a `blob` reads as an omnidirectional field/front.
+   * A moving segment from this entity's own `position` (the apex, e.g. a
+   * star) travelling outward toward `to` (a bearing + distance, e.g. the
+   * body a CME threatens), looping continuously rather than sitting static:
+   * use this instead of `blob`/a fixed wedge for anything that reads as
+   * ONE thing in transit along a bearing (a CME front) rather than an
+   * omnidirectional or static field. `segmentLengthMetres` is the physical
+   * length of the moving segment itself (NOT the full apex->tip distance),
+   * projected by `plotScale` like `blob`'s radius so it scales on zoom, and
+   * clamped to the apex->tip distance if it would overshoot. The travel
+   * SPEED is a `SystemEntitiesLayer` rendering choice, not part of this
+   * contract: a contribution has no wall clock to derive a real transit
+   * time from (contribution-slots-spec: `compute()` is a pure function of
+   * Topics/Processors only).
    */
-  | { kind: "plume"; to: SystemEntityPosition; halfWidthMetres: number };
+  | {
+      kind: "travelling-pulse";
+      to: SystemEntityPosition;
+      segmentLengthMetres: number;
+    };
 
 export interface SystemEntity {
   /** Stable, globally-unique id: the decoration hook and the future info panel key off this. */
@@ -246,12 +256,12 @@ export function projectOrbitRing(
 
 /**
  * Default stacking, back to front: orbit rings read as background structure,
- * blobs and plumes (physical ambient effects, e.g. a CME) sit above them but
- * below the network layer, connection lines sit above them so a link is
- * always readable against whatever it crosses, and point markers are always
- * on top so they stay clickable. A contributed entity's `zHint` overrides
- * this outright when a contribution needs a different stacking (e.g. an
- * entity that must clear a specific other entity).
+ * blobs and travelling pulses (physical ambient effects, e.g. a CME) sit
+ * above them but below the network layer, connection lines sit above them so
+ * a link is always readable against whatever it crosses, and point markers
+ * are always on top so they stay clickable. A contributed entity's `zHint`
+ * overrides this outright when a contribution needs a different stacking
+ * (e.g. an entity that must clear a specific other entity).
  */
 export const SYSTEM_ENTITY_DEFAULT_LAYER: Readonly<
   Record<SystemEntityShape["kind"], number>
@@ -260,7 +270,7 @@ export const SYSTEM_ENTITY_DEFAULT_LAYER: Readonly<
   blob: 1,
   // Same tier as `blob`: another physical ambient effect, just a
   // directional one rather than an omnidirectional field.
-  plume: 1,
+  "travelling-pulse": 1,
   "connection-line": 2,
   point: 3,
 };
@@ -319,6 +329,13 @@ export type ResolvedSystemEntity =
       rx: number;
       ry: number;
       rotationDeg: number;
+      /** The entity's own `position` (its declared anomaly), projected: a
+       *  small marker distinguishing WHERE on the ring this entity's data
+       *  actually points (e.g. a `connection-line`'s join point) from the
+       *  ring itself, which only shows the orbit's SHAPE. Omitted on the
+       *  rare projection failure the ring itself didn't already hit. */
+      dotX?: number;
+      dotY?: number;
     })
   | (ResolvedBase & {
       kind: "connection-line";
@@ -334,14 +351,15 @@ export type ResolvedSystemEntity =
       radiusPx: number;
     })
   | (ResolvedBase & {
-      kind: "plume";
+      kind: "travelling-pulse";
       /** Apex (the entity's own `position`, projected). */
       x1: number;
       y1: number;
-      /** Tip centre (`shape.to`, projected). */
+      /** Tip (`shape.to`, projected): where the pulse travels TOWARD, one
+       *  full apex->tip distance per loop. */
       x2: number;
       y2: number;
-      halfWidthPx: number;
+      segmentLengthPx: number;
     });
 
 const DEFAULT_POINT_RADIUS_PX = 4;
@@ -405,12 +423,14 @@ export function resolveSystemEntities(
       }
       const ring = projectOrbitRing(entity.position, ctx);
       if (!ring) continue;
+      const dot = projectEntityPosition(entity.position, ctx);
       layered.push({
         z,
         resolved: {
           kind: "orbit-path",
           id: entity.id,
           ...ring,
+          ...(dot ? { dotX: dot.x, dotY: dot.y } : {}),
           colour,
           opacity,
           meta: entity.meta,
@@ -454,22 +474,26 @@ export function resolveSystemEntities(
         },
       });
     } else {
-      // "plume"
+      // "travelling-pulse"
       const from = projectEntityPosition(entity.position, ctx);
       const to = projectEntityPosition(entity.shape.to, ctx);
       if (!from || !to) continue;
-      const halfWidthPx = entity.shape.halfWidthMetres * ctx.plotScale;
-      if (!(halfWidthPx > 0)) continue;
+      // A coincident apex/tip has no bearing to travel along: skip rather
+      // than resolve a zero-length line the renderer would have to notice
+      // and discard itself.
+      if (from.x === to.x && from.y === to.y) continue;
+      const segmentLengthPx = entity.shape.segmentLengthMetres * ctx.plotScale;
+      if (!(segmentLengthPx > 0)) continue;
       layered.push({
         z,
         resolved: {
-          kind: "plume",
+          kind: "travelling-pulse",
           id: entity.id,
           x1: from.x,
           y1: from.y,
           x2: to.x,
           y2: to.y,
-          halfWidthPx,
+          segmentLengthPx,
           colour,
           opacity,
           meta: entity.meta,

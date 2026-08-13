@@ -34,10 +34,14 @@ const execFileAsync = promisify(execFile);
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PROBE_DIR = resolve(HERE, "probe");
-const REPO_ROOT = resolve(HERE, "../../..");
+// Absolute main-repo paths (not derived from this file's own location via
+// `HERE`): a worktree-isolated run's `HERE` resolves to the WORKTREE's own
+// copy of this script, so a relative `../../..` would land the artifact in
+// a directory that gets torn down with the worktree, same trap
+// `render-systemview-cme-video.ts`'s own `OUT_DIRS` doc comment calls out.
 const OUT_DIRS = [
-  resolve(REPO_ROOT, "local_docs/inbox/systemview-traffic"),
-  resolve(REPO_ROOT, "local_docs/inbox/systemview-contributions"),
+  "/Users/jon.pepler/personal/gonogo/local_docs/inbox/systemview-traffic",
+  "/Users/jon.pepler/personal/gonogo/local_docs/inbox/systemview-contributions",
 ];
 
 const KERBOL_MU = 1.1723328e18;
@@ -61,6 +65,14 @@ function kerbolSystem() {
         radius: 600_000,
         gravParameter: KERBIN_MU,
         sphereOfInfluence: 84_159_286,
+        // `computeCommsNetworkEntities`'s `homeBodyName` resolves "home" off
+        // this flag, not a fixed body index: without it, EVERY edge
+        // touching the home node (both `home<->v-relay` and `home<->v-other`
+        // in this scene) fails to resolve a position and is silently
+        // omitted, leaving only the relay<->active hop drawn. This was the
+        // actual cause of round 1's "route reads as a single disconnected
+        // stub" defect, not just the collinear `argPe` geometry below.
+        isHome: true,
         orbit: {
           sma: 13_599_840_256,
           ecc: 0,
@@ -95,13 +107,25 @@ function kerbolSystem() {
   };
 }
 
-function orbit(sma: number, meanAnomalyAtEpoch = 0) {
+/**
+ * `argPe` defaults to 0 for the active vessel's own orbit (its real,
+ * live-computed position stays at a clean reference angle), but
+ * `vesselOrbitsContribution`'s `connection-line`/traffic-pulse endpoints
+ * always join a vessel at trueAnomaly=0 (see `vesselOrbitsContribution.ts`'s
+ * own module doc), a point whose ANGLE is `lan + argPe`, not `meanAnomaly`:
+ * every vessel sharing `argPe=0` would put that join point on the SAME ray
+ * from Kerbin's centre regardless of `meanAnomalyAtEpoch`, collapsing a
+ * multi-hop route into one overlapping line. Giving v-relay/v-other distinct
+ * `argPe` values spreads their join points around the diagram so the route
+ * reads as a real bent path.
+ */
+function orbit(sma: number, meanAnomalyAtEpoch = 0, argPe = 0) {
   return {
     sma,
     ecc: 0,
     inc: 0,
     lan: 0,
-    argPe: 0,
+    argPe,
     meanAnomalyAtEpoch,
     epoch: 0,
   };
@@ -165,7 +189,7 @@ function sceneEmits(): Array<{ topic: string; value: unknown }> {
             crewCount: 0,
             crewCapacity: 0,
             commsControlSource: 2,
-            orbit: orbit(6_000_000, 1.4),
+            orbit: orbit(6_000_000, 1.4, 70),
           },
           {
             vesselId: "v-other",
@@ -176,7 +200,7 @@ function sceneEmits(): Array<{ topic: string; value: unknown }> {
             crewCount: 2,
             crewCapacity: 2,
             commsControlSource: 2,
-            orbit: orbit(8_000_000, 3.7),
+            orbit: orbit(8_000_000, 3.7, -60),
           },
         ],
       },
@@ -266,16 +290,43 @@ async function evalUtNow(page: Page): Promise<number> {
  * Selects a vessel's `orbit-path` ring the way an operator actually can: a
  * plain `page.click()` targets the shape's BOUNDING-BOX CENTRE, which for a
  * hollow, `fill:none` ellipse is empty space, not the stroked path itself
- * (the same reason a real mouse click there would miss too). Clicks the top
- * of the ring's bounding box instead, safely inside the entity's own wide
- * invisible `data-hit-target` stroke (`SystemEntitiesLayer`'s `strokeWidth:
- * 14` hit ring).
+ * (the same reason a real mouse click there would miss too).
+ *
+ * Reads the ring's own `data-ring` ellipse geometry (`cx`/`cy`/`ry`, in the
+ * `<g>`'s LOCAL, pre-rotation coordinate space) directly off the DOM and
+ * maps its topmost point to screen coordinates via `getScreenCTM()`, rather
+ * than reading the `<g>`'s `getBoundingClientRect()`/Playwright
+ * `boundingBox()` and clicking a fixed pixel offset from its edge: that
+ * approach is fragile because bbox measurement was observed to sometimes
+ * include the wide invisible `data-hit-target` stroke and sometimes not
+ * (Chromium version/rotation-dependent), so a fixed offset that happened to
+ * land inside the 14px hit-target stroke for one ring radius silently
+ * missed it for another. `getScreenCTM` sidesteps the ambiguity entirely: it
+ * gives the EXACT screen point for a known SVG-space coordinate, independent
+ * of how any particular browser reports bounding boxes for stroked,
+ * possibly-rotated shapes.
  */
 async function clickRingTop(page: Page, entityId: string): Promise<void> {
-  const locator = page.locator(`[data-entity-id="${entityId}"]`);
-  const box = await locator.boundingBox();
-  if (!box) throw new Error(`Capture: no bounding box for ${entityId}`);
-  await page.mouse.click(box.x + box.width / 2, box.y + 5);
+  const point = await page.evaluate((id) => {
+    const ring = document.querySelector(
+      `[data-entity-id="${id}"] [data-ring="true"]`,
+    ) as SVGGraphicsElement | null;
+    if (!ring) return null;
+    const cx = Number(ring.getAttribute("cx"));
+    const cy = Number(ring.getAttribute("cy"));
+    const ry = Number(ring.getAttribute("ry"));
+    const ctm = ring.getScreenCTM();
+    if (!ctm) return null;
+    // The topmost point of the (pre-rotation-local) ellipse, transformed by
+    // its own element's CTM: this already folds in the enclosing `<g>`'s
+    // `rotate(...)`, the SVG's viewBox scale, and the page's own layout
+    // offset, so the result is a ready-to-click viewport coordinate.
+    const svgPoint = new DOMPoint(cx, cy - ry);
+    const screenPoint = svgPoint.matrixTransform(ctm);
+    return { x: screenPoint.x, y: screenPoint.y };
+  }, entityId);
+  if (!point) throw new Error(`Capture: could not locate ring for ${entityId}`);
+  await page.mouse.click(point.x, point.y);
 }
 
 async function convertToMp4(webmPath: string, mp4Path: string): Promise<void> {

@@ -143,7 +143,11 @@ export type SystemEntityShape =
   | { kind: "orbit-path" }
   | { kind: "connection-line"; to: SystemEntityPosition }
   | { kind: "blob"; radiusMetres: number }
-  | { kind: "plume"; to: SystemEntityPosition; halfWidthMetres: number };
+  | {
+      kind: "travelling-pulse";
+      to: SystemEntityPosition;
+      segmentLengthMetres: number;
+    };
 
 /** Mirrors `SystemEntity`. */
 export interface SystemEntity {

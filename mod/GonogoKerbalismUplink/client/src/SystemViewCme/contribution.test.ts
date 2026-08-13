@@ -3,7 +3,7 @@ import { computeCmeEntities } from "./contribution";
 
 /** A vessel-to-star unit vector pointing straight along +x (i.e. the star
  *  sits at the vessel's +x): the negated bearing this produces (star-to-
- *  vessel) is -x, so a storm on this star plumes toward -x, distance `dist`. */
+ *  vessel) is -x, so a storm on this star pulses toward -x, distance `dist`. */
 function starDirection(x: number, y: number, z: number) {
   return {
     star: "Kerbol",
@@ -103,7 +103,7 @@ describe("computeCmeEntities", () => {
     ).toEqual([]);
   });
 
-  it("draws a faint directional plume from the star toward the body's bearing, for an inbound storm (stormState 1)", () => {
+  it("draws a faint travelling pulse from the star toward the body's bearing, for an inbound storm (stormState 1)", () => {
     const [entity] = computeCmeEntities({
       stormEjectionSpeed: { magnitude: 99_000_000 },
       stars: [starDirection(1, 0, 0)],
@@ -121,7 +121,7 @@ describe("computeCmeEntities", () => {
       id: "cme:Kerbol",
       position: { kind: "fixed", parentName: "Kerbol", xMetres: 0, yMetres: 0 },
       shape: {
-        kind: "plume",
+        kind: "travelling-pulse",
         // direction (1,0,0) negated -> bearing (-1,0) * dist.
         to: {
           kind: "fixed",
@@ -129,18 +129,70 @@ describe("computeCmeEntities", () => {
           xMetres: -13_599_840_256,
           yMetres: 0,
         },
-        halfWidthMetres: 13_599_840_256 * 0.18,
+        // ejectionSpeedMps (99e6) * durationS (3_600) = 3.564e11, well past
+        // `dist` (13.6e9), so the segment clamps to the full apex->tip span.
+        segmentLengthMetres: 13_599_840_256,
       },
       style: { emphasis: "faint" },
       meta: {
         star: "Kerbol",
         state: "inbound",
         distM: 13_599_840_256,
-        arrivalUt: 5_000_000,
         durationS: 3_600,
         ejectionSpeedMps: 99_000_000,
+        arrivalUt: 5_000_000,
       },
     });
+  });
+
+  it("derives the segment length from ejection speed * active duration when it's SHORTER than the full apex->tip distance", () => {
+    const [entity] = computeCmeEntities({
+      stormEjectionSpeed: { magnitude: 1_000_000 },
+      stars: [starDirection(1, 0, 0)],
+      storms: [
+        {
+          star: "Kerbol",
+          stormState: { magnitude: 1 },
+          stormDuration: { magnitude: 3_600 },
+          dist: { magnitude: 13_599_840_256 },
+        },
+      ],
+    });
+    expect(entity?.shape).toMatchObject({
+      kind: "travelling-pulse",
+      segmentLengthMetres: 1_000_000 * 3_600,
+    });
+  });
+
+  it("skips a storm slot missing its active duration or the weather's ejection speed, never fabricating a segment length", () => {
+    expect(
+      computeCmeEntities({
+        stormEjectionSpeed: { magnitude: 99_000_000 },
+        stars: [starDirection(1, 0, 0)],
+        storms: [
+          {
+            star: "Kerbol",
+            stormState: { magnitude: 1 },
+            dist: { magnitude: 13_599_840_256 },
+            // no stormDuration
+          },
+        ],
+      }),
+    ).toEqual([]);
+    expect(
+      computeCmeEntities({
+        // no stormEjectionSpeed at all
+        stars: [starDirection(1, 0, 0)],
+        storms: [
+          {
+            star: "Kerbol",
+            stormState: { magnitude: 1 },
+            stormDuration: { magnitude: 3_600 },
+            dist: { magnitude: 13_599_840_256 },
+          },
+        ],
+      }),
+    ).toEqual([]);
   });
 
   it("projects the bearing off the direction vector's x/z only, dropping y (this diagram's own flattened plane)", () => {
@@ -169,11 +221,13 @@ describe("computeCmeEntities", () => {
 
   it("tints an arrived storm (stormState 2) with the warn colour, still faint", () => {
     const [entity] = computeCmeEntities({
+      stormEjectionSpeed: { magnitude: 1_000_000 },
       stars: [starDirection(1, 0, 0)],
       storms: [
         {
           star: "Kerbol",
           stormState: { magnitude: 2 },
+          stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 13_599_840_256 },
         },
       ],
@@ -185,23 +239,26 @@ describe("computeCmeEntities", () => {
     expect(entity?.meta?.state).toBe("in progress");
   });
 
-  it("never sets a zHint: relies on the plume shape's own default layer (below connection-line/point, above orbit-path)", () => {
+  it("never sets a zHint: relies on the travelling-pulse shape's own default layer (below connection-line/point, above orbit-path)", () => {
     const [entity] = computeCmeEntities({
+      stormEjectionSpeed: { magnitude: 1_000_000 },
       stars: [starDirection(1, 0, 0)],
       storms: [
         {
           star: "Kerbol",
           stormState: { magnitude: 1 },
+          stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 1e10 },
         },
       ],
     });
-    expect(entity?.shape.kind).toBe("plume");
+    expect(entity?.shape.kind).toBe("travelling-pulse");
     expect(entity?.zHint).toBeUndefined();
   });
 
   it("draws one entity per storm slot, e.g. a modded binary star", () => {
     const entities = computeCmeEntities({
+      stormEjectionSpeed: { magnitude: 1_000_000 },
       stars: [
         starDirection(1, 0, 0),
         { ...starDirection(0, 0, 1), star: "Kerbol B" },
@@ -210,11 +267,13 @@ describe("computeCmeEntities", () => {
         {
           star: "Kerbol",
           stormState: { magnitude: 1 },
+          stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 1e10 },
         },
         {
           star: "Kerbol B",
           stormState: { magnitude: 2 },
+          stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 2e10 },
         },
       ],

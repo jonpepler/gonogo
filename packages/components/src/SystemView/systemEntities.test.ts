@@ -341,6 +341,32 @@ describe("resolveSystemEntities", () => {
     expect(warnSpy.mock.calls[0][0]).toContain("bad-ring");
   });
 
+  it("resolves an orbit-path entity's own dot alongside the ring, at its declared anomaly (not the ring's periapsis)", () => {
+    const entities: SystemEntity[] = [
+      {
+        id: "ring-with-dot",
+        position: {
+          kind: "orbit",
+          parentName: "Kerbin",
+          sma: 1_000_000,
+          ecc: 0,
+          lan: 0,
+          argPe: 0,
+          trueAnomaly: 90, // +y for a circular equatorial orbit
+        },
+        shape: { kind: "orbit-path" },
+      },
+    ];
+    const [resolved] = resolveSystemEntities(entities, CTX);
+    expect(resolved.kind).toBe("orbit-path");
+    const orbitPath = resolved as Extract<
+      typeof resolved,
+      { kind: "orbit-path" }
+    >;
+    expect(orbitPath.dotX).toBeCloseTo(0, 6);
+    expect(orbitPath.dotY).toBeCloseTo(10, 6);
+  });
+
   it("skips a connection-line whose 'to' endpoint doesn't project", () => {
     const entities: SystemEntity[] = [
       {
@@ -421,7 +447,7 @@ describe("resolveSystemEntities", () => {
     expect(collapsed).toEqual([]);
   });
 
-  it("resolves a plume's apex + tip endpoints and scales halfWidthMetres by plotScale", () => {
+  it("resolves a travelling-pulse's apex + tip endpoints and scales segmentLengthMetres by plotScale", () => {
     const [resolved] = resolveSystemEntities(
       [
         {
@@ -433,30 +459,30 @@ describe("resolveSystemEntities", () => {
             yMetres: 0,
           },
           shape: {
-            kind: "plume",
+            kind: "travelling-pulse",
             to: {
               kind: "fixed",
               parentName: "Kerbin",
               xMetres: 1_000_000,
               yMetres: 0,
             },
-            halfWidthMetres: 200_000,
+            segmentLengthMetres: 200_000,
           },
         },
       ],
       CTX,
     );
     expect(resolved).toMatchObject({
-      kind: "plume",
+      kind: "travelling-pulse",
       x1: 0,
       y1: 0,
       x2: 10,
       y2: 0,
-      halfWidthPx: 2,
+      segmentLengthPx: 2,
     });
   });
 
-  it("skips a plume whose tip doesn't project, or whose halfWidthMetres resolves to non-positive", () => {
+  it("skips a travelling-pulse whose tip doesn't project, or whose segmentLengthMetres resolves to non-positive", () => {
     expect(
       resolveSystemEntities(
         [
@@ -469,14 +495,14 @@ describe("resolveSystemEntities", () => {
               yMetres: 0,
             },
             shape: {
-              kind: "plume",
+              kind: "travelling-pulse",
               to: {
                 kind: "fixed",
                 parentName: "Mun",
                 xMetres: 1_000_000,
                 yMetres: 0,
               },
-              halfWidthMetres: 200_000,
+              segmentLengthMetres: 200_000,
             },
           },
         ],
@@ -488,7 +514,7 @@ describe("resolveSystemEntities", () => {
       resolveSystemEntities(
         [
           {
-            id: "zero-width",
+            id: "zero-length",
             position: {
               kind: "fixed",
               parentName: "Kerbin",
@@ -496,14 +522,14 @@ describe("resolveSystemEntities", () => {
               yMetres: 0,
             },
             shape: {
-              kind: "plume",
+              kind: "travelling-pulse",
               to: {
                 kind: "fixed",
                 parentName: "Kerbin",
                 xMetres: 1_000_000,
                 yMetres: 0,
               },
-              halfWidthMetres: 0,
+              segmentLengthMetres: 0,
             },
           },
         ],
@@ -512,8 +538,37 @@ describe("resolveSystemEntities", () => {
     ).toEqual([]);
   });
 
-  it("gives plume the same default z-tier as blob (both physical ambient effects)", () => {
-    expect(SYSTEM_ENTITY_DEFAULT_LAYER.plume).toBe(
+  it("skips a travelling-pulse whose apex and tip project onto the same point (no bearing to travel along)", () => {
+    expect(
+      resolveSystemEntities(
+        [
+          {
+            id: "coincident",
+            position: {
+              kind: "fixed",
+              parentName: "Kerbin",
+              xMetres: 0,
+              yMetres: 0,
+            },
+            shape: {
+              kind: "travelling-pulse",
+              to: {
+                kind: "fixed",
+                parentName: "Kerbin",
+                xMetres: 0,
+                yMetres: 0,
+              },
+              segmentLengthMetres: 200_000,
+            },
+          },
+        ],
+        CTX,
+      ),
+    ).toEqual([]);
+  });
+
+  it("gives travelling-pulse the same default z-tier as blob (both physical ambient effects)", () => {
+    expect(SYSTEM_ENTITY_DEFAULT_LAYER["travelling-pulse"]).toBe(
       SYSTEM_ENTITY_DEFAULT_LAYER.blob,
     );
   });

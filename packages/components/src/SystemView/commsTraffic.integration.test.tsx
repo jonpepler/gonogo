@@ -204,7 +204,9 @@ describe("SystemView command traffic: system.uplink.pending as edge pulses", () 
     const peakStop = container.querySelector(
       `#${gradientId} stop:nth-child(2)`,
     );
-    expect(peakStop?.getAttribute("stop-color")).toBe("var(--color-accent-fg)");
+    expect(peakStop?.getAttribute("stop-color")).toBe(
+      "var(--color-text-primary)",
+    );
 
     // The traversed edge itself stays the same plain grey/white every other
     // CommNet line renders in: the gradient pulse is the ONLY traffic

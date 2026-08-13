@@ -1,5 +1,5 @@
 import { logger } from "@ksp-gonogo/logger";
-import { bodyPosition } from "./SystemDiagram";
+import { bodyPosition, orbitEllipseGeometry } from "./SystemDiagram";
 
 /**
  * The `system-view.entities` contribution slot (contribution-slots-spec
@@ -182,11 +182,13 @@ export function projectEntityPosition(
 }
 
 /**
- * Ellipse parameters for an `orbit-path` ring, in the SAME local (pre-
- * rotation) frame `SystemDiagram`'s own child-orbit ellipses use: the
- * caller wraps `<ellipse cx cy rx ry>` in a `<g transform="rotate(rotationDeg)">`
+ * Ellipse parameters for an `orbit-path` ring, positioned at `ctx.center`:
+ * the caller wraps `<ellipse cx cy rx ry>` in a `<g transform="rotate(rotationDeg)">`
  * around `ctx.center`. `null` for a frame mismatch or degenerate sma, same
- * as `projectEntityPosition`.
+ * as `projectEntityPosition`. The ellipse geometry itself comes from
+ * `orbitEllipseGeometry` (`SystemDiagram.tsx`), the same conic-section math
+ * a child body's and the active vessel's own orbit rings use, just
+ * re-centred from origin-relative to `ctx.center`.
  */
 export interface OrbitRingGeometry {
   cx: number;
@@ -202,16 +204,19 @@ export function projectOrbitRing(
 ): OrbitRingGeometry | null {
   if (!sameParent(orbit.parentName, ctx.parentName)) return null;
   if (!(orbit.sma > 0) || !Number.isFinite(orbit.sma)) return null;
-  const a = orbit.sma * ctx.plotScale;
-  const e = Math.min(Math.max(orbit.ecc, 0), 0.999);
-  const b = a * Math.sqrt(1 - e * e);
-  const focusOffset = a * e;
+  const ring = orbitEllipseGeometry(
+    orbit.sma,
+    orbit.ecc,
+    orbit.lan,
+    orbit.argPe,
+    ctx.plotScale,
+  );
   return {
-    cx: ctx.center.x - focusOffset,
-    cy: ctx.center.y,
-    rx: a,
-    ry: b,
-    rotationDeg: orbit.lan + orbit.argPe,
+    cx: ctx.center.x + ring.cx,
+    cy: ctx.center.y + ring.cy,
+    rx: ring.rx,
+    ry: ring.ry,
+    rotationDeg: ring.rotationDeg,
   };
 }
 

@@ -145,6 +145,46 @@ describe("SystemEntitiesLayer", () => {
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("gives the interactive point marker a visible :focus-visible ring", () => {
+    const { container } = render(
+      <SystemEntitiesLayer
+        entities={[POINT]}
+        ctx={CTX}
+        onEntityActivate={() => {}}
+      />,
+    );
+    const marker = container.querySelector('[data-entity-id="vessel-1"]');
+    expect(marker).not.toBeNull();
+
+    // The ring itself: hidden by default, only shown by the CSS below.
+    const focusRing = marker?.querySelector("circle.focus-ring");
+    expect(focusRing).not.toBeNull();
+
+    // styled-components injects the actual rules into <style> tags in
+    // jsdom; confirm the marker's own generated class carries a
+    // `:focus-visible` rule that reveals `.focus-ring`, and that the base
+    // rule doesn't just strip the outline without this replacement (the
+    // bug this test guards against).
+    const css = Array.from(document.querySelectorAll("style"))
+      .map((el) => el.textContent ?? "")
+      .join("\n");
+    const markerClass = Array.from(marker?.classList ?? []).find((cls) =>
+      css.includes(`.${cls}`),
+    );
+    expect(markerClass).toBeDefined();
+    expect(css).toContain(`.${markerClass}:focus-visible .focus-ring`);
+    expect(css).toMatch(/outline:\s*none/);
+  });
+
+  it("does not add a focus ring or make a non-interactive point focusable", () => {
+    const { container } = render(
+      <SystemEntitiesLayer entities={[POINT]} ctx={CTX} />,
+    );
+    const marker = container.querySelector('[data-entity-id="vessel-1"]');
+    expect(marker?.querySelector("circle.focus-ring")).toBeNull();
+    expect(marker).not.toHaveAttribute("tabIndex");
+  });
+
   it("has no axe violations with an interactive point marker rendered", async () => {
     const { container } = render(
       <SystemEntitiesLayer

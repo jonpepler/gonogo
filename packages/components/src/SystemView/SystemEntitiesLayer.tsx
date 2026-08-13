@@ -1,5 +1,11 @@
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useMemo } from "react";
+// PointMarker below is a styled.g whose keyboard focus ring
+// (`&:focus-visible .focus-ring`) is an SVG pseudo-class + descendant rule
+// that inline `style` cannot express, and no ui-kit primitive is an SVG <g>
+// focus wrapper. Same pattern as `ShipMap/ShipDiagramSvg.tsx`'s `PartGroup`.
+// biome-ignore lint/style/noRestrictedImports: SVG <g> focus ring, no inline/primitive equivalent (see above)
+import { styled } from "styled-components";
 import {
   formatEntityLabel,
   type ResolvedSystemEntity,
@@ -150,7 +156,7 @@ function Primitive({
           }
         : { style: POINT_STATIC_STYLE };
       return (
-        <g data-entity-id={r.id} {...interactiveProps}>
+        <PointMarker data-entity-id={r.id} {...interactiveProps}>
           <circle
             cx={r.x}
             cy={r.y}
@@ -160,7 +166,19 @@ function Primitive({
             stroke="var(--color-text-inverse)"
             strokeWidth={1}
           />
-        </g>
+          {interactive && (
+            <circle
+              className="focus-ring"
+              cx={r.x}
+              cy={r.y}
+              r={r.radiusPx + 3}
+              fill="none"
+              stroke="var(--color-accent-fg)"
+              strokeWidth={2}
+              pointerEvents="none"
+            />
+          )}
+        </PointMarker>
       );
     }
     default:
@@ -184,3 +202,16 @@ const POINT_INTERACTIVE_STYLE: CSSProperties = {
 };
 
 const POINT_STATIC_STYLE: CSSProperties = { pointerEvents: "none" };
+
+// The one styled block that stays: an SVG <g> keyboard focus ring. See the
+// justified biome-ignore on the styled-components import at the top of the
+// file.
+const PointMarker = styled.g`
+  outline: none;
+  .focus-ring {
+    visibility: hidden;
+  }
+  &:focus-visible .focus-ring {
+    visibility: visible;
+  }
+`;

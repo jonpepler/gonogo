@@ -272,7 +272,7 @@ describe("SystemView selection: brighten, CommNet path colour, info panel", () =
     expect(edge.getAttribute("stroke")).toBe("var(--color-status-go-bg)");
   });
 
-  it("highlights a relayed two-hop CommNet path green, both edges", async () => {
+  it("colours a relayed two-hop CommNet path by the selected vessel's OWN control state, not the graph's all-active heuristic", async () => {
     const { container } = mountScene();
     await waitForRendered();
     const marker = await waitFor(() => {
@@ -284,6 +284,11 @@ describe("SystemView selection: brighten, CommNet path colour, info panel", () =
     });
     fireEvent.click(marker);
 
+    // Both hops are `active: true` (an all-active BFS route exists), but
+    // v-relayed's OWN roster commsControlSource is Partial (1), which the
+    // info panel reports as "relay". Colouring by the graph heuristic alone
+    // would draw this GREEN, contradicting that "relay" row; it must draw
+    // the same degraded tone `COMMS_PATH_COLOUR.partial` uses.
     await waitFor(() => {
       const homeToRelay = container.querySelector(
         '[data-entity-id="comms-edge:home:v-relay"]',
@@ -292,18 +297,46 @@ describe("SystemView selection: brighten, CommNet path colour, info panel", () =
         '[data-entity-id="comms-edge:v-relay:v-relayed"]',
       );
       expect(homeToRelay?.getAttribute("stroke")).toBe(
-        "var(--color-status-go-bg)",
+        "var(--color-status-warning-bg)",
       );
       expect(relayToVessel?.getAttribute("stroke")).toBe(
-        "var(--color-status-go-bg)",
+        "var(--color-status-warning-bg)",
       );
     });
+    expect(screen.getByText("relay")).toBeInTheDocument();
 
     // The UNRELATED direct edge stays faint, not swept up in the highlight.
     const unrelated = container.querySelector(
       '[data-entity-id="comms-edge:home:v-direct"]',
     );
     expect(unrelated?.getAttribute("stroke")).toBe("var(--color-text-faint)");
+  });
+
+  it("colours a direct one-hop CommNet path green for a FULL-control vessel, keyed off the same roster value", async () => {
+    const { container } = mountScene();
+    await waitForRendered();
+    const marker = await waitFor(() => {
+      const el = container.querySelector(
+        '[data-entity-id="vessel-orbit:v-direct"]',
+      );
+      expect(el).not.toBeNull();
+      return el as SVGGElement;
+    });
+    fireEvent.click(marker);
+
+    // v-direct's roster commsControlSource is Full (2), "connected" in the
+    // info panel: the one case where the graph heuristic and the roster
+    // value happen to agree, confirming the fix didn't just invert the
+    // colour, it derives it from the roster either way.
+    const edge = await waitFor(() => {
+      const el = container.querySelector(
+        '[data-entity-id="comms-edge:home:v-direct"]',
+      );
+      expect(el).not.toBeNull();
+      return el as SVGLineElement;
+    });
+    expect(edge.getAttribute("stroke")).toBe("var(--color-status-go-bg)");
+    expect(screen.getByText("connected")).toBeInTheDocument();
   });
 
   it("selects a vessel with no CommNet route without highlighting any edge", async () => {
@@ -356,10 +389,11 @@ describe("SystemView selection: brighten, CommNet path colour, info panel", () =
     );
     expect(marker).toHaveAttribute("aria-pressed", "true");
 
-    // Escape bubbles from the focused marker up to the diagram wrapper's own
-    // keydown handler (`index.tsx`'s `handleDiagramKeyDown`), same DOM path
-    // a real keyboard user's Escape press takes regardless of which marker
-    // currently has focus.
+    // Escape bubbles from the focused marker up through the DOM to
+    // `document`, where `index.tsx` registers a `keydown` listener (a
+    // `useEffect`, live only while something is selected) rather than
+    // putting the handler on the diagram wrapper itself, same idiom
+    // `ActionMenu.tsx` already uses for its own outside-pointer dismiss.
     fireEvent.keyDown(marker, { key: "Escape" });
     await waitFor(() =>
       expect(screen.getByText("orbiting Kerbol")).toBeInTheDocument(),

@@ -12,16 +12,19 @@ import {
  * over `edges`, not a lookup: a graph node's `id` IS a vessel's `vesselId`
  * (Task 1's `95e394bc`), so the selected vessel IS a node to search from.
  *
- * `"full"`: a path exists using only `active: true` edges, the live control
- * route. `"partial"`: no all-active route exists, but the vessel still
- * reaches home through some mix of active/inactive edges (e.g. a relay hop
- * has dropped out of range this tick but the topology still connects).
- * `"none"`: the vessel is unreachable from home at all. The colour palette
- * (`COMMS_PATH_COLOUR`) collapses "partial"/"none" to the same degraded
- * tone, matching the roster's own Full/Partial/None `CommsControlSource`
- * three-tier semantics (`RosterCommsControlSource`, `vesselOrbitsContribution
- * .ts`'s `commsLabel`) at the two-tone granularity a highlighted line can
- * actually show.
+ * `quality` governs TRAVERSAL only, which edges make up the highlighted
+ * path: `"full"` prefers a path using only `active: true` edges, the live
+ * control route; `"partial"` falls back to every edge regardless of
+ * `active` when no all-active route exists (e.g. a relay hop has dropped
+ * out of range this tick but the topology still connects); `"none"` means
+ * the vessel is unreachable from home at all. It is deliberately NOT the
+ * colour source: a vessel can sit on an all-active edge chain to home
+ * through ANOTHER vessel's relay while its own `CommsControlSource` is
+ * still Partial or None, so colouring by this field would draw a green
+ * line for a vessel the info panel reports as degraded. The colour instead
+ * comes from `commsControlQuality`, keyed off the selected vessel's own
+ * roster control state (`RosterCommsControlSource`, `vesselOrbitsContribution
+ * .ts`'s `commsLabel`), so the line always agrees with the info panel.
  */
 export type CommsPathQuality = "full" | "partial" | "none";
 
@@ -150,13 +153,37 @@ export function deriveCommsPath(
   return NO_COMMS_PATH;
 }
 
-/** GREEN for a full control path; both degraded tiers (partial/no path)
- *  share ONE degraded tone (the roster's own Full/Partial/None palette
- *  collapsed to what a single highlighted line can show, see this file's
- *  module doc comment). `"none"` is never actually painted (`edgeIds` is
- *  empty), kept here only so the map is total. */
+/** GREEN for full control, its own degraded tone for partial, a third for
+ *  none, indexed by `commsControlQuality`'s result rather than
+ *  `deriveCommsPath`'s traversal-only `quality` (see this file's module doc
+ *  comment). `"none"` is reachable here (an edge can be highlighted for a
+ *  vessel whose own control source is None while the topology still
+ *  connects it to home some other way), unlike `deriveCommsPath`'s own
+ *  `"none"`, which never has edges to paint. */
 export const COMMS_PATH_COLOUR: Readonly<Record<CommsPathQuality, string>> = {
   full: "var(--color-status-go-bg)",
   partial: "var(--color-status-warning-bg)",
   none: "var(--color-status-nogo-bg)",
 };
+
+/**
+ * Maps the selected vessel's own roster comms-control label (`commsLabel()`
+ * in `vesselOrbitsContribution.ts`, carried on `SystemEntity.meta.comms`) to
+ * a `CommsPathQuality` tier for `COMMS_PATH_COLOUR` to index. This is the
+ * highlighted path's actual colour source (see the module doc comment for
+ * why it isn't `deriveCommsPath`'s own `quality`). An unrecognised or
+ * missing label (roster hasn't caught up yet, or reports "unknown") degrades
+ * to `"none"` rather than assuming full control.
+ */
+export function commsControlQuality(
+  commsLabel: string | number | boolean | undefined,
+): CommsPathQuality {
+  switch (commsLabel) {
+    case "connected":
+      return "full";
+    case "relay":
+      return "partial";
+    default:
+      return "none";
+  }
+}

@@ -6,7 +6,12 @@ import {
   Quality,
 } from "@ksp-gonogo/sitrep-sdk";
 import { describe, expect, it } from "vitest";
-import { COMMS_PATH_COLOUR, deriveCommsPath, NO_COMMS_PATH } from "./commsPath";
+import {
+  COMMS_PATH_COLOUR,
+  commsControlQuality,
+  deriveCommsPath,
+  NO_COMMS_PATH,
+} from "./commsPath";
 
 function node(overrides: Partial<CommsNetworkNode>): CommsNetworkNode {
   return {
@@ -141,5 +146,36 @@ describe("COMMS_PATH_COLOUR", () => {
     expect(COMMS_PATH_COLOUR.full).toBe("var(--color-status-go-bg)");
     expect(COMMS_PATH_COLOUR.partial).not.toBe(COMMS_PATH_COLOUR.full);
     expect(COMMS_PATH_COLOUR.none).not.toBe(COMMS_PATH_COLOUR.full);
+  });
+});
+
+describe("commsControlQuality", () => {
+  // The highlighted path's actual colour source: the SELECTED VESSEL'S own
+  // roster commsLabel (`vesselOrbitsContribution.ts`), not `deriveCommsPath`'s
+  // traversal-only `quality`. A vessel can sit on an all-active BFS route to
+  // home through another vessel's relay while its own control source is
+  // still Partial or None; these assertions are keyed off the roster label
+  // directly, independent of what any particular graph shape produces.
+  it("maps a FULL-control roster label ('connected') to the go tone", () => {
+    expect(COMMS_PATH_COLOUR[commsControlQuality("connected")]).toBe(
+      "var(--color-status-go-bg)",
+    );
+  });
+
+  it("maps a PARTIAL-control roster label ('relay') to a degraded, non-go tone", () => {
+    const colour = COMMS_PATH_COLOUR[commsControlQuality("relay")];
+    expect(colour).not.toBe("var(--color-status-go-bg)");
+    expect(colour).toBe("var(--color-status-warning-bg)");
+  });
+
+  it("maps a NONE-control roster label ('none') to a degraded, non-go tone", () => {
+    expect(COMMS_PATH_COLOUR[commsControlQuality("none")]).not.toBe(
+      "var(--color-status-go-bg)",
+    );
+  });
+
+  it("degrades an unrecognised/missing label rather than assuming full control", () => {
+    expect(commsControlQuality("unknown")).toBe("none");
+    expect(commsControlQuality(undefined)).toBe("none");
   });
 });

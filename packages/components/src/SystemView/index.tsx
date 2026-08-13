@@ -31,7 +31,12 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { quantiseUt } from "../MapView/predictionThrottle";
 import { AlmanacPanel } from "./AlmanacPanel";
-import { COMMS_PATH_COLOUR, deriveCommsPath, NO_COMMS_PATH } from "./commsPath";
+import {
+  COMMS_PATH_COLOUR,
+  commsControlQuality,
+  deriveCommsPath,
+  NO_COMMS_PATH,
+} from "./commsPath";
 import { SystemDiagram } from "./SystemDiagram";
 import { SystemEntitiesLayer } from "./SystemEntitiesLayer";
 import type { SystemEntityStyle } from "./systemEntities";
@@ -324,24 +329,32 @@ function SystemViewComponent({
     () => new Set(commsPath.edgeIds),
     [commsPath],
   );
+  // The highlighted path's colour: the SELECTED VESSEL'S own roster comms
+  // control state (`meta.comms`, the same label the info panel shows), not
+  // `commsPath.quality` (that field governs traversal only, see
+  // `commsPath.ts`'s module doc comment). Keeps the line's colour in
+  // agreement with the info panel's "Comms: ..." row even when the BFS
+  // happened to find an all-active edge chain through another vessel's
+  // relay.
+  const commsPathColour = useMemo(
+    () => COMMS_PATH_COLOUR[commsControlQuality(selectedEntity?.meta?.comms)],
+    [selectedEntity],
+  );
   // The id-keyed decoration hook: brightens the selected vessel's own
   // orbit/point entity (faint -> bright, no colour override needed, the
   // `bright` emphasis token already reads prominent), and colours the
-  // derived CommNet path's edges by control quality on top of their own
-  // faint base style. Never touches the contribution's data, purely a
-  // style override keyed by id.
+  // derived CommNet path's edges by the selected vessel's control state on
+  // top of their own faint base style. Never touches the contribution's
+  // data, purely a style override keyed by id.
   const decorate = useCallback(
     (id: string): SystemEntityStyle | undefined => {
       if (id === selectedVesselId) return { emphasis: "bright" };
       if (commsPathEdgeIds.has(id)) {
-        return {
-          emphasis: "bright",
-          colour: COMMS_PATH_COLOUR[commsPath.quality],
-        };
+        return { emphasis: "bright", colour: commsPathColour };
       }
       return undefined;
     },
-    [selectedVesselId, commsPathEdgeIds, commsPath.quality],
+    [selectedVesselId, commsPathEdgeIds, commsPathColour],
   );
 
   // Stable body-index → NAME map (from `system.bodies`' stable `index`, never

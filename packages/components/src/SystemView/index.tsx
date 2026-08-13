@@ -31,6 +31,12 @@ import {
 import { FramedDisplay, NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+// FleetComms's `.actions` slot (Commlinks/Traffic toggles) now gates THIS
+// host's own shape-contribution render, not a second overlay draw: Task 7
+// reconciled the old straight-line comms overlay onto the graph/highlight/
+// pulse model built in Tasks 4-6, so the toggles moved with it. A pure
+// module-scoped store (no augment-only state), safe to read directly.
+import { useFleetCommsToggles } from "../FleetComms/toggles";
 import { quantiseUt } from "../MapView/predictionThrottle";
 import { AlmanacPanel } from "./AlmanacPanel";
 import {
@@ -39,7 +45,7 @@ import {
   deriveCommsPath,
   NO_COMMS_PATH,
 } from "./commsPath";
-import { deriveTraffic } from "./commsTraffic";
+import { deriveTraffic, NO_TRAFFIC } from "./commsTraffic";
 import { SystemDiagram } from "./SystemDiagram";
 import { SystemEntitiesLayer } from "./SystemEntitiesLayer";
 import type { SystemEntityStyle } from "./systemEntities";
@@ -273,6 +279,11 @@ function SystemViewComponent({
     "system.uplink.pending",
   );
   const utNow = useUtNow();
+  // FleetComms's Commlinks/Traffic toggles (Task 7 reconciliation): they used
+  // to gate that augment's own straight-line overlay draw; now they gate the
+  // relay-graph `connection-line` entities and the command-traffic pulses
+  // below, the shapes that superseded it.
+  const { showCommlinks, showCommandTraffic } = useFleetCommsToggles();
 
   // Shape-contribution foundation: every `system-view.entities` contribution
   // (vessel orbits, the CommNet graph, a future CME front, ...), aggregated
@@ -287,13 +298,21 @@ function SystemViewComponent({
   // and draws every roster vessel) would sit duplicated on top of it. Host
   // state, not contribution data: matched by `vesselId`, not by parsing a
   // contribution-private `id` string.
-  const entities = useMemo(
-    () =>
+  //
+  // `showCommlinks` off drops every `connection-line` entity (the CommNet
+  // relay graph, `vesselOrbitsContribution.ts`'s `comms-edge:*` entries, and
+  // with them the selected-path highlight, since that's the SAME line
+  // decorated bright rather than a separate shape): the Commlinks toggle's
+  // new home, per Task 7.
+  const entities = useMemo(() => {
+    const withoutActiveVessel =
       identity?.vesselId != null
         ? rawEntities.filter((e) => e.vesselId !== identity.vesselId)
-        : rawEntities,
-    [rawEntities, identity?.vesselId],
-  );
+        : rawEntities;
+    return showCommlinks
+      ? withoutActiveVessel
+      : withoutActiveVessel.filter((e) => e.shape.kind !== "connection-line");
+  }, [rawEntities, identity?.vesselId, showCommlinks]);
   // `selectedVesselId` is keyed by the ACTIVATED ENTITY's own `id` (e.g.
   // `vessel-orbit:<vesselId>`), not the bare vesselId: that's what the
   // click/keyboard handler on `SystemEntitiesLayer` reports, and it's also
@@ -357,15 +376,22 @@ function SystemViewComponent({
   // over the SAME `comms.network` graph the selection path above walks.
   // Independent of selection: traffic keeps animating on the active vessel's
   // route whether or not the operator has anything else selected.
+  //
+  // `showCommandTraffic` off (the Traffic toggle, Task 7's new home for it)
+  // short-circuits straight to `NO_TRAFFIC` rather than deriving then
+  // discarding: same "don't do the work if nothing will render" discipline
+  // `entities`' own `showCommlinks` filter follows above.
   const traffic = useMemo(
     () =>
-      deriveTraffic(
-        pendingQueue?.pending ?? [],
-        commsNetwork,
-        identity?.vesselId,
-        utNow,
-      ),
-    [pendingQueue, commsNetwork, identity?.vesselId, utNow],
+      showCommandTraffic
+        ? deriveTraffic(
+            pendingQueue?.pending ?? [],
+            commsNetwork,
+            identity?.vesselId,
+            utNow,
+          )
+        : NO_TRAFFIC,
+    [pendingQueue, commsNetwork, identity?.vesselId, utNow, showCommandTraffic],
   );
   const trafficEdgeIds = useMemo(() => new Set(traffic.edgeIds), [traffic]);
   // The id-keyed decoration hook: brightens the selected vessel's own

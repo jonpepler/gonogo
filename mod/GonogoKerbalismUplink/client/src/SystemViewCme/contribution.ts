@@ -11,7 +11,7 @@ import { KERBALISM } from "../uplink";
 // CME / solar-activity overlay: a `system-view.entities` contribution off
 // `kerbalism.spaceweather`, the same shape-contribution seam the built-in
 // vessel-orbit and CommNet-graph entries ride (`SystemView/
-// vesselOrbitsContribution.ts`). One faint `travelling-pulse` per active
+// vesselOrbitsContribution.ts`). One yellow `travelling-pulse` per active
 // storm slot, so SystemView renders it without knowing Kerbalism exists.
 //
 // `KerbalismSpaceWeather.storms` is scoped to the ACTIVE VESSEL's current SOI
@@ -35,17 +35,22 @@ import { KERBALISM } from "../uplink";
 // a wall clock to interpolate one from (contribution-slots-spec: pure
 // function of Topics/Processors only, see `contributions.ts`'s own doc
 // comment). So the ACTUAL travel is rendered, not computed: SystemView's
-// `travelling-pulse` shape is a moving segment that loops from the apex
-// toward the tip on a fixed, purely decorative CSS period (see
-// `SystemEntitiesLayer.tsx`'s own doc comment on that constant); this
-// contribution supplies only what IS real: the bearing (below) and the
-// segment's LENGTH. That length is `stormEjectionSpeed * stormDuration`
-// (clamped to `dist`): the physical distance the ejecta covers, at its real
-// ejection speed, over the real span the storm stays active at the target
-// body, `stormDuration`. Both a storm entry with no resolvable duration or
-// no ejection speed are skipped outright, the same "no data, no draw"
-// discipline every other field on this entity already follows, rather than
-// a fabricated segment length.
+// `travelling-pulse` shape is a moving segment that loops arriving at the
+// tip, washing through it, and shortening as it exits the far side, on a
+// fixed, purely decorative CSS period (see `SystemEntitiesLayer.tsx`'s own
+// doc comment on the `travelling-pulse` case); this contribution supplies
+// only what IS real: the bearing (below) and the segment's LENGTH. That
+// length is `stormEjectionSpeed * stormDuration` (clamped to `dist`): the
+// physical distance the ejecta covers, at its real ejection speed, over the
+// real span the storm stays active at the target body, `stormDuration`. The
+// SAME length also sizes how far the render carries the pulse past the
+// target before the loop restarts (a `SystemEntitiesLayer` rendering
+// choice, not something this contribution encodes separately): the ejecta
+// needs to travel roughly its own length past the body to fully clear it,
+// a fair decorative stand-in that invents no new number. Both a storm entry
+// with no resolvable duration or no ejection speed are skipped outright,
+// the same "no data, no draw" discipline every other field on this entity
+// already follows, rather than a fabricated segment length.
 //
 // The bearing: `KerbalismSpaceWeather.stars` carries each star's
 // vessel-to-star unit `direction` (`VesselData.SunInfo.Direction`), captured
@@ -60,9 +65,14 @@ import { KERBALISM } from "../uplink";
 // draws into. A storm with no matching `stars` entry (defensive: the two
 // lists come off the same reflection loop, so this shouldn't happen in
 // practice) is skipped outright rather than drawn with a fabricated bearing.
-// `stormState` still distinguishes inbound (faint, neutral) from arrived
-// (faint, warn-tinted) so the pulse shows the storm progressing between
-// those two real, known states.
+//
+// Colour: always the shared yellow token (`--color-tag-yellow-fg`, the same
+// one `ThermalStatus`'s "warm" state and `ShipMap`'s highlight already use),
+// distinct from the muted warning tokens this used to carry and from the
+// accent green SystemView reserves for selection. `stormState` still
+// distinguishes inbound (faint) from arrived (normal emphasis, the same
+// yellow) so the pulse shows the storm progressing between those two real,
+// known states without changing hue.
 // ---------------------------------------------------------------------------
 
 type CmeEntity = ContributionEntry<"system-view.entities">;
@@ -70,7 +80,10 @@ type CmeEntity = ContributionEntry<"system-view.entities">;
  *  type is); derived here so the meta literal below still type-checks. */
 type CmeEntityMeta = NonNullable<CmeEntity["meta"]>;
 
-const CME_WARN_COLOUR = "var(--color-status-warning-fg-muted)";
+/** Distinctly yellow, the shared "energetic/caution" tag token: never the
+ *  accent green SystemView reserves for selection, and never the muted
+ *  orange/gold warning tokens this pulse used to carry. */
+const CME_COLOUR = "var(--color-tag-yellow-fg)";
 
 const STORM_STATE_INBOUND = 1;
 const STORM_STATE_IN_PROGRESS = 2;
@@ -182,15 +195,16 @@ function computeStormEntity(
       to: { kind: "fixed", parentName: storm.star, ...bearing },
       segmentLengthMetres,
     },
-    // Faint by default, always: an ambient effect that stacks under the
-    // CommNet graph and point markers (SYSTEM_ENTITY_DEFAULT_LAYER's
-    // travelling-pulse=1, below connection-line=2/point=3), never a bright
-    // alarm competing with them. `stormState === 2` shifts the hue toward
-    // the shared warn token rather than raising emphasis, so "arrived" reads
-    // as distinct without the marker ever cutting off what's drawn on top.
+    // Faint while inbound, normal once arrived: an ambient effect that
+    // stacks under the CommNet graph and point markers
+    // (SYSTEM_ENTITY_DEFAULT_LAYER's travelling-pulse=1, below
+    // connection-line=2/point=3), never brighter than that tier. The colour
+    // itself never changes with state (always CME_COLOUR): only emphasis
+    // shifts, so "arrived" reads as more present without the marker ever
+    // cutting off what's drawn on top or being mistaken for a selection.
     style: {
-      emphasis: "faint",
-      ...(state === STORM_STATE_IN_PROGRESS ? { colour: CME_WARN_COLOUR } : {}),
+      emphasis: state === STORM_STATE_IN_PROGRESS ? "normal" : "faint",
+      colour: CME_COLOUR,
     },
     meta,
   };

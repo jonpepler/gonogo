@@ -336,14 +336,30 @@ function Primitive({
     case "travelling-pulse": {
       const dx = r.x2 - r.x1;
       const dy = r.y2 - r.y1;
-      const fullLengthPx = Math.hypot(dx, dy);
-      if (!(fullLengthPx > 0)) return null;
+      // Apex -> `to` (the shape's own tip, e.g. the CME's target body).
+      const bodyPx = Math.hypot(dx, dy);
+      if (!(bodyPx > 0)) return null;
       const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
-      const segmentLengthPx = Math.min(r.segmentLengthPx, fullLengthPx);
-      // How far the segment's OWN local origin (its trailing end) travels
-      // before its leading end reaches the tip: keeps the whole segment
-      // inside the apex->tip span for the entire loop, never overshooting.
-      const travelPx = fullLengthPx - segmentLengthPx;
+      const segmentLengthPx = Math.min(r.segmentLengthPx, bodyPx);
+      if (!(segmentLengthPx > 0)) return null;
+      // How far PAST the tip the pulse keeps going before it's fully
+      // exited and the loop restarts: a rendering choice, not contract
+      // data (see the `travelling-pulse` doc comment in systemEntities.ts).
+      // Reusing the segment's own physical length means the ejecta travels
+      // one more length of itself past the target before fully clearing
+      // it, a fair decorative stand-in that fabricates no new number.
+      const exitPx = bodyPx + segmentLengthPx;
+      // At loop start the LEADING edge already sits at the tip (arrival =
+      // storm start); this loop has no clock to show the apex->tip transit,
+      // so it starts already arrived rather than departing from the apex.
+      // It then slides forward at a constant rate until the TRAILING edge
+      // clears `exitPx`, the static clip below truncating the leading
+      // portion once it runs past that boundary, which is what makes the
+      // segment visibly shorten as it exits rather than just sliding off
+      // unchanged.
+      const startPx = bodyPx - segmentLengthPx;
+      const travelPx = exitPx - startPx;
+      const clipId = `system-entities-pulse-clip-${r.id}`;
       return (
         // Static positioning (SVG `transform` ATTRIBUTE) lives on its own
         // outer `<g>`, never the same element as the CSS-animated one: SVG2
@@ -358,20 +374,43 @@ function Primitive({
           pointerEvents="none"
           data-entity-id={r.id}
         >
-          <TravellingPulseGroup
-            style={{ "--pulse-travel-px": `${travelPx}px` } as CSSProperties}
-          >
-            <line
-              x1={0}
-              y1={0}
-              x2={segmentLengthPx}
-              y2={0}
-              stroke={r.colour}
-              strokeOpacity={r.opacity}
-              strokeWidth={TRAVELLING_PULSE_STROKE_WIDTH_PX}
-              strokeLinecap="round"
-            />
-          </TravellingPulseGroup>
+          <defs>
+            {/* Static (never animated): fixed in the apex-anchored local
+                frame at [0, exitPx], so a segment sliding through it via the
+                CHILD's own CSS transform gets truncated wherever it runs
+                past `exitPx`, without this rect ever needing to track the
+                animation itself. */}
+            <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+              <rect
+                x={-TRAVELLING_PULSE_CLIP_PAD_PX}
+                y={-TRAVELLING_PULSE_CLIP_HALF_HEIGHT_PX}
+                width={exitPx + TRAVELLING_PULSE_CLIP_PAD_PX}
+                height={TRAVELLING_PULSE_CLIP_HALF_HEIGHT_PX * 2}
+              />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${clipId})`}>
+            <TravellingPulseGroup
+              style={
+                {
+                  "--pulse-start-px": `${startPx}px`,
+                  "--pulse-travel-px": `${travelPx}px`,
+                } as CSSProperties
+              }
+            >
+              {/* A sine-wave polyline rather than a plain line: reads as
+                  wavy, energetic ejecta instead of a smooth static dash. */}
+              <polyline
+                points={travellingPulseWavePoints(segmentLengthPx)}
+                fill="none"
+                stroke={r.colour}
+                strokeOpacity={r.opacity}
+                strokeWidth={TRAVELLING_PULSE_STROKE_WIDTH_PX}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </TravellingPulseGroup>
+          </g>
         </g>
       );
     }
@@ -452,23 +491,61 @@ const PULSE_PEAK_COLOUR = "var(--color-text-primary)";
  *  1.4px, `orbit-path`'s 1.2px). */
 const PULSE_STROKE_WIDTH_PX = 1.2;
 
-/** How far a travelling-pulse segment's local origin (its trailing end)
- *  slides per loop, set per-instance via the `--pulse-travel-px` custom
- *  property (`Primitive`'s "travelling-pulse" case): the fixed distance,
- *  0% opaque, ramping in, holding, then ramping out again before the
- *  instant snap back to the start, so the loop reads as a repeating sweep
- *  rather than a visible jump-cut. The PERIOD is a fixed decorative
- *  constant, not derived from any real transit time: a contribution has no
- *  wall clock to compute one from (see `systemEntities.ts`'s
- *  `travelling-pulse` doc comment). */
+/** Where the travelling-pulse segment's local origin (its trailing end)
+ *  starts each loop (`--pulse-start-px`, already past the apex: the
+ *  segment arrives fully formed rather than growing in from the star) and
+ *  how far it slides from there (`--pulse-travel-px`), both set per-
+ *  instance (`Primitive`'s "travelling-pulse" case). Opacity ramps in/out
+ *  over the first/last 8% so the loop reads as a repeating sweep rather
+ *  than a visible jump-cut; the actual "shortens as it exits" effect comes
+ *  from the static clip in `Primitive`, not from anything animated here.
+ *  The PERIOD is a fixed decorative constant, not derived from any real
+ *  transit time: a contribution has no wall clock to compute one from (see
+ *  `systemEntities.ts`'s `travelling-pulse` doc comment). */
 const travellingPulseKeyframes = keyframes`
-  0% { transform: translateX(0); opacity: 0; }
+  0% { transform: translateX(var(--pulse-start-px, 0px)); opacity: 0; }
   8% { opacity: 1; }
   92% { opacity: 1; }
-  100% { transform: translateX(var(--pulse-travel-px, 0px)); opacity: 0; }
+  100% {
+    transform: translateX(calc(var(--pulse-start-px, 0px) + var(--pulse-travel-px, 0px)));
+    opacity: 0;
+  }
 `;
 const TRAVELLING_PULSE_PERIOD_MS = 4000;
 const TRAVELLING_PULSE_STROKE_WIDTH_PX = 2;
+/** Left padding on the static exit clip, so anti-aliasing at the segment's
+ *  own trailing edge never gets a hard crop right at its start position. */
+const TRAVELLING_PULSE_CLIP_PAD_PX = 4;
+/** Half-height of the static exit clip: comfortably clears the sine wave's
+ *  amplitude plus stroke width, since the clip only needs to bound the
+ *  travel AXIS (x), never the wave's own y excursion. */
+const TRAVELLING_PULSE_CLIP_HALF_HEIGHT_PX = 40;
+/** Sine-wave texture along the pulse's own length: reads as wavy, energetic
+ *  ejecta rather than a smooth dash. Wavelength/amplitude are fixed pixel
+ *  constants (not scaled to the segment's length) so a long pulse reads as
+ *  many small ripples and a short one as a couple, never stretched thin or
+ *  bunched tight. */
+const TRAVELLING_PULSE_WAVELENGTH_PX = 12;
+const TRAVELLING_PULSE_AMPLITUDE_PX = 3;
+const TRAVELLING_PULSE_SAMPLE_STEP_PX = 2;
+
+/** `points` for a `<polyline>` sine wave from local x=0 to x=lengthPx,
+ *  y oscillating +-`TRAVELLING_PULSE_AMPLITUDE_PX`: exported for testing. */
+export function travellingPulseWavePoints(lengthPx: number): string {
+  const steps = Math.max(
+    1,
+    Math.round(lengthPx / TRAVELLING_PULSE_SAMPLE_STEP_PX),
+  );
+  const points: string[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const x = (i / steps) * lengthPx;
+    const y =
+      TRAVELLING_PULSE_AMPLITUDE_PX *
+      Math.sin((x / TRAVELLING_PULSE_WAVELENGTH_PX) * 2 * Math.PI);
+    points.push(`${x},${y}`);
+  }
+  return points.join(" ");
+}
 
 const TravellingPulseGroup = styled.g`
   @media (prefers-reduced-motion: no-preference) {

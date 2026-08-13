@@ -10,10 +10,39 @@
  * - `traffic`: warpRate=1 (real time), so a `system.uplink.pending` entry's
  *   real one-way-delay leg animates smoothly over several real seconds.
  *   Also fires a mid-capture click to select a SEPARATE vessel, showing the
- *   coloured CommNet path decoration appear alongside the pulsing traffic.
+ *   coloured CommNet path decoration appear alongside the pulsing traffic,
+ *   then a SECOND click on the same ring to toggle the selection back off
+ *   before the recording continues: round 2 left the selection standing for
+ *   the rest of the clip, so v-other's ring stayed accent-green (the
+ *   "selected" semantic) for most of the video with nothing left selected
+ *   to explain it. The deselect is a second `clickRingTop`, not
+ *   `page.keyboard.press("Escape")` (index.tsx's OTHER deselect path,
+ *   equally valid interactively): headless Chromium was observed to update
+ *   the DOM correctly on the Escape path (`aria-pressed` flips, the
+ *   `stroke` attribute reads back faint) but never actually repaint the
+ *   ring, so the recorded video kept showing it accent-green regardless,
+ *   for the whole rest of the clip; a synthetic mouse click reliably
+ *   forces the repaint the way the original select click already had to.
+ *   Also withholds `vessel.orbit`
+ *   for this capture specifically (`sceneEmits()` still carries it for
+ *   `orbits`, below, which needs it): a real `vessel.orbit` makes
+ *   SystemDiagram draw the ACTIVE vessel's own dedicated ring AND its live
+ *   predicted-trajectory patch, both ALSO solid accent-green
+ *   (`VesselOrbitPath`/`PredictedPatchArc` in `SystemDiagram.tsx`) and both
+ *   unrelated to selection, a separate always-on "this is my ship" signal
+ *   that happens to share the same colour token. That's legitimate
+ *   everywhere else in the app, but this capture's whole point is faint
+ *   contributed orbits + dim-white traffic pulses, so a permanent second
+ *   green ring for the entire clip (present from frame one, not just after
+ *   the click) reads as unexplained noise here. `vessel.identity` alone is
+ *   enough: `deriveTraffic`'s routing and the contributed-ring suppression
+ *   for the active vessel both key off `identity.vesselId` only, never
+ *   `vessel.orbit`.
  * - `orbits`: warpRate elevated (~400x), so vessels visibly sweep along
  *   their faint orbits over a short capture; traffic wouldn't read as
- *   anything but a flicker at this speed, so this capture skips it.
+ *   anything but a flicker at this speed, so this capture skips it. This is
+ *   the one capture that DOES want the active vessel's own dedicated ring
+ *   and marker tracking live, so it keeps the full `sceneEmits()`.
  *
  * Output: `local_docs/inbox/systemview-traffic/*.mp4` (+ a couple of PNG
  * stills), also copied to `local_docs/inbox/systemview-contributions/` (the
@@ -224,6 +253,19 @@ function sceneEmits(): Array<{ topic: string; value: unknown }> {
   ];
 }
 
+/**
+ * The `traffic` capture's own scene: everything `sceneEmits()` carries
+ * EXCEPT `vessel.orbit`, so SystemDiagram never draws the active vessel's
+ * own dedicated ring/live-trajectory patch (both solid accent-green,
+ * unrelated to selection, see this file's own doc comment). `v-active`
+ * still carries a full orbit on its ROSTER entry (`system.vessels`, above),
+ * so the traffic route's own endpoint still resolves a real position for
+ * the connection-line to join; it just isn't drawn with its own extra ring.
+ */
+function sceneEmitsForTraffic(): Array<{ topic: string; value: unknown }> {
+  return sceneEmits().filter((e) => e.topic !== "vessel.orbit");
+}
+
 function pendingEntry(id: string, dispatchedAt: number, oneWaySeconds: number) {
   return {
     id,
@@ -376,7 +418,7 @@ async function captureTraffic(probeHtmlOut: string): Promise<void> {
       pxW: 900,
       pxH: 900,
       carriedChannels: CARRIED_CHANNELS,
-      streamEmits: sceneEmits(),
+      streamEmits: sceneEmitsForTraffic(),
       warpRate: 1,
     });
 
@@ -409,6 +451,16 @@ async function captureTraffic(probeHtmlOut: string): Promise<void> {
     await page.screenshot({
       path: join(OUT_DIRS[0], "systemview-traffic-with-selection.png"),
     });
+
+    // Deselect: this still-image is the ONLY place this capture wants
+    // selection-green on screen. Leaving it standing (round 2's bug) kept
+    // v-other's ring accent-green for the rest of the recording with
+    // nothing left selected to justify it. A second click toggles the SAME
+    // ring back off (`handleEntityActivate`'s toggle: `prev === id ? null
+    // : id`); this file's own doc comment explains why it's a click and
+    // not `page.keyboard.press("Escape")`.
+    await clickRingTop(page, "vessel-orbit:v-other");
+    await page.waitForTimeout(300);
 
     // Refresh the pending queue partway through so traffic keeps animating
     // (rather than fading out) for the remainder of the recording.

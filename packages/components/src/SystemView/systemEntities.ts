@@ -107,11 +107,18 @@ export type SystemEntityShape =
    * omnidirectional or static field. `segmentLengthMetres` is the physical
    * length of the moving segment itself (NOT the full apex->tip distance),
    * projected by `plotScale` like `blob`'s radius so it scales on zoom, and
-   * clamped to the apex->tip distance if it would overshoot. The travel
-   * SPEED is a `SystemEntitiesLayer` rendering choice, not part of this
-   * contract: a contribution has no wall clock to derive a real transit
-   * time from (contribution-slots-spec: `compute()` is a pure function of
-   * Topics/Processors only).
+   * clamped to the apex->tip distance if it would overshoot.
+   *
+   * `SystemEntitiesLayer` renders the loop as PASS-THROUGH, not arrive-
+   * and-stop: each cycle starts with the segment's leading edge already at
+   * `to` (arrival), then keeps sliding the same direction so the segment
+   * washes over and out past `to`, its trailing edge catching up until the
+   * whole thing has cleared, before the loop restarts. How far past `to`
+   * it travels before restarting, and the travel SPEED, are both
+   * `SystemEntitiesLayer` rendering choices, not part of this contract: a
+   * contribution has no wall clock to derive a real transit time or a real
+   * "how wide is the target" from (contribution-slots-spec: `compute()` is
+   * a pure function of Topics/Processors only).
    */
   | {
       kind: "travelling-pulse";

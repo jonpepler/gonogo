@@ -103,7 +103,7 @@ describe("computeCmeEntities", () => {
     ).toEqual([]);
   });
 
-  it("draws a faint travelling pulse from the star toward the body's bearing, for an inbound storm (stormState 1)", () => {
+  it("draws a faint yellow travelling pulse from the star toward the body's bearing, for an inbound storm (stormState 1)", () => {
     const [entity] = computeCmeEntities({
       stormEjectionSpeed: { magnitude: 99_000_000 },
       stars: [starDirection(1, 0, 0)],
@@ -133,7 +133,7 @@ describe("computeCmeEntities", () => {
         // `dist` (13.6e9), so the segment clamps to the full apex->tip span.
         segmentLengthMetres: 13_599_840_256,
       },
-      style: { emphasis: "faint" },
+      style: { emphasis: "faint", colour: "var(--color-tag-yellow-fg)" },
       meta: {
         star: "Kerbol",
         state: "inbound",
@@ -219,7 +219,7 @@ describe("computeCmeEntities", () => {
     expect(entity).toBeUndefined();
   });
 
-  it("tints an arrived storm (stormState 2) with the warn colour, still faint", () => {
+  it("raises an arrived storm (stormState 2) to normal emphasis, same yellow colour throughout", () => {
     const [entity] = computeCmeEntities({
       stormEjectionSpeed: { magnitude: 1_000_000 },
       stars: [starDirection(1, 0, 0)],
@@ -233,8 +233,8 @@ describe("computeCmeEntities", () => {
       ],
     });
     expect(entity?.style).toEqual({
-      emphasis: "faint",
-      colour: "var(--color-status-warning-fg-muted)",
+      emphasis: "normal",
+      colour: "var(--color-tag-yellow-fg)",
     });
     expect(entity?.meta?.state).toBe("in progress");
   });

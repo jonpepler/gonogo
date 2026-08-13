@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from "@ksp-gonogo/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../test/axe";
-import { SystemEntitiesLayer } from "./SystemEntitiesLayer";
+import {
+  SystemEntitiesLayer,
+  travellingPulseWavePoints,
+} from "./SystemEntitiesLayer";
 import type { SystemEntitiesContext, SystemEntity } from "./systemEntities";
 
 const CTX: SystemEntitiesContext = {
@@ -145,7 +148,7 @@ describe("SystemEntitiesLayer", () => {
     expect(Number(circle?.getAttribute("r"))).toBeCloseTo(3, 6);
   });
 
-  it("draws a travelling-pulse as a segment positioned+rotated onto its apex->tip bearing, not a static path shape", () => {
+  it("draws a travelling-pulse as a wavy segment positioned+rotated onto its apex->tip bearing, not a static path shape", () => {
     const { container } = render(
       <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
     );
@@ -153,18 +156,44 @@ describe("SystemEntitiesLayer", () => {
     expect(group?.tagName).toBe("g");
     // Apex (0,0) -> tip (5,0): a purely horizontal bearing, angle 0.
     expect(group?.getAttribute("transform")).toBe("translate(0 0) rotate(0)");
-    const line = group?.querySelector("line");
-    expect(line).not.toBeNull();
-    // The segment is drawn in the group's own LOCAL frame (0 -> segment
-    // length), clamped to the apex->tip span (5 user units here): the
-    // group's transform does the positioning, not the line's own endpoints.
-    expect(line?.getAttribute("x1")).toBe("0");
-    expect(Number(line?.getAttribute("x2"))).toBeCloseTo(1, 6); // 100_000m * 1e-5
-    expect(line?.getAttribute("y1")).toBe("0");
-    expect(line?.getAttribute("y2")).toBe("0");
+    // The segment is a sine-wave polyline (frazzled ejecta texture), never a
+    // plain line or a static path shape.
+    expect(group?.querySelector("line")).toBeNull();
     expect(
       container.querySelector('path[data-entity-id="cme-pulse-1"]'),
     ).toBeNull();
+    const polyline = group?.querySelector("polyline");
+    expect(polyline).not.toBeNull();
+    // Drawn in the group's own LOCAL frame starting at the origin: the
+    // group's transform does the positioning, not the polyline's own points.
+    expect(polyline?.getAttribute("points")).toMatch(/^0,0 /);
+  });
+
+  it("clips the travelling-pulse's static exit boundary at apex->tip distance + one more segment length", () => {
+    const { container } = render(
+      <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
+    );
+    // TRAVELLING_PULSE: bodyPx = 5 (500_000m * 1e-5), segmentLengthPx = 1
+    // (100_000m * 1e-5, well under bodyPx so unclamped): exitPx = 5 + 1 = 6.
+    const clipRect = container.querySelector("clipPath rect");
+    expect(clipRect).not.toBeNull();
+    expect(Number(clipRect?.getAttribute("width"))).toBeCloseTo(6 + 4, 6);
+  });
+
+  it("starts the travelling-pulse loop with its leading edge already at the tip, arriving rather than departing", () => {
+    const { container } = render(
+      <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
+    );
+    // startPx = bodyPx - segmentLengthPx = 5 - 1 = 4: at 0% the segment's
+    // local span [4, 5] puts its LEADING edge exactly at the tip (5).
+    const animated = container.querySelector(
+      '[data-entity-id="cme-pulse-1"] g[clip-path] > g',
+    ) as HTMLElement | null;
+    expect(animated).not.toBeNull();
+    expect(animated?.style.getPropertyValue("--pulse-start-px")).toBe("4px");
+    // travelPx = exitPx - startPx = 6 - 4 = 2: exactly 2x segmentLengthPx,
+    // half the loop washing over the tip, half shrinking out the far side.
+    expect(animated?.style.getPropertyValue("--pulse-travel-px")).toBe("2px");
   });
 
   it("never draws the travelling-pulse when its apex and tip coincide (zero-length bearing)", () => {
@@ -496,5 +525,30 @@ describe("SystemEntitiesLayer", () => {
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
+  });
+});
+
+describe("travellingPulseWavePoints", () => {
+  it("starts every wave at the local origin, y=0", () => {
+    expect(travellingPulseWavePoints(50)).toMatch(/^0,0 /);
+  });
+
+  it("ends exactly at the requested length", () => {
+    const points = travellingPulseWavePoints(50).split(" ");
+    const [lastX] = points[points.length - 1].split(",").map(Number);
+    expect(lastX).toBeCloseTo(50, 6);
+  });
+
+  it("oscillates rather than staying flat: some sampled y is non-zero", () => {
+    const points = travellingPulseWavePoints(50)
+      .split(" ")
+      .map((p) => Number(p.split(",")[1]));
+    expect(points.some((y) => Math.abs(y) > 0.5)).toBe(true);
+  });
+
+  it("degrades to a short two-point segment for a length under one sample step", () => {
+    // Never zero points even for a near-zero length: a degenerate polyline
+    // (a single coordinate pair) is still a valid, harmless <polyline>.
+    expect(travellingPulseWavePoints(0.5).split(" ")).toHaveLength(2);
   });
 });

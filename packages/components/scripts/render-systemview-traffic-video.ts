@@ -34,10 +34,17 @@
  *   everywhere else in the app, but this capture's whole point is faint
  *   contributed orbits + dim-white traffic pulses, so a permanent second
  *   green ring for the entire clip (present from frame one, not just after
- *   the click) reads as unexplained noise here. `vessel.identity` alone is
- *   enough: `deriveTraffic`'s routing and the contributed-ring suppression
- *   for the active vessel both key off `identity.vesselId` only, never
- *   `vessel.orbit`.
+ *   the click) reads as unexplained noise here. `deriveTraffic`'s routing
+ *   still keys off `identity.vesselId` alone, so v-active stays the real
+ *   traffic destination with no orbit on the wire; `index.tsx`'s
+ *   contributed-ring suppression (round-4 fix) now keys off BOTH
+ *   `identity.vesselId` AND `vessel.orbit`, so withholding the latter no
+ *   longer leaves v-active markerless, it falls through to the same faint
+ *   `orbit-path` ring `system-view-vessel-orbits` already draws for
+ *   v-relay/v-other (`system.vessels`' own per-vessel `orbit` field, never
+ *   filtered by this capture): every hop endpoint (home, v-relay, v-active)
+ *   renders with a real marker, and the only accent-green on screen for the
+ *   whole clip is the deliberate mid-capture selection of v-other.
  * - `orbits`: warpRate elevated (~400x), so vessels visibly sweep along
  *   their faint orbits over a short capture; traffic wouldn't read as
  *   anything but a flicker at this speed, so this capture skips it. This is
@@ -260,7 +267,11 @@ function sceneEmits(): Array<{ topic: string; value: unknown }> {
  * unrelated to selection, see this file's own doc comment). `v-active`
  * still carries a full orbit on its ROSTER entry (`system.vessels`, above),
  * so the traffic route's own endpoint still resolves a real position for
- * the connection-line to join; it just isn't drawn with its own extra ring.
+ * the connection-line to join, AND (round-4 fix) picks up the same faint
+ * `orbit-path` ring/dot `system-view-vessel-orbits` draws for every other
+ * roster vessel, since the active-vessel suppression in `index.tsx` no
+ * longer fires without a real `vessel.orbit` sample. v-active just doesn't
+ * get its own EXTRA dedicated bright ring on top of that.
  */
 function sceneEmitsForTraffic(): Array<{ topic: string; value: unknown }> {
   return sceneEmits().filter((e) => e.topic !== "vessel.orbit");

@@ -349,15 +349,37 @@ function Primitive({
       // one more length of itself past the target before fully clearing
       // it, a fair decorative stand-in that fabricates no new number.
       const exitPx = bodyPx + segmentLengthPx;
-      // At loop start the LEADING edge already sits at the tip (arrival =
-      // storm start); this loop has no clock to show the apex->tip transit,
-      // so it starts already arrived rather than departing from the apex.
-      // It then slides forward at a constant rate until the TRAILING edge
-      // clears `exitPx`, the static clip below truncating the leading
-      // portion once it runs past that boundary, which is what makes the
-      // segment visibly shorten as it exits rather than just sliding off
-      // unchanged.
-      const startPx = bodyPx - segmentLengthPx;
+      // At loop start the pulse's LEADING edge sits at the apex (x=0, the
+      // star), fully formed but clipped out of view by the static exit clip
+      // below (its own left edge sits at -PAD, just past the star): the
+      // pulse emerges from the sun rather than arriving pre-formed. It then
+      // slides forward at a CONSTANT rate for the whole loop, one linear
+      // `translateX` from `startPx` to `exitPx`, until the trailing edge
+      // clears `exitPx` and the loop restarts.
+      //
+      // That single constant rate is what makes the loop's own timing
+      // honest without this component ever computing a real transit time
+      // (still no wall clock, see the `travelling-pulse` doc comment in
+      // systemEntities.ts): the star->tip distance (`bodyPx`) and the
+      // pulse's own length (`segmentLengthPx`) are both real metres,
+      // projected by the SAME `plotScale`, so their PIXEL ratio already
+      // equals their real-metres ratio. At one constant speed, a real-metres
+      // ratio IS a real-TIME ratio (time = distance / speed, and the speed
+      // cancels out of the ratio). Concretely: the leading edge travels
+      // `bodyPx` pixels (the real star->target distance) before it first
+      // reaches the tip, arriving after a REAL time of `dist /
+      // ejectionSpeed`; the trailing edge then needs another
+      // `segmentLengthPx` pixels (the pulse's own physical length) to clear
+      // the tip, which is exactly `stormDuration` of real time by
+      // construction (`contribution.ts` sizes `segmentLengthMetres` as
+      // `ejectionSpeed * stormDuration`). So the loop-time fraction spent
+      // crossing the target vs. travelling out to it already reflects
+      // `stormDuration` relative to the real travel time, with no separate
+      // easing or phase logic needed. The trailing `exitPx` leg (clearing
+      // the far side) reuses that same pixel length again, the same
+      // decorative "one more length of itself" stand-in this shape has
+      // always used.
+      const startPx = -segmentLengthPx;
       const travelPx = exitPx - startPx;
       const clipId = `system-entities-pulse-clip-${r.id}`;
       return (

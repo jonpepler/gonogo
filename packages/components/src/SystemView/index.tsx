@@ -292,12 +292,16 @@ function SystemViewComponent({
   // (built further down). SystemView owns the one piece of dynamic state a
   // contribution can't: which entity, if any, is selected.
   const rawEntities = useContributions("system-view.entities");
-  // Suppress the active/framed vessel's own entry: `SystemDiagram` already
-  // draws its dedicated bright ring below, so a contributed faint one (e.g.
-  // the built-in vessel-orbits contribution, which has no notion of "active"
-  // and draws every roster vessel) would sit duplicated on top of it. Host
-  // state, not contribution data: matched by `vesselId`, not by parsing a
-  // contribution-private `id` string.
+  // Suppress the active/framed vessel's own entry, but only while
+  // `SystemDiagram` actually has a dedicated bright ring to draw in its
+  // place: that ring comes from `vessel.orbit` (`vesselOrbit` below), a
+  // separate topic from `vessel.identity`. Gating on identity alone used to
+  // strand a hop endpoint with no marker at all whenever a caller carried
+  // identity (needed so command traffic, further down, knows which vessel
+  // it's routing to) without also carrying orbit: neither the dedicated ring
+  // nor the contributed faint one rendered. Host state, not contribution
+  // data: matched by `vesselId`, not by parsing a contribution-private `id`
+  // string.
   //
   // `showCommlinks` off drops every `connection-line` entity (the CommNet
   // relay graph, `vesselOrbitsContribution.ts`'s `comms-edge:*` entries, and
@@ -306,13 +310,13 @@ function SystemViewComponent({
   // new home, per Task 7.
   const entities = useMemo(() => {
     const withoutActiveVessel =
-      identity?.vesselId != null
+      identity?.vesselId != null && orbit != null
         ? rawEntities.filter((e) => e.vesselId !== identity.vesselId)
         : rawEntities;
     return showCommlinks
       ? withoutActiveVessel
       : withoutActiveVessel.filter((e) => e.shape.kind !== "connection-line");
-  }, [rawEntities, identity?.vesselId, showCommlinks]);
+  }, [rawEntities, identity?.vesselId, orbit, showCommlinks]);
   // `selectedVesselId` is keyed by the ACTIVATED ENTITY's own `id` (e.g.
   // `vessel-orbit:<vesselId>`), not the bare vesselId: that's what the
   // click/keyboard handler on `SystemEntitiesLayer` reports, and it's also

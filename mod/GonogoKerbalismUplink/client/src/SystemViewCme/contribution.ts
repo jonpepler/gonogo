@@ -35,22 +35,29 @@ import { KERBALISM } from "../uplink";
 // a wall clock to interpolate one from (contribution-slots-spec: pure
 // function of Topics/Processors only, see `contributions.ts`'s own doc
 // comment). So the ACTUAL travel is rendered, not computed: SystemView's
-// `travelling-pulse` shape is a moving segment that loops arriving at the
-// tip, washing through it, and shortening as it exits the far side, on a
-// fixed, purely decorative CSS period (see `SystemEntitiesLayer.tsx`'s own
-// doc comment on the `travelling-pulse` case); this contribution supplies
-// only what IS real: the bearing (below) and the segment's LENGTH. That
-// length is `stormEjectionSpeed * stormDuration` (clamped to `dist`): the
-// physical distance the ejecta covers, at its real ejection speed, over the
-// real span the storm stays active at the target body, `stormDuration`. The
-// SAME length also sizes how far the render carries the pulse past the
-// target before the loop restarts (a `SystemEntitiesLayer` rendering
-// choice, not something this contribution encodes separately): the ejecta
-// needs to travel roughly its own length past the body to fully clear it,
-// a fair decorative stand-in that invents no new number. Both a storm entry
-// with no resolvable duration or no ejection speed are skipped outright,
-// the same "no data, no draw" discipline every other field on this entity
-// already follows, rather than a fabricated segment length.
+// `travelling-pulse` shape is a moving segment that loops EMERGING from the
+// star, travelling out to the target, crossing over it, and shortening as it
+// exits the far side, all at one constant rate over a fixed, purely
+// decorative CSS period (see `SystemEntitiesLayer.tsx`'s own doc comment on
+// the `travelling-pulse` case); this contribution supplies only what IS
+// real: the bearing (below) and the segment's LENGTH. That length is
+// `stormEjectionSpeed * stormDuration` (clamped to `dist`): the physical
+// distance the ejecta covers, at its real ejection speed, over the real span
+// the storm stays active at the target body, `stormDuration`. Because the
+// render's single constant rate turns a real-metres ratio directly into a
+// real-time ratio (`SystemEntitiesLayer`'s own doc comment works the
+// algebra), that same length is what makes the loop's CROSSING phase take
+// exactly `stormDuration` relative to the TRAVEL phase (`dist /
+// stormEjectionSpeed`), with nothing else in this contribution encoding that
+// ratio explicitly. The SAME length also sizes how far the render carries
+// the pulse past the target before the loop restarts (a
+// `SystemEntitiesLayer` rendering choice, not something this contribution
+// encodes separately): the ejecta needs to travel roughly its own length
+// past the body to fully clear it, a fair decorative stand-in that invents
+// no new number. Both a storm entry with no resolvable duration or no
+// ejection speed are skipped outright, the same "no data, no draw"
+// discipline every other field on this entity already follows, rather than
+// a fabricated segment length.
 //
 // The bearing: `KerbalismSpaceWeather.stars` carries each star's
 // vessel-to-star unit `direction` (`VesselData.SunInfo.Direction`), captured

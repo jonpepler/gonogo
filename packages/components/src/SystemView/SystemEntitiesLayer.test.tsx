@@ -180,20 +180,22 @@ describe("SystemEntitiesLayer", () => {
     expect(Number(clipRect?.getAttribute("width"))).toBeCloseTo(6 + 4, 6);
   });
 
-  it("starts the travelling-pulse loop with its leading edge already at the tip, arriving rather than departing", () => {
+  it("starts the travelling-pulse loop with its leading edge at the apex, emerging from the star rather than arriving pre-formed", () => {
     const { container } = render(
       <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
     );
-    // startPx = bodyPx - segmentLengthPx = 5 - 1 = 4: at 0% the segment's
-    // local span [4, 5] puts its LEADING edge exactly at the tip (5).
+    // startPx = -segmentLengthPx = -1: at 0% the segment's local span
+    // [-1, 0] puts its LEADING edge exactly at the apex (0, the star),
+    // clipped out of view by the static exit clip's own -PAD left edge.
     const animated = container.querySelector(
       '[data-entity-id="cme-pulse-1"] g[clip-path] > g',
     ) as HTMLElement | null;
     expect(animated).not.toBeNull();
-    expect(animated?.style.getPropertyValue("--pulse-start-px")).toBe("4px");
-    // travelPx = exitPx - startPx = 6 - 4 = 2: exactly 2x segmentLengthPx,
-    // half the loop washing over the tip, half shrinking out the far side.
-    expect(animated?.style.getPropertyValue("--pulse-travel-px")).toBe("2px");
+    expect(animated?.style.getPropertyValue("--pulse-start-px")).toBe("-1px");
+    // travelPx = exitPx - startPx = 6 - (-1) = 7: bodyPx (5) travelling out
+    // to the tip, plus one segmentLengthPx (1) crossing it, plus one more
+    // shrinking out the far side.
+    expect(animated?.style.getPropertyValue("--pulse-travel-px")).toBe("7px");
   });
 
   it("never draws the travelling-pulse when its apex and tip coincide (zero-length bearing)", () => {

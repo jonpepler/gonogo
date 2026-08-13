@@ -578,10 +578,14 @@ function CommsPathStop({
 
 /**
  * One leg's distance AND light-time, plus, when a `comm-signal.hop-rates`
- * contribution supplied one, this hop's forward bitrate: the slowest hop in the
- * path (the bottleneck that caps end-to-end throughput) is flagged with a
- * LIMITING marker and its rate tinted, since that is the number an operator
- * reads to know the real ceiling.
+ * contribution supplied one, this hop's forward bitrate: the slowest hop in
+ * the path (the bottleneck that caps end-to-end throughput) is flagged by
+ * tinting its rate amber, since that is the number an operator reads to know
+ * the real ceiling. No label word: a leg is a fixed-width row in the
+ * schedule, and spelling the flag out as text was overflowing it. Colour
+ * alone is never the only signal (WCAG 2.1 AA), so a `VisuallyHidden` hint
+ * and a hover `title` carry the same meaning to screen readers and mouse
+ * users respectively.
  */
 function CommsPathLeg({
   hop,
@@ -637,6 +641,11 @@ function CommsPathLeg({
             <Value
               tone="muted"
               size="xs"
+              title={
+                isBottleneck
+                  ? "Slowest hop: caps end-to-end throughput"
+                  : undefined
+              }
               style={{
                 whiteSpace: "nowrap",
                 color: isBottleneck
@@ -646,21 +655,11 @@ function CommsPathLeg({
               }}
             >
               <Unit value={value("bit/s", rate)} />
-            </Value>
-          )}
-          {isBottleneck && (
-            <Value
-              tone="default"
-              size="xs"
-              title="Slowest hop: caps end-to-end throughput"
-              style={{
-                color: "var(--color-status-warning-fg-muted)",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Limiting
+              {isBottleneck && (
+                <VisuallyHidden>
+                  , slowest hop, limits end-to-end rate
+                </VisuallyHidden>
+              )}
             </Value>
           )}
         </Cluster>

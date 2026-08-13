@@ -523,7 +523,8 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
     // `comm-signal.hop-rates` slot. A comms Uplink (RealAntennas) fills it off
     // its own Topic keyed by node id; here a local contribution stands in for
     // that, keyed to the two hops emitted below. CommSignal joins the rates onto
-    // the route it already renders and flags the slower hop as LIMITING.
+    // the route it already renders and flags the slower hop by colour, plus a
+    // screen-reader-only hint (no visible label word, it was overflowing the leg).
     registerContribution({
       id: "test-comm-signal-hop-rates",
       contributes: "comm-signal.hop-rates",
@@ -580,10 +581,23 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
     });
 
     await waitFor(() => expect(screen.getByText("Active Vessel")).toBeTruthy());
-    // Both legs' rates render through the canonical Unit formatter (bits/sec),
-    // and the slower (12 kbit/s) hop is flagged as the throughput-limiting one.
+    // Both legs' rates render through the canonical Unit formatter (bits/sec).
     expect(visibleText()).toContain("kbit/s");
-    expect(screen.getByText("Limiting")).toBeTruthy();
+    // No literal "LIMITING" word (it was overflowing the leg): the bottleneck
+    // hop is flagged by colour on its rate value plus a screen-reader-only
+    // hint, never by a space-consuming label.
+    expect(screen.queryByText("Limiting")).toBeNull();
+    const bottleneckHint = screen.getByText(
+      /slowest hop, limits end-to-end rate/i,
+    );
+    expect(bottleneckHint).toBeTruthy();
+    const bottleneckValue = bottleneckHint.closest(
+      '[title="Slowest hop: caps end-to-end throughput"]',
+    );
+    expect(bottleneckValue).toBeTruthy();
+    expect(bottleneckValue).toHaveStyle({
+      color: "var(--color-status-warning-fg-muted)",
+    });
   });
 
   it("falls back to a generic vessel label before vessel.identity has resolved", async () => {

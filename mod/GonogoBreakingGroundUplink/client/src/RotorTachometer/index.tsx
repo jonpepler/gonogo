@@ -148,11 +148,12 @@ function RotorTachometerComponent({
   const roboticsRaw = useTelemetry("robotics.servos");
   const available = useTelemetry("robotics.available")?.available;
 
-  // Delayed vessel commands (Breaking Ground robotics-audit-migration): rotor
-  // RPM/torque/brake/motor/lock/direction are actuated on the craft, subject
-  // to signal delay, so this dispatches over `useCommand` (not the legacy
-  // `useExecuteAction` string path) for per-command in-flight state, same
-  // shape as RoboticsConsole/MechJeb.
+  /**
+   * Delayed vessel commands: rotor RPM/torque/brake/motor/lock/direction
+   * are actuated on the craft, subject to signal delay, so this dispatches
+   * over `useCommand` (not the legacy `useExecuteAction` string path) for
+   * per-command in-flight state, same shape as RoboticsConsole/MechJeb.
+   */
   const rpmCmd = useCommand("robotics.rotor.setRpmLimit");
   const torqueCmd = useCommand("robotics.rotor.setTorqueLimit");
   const brakeCmd = useCommand("robotics.rotor.setBrake");
@@ -255,10 +256,13 @@ function RotorTachometerComponent({
 
   const showGauge = (h ?? 8) >= 6;
   const cap = Math.max(selected.rpmLimit, 1);
-  // Size the dial to the column width, but also cap it by a slice of the
-  // widget's height so the controls (steppers + the full toggle row) stay
-  // visible without scrolling; the rotor list below may scroll. Kept modest
-  // so a short/wide slot doesn't let the gauge crowd the toggles off-bottom.
+  /**
+   * Size the dial to the column width, but also cap it by a slice of the
+   * widget's height so the controls (steppers + the full toggle row) stay
+   * visible without scrolling; the rotor list below may scroll. Kept
+   * modest so a short/wide slot doesn't let the gauge crowd the toggles
+   * off-bottom.
+   */
   const gaugeMaxH = Math.max(64, (h ?? 9) * 25 * 0.32);
   const gaugeW = Math.min(
     gaugeSize.w || 180,

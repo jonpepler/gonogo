@@ -3,9 +3,8 @@ import { CameraKind, type CameraState } from "@ksp-gonogo/kerbcast";
 /**
  * Find the live kerbal face camera for a crew member, by NAME.
  *
- * kerbcast's name-rekey fix (2026-07-23, `local_docs/inbox/...diagnosed-
- * rekey-on-name-no-krpc-needed.md`) makes `cameraName` the kerbal's stable
- * identity for a `kind: Kerbal` camera: `kerbalPersistentId` looked stable
+ * kerbcast's name-rekey fix (2026-07-23) makes `cameraName` the kerbal's
+ * stable identity for a `kind: Kerbal` camera: `kerbalPersistentId` looked stable
  * but actually changes seat<->EVA (KSP mints a fresh `persistentID` on EVA),
  * so it is the WRONG key. `cameraName` (the kerbal's full name, e.g.
  * "Jebediah Kerman") stays constant across seat/EVA transitions and is

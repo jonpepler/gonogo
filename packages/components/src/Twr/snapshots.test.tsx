@@ -70,10 +70,12 @@ const VESSEL_STATE_INPUTS = [
   "vessel.propulsion",
 ];
 
-// `deriveVesselState` produces NO record until `vessel.orbit` is whole (it
-// early-returns `undefined` otherwise), and every derived field, TWR
-// included: hangs off that record. A minimal OnRails orbit is emitted
-// alongside `vessel.propulsion` so the record exists and `deriveTwr` can run.
+/**
+ * `deriveVesselState` produces NO record until `vessel.orbit` is whole (it
+ * early-returns `undefined` otherwise), and every derived field, TWR
+ * included, hangs off that record. A minimal OnRails orbit is emitted
+ * alongside `vessel.propulsion` so the record exists and `deriveTwr` can run.
+ */
 const ORBIT = {
   sma: 682500,
   ecc: 0.00367,

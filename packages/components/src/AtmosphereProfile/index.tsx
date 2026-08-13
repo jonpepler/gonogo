@@ -59,11 +59,12 @@ function AtmosphereProfileComponent({
   w,
   h,
 }: Readonly<ComponentProps<AtmosphereProfileConfig>>) {
-  // Canonical native reads: `v.body`/`v.altitude` off the `vessel.state`
-  // derived channel (SDK-side `deriveVesselState`: `parentBodyName`/
-  // `altitudeAsl`), `v.atmosphericDensity`/`v.atmosphericTemperature`/
-  // `v.externalTemperature` off the raw `vessel.flight` Topic: replacing
-  // every legacy two-arg `data`-source shim read this widget used to make.
+  /**
+   * Canonical native reads: `v.body`/`v.altitude` off the `vessel.state`
+   * derived channel (SDK-side `deriveVesselState`: `parentBodyName`/
+   * `altitudeAsl`), `v.atmosphericDensity`/`v.atmosphericTemperature`/
+   * `v.externalTemperature` off the raw `vessel.flight` Topic.
+   */
   const vesselState = useStream<VesselState>("vessel.state");
   const flight = useTelemetry("vessel.flight");
   const bodyName = vesselState?.parentBodyName ?? undefined;
@@ -74,20 +75,21 @@ function AtmosphereProfileComponent({
   const liveDensity = magnitudeOf(flight?.atmDensity);
   const liveAirTemp = magnitudeOf(flight?.atmosphericTemperature);
   const liveSkinTemp = magnitudeOf(flight?.externalTemperature);
-  // Connectivity indicator (mirrors the pattern used elsewhere in this widget
 
   const cols = w ?? 8;
   const rows = h ?? 8;
-  // At extreme tall-narrow aspects (portrait-5x18) the plot is only a few
-  // columns wide. The shared LineChart stamps the series legend top-left and
-  // right-anchors the threshold label at the plot's right edge; on a wide
-  // chart they sit at opposite ends, but on a narrow plot the right-anchored
-  // threshold label sweeps left across the whole plot and collides with both
-  // the legend chip and the Y-axis tick labels. We can't reposition either
-  // element (that's shared LineChart chrome), but both *strings* are
-  // widget-owned: shortening them pulls the right-anchored label's left edge
-  // back toward the right edge and shrinks the legend chip, clearing the
-  // overlap. Same responsive trick already used for the panel title.
+  /**
+   * At extreme tall-narrow aspects (portrait-5x18) the plot is only a few
+   * columns wide. The shared LineChart stamps the series legend top-left and
+   * right-anchors the threshold label at the plot's right edge; on a wide
+   * chart they sit at opposite ends, but on a narrow plot the right-anchored
+   * threshold label sweeps left across the whole plot and collides with both
+   * the legend chip and the Y-axis tick labels. We can't reposition either
+   * element (that's shared LineChart chrome), but both *strings* are
+   * widget-owned: shortening them pulls the right-anchored label's left edge
+   * back toward the right edge and shrinks the legend chip, clearing the
+   * overlap. Same responsive trick already used for the panel title.
+   */
   const narrow = cols < 6;
 
   const referenceCurve = useMemo(() => {
@@ -97,18 +99,22 @@ function AtmosphereProfileComponent({
     const ceiling = config?.altitudeCeiling ?? body.maxAtmosphere * 1.1;
     const curve = buildPressureCurve(body, ceiling);
     if (curve && narrow) {
-      // Drop the "Pressure (Body)" framing to just the body name so the
-      // top-left legend chip collapses to a few glyphs instead of spanning
-      // the narrow plot. The panel title already says "ATMOSPHERE".
+      /**
+       * Drop the "Pressure (Body)" framing to just the body name so the
+       * top-left legend chip collapses to a few glyphs instead of spanning
+       * the narrow plot. The panel title already says "ATMOSPHERE".
+       */
       return { ...curve, label: body.name };
     }
     return curve;
   }, [body, config?.altitudeCeiling, narrow]);
 
-  // Vertical "current altitude" markers don't exist in the engine; fake the
-  // marker by sampling the curve at the live altitude and dropping a
-  // horizontal threshold at that pressure value. The horizontal line picks
-  // out exactly the pressure you're flying through.
+  /**
+   * Vertical "current altitude" markers don't exist in the engine; fake the
+   * marker by sampling the curve at the live altitude and dropping a
+   * horizontal threshold at that pressure value. The horizontal line picks
+   * out exactly the pressure you're flying through.
+   */
   const currentPressure = useMemo(() => {
     if (!body || altitude === undefined) return undefined;
     return pressureAtAltitude(body, altitude);
@@ -150,14 +156,18 @@ function AtmosphereProfileComponent({
   const showNoModelNotice = body?.hasAtmosphere && !body.atmosphere;
   const showNoBodyNotice = bodyName !== undefined && body === undefined;
 
-  // Live readout chip: only meaningful when we're actually in atmosphere
-  // (density picks up). Outside it, density reads ~0 / NaN and the chip is
-  // noise. Also suppress on very small widgets where the chip would
-  // obscure most of the chart it's annotating.
+  /**
+   * Live readout chip: only meaningful when we're actually in atmosphere
+   * (density picks up). Outside it, density reads ~0 / NaN and the chip is
+   * noise. Also suppress on very small widgets where the chip would
+   * obscure most of the chart it's annotating.
+   */
   const chipFits = cols >= 7 && rows >= 6;
-  // At narrow widths the full title wraps to two lines inside the panel
-  // header, stealing a row from the already-short chart. Drop to a single
-  // word so the header stays one line and the plot keeps its height.
+  /**
+   * At narrow widths the full title wraps to two lines inside the panel
+   * header, stealing a row from the already-short chart. Drop to a single
+   * word so the header stays one line and the plot keeps its height.
+   */
   const title = narrow ? "ATMOSPHERE" : "ATMOSPHERE PROFILE";
   const showLiveChip =
     chipFits &&
@@ -229,9 +239,11 @@ function TempC({ k }: { k: number }) {
   return <Unit value={value("K", k)} as="°C" />;
 }
 
-// A string rather than a node: this feeds a chart annotation's `label`, which
-// is measured and positioned as text. `speakQuantity` gives the word instead
-// of the symbol, which is the right trade for a label a reader hears.
+/**
+ * A string rather than a node: this feeds a chart annotation's `label`,
+ * which is measured and positioned as text. `speakQuantity` gives the word
+ * instead of the symbol, which is the right trade for a label a reader hears.
+ */
 function formatPressure(p: number): string {
   return speakQuantity(value("Pa", p));
 }

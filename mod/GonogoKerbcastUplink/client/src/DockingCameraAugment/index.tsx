@@ -1,24 +1,26 @@
-// kerbcast docking-camera augment for DistanceToTarget.
-//
-// Fills DistanceToTarget's `distance-to-target.camera` slot with a live video
-// backdrop behind the docking reticle. This is the filler that widget's
-// augment-slot doc block was written for: the slot was previously only
-// EXPOSED, with a built-in `HudCamera` holding the spot "until the kerbcast
-// filler and CameraFeed-out-migration land". That built-in has now been
-// removed: see this module's sibling note in `DistanceToTarget/index.tsx`.
-//
-// Why an augment and not a standalone CameraFeed instance: the backdrop has to
-// draw in the HUD's own reticle space and share its lifecycle. The slot passes
-// `DistanceToTargetHudContext` for exactly that, and `requires: "kerbcast"`
-// means an install without the kerbcast mod composes the HUD without any video
-// layer at all: rather than the core client shipping a camera path it can
-// never light up.
-//
-// Presence-gated on `kerbcast.available`; camera CHOICE comes off the Uplink's
-// `kerbcast.cameras` control channel (`isDockingCamera`), while the MEDIA still
-// rides kerbcast's own WebRTC path (`useDelayedKerbcastStream`, which delays it
-// on the shared ViewClock). That split is the whole design: control plane on
-// the Uplink, media off it.
+/**
+ * kerbcast docking-camera augment for DistanceToTarget.
+ *
+ * Fills DistanceToTarget's `distance-to-target.camera` slot with a live video
+ * backdrop behind the docking reticle. This is the filler that widget's
+ * augment-slot doc block was written for: the slot was previously only
+ * EXPOSED, with a built-in `HudCamera` holding the spot. That built-in has
+ * now been removed: see this module's sibling note in
+ * `DistanceToTarget/index.tsx`.
+ *
+ * Why an augment and not a standalone CameraFeed instance: the backdrop has to
+ * draw in the HUD's own reticle space and share its lifecycle. The slot passes
+ * `DistanceToTargetHudContext` for exactly that, and `requires: "kerbcast"`
+ * means an install without the kerbcast mod composes the HUD without any video
+ * layer at all: rather than the core client shipping a camera path it can
+ * never light up.
+ *
+ * Presence-gated on `kerbcast.available`; camera CHOICE comes off the Uplink's
+ * `kerbcast.cameras` control channel (`isDockingCamera`), while the MEDIA still
+ * rides kerbcast's own WebRTC path (`useDelayedKerbcastStream`, which delays it
+ * on the shared ViewClock). That split is the whole design: control plane on
+ * the Uplink, media off it.
+ */
 
 import {
   KerbcastProvider,
@@ -98,9 +100,8 @@ function DockingCameraVideo({ flightId }: { flightId: number }) {
   // The DELAYED stream, not the raw live one. The HUD's reticle is UT-gated by
   // the ViewClock; the backdrop must be gated on the SAME clock or it marks
   // where the target WAS over an image of where it IS, worst precisely when
-  // closing on a docking port (decision 5: never the live stream). `null` (no
-  // delayed output available) draws no backdrop rather than falling back to
-  // live.
+  // closing on a docking port: never the live stream. `null` (no delayed
+  // output available) draws no backdrop rather than falling back to live.
   const stream = useDelayedKerbcastStream(flightId);
   const videoRef = useRef<HTMLVideoElement>(null);
 

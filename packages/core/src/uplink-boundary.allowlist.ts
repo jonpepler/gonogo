@@ -1179,9 +1179,7 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // static import" bootstrap path. Zero code or type coupling.
       "mod/GonogoBreakingGroundUplink/client/src/DeployedScience/index.tsx",
       "mod/GonogoKerbcastUplink/client/src/CameraFeed/CameraFeed.tsx",
-      "mod/GonogoKerbcastUplink/client/src/KerbcastEventProducer.ts",
       "mod/GonogoMechJebUplink/client/src/index.ts",
-      "mod/GonogoMechJebUplink/client/src/MechJeb/index.tsx",
 
       // -- TEST-only --
       // UplinkContractOwnershipTests.cs / WirePayloadCoverageTests.cs: the

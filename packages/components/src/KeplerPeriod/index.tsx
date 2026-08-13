@@ -18,9 +18,11 @@ export interface KeplerPeriodConfig {
 
 const REFERENCE_SAMPLES = 60;
 
-// Sample log-spaced SMAs from just above the surface up to a few-tens-of-radii
-// ceiling. The body's actual SOI isn't in BodyDefinition, but radius × 50 is
-// well above any realistic resonant-constellation orbit.
+/**
+ * Sample log-spaced SMAs from just above the surface up to a few-tens-of-radii
+ * ceiling. The body's actual SOI isn't in BodyDefinition, but radius × 50 is
+ * well above any realistic resonant-constellation orbit.
+ */
 function defaultCeiling(body: BodyDefinition): number {
   return Math.max(body.radius * 50, 10_000_000);
 }
@@ -57,17 +59,21 @@ function buildPeriodCurve(
 function KeplerPeriodComponent({
   config,
 }: Readonly<ComponentProps<KeplerPeriodConfig>>) {
-  // Both reads are clean stream homes: `v.body` streams from the
-  // SDK-derived `vessel.state.parentBodyName` display map, `o.referenceBody`
-  // from `vessel.state.referenceBodyName` (index→name resolution against
-  // `system.bodies`, see `vessel-state.ts`). `useTelemetry`'s legacy two-arg
-  // form routes them through `mapTopic` onto those derived topics.
+  /**
+   * Both reads are clean stream homes: `v.body` streams from the
+   * SDK-derived `vessel.state.parentBodyName` display map, `o.referenceBody`
+   * from `vessel.state.referenceBodyName` (index→name resolution against
+   * `system.bodies`, see `vessel-state.ts`). `useTelemetry`'s legacy two-arg
+   * form routes them through `mapTopic` onto those derived topics.
+   */
   const bodyName = useStream<VesselState>("vessel.state")?.parentBodyName;
   const referenceBody =
     useStream<VesselState>("vessel.state")?.referenceBodyName;
-  // o.referenceBody is the authoritative answer for the body the orbit is
-  // around (matters during SOI transitions); fall back to v.body for cases
-  // where the orbital reference hasn't been published yet.
+  /**
+   * o.referenceBody is the authoritative answer for the body the orbit is
+   * around (matters during SOI transitions); fall back to v.body for cases
+   * where the orbital reference hasn't been published yet.
+   */
   const body = useMemo(() => {
     return (
       (referenceBody && getBody(referenceBody)) ||
@@ -84,10 +90,12 @@ function KeplerPeriodComponent({
     return buildPeriodCurve(body, ceiling);
   }, [body, config?.smaCeiling]);
 
-  // Plot current period vs current SMA as scatter dots, one fresh dot per
-  // sample, all stacked at the live position. Anything other than scatter
-  // would draw misleading lines connecting consecutive samples that share
-  // the same SMA.
+  /**
+   * Plot current period vs current SMA as scatter dots, one fresh dot per
+   * sample, all stacked at the live position. Anything other than scatter
+   * would draw misleading lines connecting consecutive samples that share
+   * the same SMA.
+   */
   const graphConfig: GraphConfig = useMemo(
     () => ({
       series: [

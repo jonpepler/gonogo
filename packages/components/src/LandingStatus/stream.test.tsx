@@ -175,12 +175,14 @@ describe("LandingStatus: full-vector solve genuinely runs off the stream", () =>
     expect(container.textContent).not.toContain("No landing in progress");
   });
 
-  // L2 (producer-consumer disagreement): the health badge must track the datum
-  // the widget actually displays: vessel.surface (the lowest-point burn
-  // height): not vessel.flight. vessel.surface is independently gated (withheld
-  // while Orbiting/Escaping and under signal delay), so a badge bound to
-  // vessel.flight read healthy even when the shown height had silently dropped
-  // to the CoM fallback.
+  /**
+   * L2 (producer-consumer disagreement): the health badge must track the
+   * datum the widget actually displays: vessel.surface (the lowest-point
+   * burn height), not vessel.flight. vessel.surface is independently gated
+   * (withheld while Orbiting/Escaping and under signal delay), so a badge
+   * bound to vessel.flight read healthy even when the shown height had
+   * silently dropped to the CoM fallback.
+   */
   it("badges on the withheld vessel.surface datum, not the live vessel.flight fallback (L2)", async () => {
     // Small size renders the plain AGL readout (at wide sizes altitude is the
     // full-height rail, which carries no "AGL" text).
@@ -193,28 +195,34 @@ describe("LandingStatus: full-vector solve genuinely runs off the stream", () =>
     });
     await screen.findByText("AGL");
 
-    // The badge is the host's to render now, derived from every declared
-    // requirement rather than one key the widget picked. The guarantee is
-    // unchanged and is still asserted for real: a withheld PRIMARY datum badges
-    // the panel even though the fallback channel it degraded to is live.
-    //
-    // Two things have to hold for that, and only one of them is the ranking.
-    // The derivation SKIPS a requirement that is not carried, so declaring
-    // vessel.surface is load-bearing, not incidental: drop it from the
-    // registration and the withheld datum stops reaching the derivation at all
-    // and the panel goes quiet again, which is the original bug wearing a
-    // different hat.
+    /**
+     * The badge is the host's to render now, derived from every declared
+     * requirement rather than one key the widget picked. The guarantee is
+     * unchanged and is still asserted for real: a withheld PRIMARY datum
+     * badges the panel even though the fallback channel it degraded to is
+     * live.
+     *
+     * Two things have to hold for that, and only one of them is the
+     * ranking. The derivation SKIPS a requirement that is not carried, so
+     * declaring vessel.surface is load-bearing, not incidental: drop it
+     * from the registration and the withheld datum stops reaching the
+     * derivation at all and the panel goes quiet again, which is the
+     * original bug wearing a different hat.
+     */
     expect(getComponent("landing-status")?.dataRequirements).toContain(
       "vessel.surface",
     );
     expect(screen.getByText("SYNCING")).toBeInTheDocument();
 
-    // Once vessel.surface arrives the shown AGL switches to the lowest-point
-    // datum. The badge does NOT clear here, and should not: the derivation is
-    // the worst status across every declared requirement, and this fixture
-    // deliberately never delivers several of them, so something on this panel
-    // genuinely is still out of date. Asserting it clears would only be
-    // asserting that the badge watches one hand-picked key again.
+    /**
+     * Once vessel.surface arrives the shown AGL switches to the
+     * lowest-point datum. The badge does NOT clear here, and should not:
+     * the derivation is the worst status across every declared
+     * requirement, and this fixture deliberately never delivers several of
+     * them, so something on this panel genuinely is still out of date.
+     * Asserting it clears would only be asserting that the badge watches
+     * one hand-picked key again.
+     */
     act(() => {
       stream.emit("vessel.surface", { heightFromTerrain: 4800 });
     });
@@ -222,10 +230,12 @@ describe("LandingStatus: full-vector solve genuinely runs off the stream", () =>
   });
 
   it("surfaces the round trip in the header, which is what replaced the warnings", async () => {
-    // UNCOMMANDABLE and PAST COMMIT POINT were removed as two readings of one
-    // fact. The round trip is the instrument datum underneath both, so it has
-    // to be on screen for that removal to be a simplification rather than a
-    // loss. It lives in the panel header beside the regime.
+    /**
+     * UNCOMMANDABLE and PAST COMMIT POINT were removed as two readings of
+     * one fact. The round trip is the instrument datum underneath both, so
+     * it has to be on screen for that removal to be a simplification
+     * rather than a loss. It lives in the panel header beside the regime.
+     */
     renderWidget({ w: 12, h: 16 });
     act(() => {
       emitMunDescent();

@@ -59,18 +59,18 @@ import { usePlannerInputs } from "./usePlannerInputs";
 // bindings (commit from a physical button) can be added later.
 const maneuverActions = [] as const satisfies readonly ActionDefinition[];
 
-// ---------------------------------------------------------------------------
-// Augment slots (Uplink architecture §4: locked in augment-slot-map.md)
-//
-// Two whole-widget append slots, both broad escape hatches: neither carries a
-// per-item datum, so their props are empty. `maneuver-planner.sections` sits
-// below the live preview + feasibility check for alternate transfer-strategy
-// comparisons (e.g. a porkchop / optimal-transfer Uplink); `maneuver-planner
-// .badges` rides in the header next to the title. Typed here via co-located
-// declaration-merging into core's `SlotRegistry` so `<AugmentSlot>` and
-// `registerAugment` see the precise (empty) prop shape rather than the loose
-// `Record<string, unknown>` fallback an unmerged slot id gets.
-// ---------------------------------------------------------------------------
+/**
+ * Augment slots.
+ *
+ * Two whole-widget append slots, both broad escape hatches: neither carries a
+ * per-item datum, so their props are empty. `maneuver-planner.sections` sits
+ * below the live preview + feasibility check for alternate transfer-strategy
+ * comparisons (e.g. a porkchop / optimal-transfer Uplink); `maneuver-planner
+ * .badges` rides in the header next to the title. Typed here via co-located
+ * declaration-merging into core's `SlotRegistry` so `<AugmentSlot>` and
+ * `registerAugment` see the precise (empty) prop shape rather than the loose
+ * `Record<string, unknown>` fallback an unmerged slot id gets.
+ */
 
 /** No slot props: whole-widget append escape hatch (no per-item datum). */
 export type ManeuverPlannerSectionsSlotProps = Record<string, never>;
@@ -163,11 +163,13 @@ function ManeuverPlannerComponent({
   // useVesselDeltaV.ts's `normalizeStage` reconciliation.
   const vesselDeltaV = useVesselDeltaV();
 
-  // Delayed vessel commands (command-surface-delay-audit #15-17): adding,
-  // updating and removing a maneuver node all actuate the craft's flight
-  // plan, subject to signal delay, so this rides `useCommand` against the
-  // real `vessel.maneuver.add`/`.update`/`.remove` commands instead of the
-  // legacy `useExecuteAction` string path.
+  /**
+   * Delayed vessel commands: adding, updating and removing a maneuver node
+   * all actuate the craft's flight plan, subject to signal delay, so this
+   * rides `useCommand` against the real
+   * `vessel.maneuver.add`/`.update`/`.remove` commands instead of the
+   * legacy `useExecuteAction` string path.
+   */
   const addNodeCmd = useCommand("vessel.maneuver.add");
   const updateNodeCmd = useCommand("vessel.maneuver.update");
   const removeNodeCmd = useCommand("vessel.maneuver.remove");
@@ -644,10 +646,6 @@ function ManeuverPlannerComponent({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
 registerComponent<ManeuverPlannerConfig>({
   id: "maneuver-planner",
   name: "Maneuver Planner",
@@ -657,16 +655,20 @@ registerComponent<ManeuverPlannerConfig>({
   defaultSize: { w: 10, h: 18 },
   minSize: { w: 6, h: 9 },
   component: ManeuverPlannerComponent,
-  // Two whole-widget append slots (broad escape hatches): a body `sections`
-  // slot for alternate-transfer-strategy comparisons and a header `badges`
-  // slot. Empty until an augment binds (Uplink §4 / augment-slot-map.md).
+  /**
+   * Two whole-widget append slots (broad escape hatches): a body `sections`
+   * slot for alternate-transfer-strategy comparisons and a header `badges`
+   * slot. Empty until an augment binds.
+   */
   augmentSlots: ["maneuver-planner.sections", "maneuver-planner.badges"],
-  // `dv.stages` and `o.maneuverNodes` are mapped on the wire and ride the
-  // stream transparently (see the `useVesselDeltaV` / `useManeuverNodes`
-  // read call sites above), no change needed to this list, it already
-  // carries the resolved key names. The `o.maneuverNodes` ->
-  // `previewManeuver` post-burn preview derivation is explicitly
-  // optional/lower-priority and deferred, not attempted here.
+  /**
+   * `dv.stages` and `o.maneuverNodes` are mapped on the wire and ride the
+   * stream transparently (see the `useVesselDeltaV` / `useManeuverNodes` read
+   * call sites above), no change needed to this list, it already carries the
+   * resolved key names. The `o.maneuverNodes` -> `previewManeuver` post-burn
+   * preview derivation is explicitly optional/lower-priority and deferred,
+   * not attempted here.
+   */
   dataRequirements: [
     "o.sma",
     "o.eccentricity",
@@ -700,10 +702,6 @@ registerComponent<ManeuverPlannerConfig>({
 });
 
 export { ManeuverPlannerComponent };
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
 
 // forwardedAs, not as: styled-components CONSUMES `as` and renders that
 // element in place of the wrapped component, so `as: "section"` would silently

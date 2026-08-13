@@ -14,11 +14,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { KeplerPeriodComponent } from "./index";
 
-// Rendered trees, tracked so afterEach can unmount them BEFORE clearBodies()
-// notifies the body-registry subscribers. RTL auto-cleanup runs after this
-// file's afterEach, so it can't be relied on to unmount first, clearBodies()
-// firing on a still-mounted widget is a state update outside act(), the
-// documented anti-pattern in CLAUDE.md.
+/**
+ * Rendered trees, tracked so afterEach can unmount them BEFORE clearBodies()
+ * notifies the body-registry subscribers. RTL auto-cleanup runs after this
+ * file's afterEach, so it can't be relied on to unmount first, clearBodies()
+ * firing on a still-mounted widget is a state update outside act(), the
+ * documented anti-pattern in CLAUDE.md.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {
@@ -101,10 +103,12 @@ describe("KeplerPeriod: reads body names off the stream (R6 Wave 1)", () => {
     // Nothing arrived yet: neither degraded notice fires.
     expect(screen.queryByText(/Unknown body/)).toBeNull();
 
-    // Emit the derived channel's inputs. `referenceBodyIndex` /
-    // `parentBodyIndex` both point at a body the stock registry has never
-    // heard of, so `getBody` returns undefined and the widget degrades to
-    // its "Unknown body" notice.
+    /**
+     * Emit the derived channel's inputs. `referenceBodyIndex` /
+     * `parentBodyIndex` both point at a body the stock registry has never
+     * heard of, so `getBody` returns undefined and the widget degrades to
+     * its "Unknown body" notice.
+     */
     act(() => {
       fixture.emit("vessel.orbit", {
         sma: 682500,
@@ -138,9 +142,11 @@ describe("KeplerPeriod: reads body names off the stream (R6 Wave 1)", () => {
     expect(fixture.transport.isSubscribed("vessel.identity")).toBe(true);
     expect(fixture.transport.isSubscribed("system.bodies")).toBe(true);
 
-    // The streamed body name reached the widget: it can't resolve "Gallium"
-    // in the stock registry, so the unknown-body notice renders with the
-    // exact streamed name.
+    /**
+     * The streamed body name reached the widget: it can't resolve "Gallium"
+     * in the stock registry, so the unknown-body notice renders with the
+     * exact streamed name.
+     */
     await waitFor(() => expect(screen.getByText(/Unknown body/)).toBeTruthy());
     expect(screen.getByText(/Gallium/)).toBeTruthy();
   });

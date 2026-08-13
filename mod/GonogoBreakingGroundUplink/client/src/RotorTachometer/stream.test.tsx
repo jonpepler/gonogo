@@ -11,10 +11,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { RotorTachometerComponent } from "./index";
 
-// Rendered trees, tracked so afterEach can unmount them BEFORE clearing the
-// action-handler registry: clearActionHandlers() firing on a still-mounted
-// widget is a state update outside act(). RTL auto-cleanup runs after this
-// file's afterEach, too late to unmount first.
+/**
+ * Rendered trees, tracked so afterEach can unmount them BEFORE clearing the
+ * action-handler registry: clearActionHandlers() firing on a still-mounted
+ * widget is a state update outside act(). RTL auto-cleanup runs after this
+ * file's afterEach, too late to unmount first.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {

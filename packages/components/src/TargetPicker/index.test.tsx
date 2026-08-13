@@ -162,11 +162,11 @@ describe("TargetPickerComponent: Suggested + categorised list", () => {
     await screen.findByText(/No targets in range/i);
   });
 
-  // T1: a modded ITargetable surfaces as TargetKind.Other (2), and any kind the
-  // consumer doesn't recognise (e.g. Position = 3) must degrade gracefully too,
-  // both bucket into an "Other" section rather than falling into no list and
-  // rendering invisibly, and carry a distance (kind-agnostic, Jon's explicit
-  // requirement).
+  /* A modded ITargetable surfaces as TargetKind.Other (2), and any kind the
+     consumer doesn't recognise (e.g. Position = 3) must degrade gracefully
+     too: both bucket into an "Other" section rather than falling into no
+     list and rendering invisibly, and carry a distance (kind-agnostic,
+     Jon's explicit requirement). */
   it("buckets Other / unknown-kind targetables into an 'Other' section with distance (T1)", async () => {
     renderPicker(fixture);
     emitAvailable(fixture, [
@@ -201,11 +201,11 @@ describe("TargetPickerComponent: Suggested + categorised list", () => {
       .getAllByRole("button")
       .map((el) => el.textContent);
 
-    // 2 closest bodies (Kerbin 500, Mun 2000, Minmus 50000 excluded),
-    // 2 closest vessels (Relay One 1000, Relay Two 2000, the asteroid at
-    // distance 10 is closer than both but hidden by default so it's
-    // excluded from "closest", and Relay Three 5000 doesn't make the cut),
-    // then ALL parts regardless of distance (Port Alpha, Port Beta).
+    /* 2 closest bodies (Kerbin 500, Mun 2000, Minmus 50000 excluded), 2
+       closest vessels (Relay One 1000, Relay Two 2000, the asteroid at
+       distance 10 is closer than both but hidden by default so it's
+       excluded from "closest", and Relay Three 5000 doesn't make the cut),
+       then ALL parts regardless of distance (Port Alpha, Port Beta). */
     expect(names).toHaveLength(6);
     expect(names[0]).toMatch(/Kerbin/);
     expect(names[1]).toMatch(/Mun/);
@@ -281,9 +281,10 @@ describe("TargetPickerComponent: Suggested + categorised list", () => {
     renderPicker(fixture);
     emitAvailable(fixture, FULL_ENTRIES);
 
-    // Scoped to the Vessels category panel: once revealed, the asteroid
-    // (distance 10) is also the globally closest vessel, so it legitimately
-    // appears a SECOND time in Suggested too; scoping avoids that collision.
+    /* Scoped to the Vessels category panel: once revealed, the asteroid
+       (distance 10) is also the globally closest vessel, so it legitimately
+       appears a SECOND time in Suggested too; scoping avoids that
+       collision. */
     const vesselsToggle = await screen.findByRole("button", {
       name: /^Vessels/,
     });
@@ -408,13 +409,12 @@ describe("TargetPickerComponent: Suggested + categorised list", () => {
     const user = userEvent.setup();
     renderPicker(fixture);
     act(() => {
-      // producer-consumer-T4: tarType/tarDistance/tarRelVel now derive
-      // NATIVELY off `vessel.target` alone (kind/relativePosition/
-      // relativeVelocity): no `vessel.state` emission (no
-      // `vessel.orbit`/`vessel.flight` inputs) needed to unblock them, unlike
-      // before the fix. kind: 0 -> targetKind "Vessel". relativePosition
-      // magnitude 1500 -> targetDistance; dot(relPos, relVel)/|relPos| ==
-      // -2.5 -> closing.
+      /* tarType/tarDistance/tarRelVel now derive NATIVELY off `vessel.target`
+         alone (kind/relativePosition/relativeVelocity): no `vessel.state`
+         emission (no `vessel.orbit`/`vessel.flight` inputs) needed to
+         unblock them. kind: 0 -> targetKind "Vessel". relativePosition
+         magnitude 1500 -> targetDistance; dot(relPos, relVel)/|relPos| ==
+         -2.5 -> closing. */
       fixture.emit("vessel.target", {
         name: "Test Station",
         kind: 0,
@@ -443,10 +443,11 @@ describe("TargetPickerComponent: Suggested + categorised list", () => {
   it("producer-consumer-T4: current-target kind/distance/Δv render off vessel.target's kind/Part TargetKind, with no vessel.state emission at all", async () => {
     renderPicker(fixture);
     act(() => {
-      // kind: 4 -> Part (a docking port) -> targetKindLabel "Docking Port".
-      // No `vessel.orbit`/`vessel.flight`/any `vessel.state` input is emitted
-      // anywhere in this test: proves the derived `vessel.state` channel is
-      // no longer a dependency of the current-target detail readout.
+      /* kind: 4 -> Part (a docking port) -> targetKindLabel "Docking Port".
+         No `vessel.orbit`/`vessel.flight`/any `vessel.state` input is
+         emitted anywhere in this test: proves the derived `vessel.state`
+         channel is not a dependency of the current-target detail
+         readout. */
       fixture.emit("vessel.target", {
         name: "Port Alpha",
         kind: 4,

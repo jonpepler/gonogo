@@ -81,9 +81,12 @@ describe("CrewRadiationSummaryAugment", () => {
   });
 
   it("renders nothing for a nominal environment", async () => {
-    // Proves the update actually landed (not just "nothing has happened
-    // yet") by first driving a HIGH reading through the same subscription
-    // and watching the banner clear once a nominal reading follows it.
+    /**
+     * Proves the update actually landed (not just "nothing has happened
+     * yet") by first driving a HIGH reading through the same
+     * subscription and watching the banner clear once a nominal reading
+     * follows it.
+     */
     const fixture = newFixture();
     renderAugment(fixture);
     act(() => {
@@ -126,9 +129,11 @@ describe("CrewRadiationSummaryAugment", () => {
         stormInProgress: true,
       });
     });
-    // The label sits beside the dose (`<Unit>`) inside the same badge, so its
-    // text is split across sibling nodes: `toHaveTextContent` (concatenated
-    // textContent) rather than an exact `findByText` match.
+    /**
+     * The label sits beside the dose (`<Unit>`) inside the same badge, so
+     * its text is split across sibling nodes: `toHaveTextContent`
+     * (concatenated textContent) rather than an exact `findByText` match.
+     */
     const banner = await screen.findByRole("status");
     expect(banner).toHaveTextContent("Radiation storm in progress");
   });

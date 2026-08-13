@@ -87,9 +87,12 @@ describe("LandingStatus: atmospheric stream render golden (delay=0)", () => {
         },
         { quality: Quality.Loaded },
       );
-      // Kerbin reentry: ~28 km AGL, descending 210 m/s, in atmosphere. (Literals
-      //, the __fixtures__ scenario JSON migrated to the _stream format and no
-      // longer exposes the old flat `v.*` keys this test used to read.)
+      /**
+       * Kerbin reentry: ~28 km AGL, descending 210 m/s, in atmosphere.
+       * (Literals: the __fixtures__ scenario JSON migrated to the _stream
+       * format and no longer exposes the old flat `v.*` keys this test used
+       * to read.)
+       */
       stream.emit("vessel.flight", {
         latitude: 0,
         longitude: 0,
@@ -108,9 +111,12 @@ describe("LandingStatus: atmospheric stream render golden (delay=0)", () => {
     expect(
       await screen.findByText(/kerbin · atmospheric/i),
     ).toBeInTheDocument();
-    // No mod terminal velocity on the wire -> an HONEST atmospheric estimate
-    // (velocity + air density + above-terminal note), never a silent "descent
-    // unmodelled". A real in-atmosphere descent must not read blank.
+    /**
+     * No mod terminal velocity on the wire -> an HONEST atmospheric estimate
+     * (velocity + air density + above-terminal note), never a silent
+     * "descent unmodelled". A real in-atmosphere descent must not read
+     * blank.
+     */
     expect(
       screen.getByText("Atmospheric descent (estimate)"),
     ).toBeInTheDocument();

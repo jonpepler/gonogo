@@ -15,50 +15,59 @@ function SemiMajorAxisComponent({
   w,
   h,
 }: Readonly<ComponentProps<SemiMajorAxisConfig>>) {
-  // Both reads ride the Uplink stream directly, no legacy `useTelemetry("data",
-  // ...)` fallback:
-  //  - `sma` is the raw `vessel.orbit.sma` element, read off the canonical
-  //    whole-`vessel.orbit` Topic.
-  //  - `referenceBody` is the SDK-derived `vessel.state.referenceBodyName`
-  //    display map (the client resolves `vessel.orbit.referenceBodyIndex`
-  //    against `system.bodies`, see `vessel-state.ts`). It isn't a wire
-  //    `TopicId`, so it reads through `useStream`.
+  /**
+   * Both reads ride the Uplink stream directly, no legacy
+   * `useTelemetry("data", ...)` fallback:
+   * - `sma` is the raw `vessel.orbit.sma` element, read off the canonical
+   *   whole-`vessel.orbit` Topic.
+   * - `referenceBody` is the SDK-derived `vessel.state.referenceBodyName`
+   *   display map (the client resolves `vessel.orbit.referenceBodyIndex`
+   *   against `system.bodies`, see `vessel-state.ts`). It isn't a wire
+   *   `TopicId`, so it reads through `useStream`.
+   */
   const sma = useTelemetry("vessel.orbit")?.sma;
   const referenceBody =
     useStream<VesselState>("vessel.state")?.referenceBodyName ?? undefined;
-  // `useDataSeries` (sparkline history) carries the same stream shim, `o.sma`
-  // maps to the raw `vessel.orbit.sma` field-subtopic, so once `vessel.orbit`
-  // is carried this sparkline reads its window straight off the
-  // `TimelineStore`'s buffered history, same as the headline `sma` value
-  // above. See `stream.test.tsx` for the end-to-end proof.
+  /**
+   * `useDataSeries` (sparkline history) carries the same stream shim, `o.sma`
+   * maps to the raw `vessel.orbit.sma` field-subtopic, so once `vessel.orbit`
+   * is carried this sparkline reads its window straight off the
+   * `TimelineStore`'s buffered history, same as the headline `sma` value
+   * above. See `stream.test.tsx` for the end-to-end proof.
+   */
   const series = useDataSeries("data", "o.sma", SPARK_WINDOW_SEC);
   const sparkValues = series.v as number[];
-  // Connectivity indicator keyed off the headline `o.sma` -> `vessel.orbit.sma`.
 
   const cols = w ?? 4;
   const rows = h ?? 4;
-  // Subtitle is "what is this widget" elaboration, suppress when there's
-  // no room without crowding the readout. At default 4×4 the panel title
-  // ("SMA") + value already cover the operator's read-at-a-glance need.
+  /**
+   * Subtitle is "what is this widget" elaboration, suppress when there's
+   * no room without crowding the readout. At default 4×4 the panel title
+   * ("SMA") + value already cover the operator's read-at-a-glance need.
+   */
   const showSubtitle = rows >= 5 && cols >= 4;
   const showSparkline = rows >= 4 && cols >= 3;
 
-  // SmaDisplay font scales with available width so the value (e.g.
-  // "2.87 Mm", "680.0 km") doesn't wrap onto two lines at narrow column
-  // counts. Wrap was the underlying cause of the readout overlapping the
-  // subtitle on small widgets: keep it on one line and the layout
-  // resolves itself.
+  /**
+   * SmaDisplay font scales with available width so the value (e.g.
+   * "2.87 Mm", "680.0 km") doesn't wrap onto two lines at narrow column
+   * counts. Wrap was the underlying cause of the readout overlapping the
+   * subtitle on small widgets: keep it on one line and the layout
+   * resolves itself.
+   */
   const readoutFontPx = cols <= 3 ? 18 : cols <= 4 ? 22 : 28;
 
-  // Sparkline width tracks its slot. The Sparkline renders a fixed-width
-  // SVG (no intrinsic responsiveness), so we measure the slot and feed it
-  // an explicit pixel width. The measurement lives on a *callback ref*
-  // rather than a `[]`-deps effect: the sparkline only mounts once orbit
-  // data arrives (before that the widget shows the EmptyState branch and
-  // SparkSlot is absent from the tree). A mount-time effect would run
-  // against a null ref and never re-attach when the slot later appears,
-  // leaving the width pinned at its 120-px default. The callback ref fires
-  // exactly when the node attaches/detaches.
+  /**
+   * Sparkline width tracks its slot. The Sparkline renders a fixed-width
+   * SVG (no intrinsic responsiveness), so we measure the slot and feed it
+   * an explicit pixel width. The measurement lives on a *callback ref*
+   * rather than a `[]`-deps effect: the sparkline only mounts once orbit
+   * data arrives (before that the widget shows the EmptyState branch and
+   * SparkSlot is absent from the tree). A mount-time effect would run
+   * against a null ref and never re-attach when the slot later appears,
+   * leaving the width pinned at its 120-px default. The callback ref fires
+   * exactly when the node attaches/detaches.
+   */
   const roRef = useRef<ResizeObserver | null>(null);
   const [sparkWidth, setSparkWidth] = useState(120);
   const sparkRef = useCallback((el: HTMLDivElement | null) => {

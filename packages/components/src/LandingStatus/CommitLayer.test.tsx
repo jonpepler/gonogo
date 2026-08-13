@@ -67,17 +67,20 @@ describe("CommitLayer", () => {
     expect(screen.queryByText("NO LANDING VECTOR")).toBeNull();
   });
 
-  // COMMIT POINT and UNCOMMANDABLE used to be asserted here, and the slot that
-  // held them was asserted to reserve its own height so toggling it could not
-  // reflow the widget. Both lines are gone: they stated the same fact in two
-  // vocabularies (the round trip exceeds the window left), and the round trip
-  // itself is now in the panel header, where the operator reads the arithmetic
-  // rather than its conclusion twice. The reflow guarantee went with them,
-  // there being no slot left to toggle.
-  //
-  // What survives from those tests is the live region, which is the part that
-  // was never about the wording: a sustained delay state announces politely,
-  // and only the instantaneous ignition cue is allowed to interrupt.
+  /**
+   * COMMIT POINT and UNCOMMANDABLE used to be asserted here, and the slot
+   * that held them was asserted to reserve its own height so toggling it
+   * could not reflow the widget. Both lines are gone: they stated the same
+   * fact in two vocabularies (the round trip exceeds the window left), and
+   * the round trip itself is now in the panel header, where the operator
+   * reads the arithmetic rather than its conclusion twice. The reflow
+   * guarantee went with them, there being no slot left to toggle.
+   *
+   * What survives from those tests is the live region, which is the part
+   * that was never about the wording: a sustained delay state announces
+   * politely, and only the instantaneous ignition cue is allowed to
+   * interrupt.
+   */
   it("announces a sustained delay state politely, not assertively", () => {
     render(
       <CommitLayer

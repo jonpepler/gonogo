@@ -63,17 +63,17 @@ export interface ObjectiveItem {
   contractId?: string;
 }
 
-// ---------------------------------------------------------------------------
-// The typed "objective source" contract
-//
-// `objectives.sections` is the first typed-contract slot. The frame publishes,
-// as the slot's props, the interface an objective-source augment must satisfy:
-// a presentational `Section` component that renders a source's contributed
-// `ObjectiveItem[]` plus an optional per-item alarm affordance. An augment
-// "satisfies the contract" by feeding the frame's `Section` structured data,
-// the frame owns all presentation so every source renders identically, and
-// the slot generic enforces the shape.
-// ---------------------------------------------------------------------------
+/**
+ * The typed "objective source" contract.
+ *
+ * `objectives.sections` is the first typed-contract slot. The frame publishes,
+ * as the slot's props, the interface an objective-source augment must satisfy:
+ * a presentational `Section` component that renders a source's contributed
+ * `ObjectiveItem[]` plus an optional per-item alarm affordance. An augment
+ * "satisfies the contract" by feeding the frame's `Section` structured data,
+ * the frame owns all presentation so every source renders identically, and
+ * the slot generic enforces the shape.
+ */
 
 /** One source's contribution, rendered by the frame's {@link ObjectivesSection}. */
 export interface ObjectiveSection {
@@ -95,11 +95,13 @@ export interface ObjectiveSourceContext {
   Section: ComponentType<ObjectiveSection>;
 }
 
-// Declaration-merge the slot id → props type into core's `SlotRegistry` (spec
-// §4.6 hybrid, declaration-merging base). This is what makes `registerAugment`
-// and `<AugmentSlot name="objectives.sections" ...>` type-check `Section`-shaped
-// props precisely against `ObjectiveSourceContext`, rather than the loose
-// `Record<string, unknown>` fallback an unmerged slot id would get.
+/**
+ * Declaration-merge the slot id → props type into core's `SlotRegistry`.
+ * This is what makes `registerAugment` and `<AugmentSlot
+ * name="objectives.sections" ...>` type-check `Section`-shaped props
+ * precisely against `ObjectiveSourceContext`, rather than the loose
+ * `Record<string, unknown>` fallback an unmerged slot id would get.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "objectives.sections": ObjectiveSourceContext;
@@ -154,9 +156,7 @@ export function contractObjectives(
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Frame-owned presentation: the `Section` component the slot hands to augments
-// ---------------------------------------------------------------------------
+// Frame-owned presentation: the `Section` component the slot hands to augments.
 
 /**
  * Renders one objective source's contribution: its items, or nothing when
@@ -195,9 +195,7 @@ function ObjectivesSection({ items, renderAlarm }: ObjectiveSection) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// The built-in objective source: bound to the slot as an augment (§4.9)
-// ---------------------------------------------------------------------------
+// The built-in objective source: bound to the slot as an augment.
 
 /**
  * Active-contracts source. Reads `contracts.active`, maps each parameter to an
@@ -296,10 +294,13 @@ function ObjectivesComponent(_: Readonly<ComponentProps<ObjectivesConfig>>) {
   );
 }
 
-// ── The `:empty` frame-fallback machinery (justified styled-components) ──────
-// These two stay styled: the rule below is an `:empty` pseudo-class + adjacent-
-// sibling combinator inline style can't express, and it's load-bearing (keeps
-// the frame agnostic of which augments rendered). See the import's biome-ignore.
+/**
+ * The `:empty` frame-fallback machinery (justified styled-components).
+ * These two stay styled: the rule below is an `:empty` pseudo-class +
+ * adjacent-sibling combinator inline style can't express, and it's
+ * load-bearing (keeps the frame agnostic of which augments rendered). See
+ * the import's biome-ignore.
+ */
 
 // Structural only: the sibling selector needs an element to target so the
 // fallback hides once any source has rendered content. It used to carry
@@ -324,9 +325,11 @@ const Sections = styled.div`
   }
 `;
 
-// ── Structural inline styles (everything that isn't the :empty machinery) ────
-// Per-state colour is applied inline at the call site from STATE_COLOR
-// (a misc-cluster widget: colours preserved, no Value-tone remap).
+/**
+ * Structural inline styles (everything that isn't the :empty machinery).
+ * Per-state colour is applied inline at the call site from STATE_COLOR
+ * (a misc-cluster widget: colours preserved, no Value-tone remap).
+ */
 
 const STATE_COLOR: Record<ObjectiveState, string> = {
   pending: "var(--color-text-muted)",

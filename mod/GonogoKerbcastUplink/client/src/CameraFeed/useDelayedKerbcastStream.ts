@@ -21,36 +21,36 @@ import {
 export type { CaptureClockSample } from "@ksp-gonogo/sitrep-client/media";
 export { interpolateCaptureUt } from "@ksp-gonogo/sitrep-client/media";
 
-// ---------------------------------------------------------------------------
-// Delayed-playout STATUS side channel (cross-browser kerbcast video-delay
-// design, 2026-07-16). `useDelayedKerbcastStream` is called BY the kerbcam
-// SDK's `useStream` seam, which constrains its return type to
-// `MediaStream | null` (`CameraStreamHook`: see `kerbcast-react`'s
-// `CameraFeed.d.ts`). That leaves no channel for `CameraFeed.tsx` (which
-// does NOT call this hook itself, the SDK does, internally) to learn
-// "delay was expected here but the pipeline couldn't be built", which it
-// needs to render the explicit "delayed feed unavailable" state (decision
-// 5: never the live stream).
-//
-// Fix: this hook writes its OWN `DelayedPlayoutResult` into a tiny external
-// store keyed by `flightId`, and `useDelayedPlaybackStatus` (below) reads it
-// via `useSyncExternalStore`: the same "refcounted external resource,
-// subscribe/notify" shape `KerbcastDataSource` and `PerfBudget` already use
-// elsewhere in this codebase, just sized for a single in-memory value
-// instead of a class. `CameraFeed.tsx` calls `useDelayedPlaybackStatus`
-// directly (its own hook call, independent of the SDK's `useStream`
-// invocation): no second pipeline is built; this is read-only.
-//
-// Status keying: by `flightId`, so two consumers of the SAME camera (e.g. a
-// CameraFeed and the docking-HUD backdrop) share one status entry. That is
-// now CORRECT rather than a lossy compromise: as of the per-camera sharing in
-// `useDelayedPlayout` (2026-07-17) those two consumers ARE one delayed
-// pipeline: `sharedDelayedStreams` keys the pipeline by the raw `MediaStream`
-// identity, so one `MediaStreamTrackProcessor` / `RTCRtpScriptTransform` per
-// track feeds every consumer, and they necessarily see the same delayed
-// output and thus the same status. Delay is a property of the camera, not the
-// viewer.
-// ---------------------------------------------------------------------------
+/**
+ * Delayed-playout STATUS side channel (cross-browser kerbcast video-delay
+ * design, 2026-07-16). `useDelayedKerbcastStream` is called BY the kerbcam
+ * SDK's `useStream` seam, which constrains its return type to
+ * `MediaStream | null` (`CameraStreamHook`: see `kerbcast-react`'s
+ * `CameraFeed.d.ts`). That leaves no channel for `CameraFeed.tsx` (which
+ * does NOT call this hook itself, the SDK does, internally) to learn
+ * "delay was expected here but the pipeline couldn't be built", which it
+ * needs to render the explicit "delayed feed unavailable" state (never the
+ * live stream).
+ *
+ * Fix: this hook writes its OWN `DelayedPlayoutResult` into a tiny external
+ * store keyed by `flightId`, and `useDelayedPlaybackStatus` (below) reads it
+ * via `useSyncExternalStore`: the same "refcounted external resource,
+ * subscribe/notify" shape `KerbcastDataSource` and `PerfBudget` already use
+ * elsewhere in this codebase, just sized for a single in-memory value
+ * instead of a class. `CameraFeed.tsx` calls `useDelayedPlaybackStatus`
+ * directly (its own hook call, independent of the SDK's `useStream`
+ * invocation): no second pipeline is built; this is read-only.
+ *
+ * Status keying: by `flightId`, so two consumers of the SAME camera (e.g. a
+ * CameraFeed and the docking-HUD backdrop) share one status entry. That is
+ * now CORRECT rather than a lossy compromise: as of the per-camera sharing in
+ * `useDelayedPlayout` (2026-07-17) those two consumers ARE one delayed
+ * pipeline: `sharedDelayedStreams` keys the pipeline by the raw `MediaStream`
+ * identity, so one `MediaStreamTrackProcessor` / `RTCRtpScriptTransform` per
+ * track feeds every consumer, and they necessarily see the same delayed
+ * output and thus the same status. Delay is a property of the camera, not the
+ * viewer.
+ */
 
 interface StatusEntry {
   status: DelayedPlayoutResult;
@@ -106,8 +106,8 @@ export function useDelayedPlaybackStatus(
 
 /**
  * gonogo's stream source for the shared `CameraFeed`, injected via its
- * `useStream` seam (kerbcam SDK §3.4). It composes three already-tested
- * pieces without moving any of them into the SDK:
+ * `useStream` seam. It composes three already-tested pieces without moving
+ * any of them into the SDK:
  *
  *   1. the SDK/data-source glue `useKerbcastStream`: the raw live `MediaStream`
  *      for the RESOLVED flightId (auto-latch / fallback already applied by the

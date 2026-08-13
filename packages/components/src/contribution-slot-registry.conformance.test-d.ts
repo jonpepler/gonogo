@@ -1,23 +1,23 @@
-// ---------------------------------------------------------------------------
-// Drift guard: the `@ksp-gonogo/sitrep-sdk` `ContributionRegistry` MIRROR
-// (`mod/sitrep-sdk/src/api/contribution-slots.ts`) vs core's real
-// `ContributionRegistry` (`packages/core/src/contributions.ts`).
-//
-// Same reasoning as `slot-registry.conformance.test-d.ts`'s own header: the
-// sdk leaf cannot import `@ksp-gonogo/components` or `@ksp-gonogo/core`
-// (would form a turbo `^build` cycle, components and core both already
-// depend on the sdk), so its `ContributionRegistry` is a hand-mirrored
-// declaration-merge, kept honest here (this package devDepends on the sdk
-// AND is where every first-party contribution slot will eventually be
-// owned, same split as the augment-slot mirror).
-//
-// `ship-map.part-meters` / `ship-map.part-meta` (spec §13.4, the framework's
-// self-contribution flagship) are the first real slots to land here, so this
-// file grows real per-key bidirectional checks (mirrors ↔ core's real
-// registry, mirrors ↔ the real widget-owned entry types), exactly the same
-// two-directions-per-slot pattern `slot-registry.conformance.test-d.ts`
-// established for `SlotRegistry`.
-// ---------------------------------------------------------------------------
+/**
+ * Drift guard: the `@ksp-gonogo/sitrep-sdk` `ContributionRegistry` MIRROR
+ * (`mod/sitrep-sdk/src/api/contribution-slots.ts`) vs core's real
+ * `ContributionRegistry` (`packages/core/src/contributions.ts`).
+ *
+ * Same reasoning as `slot-registry.conformance.test-d.ts`'s own header: the
+ * sdk leaf cannot import `@ksp-gonogo/components` or `@ksp-gonogo/core`
+ * (would form a turbo `^build` cycle, components and core both already
+ * depend on the sdk), so its `ContributionRegistry` is a hand-mirrored
+ * declaration-merge, kept honest here (this package devDepends on the sdk
+ * AND is where every first-party contribution slot will eventually be
+ * owned, same split as the augment-slot mirror).
+ *
+ * `ship-map.part-meters` / `ship-map.part-meta` (the framework's
+ * self-contribution flagship) are the first real slots to land here, so this
+ * file grows real per-key bidirectional checks (mirrors ↔ core's real
+ * registry, mirrors ↔ the real widget-owned entry types), exactly the same
+ * two-directions-per-slot pattern `slot-registry.conformance.test-d.ts`
+ * established for `SlotRegistry`.
+ */
 
 import type {
   ContributionEntry as CoreContributionEntry,
@@ -39,8 +39,6 @@ type Expect<T extends true> = T;
 type _SdkKeysAssignableToCore = Expect<
   Assignable<keyof SdkContributionRegistry, keyof CoreContributionRegistry>
 >;
-
-// --- ship-map.part-meters: checked both directions -------------------------
 
 type _ShipMapPartMeters = Expect<
   Assignable<
@@ -67,8 +65,6 @@ type _ShipMapPartMetersRealBack = Expect<
   >
 >;
 
-// --- ship-map.part-meta: checked both directions ----------------------------
-
 type _ShipMapPartMeta = Expect<
   Assignable<
     SdkContributionEntry<"ship-map.part-meta">,
@@ -88,10 +84,8 @@ type _ShipMapPartMetaRealBack = Expect<
   Assignable<ShipMapPartMetaEntry, SdkContributionEntry<"ship-map.part-meta">>
 >;
 
-// --- resource-ops.filters: checked both directions --------------------------
-//
-// The first FILTER slot (spec §15). Its entry is the generic `FilterEntry` over
-// the widget's own row union, so the mirror carries that union and this pair of
+// The first FILTER slot. Its entry is the generic `FilterEntry` over the
+// widget's own row union, so the mirror carries that union and this pair of
 // checks is what keeps the two copies of it from drifting.
 
 type _ResourceOpsFilters = Expect<

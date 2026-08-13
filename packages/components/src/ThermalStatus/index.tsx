@@ -22,37 +22,39 @@ import { magnitudeOr } from "../shared/magnitude";
 // Empty config: room to add a "hide heat shield" toggle later.
 type ThermalStatusConfig = Record<string, never>;
 
-// The `thermal-status.badges` slot (augment-slot-map "thermal-status" row):
-// whole-widget context, no slot props: a header quick-glance badge (e.g. a
-// future Kerbalism Reliability "N parts at risk" indicator) sits alongside the
-// stream-status badge. Declaration-merge the slot id → props type into core's
-// `SlotRegistry`, co-located here so parallel slot work doesn't collide on a
-// shared central file. No props ⇒ empty object contract.
+/**
+ * The `thermal-status.badges` slot: whole-widget context, no slot props: a
+ * header quick-glance badge (e.g. a future Kerbalism Reliability "N parts at
+ * risk" indicator) sits alongside the stream-status badge. Declaration-merge
+ * the slot id → props type into core's `SlotRegistry`, co-located here so
+ * parallel slot work doesn't collide on a shared central file. No props ⇒
+ * empty object contract.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "thermal-status.badges": Record<string, never>;
   }
 }
 
-// Readings near absolute zero (~2 K) stand in for "no real value", typically
-// when the corresponding part isn't fitted (e.g. early-career rocket with no
-// thermometer or heat shield) or the science instrument hasn't been unlocked
-// yet. Treat anything below this threshold as "no data" rather than rendering
-// bogus CRITICAL bars. 50 K is well below any operational KSP part max (parts
-// melt at thousands of K) and well below any meaningful in-game temperature.
-//
-// One threshold, because `vessel.thermal` is now uniformly Kelvin. It used to
-// need a Celsius twin, and that pair is what hid a real bug: `hottestPart.
-// skinTemp` is Kelvin on the contract but was read as Celsius here, so it
-// rendered ~273° high AND its guard (< −223 °C) could never fire on a kelvin
-// sentinel. Keeping one unit on the channel removes the choice that was being
-// got wrong.
+/**
+ * Readings near absolute zero (~2 K) stand in for "no real value", typically
+ * when the corresponding part isn't fitted (e.g. early-career rocket with no
+ * thermometer or heat shield) or the science instrument hasn't been unlocked
+ * yet. Treat anything below this threshold as "no data" rather than rendering
+ * bogus CRITICAL bars. 50 K is well below any operational KSP part max (parts
+ * melt at thousands of K) and well below any meaningful in-game temperature.
+ *
+ * One threshold, because `vessel.thermal` is now uniformly Kelvin. It used to
+ * need a Celsius twin, and that pair is what hid a real bug: `hottestPart.
+ * skinTemp` is Kelvin on the contract but was read as Celsius here, so it
+ * rendered ~273° high AND its guard (< −223 °C) could never fire on a kelvin
+ * sentinel. Keeping one unit on the channel removes the choice that was being
+ * got wrong.
+ */
 const THERMAL_SENTINEL_K = 50;
 
 const isSentinelK = (k: number | undefined): boolean =>
   typeof k === "number" && Number.isFinite(k) && k < THERMAL_SENTINEL_K;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
  * Thermal severity bands. Mirrors KSP's in-game thermal overlay:
@@ -129,8 +131,6 @@ function Flux({ kw }: { kw: number | undefined }) {
   if (kw === undefined || !Number.isFinite(kw)) return NULL_DISPLAY;
   return <Unit value={value("kW", kw)} />;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 function ThermalStatusComponent({
   w,
@@ -338,11 +338,7 @@ function ThermalStatusComponent({
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 const clampPct = (pct: number): number => clampSafe(pct, 0, 100);
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const Body = styled.div`
   flex: 1;
@@ -494,8 +490,6 @@ const BandTag = styled.span<{ $band: Band }>`
   white-space: nowrap;
   color: ${({ $band }) => BAND_COLOR[$band]};
 `;
-
-// ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<ThermalStatusConfig>({
   id: "thermal-status",

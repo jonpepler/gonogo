@@ -1,26 +1,32 @@
-// @ksp-gonogo/gonogo-kerbalism-uplink: the KerbalismUplink client package entry.
-//
-// Registers the Kerbalism Domain's Topics: the bare-primitive presence gate plus
-// the five structured Topics whose payload types this Uplink now owns outright
-// (relocated out of Sitrep.Contract, see ./topics.ts). RE-EXPORTED rather than
-// imported for side effect alone, and that is load-bearing in two ways: it keeps
-// bundlers from tree-shaking the registration calls, AND it puts a real
-// `export ... from "./topics"` into the built `dist/index.d.ts`, which is what
-// carries topics.ts's `declare module "@ksp-gonogo/sitrep-sdk"` TopicPayloadMap
-// augmentation across the package boundary. A bare `import "./topics"` is elided
-// from the emitted declaration, so a consumer would silently see
-// `useTelemetry("kerbalism.spaceweather")` resolve to `unknown` with nothing
-// going red here (the same failure mode ui-kit's styledComponentsTheme.ts
-// documents for its own augmentation).
-//
-// NOTE: SpaceWeather still lives in @ksp-gonogo/components; Ship Systems (the
-// rebuilt Life Support) now lives HERE, registered through the Uplink client,
-// since life support is a Kerbalism concept that never belonged in the base
-// library. SpaceWeather's relocation is a follow-up.
+/**
+ * @ksp-gonogo/gonogo-kerbalism-uplink: the KerbalismUplink client package
+ * entry.
+ *
+ * Registers the Kerbalism Domain's Topics: the bare-primitive presence gate
+ * plus the five structured Topics whose payload types this Uplink now owns
+ * outright (relocated out of Sitrep.Contract, see ./topics.ts). RE-EXPORTED
+ * rather than imported for side effect alone, and that is load-bearing in
+ * two ways: it keeps bundlers from tree-shaking the registration calls, AND
+ * it puts a real `export ... from "./topics"` into the built
+ * `dist/index.d.ts`, which is what carries topics.ts's
+ * `declare module "@ksp-gonogo/sitrep-sdk"` TopicPayloadMap augmentation
+ * across the package boundary. A bare `import "./topics"` is elided from
+ * the emitted declaration, so a consumer would silently see
+ * `useTelemetry("kerbalism.spaceweather")` resolve to `unknown` with
+ * nothing going red here (the same failure mode ui-kit's
+ * styledComponentsTheme.ts documents for its own augmentation).
+ *
+ * NOTE: SpaceWeather still lives in @ksp-gonogo/components; Ship Systems
+ * (the rebuilt Life Support) now lives HERE, registered through the Uplink
+ * client, since life support is a Kerbalism concept that never belonged in
+ * the base library. SpaceWeather's relocation is a follow-up.
+ */
 
-// This Uplink's own wire payload types, now that it declares them rather than
-// core. A consumer that reads a kerbalism.* Topic names its shape from HERE, the
-// same way it used to name it from @ksp-gonogo/sitrep-sdk.
+/**
+ * This Uplink's own wire payload types, now that it declares them rather
+ * than core. A consumer that reads a kerbalism.* Topic names its shape from
+ * HERE, the same way it used to name it from @ksp-gonogo/sitrep-sdk.
+ */
 export type {
   KerbalismCrewEntry,
   KerbalismCrewRule,
@@ -38,12 +44,15 @@ export type {
   KerbalismStarInfo,
   KerbalismStormEntry,
 } from "./__generated__/contract";
-// This Uplink's namespaces of the two elected `isru.*` payloads' extension bags, same
-// boundary and same load-bearing re-export again. Kerbalism WINS the ISRU election too,
-// but here it fills every shared field: these readers add the blocking reason, the EC
-// draw, the asteroid depletion state and the process throttle, none of which stock has
-// a concept of (see ./isru.ts, and note that its converter list includes life-support
-// processes because Kerbalism does not separate the two).
+/**
+ * This Uplink's namespaces of the two elected `isru.*` payloads' extension
+ * bags, same boundary and same load-bearing re-export again. Kerbalism
+ * WINS the ISRU election too, but here it fills every shared field: these
+ * readers add the blocking reason, the EC draw, the asteroid depletion
+ * state and the process throttle, none of which stock has a concept of
+ * (see ./isru.ts, and note that its converter list includes life-support
+ * processes because Kerbalism does not separate the two).
+ */
 export {
   ISRU_CONVERTERS_TOPIC,
   ISRU_DRILLS_TOPIC,
@@ -53,23 +62,29 @@ export {
   readKerbalismIsruConverterExt,
   readKerbalismIsruDrillExt,
 } from "./isru";
-// This Uplink's namespace of the CORE `reliability.summary` payload's provider
-// extension bag: the typed shape plus its reader. Not a Topic of this Domain, a
-// sub-tree of an elected capability's shared payload that core keeps opaque on
-// purpose (see ./reliability.ts). RE-EXPORTED, like ./topics above, so the module
-// loads (which is what registers the bag's runtime shape routing) and so the type
-// reaches `dist/index.d.ts` rather than being elided.
+/**
+ * This Uplink's namespace of the CORE `reliability.summary` payload's
+ * provider extension bag: the typed shape plus its reader. Not a Topic of
+ * this Domain, a sub-tree of an elected capability's shared payload that
+ * core keeps opaque on purpose (see ./reliability.ts). RE-EXPORTED, like
+ * ./topics above, so the module loads (which is what registers the bag's
+ * runtime shape routing) and so the type reaches `dist/index.d.ts` rather
+ * than being elided.
+ */
 export {
   KERBALISM_RELIABILITY_PROVIDER_ID,
   type KerbalismReliabilityExt,
   RELIABILITY_SUMMARY_TOPIC,
   readKerbalismReliabilityExt,
 } from "./reliability";
-// This Uplink's namespaces of the four elected `science.*` payloads' extension bags,
-// same boundary and same load-bearing re-export as ./reliability above. Kerbalism
-// WINS the science election, so on a Kerbalism install these readers are how a widget
-// gets at what the shared fields cannot carry (see ./science.ts, and note which core
-// fields Kerbalism deliberately leaves null).
+/**
+ * This Uplink's namespaces of the four elected `science.*` payloads'
+ * extension bags, same boundary and same load-bearing re-export as
+ * ./reliability above. Kerbalism WINS the science election, so on a
+ * Kerbalism install these readers are how a widget gets at what the shared
+ * fields cannot carry (see ./science.ts, and note which core fields
+ * Kerbalism deliberately leaves null).
+ */
 export {
   KERBALISM_SCIENCE_PROVIDER_ID,
   KERBALISM_SCIENCE_VALUE_MODEL,
@@ -94,45 +109,60 @@ export {
   KERBALISM_PROFILE_TOPIC,
   KERBALISM_SPACEWEATHER_TOPIC,
 } from "./topics";
-// The Uplink client identity, then the per-frame `summarise` Processor that
-// stamps against it. Bare side-effect imports so the registrations survive
-// tree-shaking when the app pulls the package entry in.
+/**
+ * The Uplink client identity, then the per-frame `summarise` Processor
+ * that stamps against it. Bare side-effect imports so the registrations
+ * survive tree-shaking when the app pulls the package entry in.
+ */
 import "./uplink";
 import "./processor";
-// The Ship Systems widget (registerComponent) and its panel badge (a
-// contribution off the same Processor). Side-effect imports so both register
-// when the app pulls the package entry in.
+/**
+ * The Ship Systems widget (registerComponent) and its panel badge (a
+ * contribution off the same Processor). Side-effect imports so both
+ * register when the app pulls the package entry in.
+ */
 import "./ShipSystems";
 import "./ShipSystems/badge";
-// CrewStatus's per-kerbal survival: a Processor (CrewSurvival/processor.ts),
-// the `crew-status.survival` augment that renders it into the BASE widget's
-// (packages/components/src/CrewStatus) own slot, and the panel badge off
-// the same Processor. Per-kerbal survival is a Kerbalism concept and never
-// belonged in the base widget itself, see that widget's own doc comment on
-// the slot. Side-effect imports so all three register when the app pulls the
-// package entry in.
+/**
+ * CrewStatus's per-kerbal survival: a Processor (CrewSurvival/processor.ts),
+ * the `crew-status.survival` augment that renders it into the BASE widget's
+ * (packages/components/src/CrewStatus) own slot, and the panel badge off
+ * the same Processor. Per-kerbal survival is a Kerbalism concept and never
+ * belonged in the base widget itself, see that widget's own doc comment on
+ * the slot. Side-effect imports so all three register when the app pulls
+ * the package entry in.
+ */
 import "./CrewSurvival";
 import "./CrewSurvival/badge";
-// The whole-widget `crew-status.summary` slot: a vessel radiation-environment
-// reading off `kerbalism.spaceweather`, distinct from the per-kerbal survival
-// above (a storm affects the whole crew together, not one kerbal at a time).
+/**
+ * The whole-widget `crew-status.summary` slot: a vessel
+ * radiation-environment reading off `kerbalism.spaceweather`, distinct
+ * from the per-kerbal survival above (a storm affects the whole crew
+ * together, not one kerbal at a time).
+ */
 import "./CrewSurvival/summary";
-// The Space Weather panel badge: a contribution to the SpaceWeather widget's
-// `space-weather.badges` slot off the `kerbalism.spaceweather` Topic. The
-// widget stays in @ksp-gonogo/components for now (relocation is a later step);
-// only the Kerbalism-derived badge lives here.
+/**
+ * The Space Weather panel badge: a contribution to the SpaceWeather
+ * widget's `space-weather.badges` slot off the `kerbalism.spaceweather`
+ * Topic. The widget stays in @ksp-gonogo/components for now (relocation is
+ * a later step); only the Kerbalism-derived badge lives here.
+ */
 import "./SpaceWeather/badge";
-// ShipMap's self-contribution (spec §13.4): supply-tank part-meters and
-// fitted-process part-meta, on the SAME two slots the built-in `core`
-// contribution feeds (`packages/components/src/ShipMap/
-// partMetersContribution.ts`). ShipMap itself stays in @ksp-gonogo/components;
-// only these two Kerbalism-derived contributions live here.
+/**
+ * ShipMap's self-contribution: supply-tank part-meters and fitted-process
+ * part-meta, on the SAME two slots the built-in `core` contribution feeds
+ * (`packages/components/src/ShipMap/partMetersContribution.ts`). ShipMap
+ * itself stays in @ksp-gonogo/components; only these two Kerbalism-derived
+ * contributions live here.
+ */
 import "./ShipMap/partMeta";
 import "./ShipMap/partMeters";
-// ResourceOps' filter slot: Kerbalism's per-process axis over its own
-// converter list, contributed because Kerbalism is the only party that knows
-// which process each row is (see ./ResourceOps/processFilters.ts for what it
-// deliberately does NOT contribute).
+/**
+ * ResourceOps' filter slot: Kerbalism's per-process axis over its own
+ * converter list, contributed because Kerbalism is the only party that
+ * knows which process each row is (see ./ResourceOps/processFilters.ts for
+ * what it deliberately does NOT contribute).
+ */
 import "./ResourceOps/processFilters";
 
 // The CrewSurvival Processor handle + its result types, the single per-frame
@@ -158,12 +188,15 @@ export type {
   SummaryInput,
   WearRow,
 } from "./ecosystem";
-// The derivation layer over the Kerbalism payloads: the resource graph, the
-// per-source rate ledger, and the root-cause walk. Pure functions of the wire
-// shapes, no React and no KSP, so a widget calls them and so does a test.
-// Exported rather than kept private because the graph is the interesting part
-// of this Domain and more than one surface wants it (the life-support ledger,
-// the ecosystem view, and ShipMap's per-part resource meters).
+/**
+ * The derivation layer over the Kerbalism payloads: the resource graph,
+ * the per-source rate ledger, and the root-cause walk. Pure functions of
+ * the wire shapes, no React and no KSP, so a widget calls them and so does
+ * a test. Exported rather than kept private because the graph is the
+ * interesting part of this Domain and more than one surface wants it (the
+ * life-support ledger, the ecosystem view, and ShipMap's per-part resource
+ * meters).
+ */
 export {
   buildGraph,
   buildLedger,

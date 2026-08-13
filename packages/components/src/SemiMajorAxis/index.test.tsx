@@ -5,11 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { SemiMajorAxisComponent } from "./index";
 
-// `sma` reads the raw `vessel.orbit.sma` element; `referenceBody` reads the
-// derived `vessel.state.referenceBodyName` display map (index → name against
-// `system.bodies`), which is "carried" only once ALL EIGHT `vessel.state`
-// inputs are (see `vessel-state.ts`). Both run off a real `TelemetryProvider`
-// here: no legacy `MockDataSource` is registered anywhere in this file.
+/**
+ * `sma` reads the raw `vessel.orbit.sma` element; `referenceBody` reads the
+ * derived `vessel.state.referenceBodyName` display map (index → name against
+ * `system.bodies`), which is "carried" only once ALL EIGHT `vessel.state`
+ * inputs are (see `vessel-state.ts`). Both run off a real `TelemetryProvider`
+ * here: no legacy `MockDataSource` is registered anywhere in this file.
+ */
 const VESSEL_STATE_INPUTS = [
   "vessel.orbit",
   "vessel.flight",
@@ -36,10 +38,12 @@ describe("SemiMajorAxisComponent", () => {
   });
 
   function renderSma(size: { w: number; h: number } = { w: 5, h: 6 }) {
-    // Default render size meets the subtitle threshold (rows≥5, cols≥4)
-    // so tests that assert on the "Semi-major axis · Kerbin" subtitle
-    // continue to exercise it. Below the threshold the widget hides the
-    // subtitle to keep the value readout from crowding.
+    /**
+     * Default render size meets the subtitle threshold (rows≥5, cols≥4)
+     * so tests that assert on the "Semi-major axis · Kerbin" subtitle
+     * continue to exercise it. Below the threshold the widget hides the
+     * subtitle to keep the value readout from crowding.
+     */
     return render(
       <stream.Provider>
         <DashboardItemContext.Provider value={{ instanceId: "sma-test" }}>

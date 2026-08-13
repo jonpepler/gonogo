@@ -3,8 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Cross-boundary contract test for the SCANsat unified fix
- * (`local_docs/scansat-unified-fix-plan.md`, Task 4). The dynamic
+ * Cross-boundary contract test for the SCANsat unified fix. The dynamic
  * per-(body,type) namespaces must be described by the SAME canonical prefix
  * strings on both sides of the wire, or a future namespace silently desyncs
  * (the mod publishes under one string while the client carries/resolves
@@ -12,9 +11,8 @@ import { describe, expect, it } from "vitest";
  *
  * This locks the MOD side to the canonical list now, and documents the
  * client-side cross-check to enable the moment the client fix exports its
- * shared prefix list (unified plan Tasks 1+2 introduce
- * `DYNAMIC_CARRIED_TOPIC_PREFIXES` in `@ksp-gonogo/sitrep-client`'s
- * `default-carried-topics.ts`).
+ * shared prefix list (`DYNAMIC_CARRIED_TOPIC_PREFIXES` in
+ * `@ksp-gonogo/sitrep-client`'s `default-carried-topics.ts`).
  */
 
 // The single source of truth for the plan. These are the dynamic-namespace
@@ -61,12 +59,11 @@ describe("SCANsat dynamic-topic prefix contract", () => {
     }
   });
 
-  // GREEN when unified-plan Tasks 1+2 land: assert the client's shared prefix
-  // list equals the canonical list (and hence the mod's), so the carried-gate
-  // (Bug A) and TimelineStore resolution (Bug B) can never drift from what the
-  // mod publishes. Enable by importing `DYNAMIC_CARRIED_TOPIC_PREFIXES` from
-  // `@ksp-gonogo/sitrep-client` and asserting `.sort()` deep-equals
-  // `CANONICAL_DYNAMIC_PREFIXES.sort()`.
+  // Enable once the client exports its shared prefix list: assert it equals
+  // the canonical list (and hence the mod's), so the carried-gate and
+  // TimelineStore resolution can never drift from what the mod publishes.
+  // Import `DYNAMIC_CARRIED_TOPIC_PREFIXES` from `@ksp-gonogo/sitrep-client`
+  // and assert `.sort()` deep-equals `CANONICAL_DYNAMIC_PREFIXES.sort()`.
   it.todo(
     "client DYNAMIC_CARRIED_TOPIC_PREFIXES equals the canonical mod prefixes",
   );

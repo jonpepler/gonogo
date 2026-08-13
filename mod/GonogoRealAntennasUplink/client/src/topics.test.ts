@@ -11,9 +11,11 @@ import {
 import { renderHook, waitFor } from "@ksp-gonogo/test-utils";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "./test/setupStreamFixture";
-// Side-effect import: registers the three RA-only Topics into the SDK's runtime
-// registry and feeds this Uplink's own generated unit/shape maps into BOTH
-// halves of the relocated unit registry.
+/**
+ * Side-effect import: registers the three RA-only Topics into the SDK's
+ * runtime registry and feeds this Uplink's own generated unit/shape maps
+ * into BOTH halves of the relocated unit registry.
+ */
 import {
   COMMS_DATA_RATE_TOPIC,
   COMMS_LINK_MARGIN_TOPIC,
@@ -44,11 +46,13 @@ describe("the three RA-only Topics (relocated out of Sitrep.Contract)", () => {
     expect(topic).toBe(csTopic(name));
   });
 
-  // These used to be static members of the SDK's own TOPIC_IDS, because their
-  // payload types lived in Sitrep.Contract and carried [SitrepTopic]. They are
-  // now runtime registrations from this client, so this assertion is what stands
-  // between the relocation and `isTopicId("comms.linkMargin")` silently going
-  // false for every consumer.
+  /**
+   * These used to be static members of the SDK's own TOPIC_IDS, because
+   * their payload types lived in Sitrep.Contract and carried [SitrepTopic].
+   * They are now runtime registrations from this client, so this assertion
+   * is what stands between the relocation and
+   * `isTopicId("comms.linkMargin")` silently going false for every consumer.
+   */
   it("are known TopicIds once this client's topics module has loaded", () => {
     for (const topic of [
       COMMS_LINK_QUALITY_TOPIC,
@@ -62,15 +66,18 @@ describe("the three RA-only Topics (relocated out of Sitrep.Contract)", () => {
 });
 
 // ── The relocated unit registry, proved by DECODE ────────────────────────────────
-//
-// The slice before this one had nothing for a Value to be (identifiers and state
-// names only) and had to assert the registry instead. This one is the opposite:
-// four of its five declared units name a real dimension, so the registration has
-// a visible decode-time effect and the honest proof is to drive a frame through
-// the REAL TelemetryClient/StubTransport pipeline and look at what comes out.
-//
-// Non-vacuous by construction: delete the registerTopicUnits loop in topics.ts and
-// every `toMatchObject({ magnitude, unit })` below fails with a bare number.
+/**
+ * The slice before this one had nothing for a Value to be (identifiers and
+ * state names only) and had to assert the registry instead. This one is the
+ * opposite: four of its five declared units name a real dimension, so the
+ * registration has a visible decode-time effect and the honest proof is to
+ * drive a frame through the REAL TelemetryClient/StubTransport pipeline and
+ * look at what comes out.
+ *
+ * Non-vacuous by construction: delete the registerTopicUnits loop in
+ * topics.ts and every `toMatchObject({ magnitude, unit })` below fails with
+ * a bare number.
+ */
 describe("registerTopicUnits: hydration at decode time", () => {
   it('hydrates the margin into a Value<"dB">, not a bare number', async () => {
     const fixture = setupStreamFixture({
@@ -95,9 +102,11 @@ describe("registerTopicUnits: hydration at decode time", () => {
       magnitude: 3.5,
       unit: "dB",
     });
-    // closesLink declares Units.Flag, a non-quantity token, so it stays a bare
-    // boolean: the contrast that ties the wrapping to the TOKEN rather than to
-    // "this field was annotated".
+    /**
+     * closesLink declares Units.Flag, a non-quantity token, so it stays a
+     * bare boolean: the contrast that ties the wrapping to the TOKEN rather
+     * than to "this field was annotated".
+     */
     expect(result.current?.closesLink).toBe(true);
   });
 
@@ -153,10 +162,12 @@ describe("registerTopicUnits: hydration at decode time", () => {
     });
   });
 
-  // The lookup itself, alongside the decode. The decode above would still pass if
-  // the loop registered only the two topics it exercises richly, and a Topic
-  // silently dropping out of the registry is the regression a widened contract is
-  // most likely to introduce.
+  /**
+   * The lookup itself, alongside the decode. The decode above would still
+   * pass if the loop registered only the two topics it exercises richly,
+   * and a Topic silently dropping out of the registry is the regression a
+   * widened contract is most likely to introduce.
+   */
   it("restores unitsForTopic for all three relocated Topics", () => {
     expect(unitsForTopic(COMMS_LINK_QUALITY_TOPIC)).toEqual({ value: "ratio" });
     expect(unitsForTopic(COMMS_DATA_RATE_TOPIC)).toEqual({
@@ -171,10 +182,13 @@ describe("registerTopicUnits: hydration at decode time", () => {
 });
 
 describe("registerTypeUnits: the type-keyed half", () => {
-  // Nothing in this slice nests, so no Topic's shape map reaches these entries
-  // today and no decode goes through them. They are registered anyway, by the
-  // same generic loop, and this is what would catch that loop being dropped as
-  // "unused" by a future reader who checked only the decode.
+  /**
+   * Nothing in this slice nests, so no Topic's shape map reaches these
+   * entries today and no decode goes through them. They are registered
+   * anyway, by the same generic loop, and this is what would catch that
+   * loop being dropped as "unused" by a future reader who checked only the
+   * decode.
+   */
   it("restores unitsForType for all three relocated types", () => {
     expect(unitsForType("CommsLinkQuality").value).toBe("ratio");
     expect(unitsForType("CommsDataRate").upBitsPerSec).toBe("bit/s");

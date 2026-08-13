@@ -1,12 +1,12 @@
 // Background paint for MapView's world canvas.
 //
 // The map is a BACKGROUND, with everything else (overlays, POIs, trajectory,
-// vessel marker) drawn on top of it. `map-view.base` is a STACKABLE slot
-// (local_docs/spec-mapview-stackable-layers.md): any number of augments may
-// each contribute a canvas, and every currently-active one is composited in
-// draw order: this module doesn't decide that order (see orderBaseLayers.ts)
-// or which augments count as "active" (that's config/settings, resolved by
-// the caller); it only paints what it's handed.
+// vessel marker) drawn on top of it. `map-view.base` is a STACKABLE slot:
+// any number of augments may each contribute a canvas, and every
+// currently-active one is composited in draw order: this module doesn't
+// decide that order (see orderBaseLayers.ts) or which augments count as
+// "active" (that's config/settings, resolved by the caller); it only
+// paints what it's handed.
 //
 // Whether the host's own stock body texture paints at all is a SEPARATE,
 // declarative decision (`suppressVanilla`, sourced from any registered
@@ -14,8 +14,8 @@
 // whether any layer currently has a canvas to contribute. That split matters
 // for the "all layers toggled off" case: if suppression is on, the surface
 // stays black (the dark panel fill already on the canvas shows through),
-// never falling back to the stock texture just because nothing is currently
-// painting (spec §5): "don't like it, don't have the Uplink" is meant
+// never falling back to the stock texture just because nothing is
+// currently painting: "don't like it, don't have the Uplink" is meant
 // literally: the Uplink's mere presence, not its current per-layer
 // visibility, decides this.
 //

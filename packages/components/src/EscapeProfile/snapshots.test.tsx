@@ -40,10 +40,12 @@ const FIXTURES: Record<string, Fixture> = {
   "unknown-body-no-reference": unknown,
 };
 
-// vessel.state's carried-channels gate is parent-channel-scoped, every
-// vessel.state.* field needs ALL of vesselStateChannel.inputs carried, even
-// the ones (here, all but vessel.identity/system.bodies) parentBodyName
-// never consults.
+/**
+ * vessel.state's carried-channels gate is parent-channel-scoped, every
+ * vessel.state.* field needs ALL of vesselStateChannel.inputs carried, even
+ * the ones (here, all but vessel.identity/system.bodies) parentBodyName
+ * never consults.
+ */
 const VESSEL_STATE_INPUTS = [
   "vessel.orbit",
   "vessel.flight",
@@ -83,9 +85,11 @@ describe("EscapeProfile DOM snapshots", () => {
         );
 
         act(() => {
-          // vessel.orbit gates the whole derived vessel.state record
-          // (deriveVesselState), so it must be present for parentBodyName
-          // to resolve at all.
+          /**
+           * vessel.orbit gates the whole derived vessel.state record
+           * (deriveVesselState), so it must be present for parentBodyName
+           * to resolve at all.
+           */
           stream.emit("vessel.orbit", {
             referenceBodyIndex: 1,
             sma: 700_000,
@@ -116,11 +120,14 @@ describe("EscapeProfile DOM snapshots", () => {
           if (!visibleText(container).includes("ESCAPE PROFILE")) {
             throw new Error("widget has not rendered yet");
           }
-          // The title renders on first paint, before vessel.state.parentBodyName
-          // has actually resolved through the frame-scheduled TimelineStore,
-          // waiting on the title alone raced the body resolution and could
-          // snapshot the widget's PRE-body-arrival DOM. Wait on the resolved
-          // store value directly instead.
+          /**
+           * The title renders on first paint, before
+           * vessel.state.parentBodyName has actually resolved through the
+           * frame-scheduled TimelineStore, waiting on the title alone raced
+           * the body resolution and could snapshot the widget's
+           * PRE-body-arrival DOM. Wait on the resolved store value directly
+           * instead.
+           */
           const point = stream.store.sample<string | null>(
             "vessel.state.parentBodyName",
             stream.store.currentFrame(),

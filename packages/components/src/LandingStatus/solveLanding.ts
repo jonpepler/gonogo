@@ -298,9 +298,12 @@ export function solveSuicideBurn(inp: SuicideBurnInputs): LandingSolution {
   // A suicide burn needs net deceleration, thrust must beat gravity (TWR > 1).
   if (aMax === null || !(aMax > g)) return solved;
 
-  // The rocket-equation model needs the active engine's ve + the active stage's
-  // burnout mass; when either is missing (legacy callers / tests) fall back to
-  // constant-deceleration at the current mass. Both paths return a `BurnResult`.
+  /**
+   * The rocket-equation model needs the active engine's ve + the active
+   * stage's burnout mass; when either is missing (legacy callers / tests)
+   * fall back to constant-deceleration at the current mass. Both paths
+   * return a `BurnResult`.
+   */
   const { exhaustVelocity, burnoutMass, totalMass, availableThrust } = inp;
   const canRocketSolve =
     exhaustVelocity !== undefined &&

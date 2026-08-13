@@ -140,11 +140,11 @@ function persistConfig(cfg: KerbcastConfig): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// BrowserRTCTransport: mirrors the SDK's private BrowserKerbcastTransport.
-// Copied from @ksp-gonogo/kerbcast/dist/client.js so KeepaliveTransport can
-// wrap it without depending on the SDK's unexported class.
-// ---------------------------------------------------------------------------
+/**
+ * BrowserRTCTransport: mirrors the SDK's private BrowserKerbcastTransport.
+ * Copied from @ksp-gonogo/kerbcast/dist/client.js so KeepaliveTransport can
+ * wrap it without depending on the SDK's unexported class.
+ */
 
 function mapRTCState(state: RTCPeerConnectionState): KerbcastConnectionState {
   switch (state) {
@@ -189,10 +189,9 @@ function wrapRTCDataChannel(dc: RTCDataChannel): KerbcastDataChannel {
 export class BrowserRTCTransport implements KerbcastTransport {
   /**
    * `RTCRtpReceiver` for every track this transport has ever delivered via
-   * `ontrack`, keyed by the exact `MediaStreamTrack` object reference,
-   * encoded-transform video-delay work, 2026-07-16 (see
-   * `local_docs/reports/encoded-video-delay-report.md`'s reconciliation:
-   * the SDK's own `KerbcastClient` wraps this SAME track reference into
+   * `ontrack`, keyed by the exact `MediaStreamTrack` object reference. From
+   * the encoded-transform video-delay work, 2026-07-16: the SDK's own
+   * `KerbcastClient` wraps this SAME track reference into
    * `cam.mediaStream` via `new MediaStream([track])`, never cloning it,
    * confirmed against the installed `@ksp-gonogo/kerbcast` dist: so a
    * `WeakMap` keyed by that reference is an exact, leak-free correlation
@@ -271,14 +270,14 @@ export class BrowserRTCTransport implements KerbcastTransport {
   }
 }
 
-// ---------------------------------------------------------------------------
-// KeepaliveTransport: wraps any inner KerbcastTransport and intercepts
-// ping messages on the data channel, responding with pong automatically.
-// Non-ping messages pass through to the SDK handler unchanged.
-//
-// TODO: ping→pong handling belongs in @ksp-gonogo/kerbcast itself, move here
-// once the SDK supports a reconnect policy hook.
-// ---------------------------------------------------------------------------
+/**
+ * KeepaliveTransport: wraps any inner KerbcastTransport and intercepts ping
+ * messages on the data channel, responding with pong automatically.
+ * Non-ping messages pass through to the SDK handler unchanged.
+ *
+ * TODO: ping→pong handling belongs in @ksp-gonogo/kerbcast itself, move here
+ * once the SDK supports a reconnect policy hook.
+ */
 
 export class KeepaliveTransport implements KerbcastTransport {
   constructor(
@@ -337,10 +336,6 @@ export class KeepaliveTransport implements KerbcastTransport {
     };
   }
 }
-
-// ---------------------------------------------------------------------------
-// KerbcastDataSource
-// ---------------------------------------------------------------------------
 
 export class KerbcastDataSource {
   id = "kerbcast";

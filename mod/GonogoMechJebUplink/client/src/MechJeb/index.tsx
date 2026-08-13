@@ -21,21 +21,20 @@ import { MECHJEB } from "../uplink";
 
 /**
  * MechJeb: a delayed-command CONTROL surface (not a telemetry readout;
- * MechJeb's own readouts are derivable, see
- * `local_docs/kerbalism-RO-design-DECISIONS.md`). Three remote-autopilot
- * commands (engage ascent autopilot, execute the next maneuver node, land at
- * the selected target) dispatched through the app's command layer
- * (`useCommand`) and gated on the signal delay: each button reflects its own
- * command lifecycle (idle → commanding/awaiting-reply → confirmed | rejected |
- * no-reply) exactly like `LandingStatus`'s gear/brakes rows.
+ * MechJeb's own readouts are derivable). Three remote-autopilot commands
+ * (engage ascent autopilot, execute the next maneuver node, land at the
+ * selected target) dispatched through the app's command layer
+ * (`useCommand`) and gated on the signal delay: each button reflects its
+ * own command lifecycle (idle → commanding/awaiting-reply → confirmed |
+ * rejected | no-reply) exactly like `LandingStatus`'s gear/brakes rows.
  *
  * Co-located with the `GonogoMechJebUplink` mod
- * (`mod/GonogoMechJebUplink/MechJebUplink.cs`), which HANDLES `mechjeb.*` by
- * direct-linking MechJeb2's own ascent-autopilot/node-executor/landing-
- * autopilot API (see `local_docs/design/mechjeb-decompile-lock.md`). Command
- * handling is fail-soft: MechJeb2 absent, or an API drift the version guard
- * catches, takes the mod-side uplink inert and these commands degrade to the
- * same `no reply` the UX already renders honestly.
+ * (`mod/GonogoMechJebUplink/MechJebUplink.cs`), which HANDLES `mechjeb.*`
+ * by direct-linking MechJeb2's own
+ * ascent-autopilot/node-executor/landing-autopilot API. Command handling
+ * is fail-soft: MechJeb2 absent, or an API drift the version guard
+ * catches, takes the mod-side uplink inert and these commands degrade to
+ * the same `no reply` the UX already renders honestly.
  */
 
 type MechJebConfig = {
@@ -68,9 +67,12 @@ const mechjebActions = [
 ] as const satisfies readonly ActionDefinition[];
 export type MechJebActions = typeof mechjebActions;
 
-// CommandStatus.phase → operator-facing chip, in the delayed-command
-// vocabulary. `in-flight` is the dispatched-but-unconfirmed window: from the
-// operator's seat the command is in transit / awaiting reply across the delay.
+/**
+ * CommandStatus.phase → operator-facing chip, in the delayed-command
+ * vocabulary. `in-flight` is the dispatched-but-unconfirmed window: from
+ * the operator's seat the command is in transit / awaiting reply across
+ * the delay.
+ */
 function commandChip(
   phase: string,
 ): { severity: Severity; text: string } | undefined {
@@ -228,9 +230,12 @@ registerComponent<MechJebConfig>({
   defaultSize: { w: 5, h: 7 },
   minSize: { w: 3, h: 5 },
   component: MechJebComponent,
-  // Command-only widget: MechJeb readouts are derivable, so the only READ is
-  // comms.delay (for the delay-context subtitle). The mechjeb.* COMMAND topics
-  // route through the command layer, not dataRequirements.
+  /**
+   * Command-only widget: MechJeb readouts are derivable, so the only
+   * READ is comms.delay (for the delay-context subtitle). The mechjeb.*
+   * COMMAND topics route through the command layer, not
+   * dataRequirements.
+   */
   dataRequirements: ["comms.delay"],
   defaultConfig: { defaultAscentAltitudeKm: DEFAULT_ASCENT_ALTITUDE_KM },
   actions: mechjebActions,

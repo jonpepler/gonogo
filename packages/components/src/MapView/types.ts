@@ -19,14 +19,14 @@ export interface MapViewConfig {
    */
   bodyOverride?: string;
   /**
-   * Renders the shared POI layer (`map-view.overlay`-adjacent, T-POI-7).
+   * Renders the shared POI layer (`map-view.overlay`-adjacent).
    * Default true: vanilla POIs (KSC, contract targets) are always-relevant
    * reference points, not an opt-in SCANsat-shaped feature.
    */
   showPois?: boolean;
   /**
-   * Per-augment settings (spec §4.7), namespaced by augment id, the
-   * read-back half of `registerAugment({ settings: [...] })`. Populated by
+   * Per-augment settings, namespaced by augment id, the read-back half of
+   * `registerAugment({ settings: [...] })`. Populated by
    * `AugmentSettingsPanel` in the config UI, merged from
    * `getAugmentSettings("map-view.overlay"|"map-view.sections"|"map-view.base")`
    * and `getFogRevealSourceSettings()`. Read back into `MapSectionsContext`/

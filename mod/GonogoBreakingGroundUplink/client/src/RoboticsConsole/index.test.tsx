@@ -16,15 +16,17 @@ import { parseServos, RoboticsConsoleComponent } from "./index";
  * `TelemetryClient`/`TimelineStore` pipeline via `StubTransport`:
  * `robotics.servos` is its whole identity list and `robotics.available` its
  * DLC-presence flag (canonical stream reads, `useTelemetry`), and
- * `robotics.servo.*` command dispatch (delayed-command-ux robotics
- * migration) rides the same stream via `useCommand`, asserted against
- * `fixture.transport.sentCommands` rather than a legacy `MockDataSource`.
+ * `robotics.servo.*` command dispatch rides the same stream via
+ * `useCommand`, asserted against `fixture.transport.sentCommands` rather
+ * than a legacy `MockDataSource`.
  */
 
-// Rendered trees, tracked so afterEach can unmount them BEFORE clearing the
-// action-handler registry: clearActionHandlers() firing on a still-mounted
-// widget is a state update outside act(). RTL auto-cleanup runs after this
-// file's afterEach, too late to unmount first.
+/**
+ * Rendered trees, tracked so afterEach can unmount them BEFORE clearing the
+ * action-handler registry: clearActionHandlers() firing on a still-mounted
+ * widget is a state update outside act(). RTL auto-cleanup runs after this
+ * file's afterEach, too late to unmount first.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {
@@ -152,13 +154,15 @@ describe("RoboticsConsoleComponent", () => {
       ]);
     });
     expect(await screen.findByText(/MOVING/i)).toBeInTheDocument();
-    // This test used to assert "60 %", which pinned a real bug: the contract
-    // declares CurrentExtension/TargetExtension in METRES, and a decompile of
-    // ModuleRoboticServoPiston confirms the value is a Vector3.Dot along the
-    // servo axis. The old fixture numbers (40 and 60) were percentages, so the
-    // test agreed with the widget and both were wrong together.
-    // The number and its unit are separate text nodes in one element, so match
-    // on the combined textContent and take the innermost hit.
+    /**
+     * This test used to assert "60 %", which pinned a real bug: the
+     * contract declares CurrentExtension/TargetExtension in METRES, and a
+     * decompile of ModuleRoboticServoPiston confirms the value is a
+     * Vector3.Dot along the servo axis. The old fixture numbers (40 and 60)
+     * were percentages, so the test agreed with the widget and both were
+     * wrong together.
+     */
+    // The number and its unit are separate text nodes in one element, so match on the combined textContent and take the innermost hit.
     const withUnit = screen
       .getAllByText((_content, el) => el?.textContent === "0.60m")
       .at(-1);
@@ -232,9 +236,11 @@ describe("RoboticsConsoleComponent", () => {
 
     await user.click(await screen.findByRole("button", { name: /Piston B/i }));
     await user.click(screen.getByRole("button", { name: /Increase target/i }));
-    // Metre scale, and a metre-scale step. This asserted 0.65 from a target
-    // of 0.6, which is a piston 0.6 METRES long being nudged 5 CENTIMETRES:
-    // the percent reading the widget's label used to imply.
+    /**
+     * Metre scale, and a metre-scale step. This asserted 0.65 from a
+     * target of 0.6, which is a piston 0.6 METRES long being nudged 5
+     * CENTIMETRES: the percent reading the widget's label used to imply.
+     */
     await waitFor(() => {
       const sent = fixture.transport.sentCommands.find(
         (c) => c.command === "robotics.servo.setTarget",

@@ -63,10 +63,12 @@ describe("MissionEventLogComponent", () => {
       });
       fixture.emit("flight.started", { ut: 900, vesselName: "Mun Tester" });
     });
-    // A row is no longer one text node: the stamp renders through
-    // <Countdown>, which splits the number from its symbol. The MET stamp is
-    // relative to launchUt (T+…), a delay-honest happened-at time, and it is
-    // the row's OWN text rather than an aria-label that would override it.
+    /**
+     * A row is no longer one text node: the stamp renders through
+     * <Countdown>, which splits the number from its symbol. The MET stamp is
+     * relative to launchUt (T+…), a delay-honest happened-at time, and it is
+     * the row's OWN text rather than an aria-label that would override it.
+     */
     await waitFor(() =>
       expect(visibleText()).toMatch(/T\+.* · Launched Mun Tester/),
     );
@@ -88,9 +90,11 @@ describe("MissionEventLogComponent", () => {
   it("logs a staging event from a vessel.structure stage-count edge", async () => {
     const fixture = newFixture();
     renderLog(fixture);
-    // Wait for the widget's subscription so the seed sample isn't dropped
-    // (StubTransport.emit is subscription-gated). Then seed prev=3, then the
-    // decrease is the 3->2 edge; async act flushes each sample's effect.
+    /**
+     * Wait for the widget's subscription so the seed sample isn't dropped
+     * (StubTransport.emit is subscription-gated). Then seed prev=3, then the
+     * decrease is the 3->2 edge; async act flushes each sample's effect.
+     */
     await waitFor(() =>
       expect(fixture.transport.isSubscribed("vessel.structure")).toBe(true),
     );

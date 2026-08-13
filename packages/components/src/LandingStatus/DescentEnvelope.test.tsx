@@ -370,12 +370,14 @@ describe("DescentEnvelope", () => {
     const stops = Array.from(container.querySelectorAll("stop"));
     expect(stops.length).toBeGreaterThan(0);
     const opacities = stops.map((s) => Number(s.getAttribute("stop-opacity")));
-    // Peak (ground) opacity must clear a "you can actually see it" floor,
-    // guards against regressing back toward the old, effectively-invisible
-    // 0.08 peak, the later still-subtle 0.24 peak, and the 0.36 peak that
-    // read fine on the widget's old own `surface-raised` background but
-    // washed out once the plot moved onto the frame's darker
-    // `surface-sunken` with no background of its own.
+    /**
+     * Peak (ground) opacity must clear a "you can actually see it" floor,
+     * guards against regressing back toward the old, effectively-invisible
+     * 0.08 peak, the later still-subtle 0.24 peak, and the 0.36 peak that
+     * read fine on the widget's old own `surface-raised` background but
+     * washed out once the plot moved onto the frame's darker
+     * `surface-sunken` with no background of its own.
+     */
     expect(Math.max(...opacities)).toBeGreaterThanOrEqual(0.45);
   });
 
@@ -399,9 +401,11 @@ describe("DescentEnvelope", () => {
   });
 
   it("fades the haze toward nothing near the top when the plot spans a wide altitude range", () => {
-    // A wide terminal/touchdown ratio (thin air is MUCH thinner than ground)
-    // means the top of the plot really is thin air, the haze should read
-    // close to zero there, not a uniform wash top-to-bottom.
+    /**
+     * A wide terminal/touchdown ratio (thin air is MUCH thinner than
+     * ground) means the top of the plot really is thin air, the haze
+     * should read close to zero there, not a uniform wash top-to-bottom.
+     */
     const { container } = render(
       <DescentEnvelope
         currentSpeed={200}
@@ -431,9 +435,11 @@ describe("DescentEnvelope", () => {
   });
 
   it("tints the haze with the body's atmosphere colour when one is supplied", () => {
-    // Kerbin's registered atmosphereColor (stock-bodies.ts), passed in as
-    // the widget's caller (LandingStatus/index.tsx) already resolves it, so
-    // the component itself just needs to use it.
+    /**
+     * Kerbin's registered atmosphereColor (stock-bodies.ts), passed in as
+     * the widget's caller (LandingStatus/index.tsx) already resolves it, so
+     * the component itself just needs to use it.
+     */
     const kerbinBlue = "#5a8fd8";
     const { container } = render(
       <DescentEnvelope
@@ -451,14 +457,14 @@ describe("DescentEnvelope", () => {
     expect(stopColors.every((c) => c === kerbinBlue)).toBe(true);
   });
 
-  // ── Drag-to-weight arrowhead ──────────────────────────────────────────────
-  // A faint, solo OPEN chevron (no shaft, no fill) sat just above the vessel
-  // dot, centred on its x, apex pointing up/away, its SIZE (not length)
-  // scaled to the drag-to-weight ratio (drag force ÷ weight). The open
-  // bottom of the "^" leaves a small triangular gap above the dot. Opt-in
-  // via `dragDisplay`; omitted / "none" renders nothing so every existing
-  // caller is unaffected.
-
+  /**
+   * Drag-to-weight arrowhead: a faint, solo OPEN chevron (no shaft, no
+   * fill) sat just above the vessel dot, centred on its x, apex pointing
+   * up/away, its SIZE (not length) scaled to the drag-to-weight ratio (drag
+   * force ÷ weight). The open bottom of the "^" leaves a small triangular
+   * gap above the dot. Opt-in via `dragDisplay`; omitted / "none" renders
+   * nothing so every existing caller is unaffected.
+   */
   const dragBase = {
     currentSpeed: 100,
     currentAltitude: 3000,
@@ -469,9 +475,11 @@ describe("DescentEnvelope", () => {
   function arrowShaft(container: HTMLElement): SVGLineElement | null {
     return container.querySelector("svg line");
   }
-  // The drag chevron is a `<polyline>`, same element type as the reference
-  // curve, so it's picked out by its own faint stroke colour (the curve
-  // always wears `--color-text-muted`).
+  /**
+   * The drag chevron is a `<polyline>`, same element type as the reference
+   * curve, so it's picked out by its own faint stroke colour (the curve
+   * always wears `--color-text-muted`).
+   */
   function arrowHead(container: HTMLElement): SVGPolylineElement | null {
     return container.querySelector(
       'svg polyline[stroke="var(--color-text-faint)"]',

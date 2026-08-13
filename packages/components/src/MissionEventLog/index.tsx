@@ -17,10 +17,12 @@ import { useMissionEvents } from "./useMissionEvents";
 
 type MissionEventLogConfig = Record<string, never>;
 
-// Badge severity per kind, so each row reads at a glance. `undefined` keeps the
-// two decorative kinds (flight-ended / undocking, formerly `neutral`) as grey
-// no-severity chips: severity has no decorative-grey tier, and Badge renders an
-// undefined severity as that same grey.
+/**
+ * Badge severity per kind, so each row reads at a glance. `undefined` keeps
+ * the two decorative kinds (flight-ended / undocking, formerly `neutral`) as
+ * grey no-severity chips: severity has no decorative-grey tier, and Badge
+ * renders an undefined severity as that same grey.
+ */
 const KIND_SEVERITY: Record<MissionEventKind, Severity | undefined> = {
   launch: "nominal",
   "flight-ended": undefined,
@@ -70,11 +72,13 @@ const KIND_LABEL: Record<MissionEventKind, string> = {
  */
 function Stamp({ ut, launchUt }: { ut: number; launchUt: number | undefined }) {
   if (typeof launchUt === "number" && Number.isFinite(launchUt)) {
-    // The sign is decided HERE rather than by `clock`, because a log's zero
-    // is on the other side of the boundary from a countdown's. `<Countdown
-    // clock>` reads zero as `T−`, which is right when zero means "the event
-    // is now, still ahead of you". Every row in a log has already happened,
-    // and the instant of launch is `T+0s`: liftoff, not one second to go.
+    /**
+     * The sign is decided HERE rather than by `clock`, because a log's zero
+     * is on the other side of the boundary from a countdown's. `<Countdown
+     * clock>` reads zero as `T−`, which is right when zero means "the event
+     * is now, still ahead of you". Every row in a log has already happened,
+     * and the instant of launch is `T+0s`: liftoff, not one second to go.
+     */
     const met = ut - launchUt;
     return (
       <>
@@ -94,11 +98,13 @@ function MissionEventLogComponent(
   _props: Readonly<ComponentProps<MissionEventLogConfig>>,
 ) {
   const events = useMissionEvents();
-  // The magnitude, not the cast that was here: `launchUt` is declared in
-  // seconds and arrives as a `Value<"s">`, so casting it to `number` was an
-  // assertion the compiler could not check and the `typeof` guard below
-  // rejected every real frame, stamping each row with a raw UT where the MET
-  // belonged.
+  /**
+   * The magnitude, not the cast that was here: `launchUt` is declared in
+   * seconds and arrives as a `Value<"s">`, so casting it to `number` was an
+   * assertion the compiler could not check and the `typeof` guard below
+   * rejected every real frame, stamping each row with a raw UT where the MET
+   * belonged.
+   */
   const launchUt =
     magnitudeOf(useTelemetry("vessel.identity")?.launchUt) ?? undefined;
 
@@ -139,12 +145,14 @@ function EventRow({
   event: MissionEvent;
   launchUt: number | undefined;
 }) {
-  // No `aria-label` on the row. It used to carry a hand-built
-  // "<label> at <time>" string, which OVERRIDES the row's own text for a
-  // screen reader: the visible stamp and badge went unread and the label
-  // spoke instead. The stamp now renders through the time components, which
-  // already emit the spoken form beside the symbol, so the row's own text is
-  // both the better reading and the one that cannot drift from what is shown.
+  /**
+   * No `aria-label` on the row. It used to carry a hand-built
+   * "<label> at <time>" string, which OVERRIDES the row's own text for a
+   * screen reader: the visible stamp and badge went unread and the label
+   * spoke instead. The stamp now renders through the time components, which
+   * already emit the spoken form beside the symbol, so the row's own text is
+   * both the better reading and the one that cannot drift from what is shown.
+   */
   return (
     <Inline gap="sm">
       <Badge severity={KIND_SEVERITY[event.kind]} size="sm">

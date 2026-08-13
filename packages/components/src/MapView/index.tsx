@@ -77,8 +77,8 @@ import { useTrajectoryBuffer } from "./useTrajectoryBuffer";
 import { useWorldCanvas } from "./useWorldCanvas";
 import { shouldSuppressVanillaBase } from "./vanillaSuppression";
 // Side-effect only: registers the vanilla KSC/launch-site/contract-target
-// POI provider (T-POI-6) so MapPoiLayer below has something to render out
-// of the box. Co-located with MapView per that file's own doc comment.
+// POI provider so MapPoiLayer below has something to render out of the
+// box. Co-located with MapView per that file's own doc comment.
 import "./vanillaPoiProvider";
 
 /**
@@ -97,22 +97,21 @@ function canvasColor(
   return v || fallback;
 }
 
-// ---------------------------------------------------------------------------
-// Augment slots (Uplink architecture). MapView is a HOST that exposes
-// five slots; no first-party augment fills them here, so
-// each renders nothing until an Uplink registers an augment into it. This is
-// THE HARD CASE for slot design: the overlay must draw in
-// the map's own coordinate space, so `map-view.overlay` passes the live
-// equirectangular projection down as slot props. Composable /
-// layered by priority: an Uplink's own scan-layer, commlink, and
-// trajectory overlays all route HERE. `map-view.sections` is a
-// below-content panel slot (mirrors `objectives.sections`/
-// `power-systems.sections`); `map-view.actions` is a header control-row
-// slot (mirrors `system-view.actions`) for quick per-layer toggles; and
-// `map-view.base` is the STACKABLE REPLACE slot for the map's base
-// surface: many augments may draw, composited in order; see each
-// interface's own doc comment below.
-// ---------------------------------------------------------------------------
+/**
+ * Augment slots (Uplink architecture). MapView is a HOST that exposes five
+ * slots; no first-party augment fills them here, so each renders nothing
+ * until an Uplink registers an augment into it. This is the hard case for
+ * slot design: the overlay must draw in the map's own coordinate space, so
+ * `map-view.overlay` passes the live equirectangular projection down as
+ * slot props. Composable / layered by priority: an Uplink's own scan-layer,
+ * commlink, and trajectory overlays all route here. `map-view.sections` is
+ * a below-content panel slot (mirrors `objectives.sections`/
+ * `power-systems.sections`); `map-view.actions` is a header control-row
+ * slot (mirrors `system-view.actions`) for quick per-layer toggles; and
+ * `map-view.base` is the STACKABLE REPLACE slot for the map's base
+ * surface: many augments may draw, composited in order; see each
+ * interface's own doc comment below.
+ */
 
 /**
  * Props for `map-view.overlay`: an OVERLAY slot, rendered in a
@@ -216,9 +215,9 @@ export interface MapBaseLayerContext {
    *  (default true when unset) to decide whether it currently contributes
    *  a layer. */
   augmentSettings: Record<string, Record<string, unknown>> | undefined;
-  /** The paint-gate (T4) for this body: the augment samples this per
-   *  output tile while drawing its own surface. `hasAnySource: false`
-   *  means "paint fully open," not "paint nothing." */
+  /** The paint-gate for this body: the augment samples this per output
+   *  tile while drawing its own surface. `hasAnySource: false` means
+   *  "paint fully open," not "paint nothing." */
   coverageGate: CoverageGate;
   /**
    * Called by the augment whenever it has a fresh canvas to contribute (or
@@ -391,7 +390,7 @@ function MapViewComponent({
   const showPrediction = config?.showPrediction ?? true;
   const bodyOverride = config?.bodyOverride;
   // Vanilla POIs (KSC, contract targets) are always-relevant reference
-  // points, not an opt-in extension-shaped feature: default on (T-POI-7).
+  // points, not an opt-in extension-shaped feature: default on.
   const showPois = config?.showPois ?? true;
 
   // Vessel kinematics read straight off the stream: raw `vessel.flight.*`
@@ -607,7 +606,7 @@ function MapViewComponent({
     [config, augmentSettings, onConfigChange],
   );
 
-  // T4's paint-gate: a mod-agnostic map-view.base augment samples this
+  // The paint-gate: a mod-agnostic map-view.base augment samples this
   // per output tile while drawing its own surface (settled model: zero
   // registered sources means "paint fully open," not "paint nothing").
   const coverageGate = useCoverageGate(targetBodyId, augmentSettings);
@@ -777,8 +776,8 @@ function MapViewComponent({
   // reveal-source model replaces that wholesale, scanner range gates,
   // persisted coverage, etc. are that mod's own concern. There is no
   // separate dark overlay canvas drawn on top of the map anymore (settled
-  // model): `coverageGate` (T4, above) is handed to whichever
-  // `map-view.base` augment is active so IT can gate its own per-tile
+  // model): `coverageGate` (above) is handed to whichever `map-view.base`
+  // augment is active so IT can gate its own per-tile
   // paint. This overlay canvas is left entirely for augments that draw ON
   // TOP of the base surface via the `map-view.overlay` slot below.
   useEffect(() => {
@@ -1315,10 +1314,6 @@ function MapViewComponent({
     </Panel>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
 
 registerComponent<MapViewConfig>({
   id: "map-view",

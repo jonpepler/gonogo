@@ -47,9 +47,11 @@ describe("CrewStatus, real recorded-fixture render off the stream (delay=0)", ()
       });
     });
 
-    // The "1 / 1 aboard" headcount now lives on the info-tone
-    // `crew-status.badges` panel-badge contribution (`./badge.ts`), which
-    // this bare-component render (no `Panel` badge chrome) never mounts.
+    /**
+     * The "1 / 1 aboard" headcount now lives on the info-tone
+     * `crew-status.badges` panel-badge contribution (`./badge.ts`), which
+     * this bare-component render (no `Panel` badge chrome) never mounts.
+     */
     await waitFor(() =>
       expect(screen.getByText("Valentina Kerman")).toBeInTheDocument(),
     );

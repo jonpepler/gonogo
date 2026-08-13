@@ -68,7 +68,7 @@ const sharedDelayedStreams = new SharedDelayedStreams<
  * This is the thin data-source glue only, a strict LAN passthrough. Delayed
  * playout is layered on top by composing it with {@link useDelayedPlayout}
  * (see `useDelayedKerbcastStream`), which keeps the SDK / buffer / clock
- * concerns cleanly separated (M2 design §5).
+ * concerns cleanly separated.
  */
 export function useKerbcastStream(flightId: number | null): MediaStream | null {
   const [rawStream, setRawStream] = useState<MediaStream | null>(() => {
@@ -101,8 +101,8 @@ export function useKerbcastStream(flightId: number | null): MediaStream | null {
 }
 
 /**
- * Opt-in delayed playout for a raw kerbcast `MediaStream` (M2 design §5,
- * "media delay (kerbcast)"). Omit this argument entirely for the existing
+ * Opt-in delayed playout for a raw kerbcast `MediaStream` ("media delay
+ * (kerbcast)"). Omit this argument entirely for the existing
  * LAN passthrough behaviour (zero regression, scenario 6); see
  * `DelayedPlayoutResult`'s `"raw"` kind, the one retained live-video path
  * (cross-browser kerbcast video-delay design, 2026-07-16).
@@ -156,9 +156,9 @@ export interface KerbcastStreamDelayOptions {
  * - `"delayed"`: a real per-frame delay pipeline is up; `stream` is its
  *   output.
  * - `"unavailable"`: delay was requested and expected, but no backend
- *   could build a pipeline here. Per decision 5 of the design doc, this is
- *   NEVER papered over with the live stream, the caller must render an
- *   explicit "can't delay" state instead (see `CameraFeed.tsx`).
+ *   could build a pipeline here. This is NEVER papered over with the live
+ *   stream, the caller must render an explicit "can't delay" state instead
+ *   (see `CameraFeed.tsx`).
  */
 export type DelayedPlayoutResult =
   | { kind: "raw"; stream: MediaStream | null }
@@ -171,36 +171,36 @@ const CONNECTING: DelayedPlayoutResult = { kind: "connecting" };
 
 /**
  * Route a raw `MediaStream` through the real per-frame delay pipeline,
- * sharing the app's telemetry delay clock (M2 design §5). Without `delay`
+ * sharing the app's telemetry delay clock. Without `delay`
  * (the default) this is a strict passthrough, it returns `{kind: "raw",
  * stream: raw}` unchanged, so the LAN case is bit-for-bit the old
  * behaviour, with NO pipeline spun up.
  *
- * With `delay`, THREE backends are tried in order (2026-07-16, encoded-transform
- * video-delay work, `local_docs/reports/encoded-video-delay-report.md`):
+ * With `delay`, THREE backends are tried in order (2026-07-16,
+ * encoded-transform video-delay work):
  *
  *  0. **Encoded transform on the receiver** (`attachEncodedWorkerFrameDelay`),
  *     tried first when `getUplinkHandle("kerbcast")` can resolve an
  *     `RTCRtpReceiver` for `raw` (via `KerbcastDataSource.getReceiverForStream`)
  *     AND `RTCRtpScriptTransform` exists. Empirically confirmed cross-browser
- *     correct (Chromium/Firefox/WebKit, Phase 1 of that report), the ONLY
- *     backend that can reach Firefox at all. Delays IN PLACE (no new track):
- *     on success the result's `stream` is `raw` itself, unchanged, the delay
- *     happens transparently upstream of decode.
+ *     correct (Chromium/Firefox/WebKit), the ONLY backend that can reach
+ *     Firefox at all. Delays IN PLACE (no new track): on success the
+ *     result's `stream` is `raw` itself, unchanged, the delay happens
+ *     transparently upstream of decode.
  *  1. **Main-thread Breakout Box** (`isFrameDelaySupported()` /
  *     `createFrameDelayStream`): Chrome, tried when (0) can't attach (no
  *     receiver resolvable: e.g. a test fixture, or a future non-`BrowserRTCTransport`
  *     transport: or the browser lacks `RTCRtpScriptTransform`).
  *  2. **Worker-hosted Breakout Box** (`createWorkerFrameDelayStream`):
  *     tried only when (0) and (1) are both unavailable. Safari/WebKit
- *     supports this today (see `local_docs/reports/video-worker-report.md`
- *     for the per-engine breakdown backends 1/2's ordering rests on).
+ *     supports this today, per-engine verification backs backends 1/2's
+ *     ordering.
  *
  * If NO backend can build a pipeline, resolves `{kind: "unavailable",
  * reason}`: **never** the raw stream. The old silent
  * `setDelayedStream(raw)` fallback (and its one-time warning) is deleted;
  * "can't delay" is now a first-class, visible state the caller renders
- * explicitly (decision 5).
+ * explicitly.
  */
 export function useDelayedPlayout(
   raw: MediaStream | null,

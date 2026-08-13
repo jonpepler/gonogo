@@ -4,10 +4,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { StrategiesComponent } from "./index";
 
-// Unmount each rendered tree BEFORE clearing the action-handler registry,
-// clearActionHandlers() firing on a still-mounted widget is a state update
-// outside act(). RTL auto-cleanup runs after this file's afterEach, too late
-// to unmount first.
+/**
+ * Unmount each rendered tree BEFORE clearing the action-handler registry,
+ * clearActionHandlers() firing on a still-mounted widget is a state update
+ * outside act(). RTL auto-cleanup runs after this file's afterEach, too late
+ * to unmount first.
+ */
 const renderedTrees: Array<() => void> = [];
 
 /**
@@ -24,7 +26,7 @@ afterEach(() => {
   clearActionHandlers();
 });
 
-describe("Strategies: genuinely runs off the stream (M3/M3b career batch)", () => {
+describe("Strategies: genuinely runs off the stream (career batch)", () => {
   it("renders the funds/reputation/science tallies derived from career.status.economy", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["career.status"],
@@ -52,11 +54,14 @@ describe("Strategies: genuinely runs off the stream (M3/M3b career batch)", () =
       });
     });
 
-    // `getByText` concatenates only an element's direct text nodes, so it
-    // finds the bare number; `CurrencyUnit` puts its glyph and the word that
-    // replaces it in a nested span. The full `textContent` is what a screen
-    // reader announces, so assert that: the glyphs are aria-hidden, and
-    // without the hidden word these tallies would read as three bare numbers.
+    /**
+     * `getByText` concatenates only an element's direct text nodes, so it
+     * finds the bare number; `CurrencyUnit` puts its glyph and the word
+     * that replaces it in a nested span. The full `textContent` is what a
+     * screen reader announces, so assert that: the glyphs are aria-hidden,
+     * and without the hidden word these tallies would read as three bare
+     * numbers.
+     */
     const funds = await screen.findByText("289,848");
     expect(funds.textContent).toBe("289,848f funds");
     expect(screen.getByText("420").textContent).toBe("420 reputation");
@@ -106,9 +111,11 @@ describe("Strategies: genuinely runs off the stream (M3/M3b career batch)", () =
         economy: { funds: 289848, reputation: 420, science: 145 },
         facilities: null,
         contracts: null,
-        // parseStrategies (and the widget) reads `strategies.all` only,
-        // `active` is derived client-side by filtering `isActive`, so the
-        // entry must be present in `all`, not just `active`.
+        /**
+         * parseStrategies (and the widget) reads `strategies.all` only,
+         * `active` is derived client-side by filtering `isActive`, so the
+         * entry must be present in `all`, not just `active`.
+         */
         strategies: {
           active: [aggressiveNegotiations],
           all: [aggressiveNegotiations],

@@ -14,13 +14,15 @@ import {
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { KeplerPeriodComponent } from "./index";
 
-// The graph's `o.sma`/`o.period` scatter series still ride
-// `useDataSeries("data", ...)` (`@ksp-gonogo/data`) unconditionally, that
-// hook has no stream awareness at all, so a legacy `MockDataSource`
-// registered under "data" is still required for `GraphView` to mount
-// without erroring, even though neither test below emits onto these keys
-// (the dashed reference curve these tests assert on is drawn purely from
-// the resolved `BodyDefinition`, not from streamed samples).
+/**
+ * The graph's `o.sma`/`o.period` scatter series still ride
+ * `useDataSeries("data", ...)` (`@ksp-gonogo/data`) unconditionally, that
+ * hook has no stream awareness at all, so a legacy `MockDataSource`
+ * registered under "data" is still required for `GraphView` to mount
+ * without erroring, even though neither test below emits onto these keys
+ * (the dashed reference curve these tests assert on is drawn purely from
+ * the resolved `BodyDefinition`, not from streamed samples).
+ */
 const GRAPH_KEYS: DataKey[] = [
   { key: "o.sma", unit: "m" },
   { key: "o.period", unit: "s" },
@@ -146,9 +148,12 @@ describe("KeplerPeriodComponent", () => {
           },
         ],
       });
-      // referenceBodyIndex points at an index `system.bodies` doesn't carry,
-      // so `referenceBodyName` resolves to undefined and the widget falls
-      // back to `parentBodyName`: same precedence `index.tsx` documents.
+      /**
+       * referenceBodyIndex points at an index `system.bodies` doesn't
+       * carry, so `referenceBodyName` resolves to undefined and the widget
+       * falls back to `parentBodyName`: same precedence `index.tsx`
+       * documents.
+       */
       stream.emit("vessel.orbit", {
         referenceBodyIndex: 999,
         sma: 700000,

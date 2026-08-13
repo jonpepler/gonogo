@@ -62,16 +62,18 @@ function CurrentOrbitComponent({
     timeToApoapsis: timeToAp,
     timeToPeriapsis: timeToPe,
   } = useOrbitElements();
-  // Every read rides the SDK stream directly, no legacy `useTelemetry("data",
-  // ...)` fallback:
-  //   - sma/eccentricity/inclination/argPe are raw `vessel.orbit.*` elements,
-  //     read off the canonical whole-`vessel.orbit` Topic.
-  //   - trueAnomaly/period (+ Ap/Pe/ApR/PeR/timeToAp/timeToPe via
-  //     `useOrbitElements`) and referenceBody/bodyName are SDK-derived
-  //     `vessel.state.*` fields (deriveVesselState: trueAnomaly propagated at
-  //     view-UT, referenceBodyName/parentBodyName resolved index → name against
-  //     `system.bodies`). `vessel.state` isn't a wire `TopicId`, so it reads
-  //     through `useStream`.
+  /**
+   * Every read rides the SDK stream directly, no legacy `useTelemetry("data",
+   * ...)` fallback:
+   *   - sma/eccentricity/inclination/argPe are raw `vessel.orbit.*` elements,
+   *     read off the canonical whole-`vessel.orbit` Topic.
+   *   - trueAnomaly/period (+ Ap/Pe/ApR/PeR/timeToAp/timeToPe via
+   *     `useOrbitElements`) and referenceBody/bodyName are SDK-derived
+   *     `vessel.state.*` fields (deriveVesselState: trueAnomaly propagated at
+   *     view-UT, referenceBodyName/parentBodyName resolved index → name against
+   *     `system.bodies`). `vessel.state` isn't a wire `TopicId`, so it reads
+   *     through `useStream`.
+   */
   const orbit = useTelemetry("vessel.orbit");
   const vesselState = useStream<VesselState>("vessel.state");
   const sma = orbit?.sma;
@@ -104,41 +106,51 @@ function CurrentOrbitComponent({
     return () => ro.disconnect();
   }, []);
 
-  // Apoapsis is intentionally NOT required, it's `null` on a hyperbolic
-  // orbit (no apoapsis exists) by design (`VesselState.apoapsisRadius`), not
-  // an error. Periapsis is always real whenever there's a resolvable orbit,
-  // so it (plus sma/eccentricity) is the true "do we have an orbit" signal.
-  // `!= null` catches both `null` and `undefined`, `apoapsisR`/`periapsisR`
-  // are `useOrbitElements`' apsis radii, which pass `null` through as-is
-  // (see that hook's own doc comment).
+  /**
+   * Apoapsis is intentionally NOT required, it's `null` on a hyperbolic
+   * orbit (no apoapsis exists) by design (`VesselState.apoapsisRadius`), not
+   * an error. Periapsis is always real whenever there's a resolvable orbit,
+   * so it (plus sma/eccentricity) is the true "do we have an orbit" signal.
+   * `!= null` catches both `null` and `undefined`, `apoapsisR`/`periapsisR`
+   * are `useOrbitElements`' apsis radii, which pass `null` through as-is
+   * (see that hook's own doc comment).
+   */
   const hasOrbit = sma != null && eccentricity != null && periapsisR != null;
 
-  // Selective rendering: Ap/Pe always; supplementary rows drop bottom-up
-  // as height shrinks. Diagram needs real area to be readable.
+  /**
+   * Selective rendering: Ap/Pe always; supplementary rows drop bottom-up
+   * as height shrinks. Diagram needs real area to be readable.
+   */
   const cols = w ?? 9;
   const rows = h ?? 18;
   const showSubtitle = rows >= 4;
   const showInclinationRow = rows >= 5;
   const showApProgressRows = rows >= 6;
   const showEccentricityRows = rows >= 8;
-  // The diagram slot is gated on real area, but the axis that matters
-  // differs by orientation: stacked above the values it eats height
-  // (rows >= 8), but in the wide-short landscape case it sits *beside*
-  // them and eats width instead. Gating purely on height locked the
-  // diagram out of exactly the wide-short mode (e.g. 12×6) the flex-flip
-  // was built for, leaving ~60% dead space. Allow either a tall panel
-  // or a wide one.
+  /**
+   * The diagram slot is gated on real area, but the axis that matters
+   * differs by orientation: stacked above the values it eats height
+   * (rows >= 8), but in the wide-short landscape case it sits *beside*
+   * them and eats width instead. Gating purely on height locked the
+   * diagram out of exactly the wide-short mode (e.g. 12×6) the flex-flip
+   * was built for, leaving ~60% dead space. Allow either a tall panel
+   * or a wide one.
+   */
   const showDiagramSlot =
     showDiagram && hasOrbit && cols >= 5 && (rows >= 8 || cols >= 10);
-  // Tiny widget: at minSize 3×4 the formatted "85.0 km" wraps to two
-  // lines inside the 1fr value column. Drop the label column to 2.2em
-  // and the value font to 11 px so a one-line value fits inside ~80 px
-  // of content width.
+  /**
+   * Tiny widget: at minSize 3×4 the formatted "85.0 km" wraps to two
+   * lines inside the 1fr value column. Drop the label column to 2.2em
+   * and the value font to 11 px so a one-line value fits inside ~80 px
+   * of content width.
+   */
   const tight = cols < 4 || rows < 5;
-  // Narrow panels (3–4 cols) can't fit long values like "1000.00 Mm" or
-  // "5h 15m 00s" at the 13 px tier, they clip at the panel edge. Shrink
-  // the value font on any narrow column count, not just the `tight`
-  // (small-on-both-axes) case, so compact (4×6) doesn't overflow either.
+  /**
+   * Narrow panels (3–4 cols) can't fit long values like "1000.00 Mm" or
+   * "5h 15m 00s" at the 13 px tier, they clip at the panel edge. Shrink
+   * the value font on any narrow column count, not just the `tight`
+   * (small-on-both-axes) case, so compact (4×6) doesn't overflow either.
+   */
   const narrow = cols < 5;
   const hyperbolic = typeof eccentricity === "number" && eccentricity >= 1;
 
@@ -349,14 +361,15 @@ registerComponent<CurrentOrbitConfig>({
 
 export { CurrentOrbitComponent };
 
-// Plain elements + inline style rather than ui-kit primitives below: the
-// label/value pair carries font sizes and letter-spacings off the standard
-// scale on purpose (see OrbitValue's own comment), and Value's tone
-// vocabulary (accent/default/muted/faint) has no slot for this widget's
-// domain tones (ap/pe/alert), so composing it would either lose the exact
-// colour or force a mismatched tone name onto a value that isn't one of
-// Value's four.
-
+/**
+ * Plain elements + inline style rather than ui-kit primitives below: the
+ * label/value pair carries font sizes and letter-spacings off the standard
+ * scale on purpose (see OrbitValue's own comment), and Value's tone
+ * vocabulary (accent/default/muted/faint) has no slot for this widget's
+ * domain tones (ap/pe/alert), so composing it would either lose the exact
+ * colour or force a mismatched tone name onto a value that isn't one of
+ * Value's four.
+ */
 function OrbitLabel({ children }: { children: ReactNode }) {
   return (
     <span
@@ -404,14 +417,16 @@ function OrbitValue({
     whiteSpace: "nowrap",
     minWidth: 0,
   };
-  // Narrow panels (3-4 cols) shrink long values rather than clip them; the
-  // tiny tier (small on both axes) goes one step smaller still.
-  //
-  // The narrow tier stays a literal 12px, paired with the base 13px above:
-  // --font-size-sm covers both 13 and 12, so tokenising the pair collapses
-  // two tiers into one and makes narrow a no-op on desktop, and a 13px no-op
-  // on a coarse pointer, which is exactly the size the comment above says
-  // clips at 3-4 cols. Only the tight tier lands on a rung of its own.
+  /**
+   * Narrow panels (3-4 cols) shrink long values rather than clip them; the
+   * tiny tier (small on both axes) goes one step smaller still.
+   *
+   * The narrow tier stays a literal 12px, paired with the base 13px above:
+   * --font-size-sm covers both 13 and 12, so tokenising the pair collapses
+   * two tiers into one and makes narrow a no-op on desktop, and a 13px no-op
+   * on a coarse pointer, which is exactly the size the comment above says
+   * clips at 3-4 cols. Only the tight tier lands on a rung of its own.
+   */
   if (tight) {
     style.fontSize = "var(--font-size-2xs)";
   } else if (narrow) {

@@ -86,11 +86,14 @@ describe("solveSuicideBurn: near-vertical hover descent", () => {
  * RK integration of ds/dt = g − F/m(t) (see scratchpad verify.mjs).
  */
 describe("solveSuicideBurn: rocket-equation engine model", () => {
-  // The `high-speed-no-solution` render fixture: Mun, 12 km AGL, 350 m/s down +
-  // 100 m/s horizontal, 18 kN over 5 t (dry 3 t), 900 m/s dV. TWR ≈ 2.48 local.
-  // ve = ΔV / ln(m0/mdry) = 900 / ln(5/3) = 1761.85 m/s (Isp ≈ 179.6 s), the
-  // ACTIVE stage's effective exhaust velocity; burnoutMass = the stage's dry
-  // (3 t). Same physical burn as before: the numbers below are unchanged.
+  /**
+   * The `high-speed-no-solution` render fixture: Mun, 12 km AGL, 350 m/s
+   * down + 100 m/s horizontal, 18 kN over 5 t (dry 3 t), 900 m/s dV. TWR ≈
+   * 2.48 local. ve = ΔV / ln(m0/mdry) = 900 / ln(5/3) = 1761.85 m/s (Isp ≈
+   * 179.6 s), the ACTIVE stage's effective exhaust velocity; burnoutMass =
+   * the stage's dry (3 t). Same physical burn as before: the numbers below
+   * are unchanged.
+   */
   const HIGH_SPEED: SuicideBurnInputs = {
     heightFromTerrain: 12_000,
     altitudeAsl: 12_000,
@@ -147,9 +150,11 @@ describe("solveSuicideBurn: rocket-equation engine model", () => {
   });
 
   it("fuel-limited no-vector: can't null the vector even with altitude to spare", () => {
-    // 100 km of altitude (not the limit) but a weak engine, only ~200 m/s of
-    // stage dV (ve = 200/ln(5/3)), so the full-null burn (~415 m/s) can NEVER
-    // be afforded: fuel is the wall, not altitude.
+    /**
+     * 100 km of altitude (not the limit) but a weak engine, only ~200 m/s
+     * of stage dV (ve = 200/ln(5/3)), so the full-null burn (~415 m/s) can
+     * NEVER be afforded: fuel is the wall, not altitude.
+     */
     const s = solveSuicideBurn({
       ...HIGH_SPEED,
       heightFromTerrain: 100_000,

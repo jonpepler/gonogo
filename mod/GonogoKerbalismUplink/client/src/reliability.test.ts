@@ -36,9 +36,12 @@ const FIXTURE = join(
  * `mod/golden-fixtures/README.md`, in the C#-to-TS direction.
  */
 function serverFrame(): { topic: string; payload: ReliabilitySummary } {
-  // The frame is held as a JSON STRING inside the fixture, the shape every other
-  // file in mod/golden-fixtures/ uses: the C# side asserts byte equality against
-  // it, and a nested object would be reformatted by the repo's JSON formatter.
+  /**
+   * The frame is held as a JSON STRING inside the fixture, the shape every
+   * other file in mod/golden-fixtures/ uses: the C# side asserts byte
+   * equality against it, and a nested object would be reformatted by the
+   * repo's JSON formatter.
+   */
   const vectors = JSON.parse(readFileSync(FIXTURE, "utf8")) as {
     name: string;
     json: string;
@@ -79,9 +82,11 @@ describe("kerbalism's namespace of reliability.summary's provider extension bag"
     expect(ext).toBeDefined();
     expect(ext?.brokenPartCount).toBeDefined();
 
-    // The accessor answers for its OWN namespace only. A payload carrying only
-    // some other provider's sub-tree is not this provider's data with fields
-    // missing, it is an absence, and the reader has to say so.
+    /**
+     * The accessor answers for its OWN namespace only. A payload carrying
+     * only some other provider's sub-tree is not this provider's data
+     * with fields missing, it is an absence, and the reader has to say so.
+     */
     expect(
       readKerbalismReliabilityExt({
         extensions: { someprovider: { depth: 3.5 } },
@@ -91,20 +96,23 @@ describe("kerbalism's namespace of reliability.summary's provider extension bag"
     expect(readKerbalismReliabilityExt(undefined)).toBeUndefined();
   });
 
-  // ── The end-to-end assertion this whole mechanism exists to make good on ──────
-  //
-  // A quantity inside a provider's namespace is a real gonogo Value and has to
-  // survive decode like any other. Nothing in core can know that: the bag is
-  // opaque by construction, so `wrapTopicPayload` can only walk into it because
-  // ./reliability.ts registered which generated type the namespace holds
-  // (registerProviderExtensionShape) and ./topics.ts fed this Uplink's own
-  // generated TYPE units in (registerTypeUnits). Delete either and this is the
-  // assertion that goes red, with everything else in this file staying green:
-  // verified by doing it, both ways, not assumed.
-  //
-  // Driven through the REAL TelemetryClient/StubTransport pipeline, off the frame
-  // the REAL C# codec wrote, so the claim is about the shipped decode path rather
-  // than about wrapTopicPayload called in isolation.
+  /**
+   * The end-to-end assertion this whole mechanism exists to make good on.
+   *
+   * A quantity inside a provider's namespace is a real gonogo Value and
+   * has to survive decode like any other. Nothing in core can know that:
+   * the bag is opaque by construction, so `wrapTopicPayload` can only walk
+   * into it because ./reliability.ts registered which generated type the
+   * namespace holds (registerProviderExtensionShape) and ./topics.ts fed
+   * this Uplink's own generated TYPE units in (registerTypeUnits). Delete
+   * either and this is the assertion that goes red, with everything else
+   * in this file staying green: verified by doing it, both ways, not
+   * assumed.
+   *
+   * Driven through the REAL TelemetryClient/StubTransport pipeline, off
+   * the frame the REAL C# codec wrote, so the claim is about the shipped
+   * decode path rather than about wrapTopicPayload called in isolation.
+   */
   it('hydrates the extension\'s quantity into Value<"h"> at decode time', async () => {
     const frame = serverFrame();
     const fixture = setupStreamFixture({
@@ -148,9 +156,11 @@ describe("kerbalism's namespace of reliability.summary's provider extension bag"
       expect(result.current?.source).toBeDefined();
     });
 
-    // The bag is additive: core's own hand-curated fields decode exactly as they
-    // did before it existed, non-quantity tokens bare and the quantity absent
-    // because Kerbalism cannot fill it.
+    /**
+     * The bag is additive: core's own hand-curated fields decode exactly
+     * as they did before it existed, non-quantity tokens bare and the
+     * quantity absent because Kerbalism cannot fill it.
+     */
     expect(result.current?.source).toBe("kerbalism");
     expect(result.current?.unmodeled).toBe(false);
     expect(result.current?.malfunction).toBe(true);

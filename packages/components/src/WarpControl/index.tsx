@@ -37,13 +37,15 @@ import { magnitudeOf } from "../shared/magnitude";
 
 type WarpControlConfig = Record<string, never>;
 
-// Declaration-merge this widget's slot ids → props type into core's
-// `SlotRegistry` (Uplink architecture, declaration-merging base). Both
-// slots are plain composition points with no parent context to hand down, a
-// contributed action fires its OWN command via `useExecuteAction`, a badge
-// reads its OWN Topics, so each passes empty props (`Record<string, never>`).
-// Co-located here (not in a shared central registry file) so parallel slot
-// work on other widgets never collides on the same module.
+/**
+ * Declaration-merge this widget's slot ids → props type into core's
+ * `SlotRegistry`. Both slots are plain composition points with no parent
+ * context to hand down, a contributed action fires its OWN command via
+ * `useExecuteAction`, a badge reads its OWN Topics, so each passes empty
+ * props (`Record<string, never>`). Co-located here (not in a shared central
+ * registry file) so parallel slot work on other widgets never collides on
+ * the same module.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     // Footer action row: an Uplink contributes a warp-target action

@@ -29,13 +29,15 @@ import { SemiMajorAxisComponent } from "./index";
  * have come from the stream.
  */
 
-describe("SemiMajorAxis: genuinely runs off the stream (M3 batch 2)", () => {
+describe("SemiMajorAxis: genuinely runs off the stream", () => {
   it("reads sma AND the derived reference-body name off the real stream pipeline, not legacy", async () => {
     const fixture = setupStreamFixture({
-      // `vessel.state.referenceBodyName` is "carried" only once ALL EIGHT of
-      // `vessel.state`'s declared inputs are (see `vessel-state.ts`'s
-      // `vesselStateChannel` doc comment); the raw `vessel.orbit.sma` needs
-      // only `vessel.orbit`.
+      /**
+       * `vessel.state.referenceBodyName` is "carried" only once ALL EIGHT of
+       * `vessel.state`'s declared inputs are (see `vessel-state.ts`'s
+       * `vesselStateChannel` doc comment); the raw `vessel.orbit.sma` needs
+       * only `vessel.orbit`.
+       */
       carriedChannels: [
         "vessel.orbit",
         "vessel.flight",
@@ -105,17 +107,21 @@ describe("SemiMajorAxis: genuinely runs off the stream (M3 batch 2)", () => {
       </fixture.Provider>,
     );
 
-    // No sparkline can render yet, Sparkline draws nothing for fewer than 2
-    // finite values (@ksp-gonogo/ui's Sparkline.test.tsx), and nothing has
-    // arrived at all.
+    /**
+     * No sparkline can render yet, Sparkline draws nothing for fewer than 2
+     * finite values (@ksp-gonogo/ui's Sparkline.test.tsx), and nothing has
+     * arrived at all.
+     */
     expect(
       container.querySelector("svg[aria-label='SMA trend'] path"),
     ).toBeNull();
 
-    // Three points inside the SPARK_WINDOW_SEC=300 window ending at the
-    // pinned viewUt=10 ([-290, 10]): with NO legacy 'data' DataSource
-    // registered anywhere in this file, this is the only possible source
-    // for a rendered trend line.
+    /**
+     * Three points inside the SPARK_WINDOW_SEC=300 window ending at the
+     * pinned viewUt=10 ([-290, 10]): with NO legacy 'data' DataSource
+     * registered anywhere in this file, this is the only possible source
+     * for a rendered trend line.
+     */
     act(() => {
       fixture.emit("vessel.orbit", { sma: 679_400 }, { validAt: -200 });
       fixture.emit("vessel.orbit", { sma: 679_800 }, { validAt: -100 });
@@ -124,11 +130,13 @@ describe("SemiMajorAxis: genuinely runs off the stream (M3 batch 2)", () => {
 
     await waitFor(() => expect(visibleText()).toContain("680.0 km"));
     await waitFor(() => {
-      // Sparkline renders TWO <path>s (a gradient-filled area, then the
-      // stroked trend line itself, `fill="none"`: @ksp-gonogo/ui's
-      // Sparkline.tsx): target the stroke path specifically so its
-      // point-count isn't padded by the fill path's baseline-closing
-      // segments.
+      /**
+       * Sparkline renders TWO <path>s (a gradient-filled area, then the
+       * stroked trend line itself, `fill="none"`: @ksp-gonogo/ui's
+       * Sparkline.tsx): target the stroke path specifically so its
+       * point-count isn't padded by the fill path's baseline-closing
+       * segments.
+       */
       const path = container.querySelector(
         "svg[aria-label='SMA trend'] path[fill='none']",
       );
@@ -137,9 +145,11 @@ describe("SemiMajorAxis: genuinely runs off the stream (M3 batch 2)", () => {
       // One "M" (moveto) + 2 "L" (lineto) commands, all 3 streamed points
       // made it into the plotted path, not just the latest one.
       expect(d.match(/L/g)?.length).toBe(2);
-      // Rising series (679_400 -> 679_800 -> 680_000) draws a
-      // monotonically DEscending y (SVG y grows downward), proves the
-      // point ORDER came through correctly too, not just the count.
+      /**
+       * Rising series (679_400 -> 679_800 -> 680_000) draws a
+       * monotonically DEscending y (SVG y grows downward), proves the
+       * point ORDER came through correctly too, not just the count.
+       */
       expect(d).toBe("M0.00,28.00 L60.00,9.33 L120.00,0.00");
     });
   });

@@ -4,7 +4,7 @@ import { magnitudeOf, type Quantityish } from "../shared/magnitude";
 /**
  * Mission-event model + pure derivation logic for the Mission Event Log widget.
  *
- * Two families of source (see the STEP-1 event list, 2026-08-03):
+ * Two families of source:
  *   • Tier A: DISCRETE topics that carry their own `ut` (`flight.started/ended/
  *     vesselChanged`, `crash.lastCrash`, `recovery.lastSummary`). Shaped 1:1 by
  *     the `from*` functions.
@@ -78,7 +78,7 @@ function makeId(kind: MissionEventKind, ut: number, disc?: string): string {
   return disc ? `${kind}:${ut}:${disc}` : `${kind}:${ut}`;
 }
 
-// --- Tier A: discrete-topic shapers -----------------------------------------
+// Tier A: discrete-topic shapers
 
 interface DiscretePayload {
   ut?: unknown;
@@ -153,9 +153,11 @@ export function fromRecovery(raw: unknown): MissionEvent | null {
   const p = asObj(raw);
   const ut = num(p?.ut);
   if (!p || ut === null) return null;
-  // `writeQuantity`, not a typed "f": `detail` is a string on the event model
-  // and a string cannot hold `<Unit>`, but the symbol can still come from the
-  // unit registry rather than from the keyboard.
+  /**
+   * `writeQuantity`, not a typed "f": `detail` is a string on the event model
+   * and a string cannot hold `<Unit>`, but the symbol can still come from the
+   * unit registry rather than from the keyboard.
+   */
   const recovered = num(p.fundsRecovered);
   const funds =
     recovered === null
@@ -213,10 +215,12 @@ export function fromReputationLoss(
       cause === "crew-loss" ? "crew loss" : cause,
       vessel,
       crew.length > 0 ? crew.join(", ") : null,
-      // `writeQuantity`, not a hand-typed "5m12s": `detail` is a string on the event
-      // model and a string cannot hold `<Unit>`, but the ladder and the symbol still
-      // come from the unit registry rather than from the keyboard. Same reasoning as
-      // `fromRecovery`'s funds figure above.
+      /**
+       * `writeQuantity`, not a hand-typed "5m12s": `detail` is a string on
+       * the event model and a string cannot hold `<Unit>`, but the ladder
+       * and the symbol still come from the unit registry rather than from
+       * the keyboard. Same reasoning as `fromRecovery`'s funds figure above.
+       */
       `${writeQuantity(value("s", age))} ago`,
     ]
       .filter(Boolean)
@@ -231,7 +235,7 @@ export function fromReputationLoss(
   };
 }
 
-// --- Tier B: value-edge detectors (caller supplies the current view `ut`) -----
+// Tier B: value-edge detectors (caller supplies the current view `ut`)
 
 /** Staging edge: the stage COUNT decreasing (a stage separated). */
 export function detectStaging(

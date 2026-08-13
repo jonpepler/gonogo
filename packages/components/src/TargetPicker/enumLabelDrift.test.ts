@@ -8,7 +8,7 @@ import {
 } from "./index";
 
 /**
- * T3 drift guard (producer-consumer-T3): TargetPicker's and LaunchDirector's
+ * Drift guard: TargetPicker's and LaunchDirector's
  * `VESSEL_TYPE_LABELS`/`SITUATION_LABELS` arrays are hand-ordered to match the
  * C# `VesselType`/`Situation` enum declaration order (`VesselEnums.cs`), with
  * no compile-time coupling to the generated SDK enums that ARE the source of

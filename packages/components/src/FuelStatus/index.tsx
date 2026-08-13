@@ -119,12 +119,15 @@ const RESOURCES: readonly ResourceDef[] = [
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
 function useResourceReading(def: ResourceDef): { value: number; max: number } {
-  // Vessel-total amounts come off `vessel.resources` (the wire topic, a
-  // resource-name-keyed `{ current, max }` map). Stage-scoped amounts come off
-  // the derived `dv.currentStageResource`/`dv.currentStageResourceMax` channels
-  // (`dv-stage-resources.ts`): the active stage's slice of `dv.stages`, keyed
-  // by resource name. All three reads happen unconditionally (Rules of Hooks)
-  // regardless of which scope this resource ultimately uses.
+  /**
+   * Vessel-total amounts come off `vessel.resources` (the wire topic, a
+   * resource-name-keyed `{ current, max }` map). Stage-scoped amounts come
+   * off the derived `dv.currentStageResource`/`dv.currentStageResourceMax`
+   * channels (`dv-stage-resources.ts`): the active stage's slice of
+   * `dv.stages`, keyed by resource name. All three reads happen
+   * unconditionally (Rules of Hooks) regardless of which scope this
+   * resource ultimately uses.
+   */
   const vesselResources = useTelemetry("vessel.resources")?.resources;
   const stageCurrent = useStream<ResourceAmountMap>("dv.currentStageResource");
   const stageMaxMap = useStream<ResourceAmountMap>(
@@ -166,9 +169,8 @@ function pickTWR(s: StageInfo, mode: DeltaVMode): number {
 /**
  * Telemachus occasionally hands us a stage row where TWR / ΔV is missing
  * (engine-less stage, decoupler-only, post-staging frame where the engine
- * has been ejected). The fix at 21:08 BST on 2026-05-17 was the absence
- * of this guard: `twr.toFixed` crashed the whole widget when twr was
- * undefined for one row.
+ * has been ejected). Without this guard, `twr.toFixed` crashed the whole
+ * widget when twr was undefined for one row.
  */
 function fmtFixed(value: unknown, digits: number): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return NULL_DISPLAY;
@@ -193,9 +195,11 @@ export function parseStages(raw: unknown): StageInfo[] {
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
     const e = entry as Record<string, unknown>;
-    // Takes a `Value` as well as a bare number: the mod's `dv.stages` rows
-    // declare their units and arrive wrapped, the legacy rows do not, and
-    // this function exists precisely to reconcile the two.
+    /**
+     * Takes a `Value` as well as a bare number: the mod's `dv.stages` rows
+     * declare their units and arrive wrapped, the legacy rows do not, and
+     * this function exists precisely to reconcile the two.
+     */
     const num = (...keys: string[]): number => {
       for (const k of keys) {
         const v = magnitudeOf(e[k] as Quantityish);
@@ -372,9 +376,11 @@ function StageStackSection({
         const dv = pickDeltaV(s, mode);
         const twr = pickTWR(s, mode);
         const active = s.stage === currentStage;
-        // parseStages yields NaN burnTime for a stage with no burn data;
-        // show "0s" for that (and for a non-positive value) rather than
-        // the helper's NULL_DISPLAY, matching the pre-refactor local formatter.
+        /**
+         * parseStages yields NaN burnTime for a stage with no burn data;
+         * show "0s" for that (and for a non-positive value) rather than the
+         * helper's NULL_DISPLAY, matching the previous local formatter.
+         */
         const burn =
           Number.isFinite(s.burnTime) && s.burnTime > 0 ? (
             <Unit value={value("s", s.burnTime)} />
@@ -480,9 +486,11 @@ function FuelStatusComponent({
   const totalDVActual = magnitudeOf(summary?.totalDvActual) ?? undefined;
   const totalBurnTime = summary?.totalBurnTime;
 
-  // Hooks unrolled explicitly: Rules of Hooks forbids hook calls inside any
-  // loop or `.map` callback (even ones that happen to iterate a constant
-  // tuple). The RESOURCES catalogue has a fixed order so these reads are 1:1.
+  /**
+   * Hooks unrolled explicitly: Rules of Hooks forbids hook calls inside any
+   * loop or `.map` callback (even ones that happen to iterate a constant
+   * tuple). The RESOURCES catalogue has a fixed order so these reads are 1:1.
+   */
   const lf = useResourceReading(RESOURCES[0]);
   const ox = useResourceReading(RESOURCES[1]);
   const rcs = useResourceReading(RESOURCES[2]);
@@ -496,17 +504,21 @@ function FuelStatusComponent({
     { def: RESOURCES[4], ...ec },
   ];
 
-  // `dv.stages` is the whole-vessel stage array. One subscription, all the
-  // per-stage data Telemachus (or the mod's StageDeltaVEntry[] topic, same
-  // key) knows about: length matches the real stage count, no hardcoded
-  // cap, no hook-per-stage. Entries arrive high → low (stage 3 first,
-  // stage 0 last) matching the stack-top-down render order. `parseStages`
-  // reconciles either wire's field names into the `StageInfo` shape below.
+  /**
+   * `dv.stages` is the whole-vessel stage array. One subscription, all the
+   * per-stage data Telemachus (or the mod's StageDeltaVEntry[] topic, same
+   * key) knows about: length matches the real stage count, no hardcoded
+   * cap, no hook-per-stage. Entries arrive high → low (stage 3 first,
+   * stage 0 last) matching the stack-top-down render order. `parseStages`
+   * reconciles either wire's field names into the `StageInfo` shape below.
+   */
   const stagesRaw = useTelemetry("dv.stages");
   const stages = parseStages(stagesRaw);
-  // Filter to finite values before Math.max: a single NaN/undefined entry
-  // would propagate NaN through every BarFill width and render a row of
-  // invisible bars.
+  /**
+   * Filter to finite values before Math.max: a single NaN/undefined entry
+   * would propagate NaN through every BarFill width and render a row of
+   * invisible bars.
+   */
   const finiteDvs = stages
     .map((s) => pickDeltaV(s, mode))
     .filter((v): v is number => Number.isFinite(v));
@@ -520,28 +532,35 @@ function FuelStatusComponent({
   // per-stage stack drop bottom-up as height shrinks.
   const cols = w ?? 8;
   const rows = h ?? 14;
-  // Wide-short: width compensates for the height-gates, so show the resource
-  // list + stage stack side-by-side beneath the totals row instead of leaving
-  // the box sparse. The boost still needs vertical room beneath the totals row,
-  // below ~6 rows even a single section overflows (landscape-18x5), so don't
-  // let the landscape override force the columns on at those heights.
+  /**
+   * Wide-short: width compensates for the height-gates, so show the resource
+   * list + stage stack side-by-side beneath the totals row instead of
+   * leaving the box sparse. The boost still needs vertical room beneath the
+   * totals row, below ~6 rows even a single section overflows
+   * (landscape-18x5), so don't let the landscape override force the columns
+   * on at those heights.
+   */
   const isLandscape = getWidgetShape(w, h).shape === "landscape" && rows >= 6;
   const showSubtitle = rows >= 5;
   const showTotals = rows >= 4;
   const showResourceList = cols >= 5 && (rows >= 7 || isLandscape);
   const showStageStack = cols >= 5 && (rows >= 10 || isLandscape);
   const showHeroDv = !showTotals && totalDv !== undefined;
-  // At the narrowest width the stage stack ever renders at (cols === 5,
-  // portrait-5x18), "<burn> · TWR <n>" doesn't fit next to the ΔV bar even
-  // with the bar's 28px floor honoured: the row overflows past the panel
-  // edge and gets clipped. Splitting burn time and TWR onto their own lines
-  // shortens the longest line enough to fit; there's always vertical room
-  // to spare here since the stage stack only shows once rows >= 10.
+  /**
+   * At the narrowest width the stage stack ever renders at (cols === 5,
+   * portrait-5x18), "<burn> · TWR <n>" doesn't fit next to the ΔV bar even
+   * with the bar's 28px floor honoured: the row overflows past the panel
+   * edge and gets clipped. Splitting burn time and TWR onto their own lines
+   * shortens the longest line enough to fit; there's always vertical room
+   * to spare here since the stage stack only shows once rows >= 10.
+   */
   const compactStageMeta = cols < 7;
 
-  // Named, order-stable keys (not array index): the landscape wrapper below
-  // needs its own key per section and reuses these rather than reaching for
-  // the index the biome noArrayIndexKey rule flags.
+  /**
+   * Named, order-stable keys (not array index): the landscape wrapper below
+   * needs its own key per section and reuses these rather than reaching for
+   * the index the biome noArrayIndexKey rule flags.
+   */
   const sections: { key: string; node: ReactNode }[] = [];
   if (showResourceList) {
     sections.push({
@@ -563,19 +582,23 @@ function FuelStatusComponent({
       ),
     });
   }
-  // Body slot appended after the per-stage ΔV/TWR stack. An engine-realism
-  // Uplink (ignitions-remaining, propellant boil-off) contributes per-stage
-  // supplemental rows here. Renders nothing until an augment binds
-  // `fuel-status.sections`.
+  /**
+   * Body slot appended after the per-stage ΔV/TWR stack. An engine-realism
+   * Uplink (ignitions-remaining, propellant boil-off) contributes per-stage
+   * supplemental rows here. Renders nothing until an augment binds
+   * `fuel-status.sections`.
+   */
   sections.push({
     key: "augment",
     node: <AugmentSlot name="fuel-status.sections" props={{}} />,
   });
 
   return (
-    // `panelAside` is the header escape-hatch slot (augment-slot-map "Feedback
-    // round 1"): any Uplink can drop an inline badge next to the title. Renders
-    // nothing until an augment binds `fuel-status.badges`.
+    /**
+     * `panelAside` is the header escape-hatch slot: any Uplink can drop an
+     * inline badge next to the title. Renders nothing until an augment
+     * binds `fuel-status.badges`.
+     */
     <Panel
       panelTitle="FUEL · ΔV"
       panelAside={<AugmentSlot name="fuel-status.badges" props={{}} />}
@@ -757,11 +780,13 @@ function FuelStatusConfigComponent({
 
 // ── Augment slots ─────────────────────────────────────────────────────────────
 
-// Declaration-merge this widget's slot ids → their props types into core's
-// `SlotRegistry` (Uplink architecture §4.6). Both slots are plain
-// section/badge slots (not overlays), so they pass no coordinate/projection
-// context: an empty props object. Kept co-located here, not in a shared
-// central registry file, so parallel per-widget slot work never collides.
+/**
+ * Declaration-merge this widget's slot ids → their props types into core's
+ * `SlotRegistry`. Both slots are plain section/badge slots (not overlays),
+ * so they pass no coordinate/projection context: an empty props object.
+ * Kept co-located here, not in a shared central registry file, so parallel
+ * per-widget slot work never collides.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "fuel-status.sections": Record<string, never>;
@@ -781,13 +806,15 @@ registerComponent<FuelStatusConfig>({
   minSize: { w: 3, h: 3 },
   component: FuelStatusComponent,
   configComponent: FuelStatusConfigComponent,
-  // dv.stageCount/dv.totalDVVac/dv.totalDVASL/dv.totalDVActual/
-  // dv.totalBurnTime/dv.stages are all UN-GAPPED,
-  // same declared keys, routed through the stream by `mapTopic`
-  // (map-topic.ts's TELEMACHUS_CLEAN_HOMES) with a zero call-site rename;
-  // `dv.stages`'s wire shape changed underneath it though, see
-  // `parseStages` above. The r.resourceCurrent(Max)[X] stage-scoped splits
-  // stay GAPPED (no wire home) and remain legacy-only.
+  /**
+   * dv.stageCount/dv.totalDVVac/dv.totalDVASL/dv.totalDVActual/
+   * dv.totalBurnTime/dv.stages are all UN-GAPPED, same declared keys,
+   * routed through the stream by `mapTopic` (map-topic.ts's
+   * TELEMACHUS_CLEAN_HOMES) with a zero call-site rename; `dv.stages`'s
+   * wire shape changed underneath it though, see `parseStages` above. The
+   * r.resourceCurrent(Max)[X] stage-scoped splits stay GAPPED (no wire
+   * home) and remain legacy-only.
+   */
   dataRequirements: [
     "v.currentStage",
     "dv.stageCount",

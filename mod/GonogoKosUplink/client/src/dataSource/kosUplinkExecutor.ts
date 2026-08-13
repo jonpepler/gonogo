@@ -134,9 +134,11 @@ class KosUplinkCpuQueue {
   }
 
   private handleResult(payload: KosRunResult): void {
-    // Correlate by requestId: a foreign/stale id (a duplicate, the sticky
-    // replay of some earlier call, or a result meant for a call we already
-    // timed out) must not settle the CURRENT in-flight call.
+    /**
+     * Correlate by requestId: a foreign/stale id (a duplicate, the sticky
+     * replay of some earlier call, or a result meant for a call we already
+     * timed out) must not settle the CURRENT in-flight call.
+     */
     if (!this.inFlight || this.inFlight.requestId !== payload.requestId) {
       return;
     }
@@ -144,10 +146,12 @@ class KosUplinkCpuQueue {
     clearTimeout(timer);
     this.inFlight = null;
     if (payload.error != null) {
-      // Both parse-time kOS errors and explicit [KOSERROR] blocks arrive
-      // this way from the mod (KosRunManager.Complete): KosScriptError so
-      // callers can distinguish a script-author fault from a transport
-      // error, same as the telnet path's explicit/implicit error handling.
+      /**
+       * Both parse-time kOS errors and explicit [KOSERROR] blocks arrive
+       * this way from the mod (KosRunManager.Complete): KosScriptError so
+       * callers can distinguish a script-author fault from a transport
+       * error, same as the telnet path's explicit/implicit error handling.
+       */
       call.reject(new KosScriptError(payload.error));
     } else {
       call.resolve((payload.fields ?? {}) as KosData);
@@ -192,10 +196,12 @@ export class KosUplinkExecutor {
   private processorsUnsub: (() => void) | null = null;
   private readonly coreIdByTag = new Map<string, number>();
   private readonly queues = new Map<number, KosUplinkCpuQueue>();
-  // Last processor snapshot delivered on `kos.processors`, retained so a
-  // late `onProcessorsChanged` subscriber (the screen-side discovery hook,
-  // which registers after mount) gets the current CPU list immediately
-  // instead of waiting for the next push. Reset on client change (dispose).
+  /**
+   * Last processor snapshot delivered on `kos.processors`, retained so a
+   * late `onProcessorsChanged` subscriber (the screen-side discovery hook,
+   * which registers after mount) gets the current CPU list immediately
+   * instead of waiting for the next push. Reset on client change (dispose).
+   */
   private lastProcessors: KosProcessorInfo[] = [];
   private readonly processorsListeners = new Set<
     (procs: KosProcessorInfo[]) => void
@@ -293,9 +299,11 @@ export class KosUplinkExecutor {
 
   private handleProcessors(info: KosProcessorInfo[] | undefined): void {
     if (!Array.isArray(info)) return;
-    // Full-snapshot channel: replace, don't merge, so a CPU that goes
-    // away (reboot / unload) stops resolving instead of sticking around
-    // on a stale coreId.
+    /**
+     * Full-snapshot channel: replace, don't merge, so a CPU that goes away
+     * (reboot / unload) stops resolving instead of sticking around on a
+     * stale coreId.
+     */
     this.coreIdByTag.clear();
     for (const p of info) {
       if (p.tag) this.coreIdByTag.set(p.tag, p.coreId);

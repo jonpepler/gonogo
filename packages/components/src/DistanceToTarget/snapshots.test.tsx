@@ -122,14 +122,16 @@ describe("DistanceToTarget DOM snapshots", () => {
           if (dock !== undefined) stream.emit("vessel.dock", dock);
         });
 
-        // Wait on the fixture's own target name rather than on the
-        // stream-status badge clearing. The badge is the panel's now, derived
-        // by the host, so it never renders under this bare harness and a
-        // "SYNCING has gone" wait would pass on the very first paint, i.e.
-        // before the emitted target reaches the widget: every fixture would
-        // snapshot the "No target set in KSP" placeholder. The name is
-        // rendered by all three views (tracking, approach, docking HUD), so
-        // it is the honest signal that the emit has landed.
+        /**
+         * Wait on the fixture's own target name rather than on the
+         * stream-status badge clearing. The badge is the panel's now,
+         * derived by the host, so it never renders under this bare harness
+         * and a "SYNCING has gone" wait would pass on the very first paint,
+         * i.e. before the emitted target reaches the widget: every fixture
+         * would snapshot the "No target set in KSP" placeholder. The name
+         * is rendered by all three views (tracking, approach, docking
+         * HUD), so it is the honest signal that the emit has landed.
+         */
         const targetName = fixture["tar.name"];
         await waitFor(() => {
           const text = container.textContent ?? "";

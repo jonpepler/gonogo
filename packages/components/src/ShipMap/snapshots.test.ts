@@ -26,10 +26,10 @@ import {
  * SVG in a browser.
  *
  * Floating-point coordinates are rounded to 2dp before snapshotting so
- * unrelated numeric refactors don't produce noisy diffs. If you change
- * the diagram and these snapshots break, eyeball the rendered SVGs in
- * `local_docs/renders/ship-map/` (regenerate with the render-ship-map
- * script): if the visual change is intended, run `vitest -u`.
+ * unrelated numeric refactors don't produce noisy diffs. If you change the
+ * diagram and these snapshots break, eyeball the rendered SVGs (regenerate
+ * with the render-ship-map script): if the visual change is intended, run
+ * `vitest -u`.
  */
 
 interface Fixture {

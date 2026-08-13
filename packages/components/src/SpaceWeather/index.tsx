@@ -1,24 +1,26 @@
 import type { ComponentProps } from "@ksp-gonogo/core";
 import { registerComponent, useTelemetry } from "@ksp-gonogo/core";
-// Type-only import of the KerbalismUplink client, for its
-// `declare module "@ksp-gonogo/sitrep-sdk"` TopicPayloadMap augmentation and
-// nothing else: erased at runtime, so it adds no import at all to the bundle.
-//
-// This is where this widget's Kerbalism coupling now shows up honestly in its
-// imports. `kerbalism.spaceweather`'s payload type (KerbalismSpaceWeather) used
-// to be core's own codegen output, so `useTelemetry("kerbalism.spaceweather")`
-// resolved out of @ksp-gonogo/sitrep-sdk like any vanilla Topic. It relocated
-// into the Uplink that owns it (uplink-types-out-of-core plan, fifth
-// relocation), which means this file has to say which Uplink it reads from
-// rather than getting a Kerbalism type for free from a mod-agnostic package.
-//
-// The real fix is for this widget to LIVE in that Uplink's client, next to Ship
-// Systems and the CrewStatus survival augment, which is where every other
-// Kerbalism surface already went and what that package's own index.ts records as
-// the outstanding follow-up. This import is what makes the debt visible until
-// then: it is a shrink-only `domainDebt` entry on the frontend uplink-boundary
-// ratchet, so moving the widget deletes the entry and the ratchet forces that
-// deletion in the same commit.
+/**
+ * Type-only import of the KerbalismUplink client, for its
+ * `declare module "@ksp-gonogo/sitrep-sdk"` TopicPayloadMap augmentation and
+ * nothing else: erased at runtime, so it adds no import at all to the bundle.
+ *
+ * This is where this widget's Kerbalism coupling now shows up honestly in its
+ * imports. `kerbalism.spaceweather`'s payload type (KerbalismSpaceWeather)
+ * used to be core's own codegen output, so
+ * `useTelemetry("kerbalism.spaceweather")` resolved out of
+ * @ksp-gonogo/sitrep-sdk like any vanilla Topic. It relocated into the Uplink
+ * that owns it, which means this file has to say which Uplink it reads from
+ * rather than getting a Kerbalism type for free from a mod-agnostic package.
+ *
+ * The real fix is for this widget to LIVE in that Uplink's client, next to
+ * Ship Systems and the CrewStatus survival augment, which is where every
+ * other Kerbalism surface already went and what that package's own index.ts
+ * records as the outstanding follow-up. This import is what makes the debt
+ * visible until then: it is a shrink-only `domainDebt` entry on the frontend
+ * uplink-boundary ratchet, so moving the widget deletes the entry and the
+ * ratchet forces that deletion in the same commit.
+ */
 import type {} from "@ksp-gonogo/gonogo-kerbalism-uplink";
 import { Meter } from "@ksp-gonogo/ui";
 import { Badge, Panel, ReadoutCaption, Section } from "@ksp-gonogo/ui-kit";
@@ -27,16 +29,16 @@ import { magnitudeOr } from "../shared/magnitude";
 
 type SpaceWeatherConfig = Record<string, never>;
 
-// ---------------------------------------------------------------------------
-// Data read
-//
-// Reads the real KerbalismUplink `kerbalism.spaceweather` Topic (canonical
-// one-arg useTelemetry: streams whenever a provider is mounted). Vessel
-// altitude (belt-ring placement) comes from the `vessel.flight` channel.
-// The presentation below is a pure function of `SpaceWeatherData`, so the
-// offline snapshot harness feeds the same shape (see widgetDomSnapshot's
-// kerbalism reshape). This hook is the only data boundary.
-// ---------------------------------------------------------------------------
+/**
+ * Data read.
+ *
+ * Reads the real KerbalismUplink `kerbalism.spaceweather` Topic (canonical
+ * one-arg useTelemetry: streams whenever a provider is mounted). Vessel
+ * altitude (belt-ring placement) comes from the `vessel.flight` channel. The
+ * presentation below is a pure function of `SpaceWeatherData`, so the offline
+ * snapshot harness feeds the same shape (see widgetDomSnapshot's kerbalism
+ * reshape). This hook is the only data boundary.
+ */
 
 type StormState = "none" | "incoming" | "inprogress";
 
@@ -62,12 +64,14 @@ function useSpaceWeather(): SpaceWeatherData {
     : t?.stormIncoming
       ? "incoming"
       : "none";
-  // FUTURE: storm-ETA countdown. The mod emits storm PRESENCE only
-  // (stormIncoming/stormInProgress bools, KerbalismCapture.cs): no onset/clear
-  // clock: so the timeline renders the phase WITHOUT a numeric countdown. A
-  // real countdown needs a mod-side storm-onset clock (Kerbalism tracks storm
-  // timing internally / reflectable) surfaced on the Topic; the UI was designed
-  // for it, the data isn't wired. Tracked in local_docs/feature_log/.
+  /**
+   * FUTURE: storm-ETA countdown. The mod emits storm PRESENCE only
+   * (stormIncoming/stormInProgress bools, KerbalismCapture.cs): no
+   * onset/clear clock, so the timeline renders the phase WITHOUT a numeric
+   * countdown. A real countdown needs a mod-side storm-onset clock
+   * (Kerbalism tracks storm timing internally / reflectable) surfaced on the
+   * Topic; the UI was designed for it, the data isn't wired.
+   */
   const radiationRadPerHour = magnitudeOr(t?.radiationRadPerSecond, 0) * 3600; // API is rad/s
   const innerBelt = t?.innerBelt ?? false;
   const outerBelt = t?.outerBelt ?? false;
@@ -94,10 +98,6 @@ function useSpaceWeather(): SpaceWeatherData {
       (stormState === "inprogress" ? 101 : stormState === "incoming" ? 53 : 0),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /** Deterministic PRNG (mulberry32) so the noise chart is stable for snapshots. */
 function mulberry32(seed: number): () => number {
@@ -144,9 +144,7 @@ function statusFor(d: SpaceWeatherData): { label: string; tone: Tone } {
   return { label: "Sheltered", tone: "go" };
 }
 
-// ---------------------------------------------------------------------------
 // Sub-sections (inline SVG: the harness rasterises SVG + a Playwright PNG)
-// ---------------------------------------------------------------------------
 
 function StormTimeline({ state }: { state: StormState }) {
   // Phases along a fixed axis: quiet | incoming | in-progress | passed.
@@ -354,10 +352,6 @@ function SolarWindChart({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Widget
-// ---------------------------------------------------------------------------
-
 function SpaceWeatherComponent({
   w,
   h,
@@ -448,10 +442,6 @@ function SpaceWeatherComponent({
     </Panel>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
 
 // Structural inline styles (CSS-var tokens): a chrome-heavy readout, no
 // reusable ui-kit primitive fits the bespoke belt/dose/flux layout, so it

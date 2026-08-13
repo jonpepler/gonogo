@@ -110,9 +110,11 @@ async function snapshotDeployedScienceScenario(
     stream.emit("deployed.bases", scenario.entries);
   });
 
-  // Flush two rAF ticks so the provider's ingest -> beginFrame() applies the
-  // emitted values to React state before reading the DOM. Mirrors
-  // widgetDomSnapshot.tsx's flushProviderFrame.
+  /**
+   * Flush two rAF ticks so the provider's ingest -> beginFrame() applies
+   * the emitted values to React state before reading the DOM. Mirrors
+   * widgetDomSnapshot.tsx's flushProviderFrame.
+   */
   await act(async () => {
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));

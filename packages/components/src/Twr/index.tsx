@@ -18,9 +18,11 @@ type TwrConfig = Record<string, never>;
 
 const SPARK_WINDOW_SEC = 60;
 
-// Dial range in TWR units. Most rockets sit between 1.5 and 2.5 at lift-off;
-// 3 is a comfortable upper bound. Anything beyond reads as pinned-max, fine
-// because the qualitative information ("very high TWR") is preserved.
+/**
+ * Dial range in TWR units. Most rockets sit between 1.5 and 2.5 at lift-off;
+ * 3 is a comfortable upper bound. Anything beyond reads as pinned-max, fine
+ * because the qualitative information ("very high TWR") is preserved.
+ */
 const GAUGE_MIN = 0;
 const GAUGE_MAX = 3;
 
@@ -45,49 +47,60 @@ function toneFor(twr: number): Tone {
 }
 
 function TwrComponent({ w, h }: Readonly<ComponentProps<TwrConfig>>) {
-  // `dv.currentTWR` is MAPPED (`map-topic.ts`) to the derived
-  // `vessel.state.twr` field: TWR = currentThrust/(totalMass·g), computed
-  // client-side off `vessel.propulsion`. Once that channel is carried the
-  // headline value reads straight off the stream; no Telemachus read remains
-  // for this widget's live value.
+  /**
+   * `dv.currentTWR` is MAPPED (`map-topic.ts`) to the derived
+   * `vessel.state.twr` field: TWR = currentThrust/(totalMass·g), computed
+   * client-side off `vessel.propulsion`. Once that channel is carried the
+   * headline value reads straight off the stream; no Telemachus read remains
+   * for this widget's live value.
+   */
   const twr = useStream<VesselState>("vessel.state")?.twr ?? undefined;
-  // The sparkline history stays on `useDataSeries` (its own stream shim).
-  // A DERIVED topic has a live value but no buffered history, so this series
-  // resolves off the legacy path until a raw-input-backed history exists,
-  // see `useDataSeries`'s doc comment; the headline value above never
-  // touches Telemachus regardless.
+  /**
+   * The sparkline history stays on `useDataSeries` (its own stream shim).
+   * A DERIVED topic has a live value but no buffered history, so this series
+   * resolves off the legacy path until a raw-input-backed history exists,
+   * see `useDataSeries`'s doc comment; the headline value above never
+   * touches Telemachus regardless.
+   */
   const series = useDataSeries("data", "dv.currentTWR", SPARK_WINDOW_SEC);
   const sparkValues = series.v as number[];
 
-  // Three layouts driven by widget size:
-  //   tiny: single big numeric readout, no gauge, no sparkline.
-  //   small: gauge only.
-  //   normal: gauge + sparkline + subtitle.
-  // Switching by widget size (rows/cols) rather than by container pixels
-  // keeps the breakpoint deterministic and avoids the size-dependent
-  // ResizeObserver feedback we used to hit when the inner widgets fought
-  // each other for the leftover space.
+  /**
+   * Three layouts driven by widget size:
+   *  - tiny: single big numeric readout, no gauge, no sparkline.
+   *  - small: gauge only.
+   *  - normal: gauge + sparkline + subtitle.
+   *
+   * Switching by widget size (rows/cols) rather than by container pixels
+   * keeps the breakpoint deterministic and avoids the size-dependent
+   * ResizeObserver feedback we used to hit when the inner widgets fought
+   * each other for the leftover space.
+   */
   const cols = w ?? 4;
   const rows = h ?? 5;
   const variant: "tiny" | "small" | "normal" =
     rows < 3 || cols < 3 ? "tiny" : rows < 4 || cols < 4 ? "small" : "normal";
   const showSparkline = variant === "normal";
-  // Subtitle elaborates the "per-stage" context, but at the registered
-  // defaultSize (4×5) the gauge arc visually overlaps the subtitle row.
-  // Show it only when there's clear room, i.e. at cols ≥ 5, beyond the
-  // default. The PanelTitle "TWR" covers the at-a-glance read either way.
+  /**
+   * Subtitle elaborates the "per-stage" context, but at the registered
+   * defaultSize (4×5) the gauge arc visually overlaps the subtitle row.
+   * Show it only when there's clear room, i.e. at cols ≥ 5, beyond the
+   * default. The PanelTitle "TWR" covers the at-a-glance read either way.
+   */
   const showSubtitle = variant === "normal" && cols >= 5;
 
   // Measure the gauge slot so the SVG fills it responsively. Falls back to
   // fixed defaults when ResizeObserver hasn't fired (initial render, tests).
   const { ref: gaugeRef, size: gaugeSize } = useElementSize({ w: 200, h: 110 });
 
-  // Size the dial to the measured slot width, but also cap it, both by an
-  // absolute width and by a slice of the widget's height, so the SVG can't
-  // overflow the slot. Without the cap the fallback 200px width clips at the
-  // 4×5 default and overflows almost entirely at the 3×3 small variant.
-  // Height is derived from the gauge's 0.55 aspect ratio so the SVG box never
-  // exceeds the room the sparkline + title leave it.
+  /**
+   * Size the dial to the measured slot width, but also cap it, both by an
+   * absolute width and by a slice of the widget's height, so the SVG can't
+   * overflow the slot. Without the cap the fallback 200px width clips at the
+   * 4×5 default and overflows almost entirely at the 3×3 small variant.
+   * Height is derived from the gauge's 0.55 aspect ratio so the SVG box never
+   * exceeds the room the sparkline + title leave it.
+   */
   const gaugeMaxH = Math.max(64, rows * 25 * 0.4);
   const gaugeW = Math.min(
     gaugeSize.w || 200,

@@ -14,72 +14,73 @@ import type { KerbalismSpaceWeather } from "../__generated__/contract";
 import { HIGH_RADIATION_RAD_PER_HOUR } from "../CrewSurvival/summary";
 import { mag } from "../ecosystem";
 
-// ---------------------------------------------------------------------------
-// The radiation graph + belt/location readout, piece of the Ship Systems
-// widget (see `index.tsx`'s render site). Fed straight off the
-// `kerbalism.spaceweather` Topic: no Processor, same "nothing else shares
-// this derivation" reasoning `SpaceWeather/badge.ts` and `CrewSurvival/
-// summary.tsx` already use for the same Topic.
-//
-// The whole point of the two-line pairing is the GAP between them: ambient
-// (`radiationRadPerSecond`) is what the environment is doing, shielded
-// (`habitatRadiationRadPerSecond`) is what actually reaches the crew after
-// the vessel's fixed shielding factor. A wide gap with shielded pinned under
-// the threshold marker reads as "ambient is spiking, shielding is doing its
-// job"; a gap that closes reads as "shielding isn't enough anymore".
-// Per-kerbal lines are deliberately never drawn here: the rate itself is
-// vessel-wide (Kerbalism's habitat radiation is a property of the vessel's
-// shielding, not of any one Kerbal), see this widget's own doc comment / the
-// task this was built against.
-//
-// The series wear IDENTITY hues at rest (ambient the muted text grey,
-// shielded the calm info blue), never alarm colours: a permanently-red
-// ambient trace shouted CRITICAL through every quiet cruise (operator
-// feedback, the widget's own worst colour offender). Status enters only
-// when a line's CURRENT reading crosses the 0.5 rad/h threshold: ambient
-// escalates to warning amber (the environment is hot, shielding still
-// deciding the outcome), shielded to nogo red (the crew is actually taking
-// dose). The paired readouts below the graph escalate in step so colour
-// never carries the reading alone.
-//
-// Renders as a SPARKLINE (`LineGraph`'s `variant="sparkline"`), not an
-// engineering chart: operator feedback on the first pass called the plain
-// `LineGraph` too technical for what is meant to be a glance-read trend.
-// Area-shaded lines, no gridlines, still the same two series plus the
-// safe-threshold marker. This is also the widget's LEAD section now
-// (rendered first in `index.tsx`'s body), the attractive visual earns the
-// top slot rather than being buried below the resource ledger.
-//
-// OPEN, not boxed: a second round of operator feedback called the graph too
-// chart-like still, partly because it sat inside a `Card` (a boxy container
-// that reads as "yet another gauge" in a widget that is already box-after-
-// box) and only took a fraction of the row's width beside the belt badges.
-// The `Card` wrapper is gone; the graph now spans the widget's FULL width
-// and breathes on the Panel's own background, the way a sparkline is meant
-// to sit inline with surrounding text rather than fenced off in its own
-// instrument housing.
-//
-// The belt/location badges are gone too: belt membership is a neutral
-// status fact (which magnetic zone the vessel is in right now), not an
-// alert, so a red "Inner belt" pill was miscommunicating severity that
-// belongs to the dose-rate readouts, not the location. It renders as plain
-// low-emphasis text under the graph instead (see `locationLabel` below).
-//
-// The 0.5 rad/h boundary draws as a FIXED ~24px tick at the frame's left
-// edge with the "0.5" level beside it (`LineGraph`'s
-// `thresholdStyle="marker"`), an axis annotation rather than a rule: a
-// full-width dashed line made the boundary the loudest thing in the frame,
-// and the earlier centred marker stretched with the viewBox so its length
-// changed with every widget width. The muted warning amber carries "this is
-// the danger level" quietly.
-//
-// The Y domain is CLAMPED to a 1-2-2.5-5-10 nice ceiling (never below twice
-// the threshold), instead of hugging the live data extent: an extent-fitted
-// domain rescaled the whole frame on every sample, so the threshold marker
-// and both traces crawled continuously, the live jank operators called out.
-// With the clamp the frame is still until a trace actually crosses into the
-// next step.
-// ---------------------------------------------------------------------------
+/**
+ * The radiation graph + belt/location readout, piece of the Ship Systems
+ * widget (see `index.tsx`'s render site). Fed straight off the
+ * `kerbalism.spaceweather` Topic: no Processor, same "nothing else shares
+ * this derivation" reasoning `SpaceWeather/badge.ts` and
+ * `CrewSurvival/summary.tsx` already use for the same Topic.
+ *
+ * The whole point of the two-line pairing is the GAP between them: ambient
+ * (`radiationRadPerSecond`) is what the environment is doing, shielded
+ * (`habitatRadiationRadPerSecond`) is what actually reaches the crew after
+ * the vessel's fixed shielding factor. A wide gap with shielded pinned
+ * under the threshold marker reads as "ambient is spiking, shielding is
+ * doing its job"; a gap that closes reads as "shielding isn't enough
+ * anymore". Per-kerbal lines are deliberately never drawn here: the rate
+ * itself is vessel-wide (Kerbalism's habitat radiation is a property of
+ * the vessel's shielding, not of any one Kerbal), see this widget's own
+ * doc comment / the task this was built against.
+ *
+ * The series wear IDENTITY hues at rest (ambient the muted text grey,
+ * shielded the calm info blue), never alarm colours: a permanently-red
+ * ambient trace shouted CRITICAL through every quiet cruise (operator
+ * feedback, the widget's own worst colour offender). Status enters only
+ * when a line's CURRENT reading crosses the 0.5 rad/h threshold: ambient
+ * escalates to warning amber (the environment is hot, shielding still
+ * deciding the outcome), shielded to nogo red (the crew is actually
+ * taking dose). The paired readouts below the graph escalate in step so
+ * colour never carries the reading alone.
+ *
+ * Renders as a SPARKLINE (`LineGraph`'s `variant="sparkline"`), not an
+ * engineering chart: operator feedback on the first pass called the plain
+ * `LineGraph` too technical for what is meant to be a glance-read trend.
+ * Area-shaded lines, no gridlines, still the same two series plus the
+ * safe-threshold marker. This is also the widget's LEAD section now
+ * (rendered first in `index.tsx`'s body), the attractive visual earns the
+ * top slot rather than being buried below the resource ledger.
+ *
+ * OPEN, not boxed: a second round of operator feedback called the graph
+ * too chart-like still, partly because it sat inside a `Card` (a boxy
+ * container that reads as "yet another gauge" in a widget that is already
+ * box-after-box) and only took a fraction of the row's width beside the
+ * belt badges. The `Card` wrapper is gone; the graph now spans the
+ * widget's FULL width and breathes on the Panel's own background, the way
+ * a sparkline is meant to sit inline with surrounding text rather than
+ * fenced off in its own instrument housing.
+ *
+ * The belt/location badges are gone too: belt membership is a neutral
+ * status fact (which magnetic zone the vessel is in right now), not an
+ * alert, so a red "Inner belt" pill was miscommunicating severity that
+ * belongs to the dose-rate readouts, not the location. It renders as
+ * plain low-emphasis text under the graph instead (see `locationLabel`
+ * below).
+ *
+ * The 0.5 rad/h boundary draws as a FIXED ~24px tick at the frame's left
+ * edge with the "0.5" level beside it (`LineGraph`'s
+ * `thresholdStyle="marker"`), an axis annotation rather than a rule: a
+ * full-width dashed line made the boundary the loudest thing in the
+ * frame, and the earlier centred marker stretched with the viewBox so its
+ * length changed with every widget width. The muted warning amber
+ * carries "this is the danger level" quietly.
+ *
+ * The Y domain is CLAMPED to a 1-2-2.5-5-10 nice ceiling (never below
+ * twice the threshold), instead of hugging the live data extent: an
+ * extent-fitted domain rescaled the whole frame on every sample, so the
+ * threshold marker and both traces crawled continuously, the live jank
+ * operators called out. With the clamp the frame is still until a trace
+ * actually crosses into the next step.
+ */
 
 export interface RadiationSample {
   ut: number;
@@ -111,9 +112,11 @@ export function pushRadiationSample(
 ): readonly RadiationSample[] {
   const last = buffer[buffer.length - 1];
   if (last) {
-    // Time moved backwards further than sampling jitter accounts for (a
-    // quickload, a replay scrub): start the trend over rather than
-    // stitching a rewound history onto the old one.
+    /**
+     * Time moved backwards further than sampling jitter accounts for (a
+     * quickload, a replay scrub): start the trend over rather than
+     * stitching a rewound history onto the old one.
+     */
     if (sample.ut < last.ut - minGapUt) return [sample];
     if (sample.ut - last.ut < minGapUt) return buffer;
   }
@@ -238,9 +241,11 @@ export function RadiationSection({ weather, utNow }: RadiationSectionProps) {
   const shieldedValue = value("rad/s", shieldedRadPerSec);
   const ambientRadPerHour = ambientRadPerSec * RAD_PER_SEC_TO_RAD_PER_HOUR;
   const shieldedRadPerHour = shieldedRadPerSec * RAD_PER_SEC_TO_RAD_PER_HOUR;
-  // Escalation is per-line and threshold-gated (see the header comment):
-  // identity hues at rest, warning amber when the ENVIRONMENT is hot, nogo
-  // red only when the CREW-side reading itself is over the line.
+  /**
+   * Escalation is per-line and threshold-gated (see the header comment):
+   * identity hues at rest, warning amber when the ENVIRONMENT is hot,
+   * nogo red only when the CREW-side reading itself is over the line.
+   */
   const ambientHigh = ambientRadPerHour > HIGH_RADIATION_RAD_PER_HOUR;
   const shieldedHigh = shieldedRadPerHour > HIGH_RADIATION_RAD_PER_HOUR;
 
@@ -281,11 +286,13 @@ export function RadiationSection({ weather, utNow }: RadiationSectionProps) {
   );
 
   return (
-    // No Card, no side-by-side badge column: the graph is OPEN and spans
-    // the widget's full width (see the header doc comment). Belt/location
-    // moved below as plain low-emphasis text; `role="status"` stays on that
-    // text (not a Stack of badges) since it is still the one bit of this
-    // section that changes without the operator watching for it.
+    /**
+     * No Card, no side-by-side badge column: the graph is OPEN and spans
+     * the widget's full width (see the header doc comment). Belt/location
+     * moved below as plain low-emphasis text; `role="status"` stays on
+     * that text (not a Stack of badges) since it is still the one bit of
+     * this section that changes without the operator watching for it.
+     */
     <Stack gap="xs">
       <Fill style={{ height: 96 }}>
         <LineGraph

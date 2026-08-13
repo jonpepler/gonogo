@@ -32,7 +32,7 @@ afterEach(() => {
   clearActionHandlers();
 });
 
-describe("DistanceToTarget: genuinely runs off the stream (M3 vessel-gap batch)", () => {
+describe("DistanceToTarget: genuinely runs off the stream", () => {
   it("renders tracking-mode distance/closing-rate derived from vessel.target's Vec3 fields", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["vessel.target"],
@@ -122,22 +122,25 @@ describe("DistanceToTarget: genuinely runs off the stream (M3 vessel-gap batch)"
         }),
       ).toBeTruthy(),
     );
-    // atan2(2, 40) * 180/π ≈ 2.9°; atan2(-1.5, 40) * 180/π ≈ -2.1°; no az
-    // stream field exists at all -> stays the null-display placeholder.
-    // Three separate readouts now: each angle renders through `<Unit>`, so
-    // the row is no longer one text node.
+    /**
+     * atan2(2, 40) * 180/π ≈ 2.9°; atan2(-1.5, 40) * 180/π ≈ -2.1°; no az
+     * stream field exists at all -> stays the null-display placeholder.
+     * Three separate readouts now: each angle renders through `<Unit>`, so
+     * the row is no longer one text node.
+     */
     expect(visibleText()).toContain(`2.9° · -2.1° · ${NULL_DISPLAY}`);
-    // vessel.dock.distance (62) headlines the HUD in preference to the
-    // general tar.distance figure.
-    // One decimal: distances go through the shared `length` ladder now,
-    // which is what lets a final-approach gap read "0.4 m" instead of
-    // rounding to "0 m".
+    /**
+     * vessel.dock.distance (62) headlines the HUD in preference to the
+     * general tar.distance figure. One decimal: distances go through the
+     * shared `length` ladder now, which is what lets a final-approach gap
+     * read "0.4 m" instead of rounding to "0 m".
+     */
     expect(visibleText()).toContain("62.0 m");
 
     teardownMockDataSource(legacyAux);
   });
 
-  it("M3 whole-branch review #4: degrades correctly (not stale) when the target is cleared, vessel.target present -> null tombstone", async () => {
+  it("degrades correctly (not stale) when the target is cleared, vessel.target present -> null tombstone", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["vessel.target"],
       pinnedUt: 10,
@@ -157,12 +160,14 @@ describe("DistanceToTarget: genuinely runs off the stream (M3 vessel-gap batch)"
     );
 
     act(() => {
-      // `tar.name` is itself mapped (-> vessel.target.name, a raw-field
-      // subtopic of the SAME `vessel.target` record `tar.relativePosition`
-      // reads), so this legacy emit is a decoy: once the stream carries a
-      // real `vessel.target` payload, it wins. It stays here, unchanged,
-      // for the rest of the test: proving the widget does NOT fall back
-      // to this stale legacy name once the target is cleared on the wire.
+      /**
+       * `tar.name` is itself mapped (-> vessel.target.name, a raw-field
+       * subtopic of the SAME `vessel.target` record `tar.relativePosition`
+       * reads), so this legacy emit is a decoy: once the stream carries a
+       * real `vessel.target` payload, it wins. It stays here, unchanged,
+       * for the rest of the test: proving the widget does NOT fall back to
+       * this stale legacy name once the target is cleared on the wire.
+       */
       legacyAux.source.emit("tar.name", "Rendezvous Target");
       legacyAux.source.emit("tar.type", "Vessel");
       fixture.emit("vessel.target", {
@@ -190,10 +195,12 @@ describe("DistanceToTarget: genuinely runs off the stream (M3 vessel-gap batch)"
       }
       expect(screen.getByText("No target set in KSP")).toBeTruthy();
     });
-    // Must NOT still show the stale distance/name from before the clear,
-    // a real regression here would silently keep rendering "10.0 km" /
-    // "Rendezvous Target" forever (the tombstone read as "not arrived yet"
-    // instead of "confirmed absence", or the stale legacy value winning).
+    /**
+     * Must NOT still show the stale distance/name from before the clear, a
+     * real regression here would silently keep rendering "10.0 km" /
+     * "Rendezvous Target" forever (the tombstone read as "not arrived yet"
+     * instead of "confirmed absence", or the stale legacy value winning).
+     */
     expect(screen.queryByText("10.0 km")).toBeNull();
     expect(screen.queryByText("Rendezvous Target")).toBeNull();
 
@@ -224,12 +231,14 @@ describe("DistanceToTarget: genuinely runs off the stream (M3 vessel-gap batch)"
     act(() => {
       legacyAux.source.emit("tar.name", "Rendezvous Target");
       legacyAux.source.emit("tar.type", "Vessel");
-      // 2000 m puts the widget in approach mode (100 m – 5 km); z-only Vec3
-      // so |relPos| = 2000 and the radial rate is −5 (closing). Closest
-      // approach at UT 1125 → 125 s from the pinned view-UT (1000) →
-      // T−2min 5s: now carried inside vessel.target.closestApproach (the
-      // MOD-side ITargetApproachSolver output) rather than a separate
-      // o.closestTgtApprUT key.
+      /**
+       * 2000 m puts the widget in approach mode (100 m – 5 km); z-only Vec3
+       * so |relPos| = 2000 and the radial rate is −5 (closing). Closest
+       * approach at UT 1125 → 125 s from the pinned view-UT (1000) →
+       * T−2min 5s: now carried inside vessel.target.closestApproach (the
+       * MOD-side ITargetApproachSolver output) rather than a separate
+       * o.closestTgtApprUT key.
+       */
       fixture.emit("vessel.target", {
         name: "Rendezvous Target",
         kind: 0,

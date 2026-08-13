@@ -37,19 +37,23 @@ const VESSEL_STATE_INPUTS = [
 ] as const;
 
 describe("OrbitalAscentComponent", () => {
-  // Trees are unmounted synchronously in afterEach before clearBodies()
-  // notifies the body-registry subscribers, that notification re-renders a
-  // still-mounted widget, the act() anti-pattern. RTL auto-cleanup runs after
-  // this hook, too late to rely on for the ordering.
+  /**
+   * Trees are unmounted synchronously in afterEach before clearBodies()
+   * notifies the body-registry subscribers, that notification re-renders a
+   * still-mounted widget, the act() anti-pattern. RTL auto-cleanup runs after
+   * this hook, too late to rely on for the ordering.
+   */
   const trees: Array<() => void> = [];
 
   beforeEach(() => {
     clearBodies();
     registerStockBodies();
-    // The default installDomStubs ResizeObserver never fires its callback,
-    // which leaves LineChart's `size` null and skips the SVG paths we want
-    // to assert against. Stub a version that fires once on observe(), the
-    // same shape used by the Graph widget's own tests.
+    /**
+     * The default installDomStubs ResizeObserver never fires its callback,
+     * which leaves LineChart's `size` null and skips the SVG paths we want
+     * to assert against. Stub a version that fires once on observe(), the
+     * same shape used by the Graph widget's own tests.
+     */
     vi.stubGlobal(
       "ResizeObserver",
       class FakeResizeObserver {
@@ -126,9 +130,11 @@ describe("OrbitalAscentComponent", () => {
 
   it("renders the title and no reference curve before v.body arrives", async () => {
     const { container } = renderAscent();
-    // Wait for the panel to actually render (covers any post-mount async
-    // settling from the buffered series subscription) before asserting
-    // the negative.
+    /**
+     * Wait for the panel to actually render (covers any post-mount async
+     * settling from the buffered series subscription) before asserting
+     * the negative.
+     */
     await screen.findByText("ORBITAL ASCENT");
     expect(container.querySelectorAll("path[stroke-dasharray]")).toHaveLength(
       0,

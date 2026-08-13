@@ -74,18 +74,18 @@ describe("TechTree: real small career-detail fixture render off the stream (dela
     });
 
     await waitFor(() => {
-      // Science reads as a microscope glyph rather than a "sci" suffix, so
-      // the number is the whole of what a sighted reader sees and the word
-      // rides the hidden label beside it.
+      /* Science reads as a microscope glyph rather than a "sci" suffix, so
+         the number is the whole of what a sighted reader sees and the word
+         rides the hidden label beside it. */
       if (!visibleText(container).includes("4854")) {
         throw new Error("stream leg has not rendered science yet");
       }
     });
     expect(container.textContent).toContain("4854 science");
 
-    // 3 unlocked (basicRocketry/engineering101/survivability), 2
-    // researchable-now (advRocketry/stability, both parent-unlocked and
-    // affordable at 4854 sci): every node from the fixture rendered.
+    /* 3 unlocked (basicRocketry/engineering101/survivability), 2
+       researchable-now (advRocketry/stability, both parent-unlocked and
+       affordable at 4854 sci): every node from the fixture rendered. */
     expect(
       screen.getByText(/3\/5 unlocked · 2 researchable/i),
     ).toBeInTheDocument();

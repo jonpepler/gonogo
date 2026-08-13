@@ -343,11 +343,13 @@ describe("LaunchDirectorComponent", () => {
     expect(recoverBtn).toBeDisabled();
   });
 
-  // 2026-05-17 23:12 BST: tapping "Tracking Station" mid-flight took the
-  // operator to the TS scene but reverted the flight because KSP can't
-  // save in that scene. Telemachus has no equivalent of the in-game
-  // warning dialog, so the gonogo button now requires an arm-then-confirm
-  // step so a casual mis-tap doesn't lose progress.
+  /**
+   * 2026-05-17 23:12 BST: tapping "Tracking Station" mid-flight took the
+   * operator to the TS scene but reverted the flight because KSP can't
+   * save in that scene. Telemachus has no equivalent of the in-game
+   * warning dialog, so the gonogo button now requires an arm-then-confirm
+   * step so a casual mis-tap doesn't lose progress.
+   */
   it("requires a confirm step before firing ksp.toTrackingStation", async () => {
     const user = userEvent.setup();
     renderWidget();
@@ -380,13 +382,15 @@ describe("LaunchDirectorComponent", () => {
     });
   });
 
-  // The vessel switcher drives off `target.available`: the producer already
-  // excludes the active vessel itself, so every entry here is "other". It
-  // must dispatch the roster's stable `vesselId` guid, not a positional
-  // array index (`tar.switchVessel` only resolves by guid server-side,
-  // map-command.ts's own doc comment). Body-kind entries aren't offered
-  // (they aren't a "switch active vessel" target), and a SpaceObject entry
-  // stays hidden until the asteroid/comet toggle is used.
+  /**
+   * The vessel switcher drives off `target.available`: the producer already
+   * excludes the active vessel itself, so every entry here is "other". It
+   * must dispatch the roster's stable `vesselId` guid, not a positional
+   * array index (`tar.switchVessel` only resolves by guid server-side,
+   * map-command.ts's own doc comment). Body-kind entries aren't offered
+   * (they aren't a "switch active vessel" target), and a SpaceObject entry
+   * stays hidden until the asteroid/comet toggle is used.
+   */
   it("switches vessel via target.available, dispatching the stable vesselId guid", async () => {
     const user = userEvent.setup();
     renderWidget();
@@ -453,10 +457,12 @@ describe("LaunchDirectorComponent", () => {
     });
   });
 
-  // Regression from 2026-05-17 (21:15, 23:12 BST): debris from a previous
-  // flight crashed and the session-wide `crash.hasRecent` blocked recovery
-  // on a successful landing. The scoped gate compares against the active
-  // vessel's name, so debris no longer interferes.
+  /**
+   * Regression from 2026-05-17 (21:15, 23:12 BST): debris from a previous
+   * flight crashed and the session-wide `crash.hasRecent` blocked recovery
+   * on a successful landing. The scoped gate compares against the active
+   * vessel's name, so debris no longer interferes.
+   */
   it("does not block recovery when crash.hasRecent is for a different vessel (debris)", async () => {
     renderWidget();
     act(() => {
@@ -482,17 +488,21 @@ describe("LaunchDirectorComponent", () => {
     expect(recoverBtn).not.toBeDisabled();
   });
 
-  // 2026-06-12: after a crash + revert-to-launch, the chip blocked recovery
-  // forever: the reverted vessel shares the crashed vessel's name, and
-  // crash.hasRecent is session-sticky. Reverting rewinds universal time
-  // below the snapshot's capture ut, so a future-dated snapshot is provably
-  // from an undone timeline and must not gate recovery. (Telemachus now
-  // clears it server-side on the same rule; this is the client mirror for
-  // older deployed builds.)
+  /**
+   * 2026-06-12: after a crash + revert-to-launch, the chip blocked recovery
+   * forever: the reverted vessel shares the crashed vessel's name, and
+   * crash.hasRecent is session-sticky. Reverting rewinds universal time
+   * below the snapshot's capture ut, so a future-dated snapshot is provably
+   * from an undone timeline and must not gate recovery. (Telemachus now
+   * clears it server-side on the same rule; this is the client mirror for
+   * older deployed builds.)
+   */
   it("does not block recovery when the crash snapshot post-dates current UT (reverted flight)", async () => {
-    // universalTime reads off `useViewUt()`, pin the view clock at the same
-    // 113270 the crash-staleness math below needs (replaces the outer
-    // beforeEach's pinnedUt: 10).
+    /**
+     * universalTime reads off `useViewUt()`, pin the view clock at the same
+     * 113270 the crash-staleness math below needs (replaces the outer
+     * beforeEach's pinnedUt: 10).
+     */
     teardownMockDataSource(cmdFixture);
     onExecute = vi.fn();
     cmdFixture = await setupMockDataSource({ keys: [], onExecute });

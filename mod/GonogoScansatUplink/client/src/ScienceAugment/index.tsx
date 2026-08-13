@@ -119,12 +119,13 @@ function ScansatScienceAugment(_props: SlotProps<"science-officer.badges">) {
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────
-// Structural inline styles (CSS-var tokens): a one-off header dropdown, no
-// reusable ui-kit primitive fits, so the layout stays local rather than
-// carrying styled-components into a consumer widget. The one interactive
-// concern that inline can't express (the `:focus-visible` ring) is handled by
-// wrapping in ui-kit `TextButton` above.
+/**
+ * Structural inline styles (CSS-var tokens): a one-off header dropdown, no
+ * reusable ui-kit primitive fits, so the layout stays local rather than
+ * carrying styled-components into a consumer widget. The one interactive
+ * concern that inline can't express (the `:focus-visible` ring) is handled
+ * by wrapping in ui-kit `TextButton` above.
+ */
 
 const WRAP: CSSProperties = { position: "relative" };
 

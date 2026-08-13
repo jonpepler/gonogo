@@ -14,10 +14,12 @@ import {
   wearRows,
 } from "./ecosystem";
 
-// Real numbers from Kerbalism's stock profile config, trimmed to the processes
-// and rules that matter here. Nothing below is invented except which converters
-// this imaginary vessel carries and how full its tanks are, which is runtime
-// state no fixture can supply.
+/**
+ * Real numbers from Kerbalism's stock profile config, trimmed to the
+ * processes and rules that matter here. Nothing below is invented except
+ * which converters this imaginary vessel carries and how full its tanks
+ * are, which is runtime state no fixture can supply.
+ */
 
 const rate = (n: number) => value("units/s", n);
 
@@ -38,9 +40,11 @@ const PROFILE = {
     ElectricCharge: {
       flowMode: "ALL_VESSEL_BALANCE",
       displayName: "Electric Charge",
-      // Stock declares EC as a Supply (Default.cfg's first Supply block), which
-      // is easy to assume otherwise: it is the most common root cause AND a
-      // life-support consumable.
+      /**
+       * Stock declares EC as a Supply (Default.cfg's first Supply block),
+       * which is easy to assume otherwise: it is the most common root
+       * cause AND a life-support consumable.
+       */
       isSupply: true,
       lowThreshold: 0.15,
     },
@@ -147,9 +151,11 @@ describe("resourceFacts", () => {
   });
 
   it("leaves pooling UNKNOWN rather than guessing when flowMode is missing", () => {
-    // undefined must not be read as "not pooled": the honest render is "share
-    // of a vessel-wide pool, mode unknown", and a per-part meter drawn on a
-    // false `false` would be a confident lie.
+    /**
+     * undefined must not be read as "not pooled": the honest render is
+     * "share of a vessel-wide pool, mode unknown", and a per-part meter
+     * drawn on a false `false` would be a confident lie.
+     */
     expect(resourceFacts(PROFILE).get("CarbonDioxide")?.pooled).toBeUndefined();
   });
 });
@@ -182,17 +188,22 @@ describe("buildLedger", () => {
   });
 
   it("skips a fitted-but-idle converter", () => {
-    // The fuel cell produces Water and is aboard, but it is switched off, so it
-    // is not part of the sum. A widget that wants to SHOW it as idle reads the
-    // process list; the ledger is what is actually happening.
+    /**
+     * The fuel cell produces Water and is aboard, but it is switched off,
+     * so it is not part of the sum. A widget that wants to SHOW it as idle
+     * reads the process list; the ledger is what is actually happening.
+     */
     expect(ledger.terms.some((t) => t.name === "fuel cell")).toBe(false);
   });
 
   it("reports the residual against Kerbalism's own rate rather than hiding it", () => {
-    // The modifier product (pressure, lamps, radiation) scales each process at
-    // runtime and is not on the wire, so the terms are NOMINAL. The gap between
-    // their sum and Kerbalism's own scalar is exactly how wrong they are, which
-    // is a usable self-check instead of a silent error.
+    /**
+     * The modifier product (pressure, lamps, radiation) scales each
+     * process at runtime and is not on the wire, so the terms are NOMINAL.
+     * The gap between their sum and Kerbalism's own scalar is exactly how
+     * wrong they are, which is a usable self-check instead of a silent
+     * error.
+     */
     const withReported = buildLedger({
       resource: "Water",
       profile: PROFILE,
@@ -217,9 +228,12 @@ describe("buildLedger", () => {
 
 describe("closedLoops", () => {
   it("finds a loop that closes through more than one hop", () => {
-    // Water -> electrolysis -> Hydrogen -> fuel cell -> Water. A detector that
-    // only sees a converter handing its own input straight back misses this
-    // entirely, which is the bug that made the first pass report one loop.
+    /**
+     * Water -> electrolysis -> Hydrogen -> fuel cell -> Water. A detector
+     * that only sees a converter handing its own input straight back
+     * misses this entirely, which is the bug that made the first pass
+     * report one loop.
+     */
     const loops = closedLoops(PROFILE);
     expect(loops.length).toBeGreaterThan(0);
     expect(loops[0]).toEqual(
@@ -302,10 +316,13 @@ describe("diagnose", () => {
   });
 
   it("ignores a producer too small to cover the gap", () => {
-    // With the fuel cell shrunk to a rounding error it can no longer implicate
-    // Hydrogen for Water's shortfall, so Water stops being tangled up in the
-    // cycle. Without this filter every deficit blames every input and the root
-    // cause falls out as whichever resource sorts last.
+    /**
+     * With the fuel cell shrunk to a rounding error it can no longer
+     * implicate Hydrogen for Water's shortfall, so Water stops being
+     * tangled up in the cycle. Without this filter every deficit blames
+     * every input and the root cause falls out as whichever resource sorts
+     * last.
+     */
     const tiny = {
       ...RUNNING,
       processes: (RUNNING.processes ?? []).map((p) =>
@@ -426,11 +443,14 @@ describe("summarise", () => {
   });
 
   it("surfaces root causes separately, because a list can bury one", () => {
-    // supplies and other are sorted INDEPENDENTLY, so a root cause that is not
-    // a Supply would sit in the secondary list while the operator reads the
-    // symptoms in the primary one. Which resources are Supplies is the
-    // profile's call and it varies between profiles, so a widget cannot rely on
-    // the cause landing in the bucket it happens to render first.
+    /**
+     * supplies and other are sorted INDEPENDENTLY, so a root cause that is
+     * not a Supply would sit in the secondary list while the operator
+     * reads the symptoms in the primary one. Which resources are Supplies
+     * is the profile's call and it varies between profiles, so a widget
+     * cannot rely on the cause landing in the bucket it happens to render
+     * first.
+     */
     expect(summary.causes.every((r) => r.role === "root")).toBe(true);
     const named = new Set(summary.causes.map((r) => r.name));
     for (const list of [summary.supplies, summary.other]) {
@@ -496,9 +516,11 @@ describe("wearRows", () => {
   });
 
   it("surfaces a service life every other view filters out as plumbing", () => {
-    // A scrubber quietly reaching the end of its life is invisible everywhere
-    // else here, and it is the one thing in the profile that is genuinely a
-    // countdown rather than a rate.
+    /**
+     * A scrubber quietly reaching the end of its life is invisible
+     * everywhere else here, and it is the one thing in the profile that is
+     * genuinely a countdown rather than a rate.
+     */
     expect(rows).toHaveLength(1);
     expect(rows[0].process).toBe("non-regenerative scrubber");
     expect(rows[0].fraction).toBeCloseTo(0.25, 6);
@@ -506,9 +528,11 @@ describe("wearRows", () => {
   });
 
   it("identifies a pseudo-resource structurally, never by name", () => {
-    // `_RTG` and `_NonRegenScrubber` are stock, but a third-party profile
-    // invents its own and they must work identically. The leading underscore is
-    // the whole test.
+    /**
+     * `_RTG` and `_NonRegenScrubber` are stock, but a third-party profile
+     * invents its own and they must work identically. The leading
+     * underscore is the whole test.
+     */
     expect(rows[0].name.startsWith("_")).toBe(true);
   });
 

@@ -38,11 +38,13 @@ function atRange(d: number) {
 /** `tar.type` legacy string -> the `vessel.target.kind` ordinal it now maps to. */
 const KIND: Record<string, number> = { Vessel: 0, CelestialBody: 1 };
 
-// Rendered trees, tracked so afterEach can unmount them BEFORE clearAugments()
-// notifies the augment-slot subscribers: clearAugments() firing on a
-// still-mounted widget's AugmentSlot is a state update outside act() (CLAUDE.md
-// -> Testing Philosophy). RTL auto-cleanup runs after this file's afterEach
-// hooks, too late to unmount first.
+/**
+ * Rendered trees, tracked so afterEach can unmount them BEFORE
+ * clearAugments() notifies the augment-slot subscribers: clearAugments()
+ * firing on a still-mounted widget's AugmentSlot is a state update outside
+ * act() (CLAUDE.md -> Testing Philosophy). RTL auto-cleanup runs after this
+ * file's afterEach hooks, too late to unmount first.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function renderWidget(
@@ -124,11 +126,13 @@ describe("DistanceToTargetComponent", () => {
     );
   });
 
-  it("does NOT enter the docking HUD for a Vessel target with no vessel.dock (T2)", async () => {
-    // T2: a plain Vessel target has no dock channel, promoting it to the HUD
-    // on distance alone rendered a dead-centre reticle with every row showing
-    // the null-display placeholder.
-    // Under 100 m with no dock it must stay in the approach view instead.
+  it("does NOT enter the docking HUD for a Vessel target with no vessel.dock", async () => {
+    /**
+     * A plain Vessel target has no dock channel, promoting it to the HUD on
+     * distance alone rendered a dead-centre reticle with every row showing
+     * the null-display placeholder. Under 100 m with no dock it must stay
+     * in the approach view instead.
+     */
     fixture = setupStreamFixture({
       carriedChannels: ["vessel.target", "vessel.dock"],
     });
@@ -215,10 +219,12 @@ describe("DistanceToTargetComponent", () => {
         relativeVelocity: null,
       });
     });
-    // Still in HUD: 130 m is above the 100 m enter threshold but below the
-    // 150 m exit threshold. There's no distinct settle signal to wait on
-    // here (the DOM shouldn't change), so give the frame a chance to run
-    // before asserting nothing has flipped.
+    /**
+     * Still in HUD: 130 m is above the 100 m enter threshold but below the
+     * 150 m exit threshold. There's no distinct settle signal to wait on
+     * here (the DOM shouldn't change), so give the frame a chance to run
+     * before asserting nothing has flipped.
+     */
     await waitFor(() =>
       expect(
         screen.getByRole("region", { name: /Docking HUD/ }),
@@ -324,15 +330,17 @@ describe("DistanceToTargetComponent", () => {
   });
 });
 
-describe("DistanceToTarget: augment slots (spec §4)", () => {
+describe("DistanceToTarget: augment slots", () => {
   afterEach(() => {
-    // clearAugments() must come after unmount, else a still-mounted
-    // AugmentSlot re-renders outside act() when the registry notifies
-    // (CLAUDE.md → Testing Philosophy, act() warning pattern). RTL's
-    // auto-cleanup afterEach runs AFTER this file's own afterEach hooks
-    // (outer/import-time-registered hooks run after inner describe-scoped
-    // ones), so it can't be relied on to unmount first, the renderedTrees
-    // tracking above is what actually guarantees the ordering.
+    /**
+     * clearAugments() must come after unmount, else a still-mounted
+     * AugmentSlot re-renders outside act() when the registry notifies
+     * (CLAUDE.md → Testing Philosophy, act() warning pattern). RTL's
+     * auto-cleanup afterEach runs AFTER this file's own afterEach hooks
+     * (outer/import-time-registered hooks run after inner describe-scoped
+     * ones), so it can't be relied on to unmount first, the renderedTrees
+     * tracking above is what actually guarantees the ordering.
+     */
     for (const unmount of renderedTrees) unmount();
     renderedTrees.length = 0;
     clearAugments();

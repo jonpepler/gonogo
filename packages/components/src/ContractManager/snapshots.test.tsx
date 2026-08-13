@@ -47,9 +47,11 @@ const FIXTURES: Record<string, ContractFixture> = {
   "multiple-active-contracts": multipleActive,
 };
 
-// Minimal orbit so `deriveVesselState` produces a record; emitted in the Loaded
-// basis (StubTransport defaults to OnRails, where altitudeAsl is null) alongside
-// the vessel.flight altitude the widget's altitude bands read.
+/**
+ * Minimal orbit so `deriveVesselState` produces a record; emitted in the Loaded
+ * basis (StubTransport defaults to OnRails, where altitudeAsl is null) alongside
+ * the vessel.flight altitude the widget's altitude bands read.
+ */
 const ORBIT = {
   sma: 682500,
   ecc: 0.00367,

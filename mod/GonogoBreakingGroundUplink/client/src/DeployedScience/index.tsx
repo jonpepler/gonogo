@@ -456,11 +456,13 @@ export interface DeployedExperimentContext {
   body: string;
 }
 
-// Declaration-merge this widget's slot ids → their props types into core's
-// `SlotRegistry` (Uplink architecture §4.6). Kept co-located here, not in a
-// shared central registry file, so parallel per-widget slot work never
-// collides. `.sections` is a typed-contract per-card slot (carries the
-// experiment); `.badges` is a plain header escape-hatch (no props).
+/**
+ * Declaration-merge this widget's slot ids → their props types into core's
+ * `SlotRegistry`. Kept co-located here, not in a shared central registry
+ * file, so parallel per-widget slot work never collides. `.sections` is a
+ * typed-contract per-card slot (carries the experiment); `.badges` is a
+ * plain header escape-hatch (no props).
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "deployed-science.sections": DeployedExperimentContext;

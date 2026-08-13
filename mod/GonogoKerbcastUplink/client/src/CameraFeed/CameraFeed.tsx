@@ -66,8 +66,7 @@ export interface CameraFeedConfig extends Record<string, unknown> {
 }
 
 /**
- * Facecam kind separation (facecam-stage6 consumption design, "requirements
- * gonogo-side" §5): kerbal face cameras get their own crew surfaces
+ * Facecam kind separation: kerbal face cameras get their own crew surfaces
  * (CrewStatus's `crew-status.avatar` augment, and eventually a dedicated
  * facecam-wall widget): they should not also appear in this general
  * part-camera picker/stepper/auto-latch. `camera.kind` defaults to `Part`
@@ -79,17 +78,17 @@ export function isPartCamera(camera: CameraState): boolean {
   return camera.kind !== CameraKind.Kerbal;
 }
 
-// ---------------------------------------------------------------------------
-// Augment slots (Uplink architecture spec §4). CameraFeed is PRIMARILY an
-// augment itself (it fills `distance-to-target.camera`) and secondarily a HOST
-// widget that exposes two slots. No first-party augment fills either here, the
-// package move + Kerbalism/RA fillers are a later phase, so each renders
-// nothing until an Uplink registers into it.
-// ---------------------------------------------------------------------------
+/**
+ * Augment slots. CameraFeed is PRIMARILY an augment itself (it fills
+ * `distance-to-target.camera`) and secondarily a HOST widget that exposes
+ * two slots. No first-party augment fills either here, the package move +
+ * Kerbalism/RA fillers are a later phase, so each renders nothing until an
+ * Uplink registers into it.
+ */
 
 /**
- * Props for `camera-feed.overlay`: an OVERLAY slot (spec §4.8), rendered in a
- * layer absolutely positioned OVER the video element. Data-over-video augments
+ * Props for `camera-feed.overlay`: an OVERLAY slot, rendered in a layer
+ * absolutely positioned OVER the video element. Data-over-video augments
  * (a telemetry HUD painted on the feed at key moments) draw here in the feed's
  * pixel space, so the slot passes the rendered video-container dimensions and
  * the flightID of the camera currently on screen. `width`/`height` are CSS px
@@ -98,7 +97,7 @@ export function isPartCamera(camera: CameraState): boolean {
  *
  * NOTE: richer projection (the SDK's internal pan/zoom transform) isn't
  * readable from this wrapper; exposing it waits on the widget's move into
- * `@ksp-gonogo/kerbcast` (P3), where it can read the SDK feed handle directly.
+ * `@ksp-gonogo/kerbcast`, where it can read the SDK feed handle directly.
  */
 export interface CameraOverlayContext {
   /** flightID of the displayed camera (auto-picks included); null before one resolves. */
@@ -110,8 +109,8 @@ export interface CameraOverlayContext {
 }
 
 /**
- * Props for `camera-feed.badges`: the widget's BROAD escape-hatch slot (spec
- * §4.8 composable badges), rendered as a small chip strip in the feed header.
+ * Props for `camera-feed.badges`: the widget's BROAD escape-hatch slot
+ * (composable badges), rendered as a small chip strip in the feed header.
  * Badge augments read their own Topics via hooks, so the only context passed
  * down is the displayed camera's flightID for labelling.
  */
@@ -119,8 +118,8 @@ export interface CameraBadgesContext {
   flightId: number | null;
 }
 
-// Co-located declaration-merge of this widget's slot ids → their props (spec
-// §4.6). Kept next to the widget (not a central registry file) so parallel slot
+// Co-located declaration-merge of this widget's slot ids → their props.
+// Kept next to the widget (not a central registry file) so parallel slot
 // work on other widgets never collides on this seam. Targets the sitrep-sdk
 // facade, not @ksp-gonogo/core directly: CameraFeed OWNS these slots (it's the
 // one file that both renders <AugmentSlot> for them AND is sealed onto the
@@ -351,8 +350,8 @@ export function CameraFeed({
     };
   }, [effectiveFlightId, signalStrength, commConnected, client]);
 
-  // Cross-browser kerbcast video-delay design (2026-07-16), decision 5:
-  // "can't delay -> no video". `useDelayedKerbcastStream` (passed to the SDK
+  // Cross-browser kerbcast video-delay design (2026-07-16): "can't delay ->
+  // no video". `useDelayedKerbcastStream` (passed to the SDK
   // below as `useStream`) can only return `MediaStream | null`, it has no
   // channel back to THIS component to say "delay was expected here but no
   // backend could build a pipeline". `useDelayedPlaybackStatus` is that
@@ -374,9 +373,9 @@ export function CameraFeed({
 
   if (!client || !subscriptions) return null;
 
-  // Slot props (spec §4.4). Both carry the displayed camera's flightID; the
-  // overlay additionally carries the measured video-container size so an
-  // overlay augment can draw in the feed's pixel space.
+  // Slot props. Both carry the displayed camera's flightID; the overlay
+  // additionally carries the measured video-container size so an overlay
+  // augment can draw in the feed's pixel space.
   const overlayContext: CameraOverlayContext = {
     flightId: effectiveFlightId,
     width: feedSize.width,
@@ -550,9 +549,9 @@ function describeSignalQuality(
   if (connected === undefined && signalStrength === undefined) return null;
   // NO SIGNAL when the link is down OR the strength has decayed to
   // effectively zero (0%): a 0% link carries nothing, so it reads as no
-  // signal rather than a "0%" quality badge (comms-delay-model-consistency
-  // spec, Phase 3). The tiny epsilon is a float-noise guard, not a "weak
-  // link" threshold: a real 1% link still shows its percentage.
+  // signal rather than a "0%" quality badge. The tiny epsilon is a
+  // float-noise guard, not a "weak link" threshold: a real 1% link still
+  // shows its percentage.
   const strength = signalStrength?.magnitude;
   const zeroSignal =
     strength !== undefined && Number.isFinite(strength) && strength <= 1e-6;
@@ -630,8 +629,8 @@ const FEED_SETPOINT_STYLE: CSSProperties = {
   pointerEvents: "none",
 };
 
-// Cross-browser kerbcast video-delay design (2026-07-16), decision 5:
-// "can't delay -> no video", a full-cover scrim replacing the SDK's own
+// Cross-browser kerbcast video-delay design (2026-07-16): "can't delay ->
+// no video", a full-cover scrim replacing the SDK's own
 // feed whenever `useDelayedPlaybackStatus` reports `"unavailable"`. Opaque
 // (unlike FEED_OVERLAY_STYLE) and above every other layer: the whole point
 // is that the operator must never see live, undelayed pixels here, the

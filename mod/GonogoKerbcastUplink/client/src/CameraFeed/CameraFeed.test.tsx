@@ -61,14 +61,14 @@ import {
 } from "./CameraFeed";
 import { CameraFeedConfigPanel } from "./CameraFeedConfigPanel";
 
-// ---------------------------------------------------------------------------
-// Render helper, CameraFeed calls useActionInput, which reads its instance
-// ID from the enclosing DashboardItemContext. Rendering the component bare
-// throws ("must be used inside a DashboardItemContext.Provider"), so every
-// test goes through this wrapper. Mirrors CameraFeed/index.test.tsx's
-// renderFeed(). The instanceId is also what dispatchAction() targets when a
-// test drives the serial-input path directly.
-// ---------------------------------------------------------------------------
+/**
+ * Render helper, CameraFeed calls useActionInput, which reads its instance
+ * ID from the enclosing DashboardItemContext. Rendering the component bare
+ * throws ("must be used inside a DashboardItemContext.Provider"), so every
+ * test goes through this wrapper. Mirrors CameraFeed/index.test.tsx's
+ * renderFeed(). The instanceId is also what dispatchAction() targets when a
+ * test drives the serial-input path directly.
+ */
 
 const TEST_INSTANCE_ID = "camera-feed-test";
 
@@ -107,14 +107,14 @@ function renderFeed(
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// Comms-topic test double for the CommNet-degrade + signal-delay/quality
-// badge tests below: those three reads (signalStrength/connected/
-// signalDelay) were migrated off the legacy two-arg `useTelemetry("data",
-// "comm.*")` shim onto native topics, so they need a mounted
-// `TelemetryProvider`, not the `makeDataSource("data", ...)` fake the rest
-// of this file's `dataRequirements` still use.
-// ---------------------------------------------------------------------------
+/**
+ * Comms-topic test double for the CommNet-degrade + signal-delay/quality
+ * badge tests below: those three reads (signalStrength/connected/
+ * signalDelay) were migrated off the legacy two-arg `useTelemetry("data",
+ * "comm.*")` shim onto native topics, so they need a mounted
+ * `TelemetryProvider`, not the `makeDataSource("data", ...)` fake the rest
+ * of this file's `dataRequirements` still use.
+ */
 
 function renderFeedWithComms(
   config: Partial<CameraFeedConfig>,
@@ -187,11 +187,11 @@ function renderStatefulFeed(
 // avoids the module-level registerDataSource() side effect. Tests register
 // their own instance explicitly via registerDataSource() in each fixture.
 
-// ---------------------------------------------------------------------------
-// Camera-state fixture factory: the sidecar's CameraState has ~25 fields;
-// most tests only care about a handful, so this fills the rest with sane
-// "active, no-zoom, no-pan" defaults and lets callers override.
-// ---------------------------------------------------------------------------
+/**
+ * Camera-state fixture factory: the sidecar's CameraState has ~25 fields;
+ * most tests only care about a handful, so this fills the rest with sane
+ * "active, no-zoom, no-pan" defaults and lets callers override.
+ */
 
 type CameraStateLike = Record<string, unknown> & { flightId: number };
 
@@ -281,11 +281,11 @@ function kerbcastFetch(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Global ResizeObserver stub: jsdom doesn't ship one. The resize-observer
-// describe block installs a controllable version in its own beforeEach; all
-// other tests just need a no-op stub so the component mounts without error.
-// ---------------------------------------------------------------------------
+/**
+ * Global ResizeObserver stub: jsdom doesn't ship one. The resize-observer
+ * describe block installs a controllable version in its own beforeEach; all
+ * other tests just need a no-op stub so the component mounts without error.
+ */
 
 if (typeof globalThis.ResizeObserver === "undefined") {
   globalThis.ResizeObserver = class {
@@ -294,10 +294,6 @@ if (typeof globalThis.ResizeObserver === "undefined") {
     disconnect() {}
   } as unknown as typeof ResizeObserver;
 }
-
-// ---------------------------------------------------------------------------
-// Test setup / teardown
-// ---------------------------------------------------------------------------
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockImplementation(kerbcastFetch([42]));
@@ -318,13 +314,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ---------------------------------------------------------------------------
-// Test fixture: builds and registers a KerbcastDataSource with a fake
-// transport, connects it, opens the control channel, and pushes an initial
-// camera snapshot. Defaults to a single active "Starboard Cam" (flightId 42)
-// matching the original single-camera fixture; pass `cameras` for the
-// multi-camera selection scenarios.
-// ---------------------------------------------------------------------------
+/**
+ * Test fixture: builds and registers a KerbcastDataSource with a fake
+ * transport, connects it, opens the control channel, and pushes an initial
+ * camera snapshot. Defaults to a single active "Starboard Cam" (flightId 42)
+ * matching the original single-camera fixture; pass `cameras` for the
+ * multi-camera selection scenarios.
+ */
 
 async function buildConnectedSource(
   cameras: CameraStateLike[] = [
@@ -360,10 +356,7 @@ async function buildConnectedSource(
   return { ds, sidecar };
 }
 
-// ---------------------------------------------------------------------------
 // Camera selection: picker, Next/Previous, serial actions, empty/status
-// ---------------------------------------------------------------------------
-
 describe("CameraFeed: camera selection", () => {
   const TWO_CAMERAS = [
     makeCamera({
@@ -384,10 +377,9 @@ describe("CameraFeed: camera selection", () => {
   ];
 
   it("excludes kerbal face cameras from the picker (facecam kind separation)", async () => {
-    // Facecam-stage6 consumption design, "requirements gonogo-side" §5: kerbal
-    // face cams get their own crew surfaces (CrewStatus's avatar augment,
-    // eventually a dedicated facecam wall) and should never also show up in
-    // this general part-camera picker/auto-latch.
+    // Kerbal face cams get their own crew surfaces (CrewStatus's avatar
+    // augment, eventually a dedicated facecam wall) and should never also
+    // show up in this general part-camera picker/auto-latch.
     await buildConnectedSource([
       ...TWO_CAMERAS,
       makeCamera({
@@ -647,10 +639,7 @@ describe("CameraFeed: camera selection", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
 // Debug-info toggle (resolution + bitrate readouts gated behind the menu)
-// ---------------------------------------------------------------------------
-
 describe("CameraFeed: debug info toggle", () => {
   it("hides the resolution/bitrate readout by default", async () => {
     await buildConnectedSource([
@@ -741,16 +730,15 @@ describe("CameraFeed: empty state and status", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Serial-action dispatch (zoom / pan) -- wrapper binding tests
-//
-// These tests drive the serial-input path: dispatchAction -> useActionInput
-// handler -> feedRef.current.setZoomRate / setPanAxis -> PanZoomController
-// -> client.camera(42).setZoomRate / setPanRate -> MockSidecar wire command.
-// The shared package tests cover the handle directly; these tests cover the
-// gonogo wrapper's useActionInput binding.
-// ---------------------------------------------------------------------------
-
+/**
+ * Serial-action dispatch (zoom / pan) -- wrapper binding tests.
+ *
+ * These tests drive the serial-input path: dispatchAction -> useActionInput
+ * handler -> feedRef.current.setZoomRate / setPanAxis -> PanZoomController
+ * -> client.camera(42).setZoomRate / setPanRate -> MockSidecar wire command.
+ * The shared package tests cover the handle directly; these tests cover the
+ * gonogo wrapper's useActionInput binding.
+ */
 describe("CameraFeed -- serial-action dispatch (zoom/pan)", () => {
   it("zoomIn serial action holds a +1 zoom rate, releases to 0", async () => {
     const { sidecar } = await buildConnectedSource();
@@ -901,10 +889,6 @@ describe("CameraFeed -- serial-action dispatch (zoom/pan)", () => {
     expect(sidecar.lastCommand("set-pan-rate")).toBeUndefined();
   });
 });
-
-// ---------------------------------------------------------------------------
-// CommNet degrade
-// ---------------------------------------------------------------------------
 
 describe("CameraFeed: CommNet degrade", () => {
   beforeEach(() => {
@@ -1096,15 +1080,14 @@ describe("CameraFeed: CommNet degrade", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Signal delay + signal quality badges: always-on header chrome, distinct
-// from the CommNet-degrade effect above (that drives the SDK's video
-// degradation; these are purely readouts). `comm.signalDelay` maps to
-// `comms.delay.oneWaySeconds`: the badge is ONE-WAY, never doubled for
-// round-trip (that's only for interactive command paths like the kOS
-// terminal, which a camera downlink is not).
-// ---------------------------------------------------------------------------
-
+/**
+ * Signal delay + signal quality badges: always-on header chrome, distinct
+ * from the CommNet-degrade effect above (that drives the SDK's video
+ * degradation; these are purely readouts). `comm.signalDelay` maps to
+ * `comms.delay.oneWaySeconds`: the badge is ONE-WAY, never doubled for
+ * round-trip (that's only for interactive command paths like the kOS
+ * terminal, which a camera downlink is not).
+ */
 describe("CameraFeed: signal delay + signal quality badges", () => {
   it("shows the one-way signal delay badge as a one-decimal readout (sub-minute)", async () => {
     await buildConnectedSource();
@@ -1222,14 +1205,13 @@ describe("CameraFeed: signal delay + signal quality badges", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Station (brokered) mode: the widget runs the SAME hooks, but the data source
-// is in brokered mode: the WebRTC handshake relays through the host (the
-// `negotiate` seam) and TURN comes from the relay broadcast. Driven by the
-// SDK's canonical `MockSidecar` (the protocol-level fake), proving the camera
-// UI works on a station, not just the main screen.
-// ---------------------------------------------------------------------------
-
+/**
+ * Station (brokered) mode: the widget runs the SAME hooks, but the data
+ * source is in brokered mode: the WebRTC handshake relays through the host
+ * (the `negotiate` seam) and TURN comes from the relay broadcast. Driven by
+ * the SDK's canonical `MockSidecar` (the protocol-level fake), proving the
+ * camera UI works on a station, not just the main screen.
+ */
 describe("CameraFeed: station (brokered) mode", () => {
   async function buildBrokeredSource(
     cams: Array<{ flightId: number; cameraName: string; vesselName: string }>,
@@ -1297,14 +1279,13 @@ describe("CameraFeed: station (brokered) mode", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Augment slots (Uplink architecture spec §4). CameraFeed exposes an OVERLAY
-// slot (`camera-feed.overlay`, over the video) and a BADGES slot
-// (`camera-feed.badges`, feed header). No first-party augment fills either
-// (P3/P6): an empty slot renders cleanly, and a test augment registered into it
-// appears, receiving the displayed camera's flightID as typed slot props (§4.4).
-// ---------------------------------------------------------------------------
-
+/**
+ * Augment slots. CameraFeed exposes an OVERLAY slot (`camera-feed.overlay`,
+ * over the video) and a BADGES slot (`camera-feed.badges`, feed header). No
+ * first-party augment fills either yet: an empty slot renders cleanly, and a
+ * test augment registered into it appears, receiving the displayed camera's
+ * flightID as typed slot props.
+ */
 describe("CameraFeed: augment slots (spec §4)", () => {
   it("exposes both slots (empty until an augment registers)", () => {
     // No augment bound → the registry lists none for either slot.
@@ -1342,8 +1323,8 @@ describe("CameraFeed: augment slots (spec §4)", () => {
     });
 
     const augment = await screen.findByTestId("cam-overlay-augment");
-    // The slot passed the displayed camera's flightID down (spec §4.4). The
-    // measured size is 0×0 under jsdom's no-op ResizeObserver stub.
+    // The slot passed the displayed camera's flightID down. The measured
+    // size is 0×0 under jsdom's no-op ResizeObserver stub.
     await waitFor(() => expect(augment.textContent).toBe("HUD:42:0x0"));
   });
 

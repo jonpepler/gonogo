@@ -95,9 +95,9 @@ describe("WarpControl: stream render golden (delay=0)", () => {
 });
 
 /**
- * The plan's literal "off the recording's wire" golden (`m3-migration-plan
- * .md` §4-behavior: "stream: TelemetryProvider fed the reference-wire-
- * fixture.json frames"). Gitignored/local-only, skip-if-absent: mirrors
+ * The literal "off the recording's wire" golden: stream the
+ * `TelemetryProvider` off the real `reference-wire-fixture.json` frames.
+ * Gitignored/local-only, skip-if-absent: mirrors
  * `reference-wire-fixture.test.ts`'s own discipline; CI never has this file
  * checked out, so this is a local/branch gate, not a CI one.
  */

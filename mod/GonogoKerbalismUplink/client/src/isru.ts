@@ -1,33 +1,36 @@
-// This Uplink's namespaces of the two elected `isru.*` payloads' provider extension
-// bags: the typed half, which is deliberately NOT in core.
-//
-// `isru.*` is a Kernel-elected capability, so each channel is a single shared shape
-// core declares and whichever backend won the election fills. Kerbalism WINS that
-// election when installed, because its own patches delete stock's harvester and
-// converter modules outright: on a Kerbalism install the stock reader walks a vessel
-// and finds nothing.
-//
-// Unlike this Uplink's science bags, most of what Kerbalism's ISRU knows DOES have a
-// stock counterpart, so the shared shape carries it and these two namespaces are
-// small. Every SHARED field is filled on a Kerbalism frame, with no structural nulls
-// and no value-model caveat: a Kerbalism drill's rate is in the same resource units a
-// stock drill's is. What is here is only what stock has no concept of.
-//
-// A consuming widget imports the readers below rather than reaching into
-// `entry.extensions?.kerbalism` and casting at the call site. That is the whole
-// boundary: core stays open and opaque, the provider supplies the type at its own
-// edge.
-//
-// ── One thing to know about the converter list under Kerbalism ──────────────
-// Kerbalism does not distinguish an ISRU process from a life-support one: a scrubber,
-// a water recycler and a Molten Regolith Electrolysis plant are the same
-// `ProcessController` module running different chemistry. So `isru.converters` carries
-// ALL of them, which is more rows than a stock frame has, and the same part also
-// appears on `kerbalism.lifesupport`. Those are two honest views of one set of parts
-// (this one the per-part converter chemistry, that one the supply and consumption
-// picture), not two separate systems. Filtering here would mean gonogo asserting a
-// taxonomy the engine does not draw.
-
+/**
+ * This Uplink's namespaces of the two elected `isru.*` payloads' provider
+ * extension bags: the typed half, which is deliberately NOT in core.
+ *
+ * `isru.*` is a Kernel-elected capability, so each channel is a single
+ * shared shape core declares and whichever backend won the election fills.
+ * Kerbalism WINS that election when installed, because its own patches
+ * delete stock's harvester and converter modules outright: on a Kerbalism
+ * install the stock reader walks a vessel and finds nothing.
+ *
+ * Unlike this Uplink's science bags, most of what Kerbalism's ISRU knows
+ * DOES have a stock counterpart, so the shared shape carries it and these
+ * two namespaces are small. Every SHARED field is filled on a Kerbalism
+ * frame, with no structural nulls and no value-model caveat: a Kerbalism
+ * drill's rate is in the same resource units a stock drill's is. What is
+ * here is only what stock has no concept of.
+ *
+ * A consuming widget imports the readers below rather than reaching into
+ * `entry.extensions?.kerbalism` and casting at the call site. That is the
+ * whole boundary: core stays open and opaque, the provider supplies the
+ * type at its own edge.
+ *
+ * One thing to know about the converter list under Kerbalism: it does not
+ * distinguish an ISRU process from a life-support one, a scrubber, a water
+ * recycler and a Molten Regolith Electrolysis plant are the same
+ * `ProcessController` module running different chemistry. So
+ * `isru.converters` carries ALL of them, which is more rows than a stock
+ * frame has, and the same part also appears on `kerbalism.lifesupport`.
+ * Those are two honest views of one set of parts (this one the per-part
+ * converter chemistry, that one the supply and consumption picture), not
+ * two separate systems. Filtering here would mean gonogo asserting a
+ * taxonomy the engine does not draw.
+ */
 import {
   type IsruConverterEntry,
   type IsruDrillEntry,
@@ -38,11 +41,14 @@ import type {
   KerbalismIsruConverterExtension,
   KerbalismIsruDrillExtension,
 } from "./__generated__/contract";
-// Side-effect import: `topics.ts` feeds this Uplink's generated TYPE unit/shape maps
-// into the SDK's type-keyed registry, which is what the
-// `registerProviderExtensionShape` calls below resolve their type names through.
-// Imported here, not just from the package entry, so the two halves cannot come apart
-// for a consumer that reaches this module directly.
+/**
+ * Side-effect import: `topics.ts` feeds this Uplink's generated TYPE
+ * unit/shape maps into the SDK's type-keyed registry, which is what the
+ * `registerProviderExtensionShape` calls below resolve their type names
+ * through. Imported here, not just from the package entry, so the two
+ * halves cannot come apart for a consumer that reaches this module
+ * directly.
+ */
 import "./topics";
 
 export type { KerbalismIsruConverterExtension, KerbalismIsruDrillExtension };
@@ -58,24 +64,28 @@ export const KERBALISM_ISRU_PROVIDER_ID = "kerbalism";
 export const ISRU_DRILLS_TOPIC = "isru.drills";
 export const ISRU_CONVERTERS_TOPIC = "isru.converters";
 
-// The RUNTIME half, and it is not optional: without it every quantity in a namespace
-// arrives as a bare number while ./__generated__/contract.ts still types it
-// `Value<"units/s">`/`Value<"t">`/`Value<"units">`/`Value<"count">`.
-// `wrapTopicPayload` walks a payload's declared shapes from the GENERATED maps, and no
-// generated map can name a provider's sub-tree of a core payload, so the bags are
-// routed through their own registry instead. `isru.test.ts` proves it at decode time
-// through a real TelemetryClient, and proves it non-vacuously by going red when a call
-// is removed.
-//
-// This bag needs NO `registerUnit` call, unlike the science bags: every unit here is
-// already in the first-party catalog, because Kerbalism measures ISRU in the same
-// resource units the game does. The shape registration below is still load-bearing on
-// its own.
-//
-// Keyed by TOPIC rather than by the entry type name: these are array Topics, and
-// `wrapTopicPayload` recurses into an array's elements carrying the TOPIC as the owner
-// (an array Topic's declared units describe its element), so the topic id is the owner
-// a per-entry bag is reachable under.
+/**
+ * The RUNTIME half, and it is not optional: without it every quantity in a
+ * namespace arrives as a bare number while ./__generated__/contract.ts
+ * still types it `Value<"units/s">`/`Value<"t">`/`Value<"units">`/
+ * `Value<"count">`. `wrapTopicPayload` walks a payload's declared shapes
+ * from the GENERATED maps, and no generated map can name a provider's
+ * sub-tree of a core payload, so the bags are routed through their own
+ * registry instead. `isru.test.ts` proves it at decode time through a real
+ * TelemetryClient, and proves it non-vacuously by going red when a call is
+ * removed.
+ *
+ * This bag needs NO `registerUnit` call, unlike the science bags: every
+ * unit here is already in the first-party catalog, because Kerbalism
+ * measures ISRU in the same resource units the game does. The shape
+ * registration below is still load-bearing on its own.
+ *
+ * Keyed by TOPIC rather than by the entry type name: these are array
+ * Topics, and `wrapTopicPayload` recurses into an array's elements
+ * carrying the TOPIC as the owner (an array Topic's declared units
+ * describe its element), so the topic id is the owner a per-entry bag is
+ * reachable under.
+ */
 registerProviderExtensionShape(
   ISRU_DRILLS_TOPIC,
   KERBALISM_ISRU_PROVIDER_ID,

@@ -33,28 +33,28 @@ import { SCAN_TYPE } from "../schema";
 import { SCANSAT } from "../uplink";
 import { MinimapForActiveVessel } from "./Minimap";
 
-// ---------------------------------------------------------------------------
-// Augment slots.
-//
-// Scanning is a SCANsat-OWNED widget that nonetheless exposes slots OTHER
-// Uplinks fill (a cross-Uplink example) even before the package
-// itself moves to `@ksp-gonogo/gonogo-scansat-uplink`. Two slots:
-//
-// `scanning.sections`: a body/section slot appended to the per-scan-type
-// coverage list. The flagship future filler is another scanning mod
-// contributing its OWN scan-type coverage row alongside SCANsat's altimetry/
-// biome/anomaly rows. NOTE: SCANsat's own
-// custom map LAYERS route to `map-view.overlay`, NOT here, this slot is for
-// extra COVERAGE ROWS only.
-//
-// `scanning.badges`: a broad escape-hatch badge slot in the header, next to
-// the title, for a small status/indicator an Uplink wants to surface.
-//
-// Both carry the widget's current body focus as slot props so an augment scopes
-// its coverage rows / badge to the body the operator is actually looking at.
-// No augment ships here yet: the slots render nothing until one
-// registers.
-// ---------------------------------------------------------------------------
+/**
+ * Augment slots.
+ *
+ * Scanning is a SCANsat-OWNED widget that nonetheless exposes slots OTHER
+ * Uplinks fill (a cross-Uplink example) even before the package itself
+ * moves to `@ksp-gonogo/gonogo-scansat-uplink`. Two slots:
+ *
+ * `scanning.sections`: a body/section slot appended to the per-scan-type
+ * coverage list. The flagship future filler is another scanning mod
+ * contributing its OWN scan-type coverage row alongside SCANsat's
+ * altimetry/biome/anomaly rows. NOTE: SCANsat's own custom map LAYERS route
+ * to `map-view.overlay`, NOT here, this slot is for extra COVERAGE ROWS
+ * only.
+ *
+ * `scanning.badges`: a broad escape-hatch badge slot in the header, next to
+ * the title, for a small status/indicator an Uplink wants to surface.
+ *
+ * Both carry the widget's current body focus as slot props so an augment
+ * scopes its coverage rows / badge to the body the operator is actually
+ * looking at. No augment ships here yet: the slots render nothing until one
+ * registers.
+ */
 
 /** Props both Scanning slots pass to their augments. */
 export interface ScanningSlotContext {
@@ -348,8 +348,6 @@ function CoverageRow({
     </Grid>
   );
 }
-
-// ── Registration ────────────────────────────────────────────────────────────
 
 registerComponent<ScanningConfig>({
   id: "scanning",

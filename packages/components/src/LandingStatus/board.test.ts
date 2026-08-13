@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { deriveBoard } from "./board";
 
-// Characterization of the landing board state machine, pins the exact
-// precedence the widget shipped with inline, so the presentation redesign
-// cannot silently change which readouts are shown. Extracted 2026-07-24.
-
+/**
+ * Characterization of the landing board state machine, pins the exact
+ * precedence the widget shipped with inline, so the presentation redesign
+ * cannot silently change which readouts are shown.
+ */
 describe("deriveBoard", () => {
   it("not-descending wins over everything, regardless of atmosphere", () => {
     expect(

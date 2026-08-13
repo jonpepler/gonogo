@@ -21,7 +21,7 @@ import { CrewStatusComponent } from "./index";
  * stream alone, proving the mapped fields genuinely drive the widget's
  * rendering off the real pipeline.
  */
-describe("CrewStatus, genuinely runs off the stream (M3 batch 4)", () => {
+describe("CrewStatus, genuinely runs off the stream", () => {
   it("reads v.crewCount/v.crew/v.crewCapacity off the real stream pipeline, not legacy", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["vessel.crew"],
@@ -55,11 +55,13 @@ describe("CrewStatus, genuinely runs off the stream (M3 batch 4)", () => {
       });
     });
 
-    // The roster now renders straight off the stream, no legacy fallback
-    // needed for names or capacity. The "3 / 4 aboard" headcount itself has
-    // moved to the info-tone `crew-status.badges` panel-badge contribution
-    // (`./badge.ts`), which this bare-component render tree (no
-    // `ContributionsProvider`/`Panel` chrome) never mounts.
+    /**
+     * The roster now renders straight off the stream, no legacy fallback
+     * needed for names or capacity. The "3 / 4 aboard" headcount itself has
+     * moved to the info-tone `crew-status.badges` panel-badge contribution
+     * (`./badge.ts`), which this bare-component render tree (no
+     * `ContributionsProvider`/`Panel` chrome) never mounts.
+     */
     await waitFor(() =>
       expect(screen.getByText("Jebediah Kerman")).toBeInTheDocument(),
     );

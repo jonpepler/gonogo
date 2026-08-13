@@ -38,17 +38,20 @@ export function AttitudeIndicator({
   const safeRoll = roll ?? 0;
   const safeHeading = heading ?? 0;
 
-  // 1° of pitch = pitchScale px on the horizon ribbon. r/90 maps the full
-  // physical pitch range (+/-90, straight up to straight down) onto the
-  // dial's radius, so the horizon line only ever reaches the very edge at
-  // the extremes: a common ~45 climb (see the Navball "gravity-turn-east"
-  // fixture) still leaves the horizon roughly mid-dial instead of pinning
-  // it off the edge. This was previously r/45, which put the horizon at
-  // the edge (ground/sky band clipped to invisible) at just +/-45, well
-  // short of "without horizon-bar disappearing on climbs" below, and left
-  // an unfilled gap across half the dial at +/-90 (the sky/ground rects
-  // only span 2r each, so a 2r offset outran them; r/90's max +/-r offset
-  // keeps a rect's span flush with the dial exactly at the extreme).
+  /**
+   * 1° of pitch = pitchScale px on the horizon ribbon. r/90 maps the
+   * full physical pitch range (+/-90, straight up to straight down) onto
+   * the dial's radius, so the horizon line only ever reaches the very
+   * edge at the extremes: a common ~45 climb (see the Navball
+   * "gravity-turn-east" fixture) still leaves the horizon roughly
+   * mid-dial instead of pinning it off the edge. This was previously
+   * r/45, which put the horizon at the edge (ground/sky band clipped to
+   * invisible) at just +/-45, well short of "without horizon-bar
+   * disappearing on climbs" below, and left an unfilled gap across half
+   * the dial at +/-90 (the sky/ground rects only span 2r each, so a 2r
+   * offset outran them; r/90's max +/-r offset keeps a rect's span flush
+   * with the dial exactly at the extreme).
+   */
   const pitchScale = r / 90;
   const horizonOffset = safePitch * pitchScale;
 
@@ -168,10 +171,13 @@ export function AttitudeIndicator({
 
       <div style={HEADING_STRIP}>
         <div
-          // The ticker shares the strip's width (inset:0), so translateX(50%)
-          // shifts the whole tick row right by stripWidth/2, combined with
-          // the per-degree shift this puts the current-heading tick directly
-          // under the centred pointer instead of at the strip's left edge.
+          /**
+           * The ticker shares the strip's width (inset:0), so
+           * translateX(50%) shifts the whole tick row right by
+           * stripWidth/2, combined with the per-degree shift this puts
+           * the current-heading tick directly under the centred pointer
+           * instead of at the strip's left edge.
+           */
           style={{
             ...HEADING_TICKER,
             transform: `translateX(calc(50% - ${safeHeading * headingPxPerDeg}px))`,
@@ -242,10 +248,13 @@ function headingMarkers(every: number): number[] {
   return out;
 }
 
-// Structural inline styles (CSS-var tokens): a bespoke attitude readout, no
-// reusable ui-kit primitive fits, so the layout stays local. Off-scale font
-// sizes (9/14px) and the 80ms heading chase are deliberately literal (see each
-// note) and were already literal in the styled blocks this replaces.
+/**
+ * Structural inline styles (CSS-var tokens): a bespoke attitude readout,
+ * no reusable ui-kit primitive fits, so the layout stays local. Off-scale
+ * font sizes (9/14px) and the 80ms heading chase are deliberately literal
+ * (see each note) and were already literal in the styled blocks this
+ * replaces.
+ */
 
 const WRAP: CSSProperties = {
   display: "flex",
@@ -265,11 +274,14 @@ const HEADING_STRIP: CSSProperties = {
 const HEADING_TICKER: CSSProperties = {
   position: "absolute",
   inset: 0,
-  // The ticks position absolutely against the parent, so transform on the
-  // wrapper just shifts them as a group without affecting the pointer.
-  // Off the motion scale on purpose: an 80ms chase on live heading, not a
-  // UI-motion choice. --duration-instant is the hover rung, and retuning it
-  // must not change how the strip tracks telemetry.
+  /**
+   * The ticks position absolutely against the parent, so transform on
+   * the wrapper just shifts them as a group without affecting the
+   * pointer. Off the motion scale on purpose: an 80ms chase on live
+   * heading, not a UI-motion choice. --duration-instant is the hover
+   * rung, and retuning it must not change how the strip tracks
+   * telemetry.
+   */
   transition: "transform 80ms linear",
 };
 
@@ -277,11 +289,14 @@ const HEADING_TICK: CSSProperties = {
   position: "absolute",
   top: 0,
   bottom: 0,
-  // The tick container shrinks to fit its label, so anchoring with just a
-  // left:Xpx style puts the LEFT EDGE at that position and the visible tick +
-  // label end up offset by half the container's intrinsic width.
-  // translateX(-50%) centres the visible content on the anchor so the
-  // current-heading tick lines up under the fixed pointer at strip centre.
+  /**
+   * The tick container shrinks to fit its label, so anchoring with just
+   * a left:Xpx style puts the LEFT EDGE at that position and the
+   * visible tick + label end up offset by half the container's
+   * intrinsic width. translateX(-50%) centres the visible content on
+   * the anchor so the current-heading tick lines up under the fixed
+   * pointer at strip centre.
+   */
   transform: "translateX(-50%)",
   display: "flex",
   flexDirection: "column",
@@ -295,10 +310,12 @@ const HEADING_TICK_MARK: CSSProperties = {
 };
 
 const HEADING_TICK_LABEL: CSSProperties = {
-  // Off the type scale: this label sits under a 6px tick mark inside
-  // HeadingStrip's fixed 22px, which leaves ~20px after its border.
-  // --font-size-2xs is 11px on a coarse pointer and the strip's
-  // overflow: hidden clips the label at that size.
+  /**
+   * Off the type scale: this label sits under a 6px tick mark inside
+   * HeadingStrip's fixed 22px, which leaves ~20px after its border.
+   * --font-size-2xs is 11px on a coarse pointer and the strip's
+   * overflow: hidden clips the label at that size.
+   */
   fontSize: "9px",
   color: "var(--color-text-muted)",
   marginTop: "var(--space-hair)",
@@ -322,12 +339,15 @@ const CELL: CSSProperties = {
   padding: "var(--space-2) 0",
 };
 
-// Lab and Val stay off the type scale: their rendered heights are two of the
-// terms in Navball's verticalReserve = 74, the bare JS number its
-// ResizeObserver subtracts before sizing the dial. The tokens grow this column
-// ~2px on desktop and ~4px on a coarse pointer while 74 does not move, which is
-// what pushes the strip and readout past the Panel's bottom edge in the
-// wide-and-short (mobile 9x8) case that reserve exists for.
+/**
+ * Lab and Val stay off the type scale: their rendered heights are two of
+ * the terms in Navball's verticalReserve = 74, the bare JS number its
+ * ResizeObserver subtracts before sizing the dial. The tokens grow this
+ * column ~2px on desktop and ~4px on a coarse pointer while 74 does not
+ * move, which is what pushes the strip and readout past the Panel's
+ * bottom edge in the wide-and-short (mobile 9x8) case that reserve
+ * exists for.
+ */
 const LAB: CSSProperties = {
   fontSize: "9px",
   color: "var(--color-text-faint)",

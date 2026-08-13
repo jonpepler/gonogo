@@ -154,12 +154,15 @@ describe("transferData bridge", () => {
     expect(grid.best && grid.best.deltaV > 0).toBe(true);
   });
 
-  // Correctness oracle (main's brief): a correct Earth→Mars window is a fully
-  // solved SMOOTH BOWL with a single central minimum, that, and only that,
-  // contours to the canonical nested-bullseye porkchop. Holes, edge minima or
-  // corners that beat the centre would mean the grid (not the visuals) is wrong.
-  // `nowUt` sits well before the window so the departure axis isn't clamped and
-  // the bowl is symmetric around its known optimum (Earth→Mars ideal at UT 0).
+  /**
+   * Correctness oracle: a correct Earth→Mars window is a fully solved
+   * SMOOTH BOWL with a single central minimum, that, and only that, contours
+   * to the canonical nested-bullseye porkchop. Holes, edge minima or corners
+   * that beat the centre would mean the grid (not the visuals) is wrong.
+   * `nowUt` sits well before the window so the departure axis isn't clamped
+   * and the bowl is symmetric around its known optimum (Earth→Mars ideal at
+   * UT 0).
+   */
   it("buildTransferPorkchop is a hole-free bowl with an interior minimum", () => {
     const N = 16;
     const grid = buildTransferPorkchop({

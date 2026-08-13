@@ -108,13 +108,14 @@ describe("buildKosWrapper", () => {
       version: "h",
       args: [],
     });
-    // The wrapper text must not contain a contiguous parser sentinel
-    // anywhere: `[KOSDATA]` and `[/KOSDATA]` would lock the data-source
-    // parser onto the wrapper's REPL echo before the script runs.
+    /**
+     * The wrapper text must not contain a contiguous parser sentinel
+     * anywhere: `[KOSDATA]` and `[/KOSDATA]` would lock the data-source
+     * parser onto the wrapper's REPL echo before the script runs.
+     */
     expect(out).not.toContain("[KOSDATA]");
     expect(out).not.toContain("[/KOSDATA]");
-    // The split point is right after the leading `[`, so each piece is a
-    // separate string concatenation. Spot-check the canonical form.
+    // The split point is right after the leading `[`, so each piece is a separate string concatenation. Spot-check the canonical form.
     expect(out).toContain(`"[" + "KOSDATA]value="`);
     expect(out).toContain(`"[" + "/KOSDATA]"`);
   });
@@ -126,10 +127,12 @@ describe("buildKosWrapper", () => {
       version: "h",
       args: [],
     });
-    // The wrapper text must not contain a contiguous `[KOSDATA:my-topic]`
-    // anywhere: leaving the open marker intact pairs with a later
-    // `[/KOSDATA]` from the real script's PRINT and the lazy regex
-    // captures the wrapper source as the payload.
+    /**
+     * The wrapper text must not contain a contiguous `[KOSDATA:my-topic]`
+     * anywhere: leaving the open marker intact pairs with a later
+     * `[/KOSDATA]` from the real script's PRINT and the lazy regex captures
+     * the wrapper source as the payload.
+     */
     expect(out).not.toContain("[KOSDATA:my-topic]");
     expect(out).not.toContain("[/KOSDATA]");
     expect(out).toContain(`"[" + "KOSDATA:my-topic]value="`);

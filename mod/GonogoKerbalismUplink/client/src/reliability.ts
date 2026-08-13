@@ -1,31 +1,36 @@
-// This Uplink's namespace of reliability.summary's provider extension bag: the
-// typed half, which is deliberately NOT in core.
-//
-// `reliability.*` is a Kernel-elected capability, so its payload is a single shared
-// shape core declares and whichever backend won the election fills. Core's generated
-// `ReliabilitySummary.extensions` is opaque by construction (`ProviderExtensions` =
-// a record of `unknown`): core cannot know a provider's shape, and a generated type
-// that pretended to would be the closed-enum mistake the open `SitrepUnit` union
-// already refused once. So the type lives HERE, in the package that also writes the
-// sub-tree server-side, mirroring how an augment slot's filler "is always part of
-// its OWN package's compiled program".
-//
-// A consuming widget therefore imports `readKerbalismReliabilityExt` from this
-// package rather than reaching into `summary.extensions?.kerbalism` and casting at
-// the call site. That is the whole boundary: core stays open and opaque, the
-// provider supplies the type at its own edge.
-
+/**
+ * This Uplink's namespace of reliability.summary's provider extension bag:
+ * the typed half, which is deliberately NOT in core.
+ *
+ * `reliability.*` is a Kernel-elected capability, so its payload is a
+ * single shared shape core declares and whichever backend won the election
+ * fills. Core's generated `ReliabilitySummary.extensions` is opaque by
+ * construction (`ProviderExtensions` = a record of `unknown`): core cannot
+ * know a provider's shape, and a generated type that pretended to would be
+ * the closed-enum mistake the open `SitrepUnit` union already refused
+ * once. So the type lives HERE, in the package that also writes the
+ * sub-tree server-side, mirroring how an augment slot's filler "is always
+ * part of its OWN package's compiled program".
+ *
+ * A consuming widget therefore imports `readKerbalismReliabilityExt` from
+ * this package rather than reaching into `summary.extensions?.kerbalism`
+ * and casting at the call site. That is the whole boundary: core stays
+ * open and opaque, the provider supplies the type at its own edge.
+ */
 import {
   PROVIDER_EXTENSIONS_FIELD,
   type ReliabilitySummary,
   registerProviderExtensionShape,
 } from "@ksp-gonogo/sitrep-sdk";
 import type { KerbalismReliabilityExt } from "./__generated__/contract";
-// Side-effect import: `topics.ts` feeds this Uplink's generated TYPE unit/shape
-// maps into the SDK's type-keyed registry, which is what `registerProviderExtensionShape`
-// below resolves `"KerbalismReliabilityExt"` through. Imported here, not just from
-// the package entry, so the two halves cannot come apart for a consumer that reaches
-// this module directly.
+/**
+ * Side-effect import: `topics.ts` feeds this Uplink's generated TYPE
+ * unit/shape maps into the SDK's type-keyed registry, which is what
+ * `registerProviderExtensionShape` below resolves
+ * `"KerbalismReliabilityExt"` through. Imported here, not just from the
+ * package entry, so the two halves cannot come apart for a consumer that
+ * reaches this module directly.
+ */
 import "./topics";
 
 export type { KerbalismReliabilityExt };
@@ -47,14 +52,16 @@ export const RELIABILITY_SUMMARY_TOPIC = "reliability.summary";
  */
 const KERBALISM_RELIABILITY_EXT_TYPE = "KerbalismReliabilityExt";
 
-// The RUNTIME half, and it is not optional: without it every quantity in the
-// namespace arrives as a bare number while ./__generated__/contract.ts still types
-// it `Value<"h">`/`Value<"count">`. `wrapTopicPayload` walks a payload's declared
-// shapes from the GENERATED maps, and no generated map can name a provider's
-// sub-tree of a core payload, so the bag is routed through its own registry
-// instead. `reliability.test.ts` proves it at decode time through a real
-// TelemetryClient, and proves it non-vacuously by going red when this call is
-// removed.
+/**
+ * The RUNTIME half, and it is not optional: without it every quantity in
+ * the namespace arrives as a bare number while ./__generated__/contract.ts
+ * still types it `Value<"h">`/`Value<"count">`. `wrapTopicPayload` walks a
+ * payload's declared shapes from the GENERATED maps, and no generated map
+ * can name a provider's sub-tree of a core payload, so the bag is routed
+ * through its own registry instead. `reliability.test.ts` proves it at
+ * decode time through a real TelemetryClient, and proves it non-vacuously
+ * by going red when this call is removed.
+ */
 registerProviderExtensionShape(
   RELIABILITY_SUMMARY_TOPIC,
   KERBALISM_RELIABILITY_PROVIDER_ID,

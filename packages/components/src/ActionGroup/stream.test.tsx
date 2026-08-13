@@ -10,10 +10,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { ActionGroupComponent } from "./index";
 
-// Rendered trees, tracked so teardown can unmount them BEFORE clearing the
-// action-handler registry: a still-mounted widget re-rendering on that
-// notification is a state update outside act(), the documented anti-pattern
-// in CLAUDE.md.
+/**
+ * Rendered trees, tracked so teardown can unmount them BEFORE clearing the
+ * action-handler registry: a still-mounted widget re-rendering on that
+ * notification is a state update outside act(), the documented anti-pattern
+ * in CLAUDE.md.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {
@@ -37,9 +39,9 @@ const STOCK_GROUPS_ALL_OFF = Array.from({ length: 10 }, (_, i) => ({
 /**
  * The toggle -> absolute command bridge, proven for a representative stock
  * singleton (SAS) and Abort: `ActionGroupComponent` firing a toggle dispatches
- * the new `vessel.control.set*` COMMAND directly via `useCommand`
- * (delayed-command-ux robotics-audit migration), unconditionally, no
- * carried-channels gate and no legacy `DataSource.execute()` fallback: every
+ * the new `vessel.control.set*` COMMAND directly via `useCommand`,
+ * unconditionally, no carried-channels gate and no legacy
+ * `DataSource.execute()` fallback: every
  * vessel command widget on this pattern (MechJeb, RoboticsConsole,
  * RotorTachometer) dispatches the same way.
  *

@@ -22,10 +22,12 @@ import {
 } from "@ksp-gonogo/ui-kit";
 import type { ReactNode } from "react";
 import { magnitudeOf, type Quantityish } from "../shared/magnitude";
-// Side-effect import: the widget's own `crew-status.badges` panel-badge
-// self-contribution (the info-tone "N/M aboard" header chip) registers on
-// module load, see that file's own doc comment for why it lives apart from
-// the per-row AugmentSlot declarations below.
+/**
+ * Side-effect import: the widget's own `crew-status.badges` panel-badge
+ * self-contribution (the info-tone "N/M aboard" header chip) registers on
+ * module load, see that file's own doc comment for why it lives apart from
+ * the per-row AugmentSlot declarations below.
+ */
 import "./badge";
 
 /**
@@ -101,17 +103,17 @@ function avatarCellSizePx(containerWidthPx: number): number {
 
 type CrewStatusConfig = Record<string, never>;
 
-// -----------------------------------------------------------------------
-// EVA suit resources (additive; only meaningful while the active vessel IS
-// an EVA kerbal). A stock KSP EVA kerbal is a real Vessel with its own
-// resource-carrying Part (Kerbalism source, System/Callbacks.cs's
-// ToEVA/DelayedOnEVA on GameEvents.onCrewOnEva), so the already-existing,
-// already-consumed `vessel.resources` Topic (see FuelStatus) works against
-// it unchanged - no new wire protocol needed. Kerbalism's default profile
-// (GameData/KerbalismConfig/Profiles/Default.cfg) attaches exactly two
-// resources with a nonzero `on_eva`: ElectricCharge and Oxygen. Read here as
-// plain resource-name lookups, no Kerbalism-specific shape.
-// -----------------------------------------------------------------------
+/**
+ * EVA suit resources (additive; only meaningful while the active vessel IS
+ * an EVA kerbal). A stock KSP EVA kerbal is a real Vessel with its own
+ * resource-carrying Part (Kerbalism source, System/Callbacks.cs's
+ * ToEVA/DelayedOnEVA on GameEvents.onCrewOnEva), so the already-existing,
+ * already-consumed `vessel.resources` Topic (see FuelStatus) works against
+ * it unchanged - no new wire protocol needed. Kerbalism's default profile
+ * (GameData/KerbalismConfig/Profiles/Default.cfg) attaches exactly two
+ * resources with a nonzero `on_eva`: ElectricCharge and Oxygen. Read here as
+ * plain resource-name lookups, no Kerbalism-specific shape.
+ */
 
 interface SuitResourceReadout {
   current: number;
@@ -177,16 +179,16 @@ function EvaSuitReadout({
   );
 }
 
-// ---------------------------------------------------------------------------
-// The `crew-status.badges` slot contract (see augment-slot-map)
-//
-// A per-crew-row inline badges slot: a future Kerbalism `Habitat`/`Radiation`
-// Uplink can badge each kerbal with comfort/radiation-dose without leaving this
-// widget. Because the slot renders once PER ROW, its props MUST carry the crew
-// member's identity so the augment badges the right kerbal, `crewName` is that
-// identity (the only per-kerbal handle Telemachus/Sitrep exposes here), and
-// `crewIndex` disambiguates in the (legal) case of two kerbals sharing a name.
-// ---------------------------------------------------------------------------
+/**
+ * The `crew-status.badges` slot contract.
+ *
+ * A per-crew-row inline badges slot: a future Kerbalism `Habitat`/`Radiation`
+ * Uplink can badge each kerbal with comfort/radiation-dose without leaving this
+ * widget. Because the slot renders once PER ROW, its props MUST carry the crew
+ * member's identity so the augment badges the right kerbal, `crewName` is that
+ * identity (the only per-kerbal handle Telemachus/Sitrep exposes here), and
+ * `crewIndex` disambiguates in the (legal) case of two kerbals sharing a name.
+ */
 
 /** Props passed to every `crew-status.badges` augment, one per crew row. */
 export interface CrewBadgeContext {
@@ -196,34 +198,36 @@ export interface CrewBadgeContext {
   crewIndex: number;
 }
 
-// Declaration-merge the slot id → props type into core's `SlotRegistry`.
-// Co-located here (not in a shared central file) so parallel slot work in
-// other widgets can't collide. Makes `registerAugment({ augments:
-// "crew-status.badges" })` and `<AugmentSlot name="crew-status.badges"
-// props={...} />` type-check precisely against `CrewBadgeContext`.
+/**
+ * Declaration-merge the slot id → props type into core's `SlotRegistry`.
+ * Co-located here (not in a shared central file) so parallel slot work in
+ * other widgets can't collide. Makes `registerAugment({ augments:
+ * "crew-status.badges" })` and `<AugmentSlot name="crew-status.badges"
+ * props={...} />` type-check precisely against `CrewBadgeContext`.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "crew-status.badges": CrewBadgeContext;
   }
 }
 
-// ---------------------------------------------------------------------------
-// The `crew-status.avatar` slot contract (see augment-slot-map)
-//
-// A per-crew-row LEADING square cell (left of the name): the SDK-independent
-// shell of a per-kerbal avatar/portrait. An Uplink can register an augment
-// that fills it with a live face, keyed by kerbal identity. Same per-row
-// keying as `crew-status.badges`, `crewName` is the augment's identity
-// handle and `crewIndex` disambiguates duplicate names. The cell itself is
-// only reserved while at least one augment is bound to this slot at all
-// (`avatarAugmentPresent`, `renderBody` below); with no avatar-providing
-// Uplink installed, no cell is rendered and the row's leading space goes to
-// the name instead, not a same-size empty placeholder. Once an Uplink IS
-// providing avatars, the cell renders as usual, and for any one kerbal that
-// Uplink has nothing to show for (avatar source disabled, kerbal not seated),
-// the cell renders blank rather than a placeholder: the avatar augment is
-// entirely optional, both at the slot level and per-kerbal.
-// ---------------------------------------------------------------------------
+/**
+ * The `crew-status.avatar` slot contract.
+ *
+ * A per-crew-row LEADING square cell (left of the name): the SDK-independent
+ * shell of a per-kerbal avatar/portrait. An Uplink can register an augment
+ * that fills it with a live face, keyed by kerbal identity. Same per-row
+ * keying as `crew-status.badges`, `crewName` is the augment's identity
+ * handle and `crewIndex` disambiguates duplicate names. The cell itself is
+ * only reserved while at least one augment is bound to this slot at all
+ * (`avatarAugmentPresent`, `renderBody` below); with no avatar-providing
+ * Uplink installed, no cell is rendered and the row's leading space goes to
+ * the name instead, not a same-size empty placeholder. Once an Uplink IS
+ * providing avatars, the cell renders as usual, and for any one kerbal that
+ * Uplink has nothing to show for (avatar source disabled, kerbal not seated),
+ * the cell renders blank rather than a placeholder: the avatar augment is
+ * entirely optional, both at the slot level and per-kerbal.
+ */
 
 /** Props passed to every `crew-status.avatar` augment, one per crew row. */
 export interface CrewAvatarContext {
@@ -239,21 +243,21 @@ declare module "@ksp-gonogo/core" {
   }
 }
 
-// ---------------------------------------------------------------------------
-// The `crew-status.survival` slot contract (see augment-slot-map)
-//
-// A per-crew-row section slot, directly below each roster row: the generic
-// home for a per-kerbal survival readout (death clock, worst rule, degen).
-// This widget carries NO Kerbalism-specific reads itself (it used to, the
-// Kerbalism crew-rules and life-support Topics were read inline here; that
-// contaminated the vanilla roster with a Kerbalism concept and has moved
-// wholesale to the Kerbalism Uplink's own `crew-status-survival` augment,
-// mod/GonogoKerbalismUplink/client/src/CrewSurvival). Same per-row keying as
-// `crew-status.badges`/`.avatar`: `crewName` is the augment's identity
-// handle, `crewIndex` disambiguates duplicate names. Renders nothing when no
-// augment is bound (no Uplink, or the Uplink has nothing to show for this
-// kerbal), so the roster degrades gracefully exactly like the avatar slot.
-// ---------------------------------------------------------------------------
+/**
+ * The `crew-status.survival` slot contract.
+ *
+ * A per-crew-row section slot, directly below each roster row: the generic
+ * home for a per-kerbal survival readout (death clock, worst rule, degen).
+ * This widget carries NO Kerbalism-specific reads itself (it used to, the
+ * Kerbalism crew-rules and life-support Topics were read inline here; that
+ * contaminated the vanilla roster with a Kerbalism concept and has moved
+ * wholesale to the Kerbalism Uplink's own `crew-status-survival` augment,
+ * mod/GonogoKerbalismUplink/client/src/CrewSurvival). Same per-row keying as
+ * `crew-status.badges`/`.avatar`: `crewName` is the augment's identity
+ * handle, `crewIndex` disambiguates duplicate names. Renders nothing when no
+ * augment is bound (no Uplink, or the Uplink has nothing to show for this
+ * kerbal), so the roster degrades gracefully exactly like the avatar slot.
+ */
 
 /** Props passed to every `crew-status.survival` augment, one per crew row. */
 export interface CrewSurvivalSlotContext {
@@ -269,19 +273,19 @@ declare module "@ksp-gonogo/core" {
   }
 }
 
-// ---------------------------------------------------------------------------
-// The `crew-status.summary` slot contract (see augment-slot-map)
-//
-// A WHOLE-WIDGET section slot, rendered once above the roster rather than
-// once per kerbal: the generic home for a status that affects the whole
-// crew together, not any one of them individually (e.g. a Kerbalism vessel
-// radiation-environment reading). Unlike `.badges`/`.avatar`/`.survival`
-// above, this carries no per-kerbal identity, there is exactly one instance
-// of it per widget, mirroring `ThermalStatus`'s `thermal-status.badges`
-// slot (`ThermalStatus/index.tsx`): no props, an empty object contract.
-// Renders nothing when no augment is bound, so the roster degrades
-// gracefully exactly like the other slots.
-// ---------------------------------------------------------------------------
+/**
+ * The `crew-status.summary` slot contract.
+ *
+ * A WHOLE-WIDGET section slot, rendered once above the roster rather than
+ * once per kerbal: the generic home for a status that affects the whole
+ * crew together, not any one of them individually (e.g. a Kerbalism vessel
+ * radiation-environment reading). Unlike `.badges`/`.avatar`/`.survival`
+ * above, this carries no per-kerbal identity, there is exactly one instance
+ * of it per widget, mirroring `ThermalStatus`'s `thermal-status.badges`
+ * slot (`ThermalStatus/index.tsx`): no props, an empty object contract.
+ * Renders nothing when no augment is bound, so the roster degrades
+ * gracefully exactly like the other slots.
+ */
 
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
@@ -333,14 +337,18 @@ function CrewStatusComponent({
   // channel (map-topic.ts), read via `useStream` like the other derived reads.
   const isEVA = useStream<VesselState>("vessel.state")?.isEVA;
 
-  // Connectivity indicator (mirroring the WarpControl pilot): count, roster,
-  // and capacity all land on the same `vessel.crew` wire channel, so
-  // `v.crewCount`'s stream status is representative of the whole trio.
+  /**
+   * Connectivity indicator (mirroring the WarpControl pilot): count, roster,
+   * and capacity all land on the same `vessel.crew` wire channel, so
+   * `v.crewCount`'s stream status is representative of the whole trio.
+   */
 
-  // EVA suit resources - additive, only relevant while the active vessel IS
-  // an EVA kerbal (see the EvaSuitReadout block comment above). Read
-  // unconditionally (stable hook order); undefined whenever no Uplink
-  // publishes `vessel.resources` or the active vessel isn't an EVA kerbal.
+  /**
+   * EVA suit resources - additive, only relevant while the active vessel IS
+   * an EVA kerbal (see the EvaSuitReadout block comment above). Read
+   * unconditionally (stable hook order); undefined whenever no Uplink
+   * publishes `vessel.resources` or the active vessel isn't an EVA kerbal.
+   */
   const resources = useTelemetry("vessel.resources");
   const suitOxygen = isEVA
     ? toSuitResourceReadout(resources?.resources?.Oxygen)
@@ -349,11 +357,13 @@ function CrewStatusComponent({
     ? toSuitResourceReadout(resources?.resources?.ElectricCharge)
     : undefined;
 
-  // Avatar cell width tracks the roster's own measured content width (see
-  // `avatarCellSizePx`'s doc comment above for why this is a real
-  // `ResizeObserver` measurement, not a viewport-relative `vw` clamp).
-  // Called unconditionally, ahead of the `showRoster` early return below, so
-  // hook order stays stable across renders regardless of which branch fires.
+  /**
+   * Avatar cell width tracks the roster's own measured content width (see
+   * `avatarCellSizePx`'s doc comment above for why this is a real
+   * `ResizeObserver` measurement, not a viewport-relative `vw` clamp).
+   * Called unconditionally, ahead of the `showRoster` early return below, so
+   * hook order stays stable across renders regardless of which branch fires.
+   */
   const { ref: rosterWidthRef, size: rosterSize } =
     useElementSize<HTMLDivElement>(AVATAR_MEASURE_SEED);
   const avatarSizePx = avatarCellSizePx(rosterSize.w);
@@ -391,12 +401,14 @@ function CrewStatusComponent({
     );
   }
 
-  // Headcount ("N/M aboard") moved off this body-level caption entirely, an
-  // info-tone `crew-status.badges` self-contribution (`./badge.ts`) now
-  // carries it as a header panel badge instead, the same badge system the
-  // Kerbalism Uplink's nogo-tone crew-critical badge already rides. Only the
-  // EVA marker is left for this line to carry; when the vessel isn't an EVA
-  // kerbal there's nothing left to show, and the line drops entirely.
+  /**
+   * Headcount ("N/M aboard") moved off this body-level caption entirely, an
+   * info-tone `crew-status.badges` self-contribution (`./badge.ts`) now
+   * carries it as a header panel badge instead, the same badge system the
+   * Kerbalism Uplink's nogo-tone crew-critical badge already rides. Only the
+   * EVA marker is left for this line to carry; when the vessel isn't an EVA
+   * kerbal there's nothing left to show, and the line drops entirely.
+   */
   const crewSummary = known && isEVA === true ? "EVA" : "";
 
   return (
@@ -432,10 +444,12 @@ function renderBody({
 }): React.ReactNode {
   if (!known) return <EmptyState>Waiting for telemetry...</EmptyState>;
 
-  // Only conclude "Unmanned" once the headcount itself has arrived. If
-  // `crewCapacity` (or another key) lands before `crewCount`, `known` is
-  // already true but `crewCount` is still undefined, treating that as
-  // unmanned flashes a wrong "no kerbals aboard" label on a crewed vessel.
+  /**
+   * Only conclude "Unmanned" once the headcount itself has arrived. If
+   * `crewCapacity` (or another key) lands before `crewCount`, `known` is
+   * already true but `crewCount` is still undefined, treating that as
+   * unmanned flashes a wrong "no kerbals aboard" label on a crewed vessel.
+   */
   if (crewCount === undefined) {
     return <EmptyState>Waiting for telemetry...</EmptyState>;
   }
@@ -461,19 +475,23 @@ function renderBody({
     );
   }
 
-  // Non-reactive read, augments register at module load, before first render
-  // (same convention as FleetRoster's `updatesAugmentPresent`). Gates whether
-  // the leading avatar cell is reserved at all: with no Uplink providing
-  // avatars, no cell is rendered and that width goes back to the name instead
-  // of sitting empty behind a decorative dot that never signalled anything.
+  /**
+   * Non-reactive read, augments register at module load, before first render
+   * (same convention as FleetRoster's `updatesAugmentPresent`). Gates whether
+   * the leading avatar cell is reserved at all: with no Uplink providing
+   * avatars, no cell is rendered and that width goes back to the name instead
+   * of sitting empty behind a decorative dot that never signalled anything.
+   */
   const avatarAugmentPresent =
     getAugmentsForSlot("crew-status.avatar").length > 0;
 
   return (
-    // `gap="lg"` (12px, up from `sm`'s 4px): the between-ROW breathing room
-    // operator feedback flagged as too tight. This is the ONLY gap this fix
-    // touches, the within-row gaps below (avatar-to-text-block, name-row-to-
-    // survival-section) are unrelated and stay as they were.
+    /**
+     * `gap="lg"` (12px, up from `sm`'s 4px): the between-ROW breathing room
+     * operator feedback flagged as too tight. This is the ONLY gap this fix
+     * touches, the within-row gaps below (avatar-to-text-block, name-row-to-
+     * survival-section) are unrelated and stay as they were.
+     */
     <Stack as="ul" gap="lg" style={rosterListStyle}>
       {names.map((name, index) => {
         return (
@@ -561,8 +579,6 @@ function renderBody({
   );
 }
 
-// ── Avatar cell ──────────────────────────────────────────────────────────────
-
 // The augment slot layer fills the avatar cell and centres its content.
 const AVATAR_LAYER_STYLE = {
   position: "absolute",
@@ -621,8 +637,6 @@ function CrewAvatarCell({
   );
 }
 
-// ── Registration ──────────────────────────────────────────────────────────────
-
 registerComponent<CrewStatusConfig>({
   id: "crew-status",
   name: "Crew Status",
@@ -632,20 +646,22 @@ registerComponent<CrewStatusConfig>({
   defaultSize: { w: 6, h: 8 },
   minSize: { w: 3, h: 3 },
   component: CrewStatusComponent,
-  // Per-crew-row augment slots (augment-slot-map). All unfilled until an Uplink
-  // binds, the roster renders as before:
-  //   crew-status.badges, trailing inline badges (e.g. Kerbalism dose/comfort);
-  //     wraps under the name (Cluster `wrap`) rather than truncating it.
-  //   crew-status.avatar, leading square face cell (Uplink-provided avatar); only
-  //     reserved while an Uplink actually binds it, see `avatarAugmentPresent`.
-  //   crew-status.survival, per-row survival section (e.g. Kerbalism death
-  //     clock/worst rule), see that slot's own doc comment above. This widget
-  //     carries no Kerbalism-specific reads itself; the per-kerbal survival
-  //     model lives entirely in the Kerbalism Uplink's own Processor/augment
-  //     (mod/GonogoKerbalismUplink/client/src/CrewSurvival).
-  //   crew-status.summary, ONE whole-widget section above the roster (e.g. a
-  //     Kerbalism vessel radiation-environment reading), not per-kerbal, see
-  //     that slot's own doc comment above.
+  /**
+   * Per-crew-row augment slots. All unfilled until an Uplink binds, the
+   * roster renders as before:
+   *   crew-status.badges, trailing inline badges (e.g. Kerbalism dose/comfort);
+   *     wraps under the name (Cluster `wrap`) rather than truncating it.
+   *   crew-status.avatar, leading square face cell (Uplink-provided avatar); only
+   *     reserved while an Uplink actually binds it, see `avatarAugmentPresent`.
+   *   crew-status.survival, per-row survival section (e.g. Kerbalism death
+   *     clock/worst rule), see that slot's own doc comment above. This widget
+   *     carries no Kerbalism-specific reads itself; the per-kerbal survival
+   *     model lives entirely in the Kerbalism Uplink's own Processor/augment
+   *     (mod/GonogoKerbalismUplink/client/src/CrewSurvival).
+   *   crew-status.summary, ONE whole-widget section above the roster (e.g. a
+   *     Kerbalism vessel radiation-environment reading), not per-kerbal, see
+   *     that slot's own doc comment above.
+   */
   augmentSlots: [
     "crew-status.badges",
     "crew-status.avatar",
@@ -653,13 +669,15 @@ registerComponent<CrewStatusConfig>({
     "crew-status.summary",
   ],
   dataRequirements: ["v.crew", "v.crewCount", "v.crewCapacity", "v.isEVA"],
-  // `vessel.resources` is the (already-existing, already-consumed-by-
-  // FuelStatus) generic per-vessel resource Topic; here it feeds the EVA
-  // suit O2/EC readout, only relevant while the active vessel is an EVA
-  // kerbal. `optionalChannels` (not `channels`): the widget's core roster
-  // reads always work without it, so it must never gate the whole widget's
-  // mount the way a REQUIRED `channels` entry would (see `RequiresGuard`'s
-  // own doc comment on the distinction).
+  /**
+   * `vessel.resources` is the (already-existing, already-consumed-by-
+   * FuelStatus) generic per-vessel resource Topic; here it feeds the EVA
+   * suit O2/EC readout, only relevant while the active vessel is an EVA
+   * kerbal. `optionalChannels` (not `channels`): the widget's core roster
+   * reads always work without it, so it must never gate the whole widget's
+   * mount the way a REQUIRED `channels` entry would (see `RequiresGuard`'s
+   * own doc comment on the distinction).
+   */
   optionalChannels: ["vessel.resources"],
   defaultConfig: {},
   actions: [],

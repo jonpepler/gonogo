@@ -31,12 +31,14 @@ import {
 
 type SpaceCenterStatusConfig = Record<string, never>;
 
-// Augment slots (Uplink architecture §4 / augment-slot-map: space-center-status).
-// `.sections` appends extra facility-level rows to the body (e.g. a KSC-expansion
-// Uplink's custom facilities / ground-based life-support depot); `.badges` is the
-// broad header escape-hatch that drops an inline badge next to the title. Both are
-// plain markers with no slot props. Co-located `SlotRegistry` declaration-merge
-// so parallel slot work doesn't collide on a shared central file.
+/**
+ * Augment slots for space-center-status.
+ * `.sections` appends extra facility-level rows to the body (e.g. a KSC-expansion
+ * Uplink's custom facilities / ground-based life-support depot); `.badges` is the
+ * broad header escape-hatch that drops an inline badge next to the title. Both are
+ * plain markers with no slot props. Co-located `SlotRegistry` declaration-merge
+ * so parallel slot work doesn't collide on a shared central file.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "space-center-status.sections": Record<string, never>;
@@ -72,8 +74,8 @@ type FacilityKey =
  * CareerViewProvider.cs's `BuildFacilities`) is keyed by the full
  * `SpaceCenterFacility` enum name, not this widget's short codes, maps
  * each enum name onto its `FacilityKey`. Names match the real wire
- * (decompile-confirmed, career-capture-extend-report.md; also the exact 9
- * keys observed in a real `career.status` capture).
+ * (decompile-confirmed; also the exact 9 keys observed in a real
+ * `career.status` capture).
  */
 const ENUM_FACILITY_TO_KEY: Readonly<Record<string, FacilityKey>> = {
   LaunchPad: "launchPad",
@@ -123,13 +125,12 @@ export type FacilityLevels = Partial<Record<FacilityKey, FacilityLevel>>;
  * Defensive parser for facility-level payloads. Accepts BOTH the legacy
  * `kc.facilityLevels` shape (keyed by short code: launchPad/vab/sph/...:
  * `{ level, max, upgradeFunds, currentLevelText, nextLevelText }`) and the
- * `career.status.facilities` wire shape, keyed by the
- * full `SpaceCenterFacility` enum name: `{ currentTier, maxTier,
- * upgradeCost }`, career-capture-extend-report.md). The new wire's
- * `currentTier`/`maxTier` are the SAME 0-based tier-index convention this
- * widget already assumes for `level`/`max` (decompile-confirmed: a fully
- * upgraded facility reports `currentTier === maxTier`, both actual-tier-
- * minus-one: see the "Lvl N of M" comment in the render below), so they
+ * `career.status.facilities` wire shape, keyed by the full
+ * `SpaceCenterFacility` enum name: `{ currentTier, maxTier, upgradeCost }`.
+ * The new wire's `currentTier`/`maxTier` are the SAME 0-based tier-index
+ * convention this widget already assumes for `level`/`max` (decompile-confirmed:
+ * a fully upgraded facility reports `currentTier === maxTier`, both
+ * actual-tier-minus-one: see the "Lvl N of M" comment in the render below), so they
  * map straight across with no reinterpretation. `upgradeCost` maps to
  * `upgradeFunds` 1:1; `null` (at max, or scene-gated) becomes `0`, the
  * existing "unknown or at max" sentinel. `currentLevelText`/`nextLevelText`
@@ -190,22 +191,25 @@ function SpaceCenterStatusComponent({
   w,
   h,
 }: Readonly<ComponentProps<SpaceCenterStatusConfig>>) {
-  // Canonical Topic reads (former Telemachus kc.*/career.* keys resolved
-  // through map-topic.ts):
-  //  - kc.facilityLevels -> career.status.facilities; parseFacilityLevels
-  //    accepts the enum-keyed currentTier/maxTier/upgradeCost shape
-  //    (career-capture-extend-report.md) alongside the legacy short-code shape.
-  //  - career.funds -> career.status.economy.funds (both off the one
-  //    career.status Topic read).
-  //  - kc.scene / kc.launchSite -> spaceCenter.scene.{scene,launchSite}
-  //    (plain fields on the one SpaceCenterScene Topic).
-  //  - kc.partsAvailable -> spaceCenter.partsAvailable.count.
-  //  - kc.padOccupied / kc.padVesselTitle -> the DERIVED spaceCenter.state
-  //    channel (space-center-state.ts, off spaceCenter.launchSites): read
-  //    via useStream, not a canonical one-arg Topic read.
-  // kc.upgradeFacility[...] (the spend command) still has no command home
-  // (KNOWN_COMMAND_GAPS) and falls back to legacy execute automatically,
-  // reads migrate first, commands come later.
+  /**
+   * Canonical Topic reads (former Telemachus kc.* / career.* keys resolved
+   * through map-topic.ts):
+   *  - kc.facilityLevels -> career.status.facilities; parseFacilityLevels
+   *    accepts the enum-keyed currentTier/maxTier/upgradeCost shape
+   *    alongside the legacy short-code shape.
+   *  - career.funds -> career.status.economy.funds (both off the one
+   *    career.status Topic read).
+   *  - kc.scene / kc.launchSite -> spaceCenter.scene.{scene,launchSite}
+   *    (plain fields on the one SpaceCenterScene Topic).
+   *  - kc.partsAvailable -> spaceCenter.partsAvailable.count.
+   *  - kc.padOccupied / kc.padVesselTitle -> the DERIVED spaceCenter.state
+   *    channel (space-center-state.ts, off spaceCenter.launchSites): read
+   *    via useStream, not a canonical one-arg Topic read.
+   *
+   * kc.upgradeFacility[...] (the spend command) still has no command home
+   * (KNOWN_COMMAND_GAPS) and falls back to legacy execute automatically,
+   * reads migrate first, commands come later.
+   */
   const careerStatus = useTelemetry("career.status");
   const facilitiesRaw = careerStatus?.facilities;
   // Magnitude: compared against an upgrade cost and rendered through this
@@ -220,9 +224,11 @@ function SpaceCenterStatusComponent({
   const spaceCenterState = useStream<SpaceCenterState>("spaceCenter.state");
   const padOccupied = spaceCenterState?.padOccupied;
   const padVesselTitle = spaceCenterState?.padVesselTitle ?? undefined;
-  // Facility upgrades are a KSC ground action with no vessel signal delay, so
-  // they dispatch at the meta-vantage (instant). The handle is contributed to
-  // the panel's delay rail by usePanelDelay below.
+  /**
+   * Facility upgrades are a KSC ground action with no vessel signal delay, so
+   * they dispatch at the meta-vantage (instant). The handle is contributed to
+   * the panel's delay rail by usePanelDelay below.
+   */
   const upgradeCmd = useCommand("career.facility.upgrade", {
     vantage: META_VANTAGE,
   });
@@ -230,23 +236,27 @@ function SpaceCenterStatusComponent({
 
   const facilities = parseFacilityLevels(facilitiesRaw);
 
-  // Upgrades work in the Space Center scene only, KSP's upgrade
-  // pipeline isn't safe to drive from elsewhere. Show the buttons
-  // anyway when scene is unknown (telemetry warmup) so the operator
-  // sees the affordance immediately when they walk back to SC.
+  /**
+   * Upgrades work in the Space Center scene only, KSP's upgrade
+   * pipeline isn't safe to drive from elsewhere. Show the buttons
+   * anyway when scene is unknown (telemetry warmup) so the operator
+   * sees the affordance immediately when they walk back to SC.
+   */
   const upgradesEnabled = scene === undefined || scene === "SpaceCenter";
 
   const cols = w ?? 6;
   const rows = h ?? 8;
   const showSubtitle = rows >= 4;
-  // 3-col grid only when the widget is wide enough for each cell to hold a
-  // facility name + tier + the multi-line tier text without clipping. At
-  // width 5 (e.g. the tall-narrow portrait aspect) three columns squeeze
-  // each cell to ~115px and the full-text bodies overflow horizontally
-  // ("* Max Size: Unlimit...", "Maneuve nodes"). Reflow those to 2 columns
-  // and drop the verbose tier text: the same affordance `compact` already
-  // gives the (tiny-bucketed) narrow grid. cols>=6 keeps the reviewed
-  // default-6x7 / wide / mobile layouts unchanged.
+  /**
+   * 3-col grid only when the widget is wide enough for each cell to hold a
+   * facility name + tier + the multi-line tier text without clipping. At
+   * width 5 (e.g. the tall-narrow portrait aspect) three columns squeeze
+   * each cell to ~115px and the full-text bodies overflow horizontally
+   * ("* Max Size: Unlimit...", "Maneuve nodes"). Reflow those to 2 columns
+   * and drop the verbose tier text: the same affordance `compact` already
+   * gives the (tiny-bucketed) narrow grid. cols>=6 keeps the reviewed
+   * default-6x7 / wide / mobile layouts unchanged.
+   */
   const compactGrid = cols < 6;
   const sizeBucket = getSizeBucket(w, h);
 
@@ -290,9 +300,8 @@ function SpaceCenterStatusComponent({
   return (
     <Panel
       panelTitle="SPACE CENTER"
-      /* Header escape-hatch slot (augment-slot-map ".badges broad
-         escape-hatch"): any Uplink can drop an inline badge next to the title.
-         Renders nothing until an augment binds it. */
+      /* Header escape-hatch slot: any Uplink can drop an inline badge
+         next to the title. Renders nothing until an augment binds it. */
       panelAside={<AugmentSlot name="space-center-status.badges" props={{}} />}
     >
       <Body>
@@ -309,13 +318,15 @@ function SpaceCenterStatusComponent({
         <FacilityGrid $compact={compactGrid}>
           {FACILITIES.map(({ key, label }) => {
             const f = facilities[key];
-            // Live curl 2026-05-13 confirmed: the fork's `max` field is the
-            // upgrade-count (KSP's `GetFacilityLevelCount`), not the
-            // tier-count. VAB returns `{level:2, max:2}` at full tier 3,
-            // launchPad returns `{level:1, max:2}` at tier 2. So the total
-            // number of tiers is `max + 1` and the operator-facing "Lvl N
-            // of M" should read `{level+1}/{max+1}`, matches KSP's stock
-            // R&D dialog which calls VAB tier 3 "Level 3".
+            /**
+             * Live curl 2026-05-13 confirmed: the fork's `max` field is the
+             * upgrade-count (KSP's `GetFacilityLevelCount`), not the
+             * tier-count. VAB returns `{level:2, max:2}` at full tier 3,
+             * launchPad returns `{level:1, max:2}` at tier 2. So the total
+             * number of tiers is `max + 1` and the operator-facing "Lvl N
+             * of M" should read `{level+1}/{max+1}`, matches KSP's stock
+             * R&D dialog which calls VAB tier 3 "Level 3".
+             */
             const atMax = !!f && f.max > 0 && f.level >= f.max;
             const displayLevel = f ? f.level + 1 : 0;
             const displayMax = f && f.max > 0 ? f.max + 1 : 0;
@@ -329,11 +340,13 @@ function SpaceCenterStatusComponent({
               !atMax &&
               f.upgradeFunds > 0 &&
               canAfford;
-            // Build a hover-tooltip body summarising the current tier's
-            // bullet-list and (if available) the next-tier preview. The
-            // newlines from the fork stay as \n, the browser's `title`
-            // attribute renders them with native multi-line wrapping in
-            // the OS-level tooltip on every major platform.
+            /**
+             * Build a hover-tooltip body summarising the current tier's
+             * bullet-list and (if available) the next-tier preview. The
+             * newlines from the fork stay as \n, the browser's `title`
+             * attribute renders them with native multi-line wrapping in
+             * the OS-level tooltip on every major platform.
+             */
             const tooltip = buildFacilityTooltip(label, f);
             const showFullTextBody =
               !compactGrid &&
@@ -343,10 +356,12 @@ function SpaceCenterStatusComponent({
               <FacilityCell key={key} title={tooltip || undefined}>
                 <FacilityLabel>{label}</FacilityLabel>
                 <FacilityValue
-                  // role="img" + aria-label so AT announces a coherent
-                  // "Launch Pad tier 2 of 3" instead of the "2 / 3" spans
-                  // read as fragments (and makes aria-label valid on the
-                  // otherwise-roleless value container).
+                  /**
+                   * role="img" + aria-label so AT announces a coherent
+                   * "Launch Pad tier 2 of 3" instead of the "2 / 3" spans
+                   * read as fragments (and makes aria-label valid on the
+                   * otherwise-roleless value container).
+                   */
                   role="img"
                   aria-label={
                     f && f.max > 0
@@ -406,10 +421,10 @@ function SpaceCenterStatusComponent({
           })}
         </FacilityGrid>
 
-        {/* Body slot (augment-slot-map: appended to the facility-level list).
-            A KSC-expansion Uplink can render extra facility rows here (custom
-            facilities / ground-based life-support depot). Renders nothing until
-            an augment binds it. */}
+        {/* Body slot, appended to the facility-level list. A KSC-expansion
+            Uplink can render extra facility rows here (custom facilities /
+            ground-based life-support depot). Renders nothing until an
+            augment binds it. */}
         <AugmentSlot name="space-center-status.sections" props={{}} />
 
         <Footer>
@@ -472,10 +487,12 @@ function UpgradeButton({
   );
 }
 
-// Multi-line tooltip body shown on cell hover. Combines current-tier
-// text with next-tier preview (when not at max) so the operator can
-// compare without opening anything. The browser renders \n natively
-// in title attributes on every major platform.
+/**
+ * Multi-line tooltip body shown on cell hover. Combines current-tier
+ * text with next-tier preview (when not at max) so the operator can
+ * compare without opening anything. The browser renders \n natively
+ * in title attributes on every major platform.
+ */
 function buildFacilityTooltip(label: string, f?: FacilityLevel): string {
   if (!f) return label;
   if (!f.currentLevelText && !f.nextLevelText) {
@@ -491,18 +508,18 @@ function buildFacilityTooltip(label: string, f?: FacilityLevel): string {
   return parts.join("\n");
 }
 
-// Compact funds for the tiny (2x3) bucket where the box is only ~2 grid
-// columns wide. Drops to whole-number k/M so the string stays 3-4 chars
-// ("290k", "78k", "13k"): the decimal form ("289.8k") overflows the
-// narrowest box. The full value lives in the cell's `title` attribute.
+/**
+ * Compact funds for the tiny (2x3) bucket where the box is only ~2 grid
+ * columns wide. Drops to whole-number k/M so the string stays 3-4 chars
+ * ("290k", "78k", "13k"): the decimal form ("289.8k") overflows the
+ * narrowest box. The full value lives in the cell's `title` attribute.
+ */
 function formatTinyFunds(value: number): string {
   const abs = Math.abs(value);
   if (abs >= 1_000_000) return `${Math.round(value / 1_000_000)}M`;
   if (abs >= 1_000) return `${Math.round(value / 1_000)}k`;
   return value.toFixed(0);
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const Body = styled(ScrollArea)`
   flex: 1;
@@ -784,8 +801,6 @@ const TinyPad = styled.span<{ $occupied: boolean }>`
   color: ${(p) =>
     p.$occupied ? "var(--color-accent-fg)" : "var(--color-text-faint)"};
 `;
-
-// ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<SpaceCenterStatusConfig>({
   id: "space-center-status",

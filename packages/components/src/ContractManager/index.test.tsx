@@ -143,10 +143,12 @@ describe("ContractManagerComponent", () => {
   });
 
   it("renders a bound augment once per contract row, carrying each contract's identity", async () => {
-    // A test Uplink binds `contract-manager.badges` and echoes the slot props
-    // back. Proves (a) the slot is exposed, (b) an augment composes into it,
-    // and (c) the per-row props carry the right contract identity + section.
-    // `requires` is omitted so no Domain presence gate applies.
+    /**
+     * A test Uplink binds `contract-manager.badges` and echoes the slot props
+     * back. Proves (a) the slot is exposed, (b) an augment composes into it,
+     * and (c) the per-row props carry the right contract identity + section.
+     * `requires` is omitted so no Domain presence gate applies.
+     */
     registerAugment<"contract-manager.badges">({
       id: "test-contract-badge",
       augments: "contract-manager.badges",

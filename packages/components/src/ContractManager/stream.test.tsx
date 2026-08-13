@@ -25,7 +25,7 @@ afterEach(() => {
   clearActionHandlers();
 });
 
-describe("ContractManager: genuinely runs off the stream (M3b career-detail batch)", () => {
+describe("ContractManager: genuinely runs off the stream (career-detail batch)", () => {
   it("renders active + offered contracts derived from career.status.contracts", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["career.status"],
@@ -114,10 +114,12 @@ describe("ContractManager: genuinely runs off the stream (M3b career-detail batc
     expect(
       screen.getByText("Test RT-10 solid fuel booster in flight"),
     ).toBeTruthy();
-    // Proves `contracts.completedRecent` genuinely routed off the stream
-    // too (not just active/offered): reflected in the subtitle's recent
-    // count, same "count changes" proof `index.test.tsx`'s legacy
-    // equivalent test uses.
+    /**
+     * Proves `contracts.completedRecent` genuinely routed off the stream
+     * too (not just active/offered): reflected in the subtitle's recent
+     * count, same "count changes" proof `index.test.tsx`'s legacy
+     * equivalent test uses.
+     */
     expect(visibleText()).toMatch(/1 active · 1 offered · 1 recent/i);
 
     teardownMockDataSource(legacyAux);

@@ -57,16 +57,18 @@ function buildReferenceCurve(
 function OrbitalAscentComponent({
   config,
 }: Readonly<ComponentProps<OrbitalAscentConfig>>) {
-  // Body name reads straight off the client-derived `vessel.state` channel
-  // (`parentBodyName`, an index→name display map: see `map-topic.ts`), so no
-  // Telemachus read-fallback is relied on for this read. The two plotted
-  // series (`v.altitude` / `v.horizontalVelocity`) are consumed only via the
-  // shared `GraphView` → `useDataSeries` path; both map to DERIVED
-  // `vessel.state.*` channels, which have a live value but NO buffered
-  // history, so `useDataSeries` structurally serves their windowed series off
-  // the legacy path (`TimelineStore.sampleRange` returns `undefined` for a
-  // derived topic: see that hook's doc). That is a shared-infra property,
-  // not a gap in this widget.
+  /**
+   * Body name reads straight off the client-derived `vessel.state` channel
+   * (`parentBodyName`, an index→name display map: see `map-topic.ts`), so no
+   * Telemachus read-fallback is relied on for this read. The two plotted
+   * series (`v.altitude` / `v.horizontalVelocity`) are consumed only via the
+   * shared `GraphView` → `useDataSeries` path; both map to DERIVED
+   * `vessel.state.*` channels, which have a live value but NO buffered
+   * history, so `useDataSeries` structurally serves their windowed series off
+   * the legacy path (`TimelineStore.sampleRange` returns `undefined` for a
+   * derived topic: see that hook's doc). That is a shared-infra property,
+   * not a gap in this widget.
+   */
   const bodyName = useStream<VesselState>("vessel.state")?.parentBodyName;
   const body = bodyName ? getBody(bodyName) : undefined;
 

@@ -1,11 +1,9 @@
 // SCANsat altimetry base-layer provider for MapView.
 //
-// Fills MapView's `map-view.base` STACKABLE slot (T8c,
-// docs/superpowers/plans/2026-07-18-mapview-overlay-host-foundation.md;
-// restacked per local_docs/spec-mapview-stackable-layers.md, 2026-07-20)
-// with a standalone colourised elevation surface: SCANsat's own
-// "Altimetry" map mode. Headless: renders no JSX, hands MapView a canvas
-// via `ctx.onLayer` whenever this layer's own per-instance `show` setting
+// Fills MapView's `map-view.base` STACKABLE slot with a standalone
+// colourised elevation surface: SCANsat's own "Altimetry" map mode.
+// Headless: renders no JSX, hands MapView a canvas via `ctx.onLayer`
+// whenever this layer's own per-instance `show` setting
 // (`ctx.augmentSettings[ALTIMETRY_LAYER_ID]?.show`, default true) is on.
 //
 // Draws ALONGSIDE `BiomeBase`: both register on `map-view.base` with
@@ -17,18 +15,17 @@
 // in KSP: registering this augment alone is NOT enough, see
 // `suppressesVanillaBase`'s own doc comment in packages/core/src/
 // augments.ts), MapView's stock body texture never paints, full stop
-// (spec: "don't like it, don't have the Uplink", meaning the Domain is
-// live, not merely that this client package is bundled).
+// ("don't like it, don't have the Uplink", meaning the Domain is live, not
+// merely that this client package is bundled).
 //
-// Per settled model point 2 (T8c task text): this is a standalone
-// colourised height surface REPLACING the map's base texture, not a tint
-// drawn on top of it: the old MapView-internal `useHeightCanvas`'s
-// baked-in ~0.7 ramp opacity is dropped; visibility now comes from the T4
-// coverage paint-gate MULTIPLIED by this layer's own `layerOpacity` (see
-// `paintTile.ts`'s `effectiveAlpha`): at the BOTTOM of the stack this
-// layer paints fully opaque (`layerOpacity = 1`) wherever it paints at
-// all, since there's no stock texture beneath it to show through once
-// vanilla is suppressed.
+// This is a standalone colourised height surface REPLACING the map's base
+// texture, not a tint drawn on top of it: the old MapView-internal
+// `useHeightCanvas`'s baked-in ~0.7 ramp opacity is dropped; visibility now
+// comes from the coverage paint-gate MULTIPLIED by this layer's own
+// `layerOpacity` (see `paintTile.ts`'s `effectiveAlpha`): at the BOTTOM of
+// the stack this layer paints fully opaque (`layerOpacity = 1`) wherever it
+// paints at all, since there's no stock texture beneath it to show through
+// once vanilla is suppressed.
 
 import {
   getBody,

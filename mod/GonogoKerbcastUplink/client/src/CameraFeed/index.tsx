@@ -32,7 +32,7 @@ registerComponent<CameraFeedConfig>({
   dataRequirements: ["vessel.comms", "comms.link", "comms.delay"],
   // Exposes an overlay slot (drawn over the video, passed the feed's pixel
   // dimensions + displayed camera id) and a broad badges escape-hatch slot in
-  // the feed header. No first-party augment fills either yet (Uplink spec §4).
+  // the feed header. No first-party augment fills either yet.
   augmentSlots: ["camera-feed.overlay", "camera-feed.badges"],
   defaultConfig: {
     flightId: null,

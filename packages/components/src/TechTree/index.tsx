@@ -46,13 +46,15 @@ export interface TechNode {
 }
 
 // ── Augment slot ──────────────────────────────────────────────────────────
-//
-// `tech-tree.badges` is a per-node inline badge slot: an Uplink can drop a
-// small indicator next to a node (the canonical use is a "which mod added this
-// node" tag once third-party parts flow through `tech.nodes`). Every node
-// surface: list rows, graph cards, and the detail panel, exposes the slot and
-// passes that node's identity as slot props, so the augment badges the right
-// node wherever it's rendered.
+
+/**
+ * `tech-tree.badges` is a per-node inline badge slot: an Uplink can drop a
+ * small indicator next to a node (the canonical use is a "which mod added
+ * this node" tag once third-party parts flow through `tech.nodes`). Every
+ * node surface: list rows, graph cards, and the detail panel, exposes the
+ * slot and passes that node's identity as slot props, so the augment badges
+ * the right node wherever it's rendered.
+ */
 
 /** Props passed to every `tech-tree.badges` augment: one per tech node. */
 export interface TechNodeBadgeContext {
@@ -60,11 +62,14 @@ export interface TechNodeBadgeContext {
   node: TechNode;
 }
 
-// Co-located declaration-merge of this widget's slot id → its props.
-// Kept next to the widget (not in a central registry file) so parallel slot work
-// on other widgets never collides on this seam. Makes `registerAugment({
-// augments: "tech-tree.badges" })` and `<AugmentSlot name="tech-tree.badges"
-// props={...} />` type-check precisely against `TechNodeBadgeContext`.
+/**
+ * Co-located declaration-merge of this widget's slot id → its props. Kept
+ * next to the widget (not in a central registry file) so parallel slot work
+ * on other widgets never collides on this seam. Makes `registerAugment({
+ * augments: "tech-tree.badges" })` and `<AugmentSlot
+ * name="tech-tree.badges" props={...} />` type-check precisely against
+ * `TechNodeBadgeContext`.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "tech-tree.badges": TechNodeBadgeContext;
@@ -77,17 +82,16 @@ declare module "@ksp-gonogo/core" {
  * "Researchable" | "Unavailable"` string) and the career-detail wire
  * shape (`career.status.tech.nodes`, CareerViewProvider.BuildTechNodes:
  * `unlocked: boolean`, no `state` at all: the server deliberately doesn't
- * compute the 3-state "Researchable" distinction, career-capture-extend-
- * report.md). When `state` is absent, derive it from `unlocked`
- * (`true` -> "Available", `false` -> "Unavailable"): `computeResearchable`
- * below already promotes some "Unavailable" nodes to researchable-now purely
- * from `state`/`parents`/`scienceCost`, exactly the client-side derivation
- * the extend session's doc comment anticipated. `description`/`parts` stay
- * empty on the new wire (no equivalent field), both already default
- * gracefully. Drops malformed entries; tolerates missing optional fields
- * (description, parts) so older Telemachus DLLs degrade gracefully, the
- * operator still sees title + scienceCost + state + parents even without
- * the 2026-05-13 fork additions.
+ * compute the 3-state "Researchable" distinction). When `state` is absent,
+ * derive it from `unlocked` (`true` -> "Available", `false` ->
+ * "Unavailable"): `computeResearchable` below already promotes some
+ * "Unavailable" nodes to researchable-now purely from
+ * `state`/`parents`/`scienceCost`. `description`/`parts` stay empty on the
+ * new wire (no equivalent field), both already default gracefully. Drops
+ * malformed entries; tolerates missing optional fields (description, parts)
+ * so older Telemachus DLLs degrade gracefully, the operator still sees
+ * title + scienceCost + state + parents even without the newer fork
+ * additions.
  */
 export function parseTechNodes(raw: unknown): TechNode[] | null {
   if (raw === null || raw === undefined) return null;
@@ -147,12 +151,14 @@ function notNull<T>(x: T | null): x is T {
 
 const ARM_TIMEOUT_MS = 4000;
 
-// Switch to the tiered dependency graph only once the widget is wide enough
-// for columns + connectors to be legible. The KSP R&D tree is inherently
-// landscape; below this we keep the compact list. `mobile-9x8` (w=9) and the
-// `default-6x9` view both stay on the list. Undefined dims (e.g. the unit-test
-// render path, before the grid measures) also fall through to the list, which
-// keeps the behavioural tests exercising the unchanged list UI.
+/**
+ * Switch to the tiered dependency graph only once the widget is wide enough
+ * for columns + connectors to be legible. The KSP R&D tree is inherently
+ * landscape; below this we keep the compact list. `mobile-9x8` (w=9) and the
+ * `default-6x9` view both stay on the list. Undefined dims (e.g. the
+ * unit-test render path, before the grid measures) also fall through to the
+ * list, which keeps the behavioural tests exercising the unchanged list UI.
+ */
 const GRAPH_MIN_COLS = 10;
 
 // ── Researchable derivation ─────────────────────────────────────────────────
@@ -320,23 +326,27 @@ function layoutGraph(
 // ── Component ─────────────────────────────────────────────────────────────
 
 function TechTreeComponent({ w, h }: Readonly<ComponentProps<TechTreeConfig>>) {
-  // Science reads canonically off `career.status.economy.science`; the tech
-  // nodes off `career.status.tech.nodes`: the wire carries
-  // id/title/scienceCost/unlocked/parents per node
-  // (career-capture-extend-report.md); parseTechNodes derives the
-  // Available/Unavailable state from `unlocked` client-side (no
-  // server-computed Researchable 3rd state: this widget's own
-  // computeResearchable already does that derivation). The scene reads off
-  // `spaceCenter.scene.scene` (already an enum-name string on the wire).
-  // tech.unlock[...] (the spend command) still has no command home
-  // (KNOWN_COMMAND_GAPS) and falls back to legacy automatically, only the
-  // reads migrate here.
+  /**
+   * Science reads canonically off `career.status.economy.science`; the tech
+   * nodes off `career.status.tech.nodes`: the wire carries
+   * id/title/scienceCost/unlocked/parents per node. parseTechNodes derives
+   * the Available/Unavailable state from `unlocked` client-side (no
+   * server-computed Researchable 3rd state: this widget's own
+   * computeResearchable already does that derivation). The scene reads off
+   * `spaceCenter.scene.scene` (already an enum-name string on the wire).
+   * tech.unlock[...] (the spend command) still has no command home
+   * (KNOWN_COMMAND_GAPS) and falls back to legacy automatically, only the
+   * reads migrate here.
+   */
   const nodesRaw = useTelemetry("career.status")?.tech?.nodes;
   const scene = useTelemetry("spaceCenter.scene")?.scene;
   const careerScience = useTelemetry("career.status")?.economy?.science;
-  // Unlocking a tech node is an R&D-desk action with no vessel signal delay,
-  // so it dispatches at the meta-vantage (instant). The handle is contributed to
-  // the panel delay rail by usePanelDelay (draws nothing at meta-vantage).
+  /**
+   * Unlocking a tech node is an R&D-desk action with no vessel signal delay,
+   * so it dispatches at the meta-vantage (instant). The handle is
+   * contributed to the panel delay rail by usePanelDelay (draws nothing at
+   * meta-vantage).
+   */
   const unlockCmd = useCommand("career.tech.unlock", { vantage: META_VANTAGE });
   usePanelDelay(unlockCmd);
 
@@ -607,9 +617,11 @@ function TechTreeComponent({ w, h }: Readonly<ComponentProps<TechTreeConfig>>) {
   );
 }
 
-// Sort: researchable-now first, then owned, then locked; within a group by
-// science cost ascending then alphabetically. The cheapest researchable node
-// surfaces as the clear next-purchase.
+/**
+ * Sort: researchable-now first, then owned, then locked; within a group by
+ * science cost ascending then alphabetically. The cheapest researchable
+ * node surfaces as the clear next-purchase.
+ */
 function sortNodes(nodes: TechNode[], researchable: Set<string>): TechNode[] {
   const rank = (n: TechNode) =>
     researchable.has(n.id) ? 0 : n.state === "Available" ? 1 : 2;
@@ -895,8 +907,8 @@ function NodeRow({
       : display === "researchable"
         ? "Researchable"
         : "Locked";
-  // Researchable but unaffordable: grey the row and recolour the cost so the
-  // scan is immediate (2026-05-17 session feedback).
+  // Researchable but unaffordable: grey the row and recolour the cost so
+  // the scan is immediate.
   const unaffordable = display === "researchable" && !canAfford;
 
   return (
@@ -1131,9 +1143,11 @@ const NodeTitle = styled.span`
   overflow: hidden;
 `;
 
-// The truncation lives on a flex child that is allowed to shrink: it needs
-// flex:1 + min-width:0 so it actually narrows (and ellipsises) within
-// NodeTitle instead of overflowing and colliding with the node id / meta.
+/**
+ * The truncation lives on a flex child that is allowed to shrink: it needs
+ * flex:1 + min-width:0 so it actually narrows (and ellipsises) within
+ * NodeTitle instead of overflowing and colliding with the node id / meta.
+ */
 const NodeTitleText = styled.span`
   flex: 1;
   min-width: 0;

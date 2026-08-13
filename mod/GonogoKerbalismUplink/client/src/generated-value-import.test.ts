@@ -3,17 +3,18 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// The "resolves to a core gonogo Value type" half of the uplink-types-out-of-
-// core plan's Unit guard (§5b): a wire-visible Value<"..."> / Vec3Of<"..."> in
-// this Uplink's OWN generated contract must still resolve to the core
-// unit-system module (@ksp-gonogo/sitrep-sdk), never a locally hand-rolled
-// Value type. See KerbalismRtConfig.Configure's `valueImportFrom` argument,
-// which is the mechanism this test verifies actually took effect in the
-// emitted file, not just in the C# call site.
-//
-// NOT vacuous: forty-seven properties across the fifteen types retype (the
-// codegen run prints that count), and none of the fifteen is an inbound-only
-// "...Args" for ApplyUnitValueTypes to skip.
+/**
+ * A wire-visible Value<"..."> / Vec3Of<"..."> in this Uplink's OWN generated
+ * contract must still resolve to the core unit-system module
+ * (@ksp-gonogo/sitrep-sdk), never a locally hand-rolled Value type. See
+ * KerbalismRtConfig.Configure's `valueImportFrom` argument, which is the
+ * mechanism this test verifies actually took effect in the emitted file, not
+ * just in the C# call site.
+ *
+ * NOT vacuous: forty-seven properties across the fifteen types retype (the
+ * codegen run prints that count), and none of the fifteen is an inbound-only
+ * "...Args" for ApplyUnitValueTypes to skip.
+ */
 
 const generatedContractPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -35,10 +36,12 @@ describe("generated contract.ts: Value/Vec3Of usage resolves to core", () => {
     );
   });
 
-  // The nesting is what makes this relocation the deepest yet, and it is the
-  // thing a regenerated contract could quietly flatten. If a nested type stops
-  // being referenced from its parent, topics.test.ts's nested-decode assertions
-  // go VACUOUS rather than red, so pin the shape here.
+  /**
+   * The nesting is what makes this relocation the deepest yet, and it is the
+   * thing a regenerated contract could quietly flatten. If a nested type
+   * stops being referenced from its parent, topics.test.ts's nested-decode
+   * assertions go VACUOUS rather than red, so pin the shape here.
+   */
   it("keeps every nesting the nested-hydration proofs depend on", () => {
     const src = source();
 
@@ -70,18 +73,24 @@ describe("generated contract.ts: Value/Vec3Of usage resolves to core", () => {
     expect(src).toMatch(/distance\?:\s*Value<"m">;/);
   });
 
-  // A Vec3 on a NESTED type, which no earlier relocated slice carried at all.
-  // The unit is declared on KerbalismStarInfo.Direction and has to survive two
-  // hops of shape resolution before fanning out to the vector's three leaves.
+  /**
+   * A Vec3 on a NESTED type, which no earlier relocated slice carried at all.
+   * The unit is declared on KerbalismStarInfo.Direction and has to survive
+   * two hops of shape resolution before fanning out to the vector's three
+   * leaves.
+   */
   it("keeps the nested Vec3 typed as Vec3Of, not a bare Vec3", () => {
     expect(source()).toMatch(/direction\?:\s*Vec3Of<"1">;/);
   });
 
-  // The name-keyed unit map. This form exists nowhere else in the whole
-  // contract any more: the SDK's own generated output lost its last example
-  // when these types relocated, which is why the assertion that used to live in
-  // mod/sitrep-sdk/src/generated.test.ts now lives here. The unit belongs to
-  // each VALUE and the key is a resource/rule NAME, so nothing camel-cases it.
+  /**
+   * The name-keyed unit map. This form exists nowhere else in the whole
+   * contract any more: the SDK's own generated output lost its last example
+   * when these types relocated, which is why the assertion that used to live
+   * in mod/sitrep-sdk/src/generated.test.ts now lives here. The unit belongs
+   * to each VALUE and the key is a resource/rule NAME, so nothing
+   * camel-cases it.
+   */
   it("keeps the unit inside the map for a name-keyed set of readings", () => {
     const src = source();
 

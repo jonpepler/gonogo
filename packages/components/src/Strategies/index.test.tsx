@@ -153,9 +153,11 @@ describe("parseStrategies", () => {
 });
 
 describe("StrategiesComponent", () => {
-  // Command-capture leg only (reads come off the stream); see emitCareer's
-  // doc comment. The registered "data" source is what `useExecuteAction`
-  // falls back to for the still-gapped activate/deactivate commands.
+  /**
+   * Command-capture leg only (reads come off the stream); see emitCareer's
+   * doc comment. The registered "data" source is what `useExecuteAction`
+   * falls back to for the still-gapped activate/deactivate commands.
+   */
   let cmdFixture: MockDataSourceFixture;
   let stream: ReturnType<typeof setupStreamFixture>;
 

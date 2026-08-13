@@ -15,10 +15,12 @@ export interface EscapeProfileConfig {
 
 const REFERENCE_SAMPLES = 60;
 
-// Escape from low orbit happens at much higher altitudes than ascent, give
-// the curve more headroom. For atmospheric bodies extend to 10× the
-// atmosphere ceiling; for airless bodies use a few body radii. Either way
-// the live trace's X domain auto-extends if needed.
+/**
+ * Escape from low orbit happens at much higher altitudes than ascent, give
+ * the curve more headroom. For atmospheric bodies extend to 10× the
+ * atmosphere ceiling; for airless bodies use a few body radii. Either way
+ * the live trace's X domain auto-extends if needed.
+ */
 function defaultCeiling(body: BodyDefinition): number {
   if (body.hasAtmosphere) return body.maxAtmosphere * 10;
   return Math.max(body.radius * 2, 200_000);
@@ -41,11 +43,13 @@ function buildEscapeCurve(
   }
   return {
     id: "escape-velocity",
-    // The shared LineChart legend stamps the label as a single un-truncated
-    // line of SVG <text>; on a narrow plot the body-name parenthetical runs
-    // past the right edge and is clipped by the viewport. Drop it below ~6
-    // grid columns so the label fits: the body name is still implied by the
-    // widget context / title. Wider cells keep the explicit body name.
+    /**
+     * The shared LineChart legend stamps the label as a single un-truncated
+     * line of SVG <text>; on a narrow plot the body-name parenthetical runs
+     * past the right edge and is clipped by the viewport. Drop it below ~6
+     * grid columns so the label fits: the body name is still implied by the
+     * widget context / title. Wider cells keep the explicit body name.
+     */
     label: narrow ? "Escape velocity" : `Escape velocity (${body.name})`,
     xs,
     ys,
@@ -57,11 +61,13 @@ function EscapeProfileComponent({
   config,
   w,
 }: Readonly<ComponentProps<EscapeProfileConfig>>) {
-  // Native read: the `vessel.state` DERIVED channel's `parentBodyName`
-  // display map (`vessel.identity.parentBodyIndex` resolved against
-  // `system.bodies`): the same channel `DistanceToTarget`/`TargetPicker`/
-  // `ManeuverPlanner`/`CurrentOrbit` read for their own `vessel.state.*`
-  // fields, off the legacy two-arg `data`-source shim.
+  /**
+   * Native read: the `vessel.state` DERIVED channel's `parentBodyName`
+   * display map (`vessel.identity.parentBodyIndex` resolved against
+   * `system.bodies`): the same channel `DistanceToTarget`/`TargetPicker`/
+   * `ManeuverPlanner`/`CurrentOrbit` read for their own `vessel.state.*`
+   * fields, off the legacy two-arg `data`-source shim.
+   */
   const bodyName =
     useStream<VesselState>("vessel.state")?.parentBodyName ?? undefined;
   const body = bodyName ? getBody(bodyName) : undefined;
@@ -78,16 +84,18 @@ function EscapeProfileComponent({
     return buildEscapeCurve(body, ceiling, narrow);
   }, [body, config?.altitudeCeiling, narrow]);
 
-  // Plot orbital speed (a strict upper bound on horizontal-only) against
-  // altitude. When the trace touches the curve the trajectory is at escape.
-  // Scatter, not line: mirrors KeplerPeriod's "one fresh dot per sample"
-  // choice (see its own doc comment). A "line" series renders NOTHING for
-  // a single sample (an SVG path with just one `M` command has no
-  // strokeable length, even with a round linecap), so the widget's core
-  // signal, where the live point sits relative to the escape-velocity
-  // curve, was invisible until a second sample landed. Scatter draws a
-  // marker per point regardless of count, matching every fixture's own
-  // "trace dot" framing.
+  /**
+   * Plot orbital speed (a strict upper bound on horizontal-only) against
+   * altitude. When the trace touches the curve the trajectory is at escape.
+   * Scatter, not line: mirrors KeplerPeriod's "one fresh dot per sample"
+   * choice (see its own doc comment). A "line" series renders NOTHING for
+   * a single sample (an SVG path with just one `M` command has no
+   * strokeable length, even with a round linecap), so the widget's core
+   * signal, where the live point sits relative to the escape-velocity
+   * curve, was invisible until a second sample landed. Scatter draws a
+   * marker per point regardless of count, matching every fixture's own
+   * "trace dot" framing.
+   */
   const graphConfig: GraphConfig = useMemo(
     () => ({
       series: [

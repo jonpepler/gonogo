@@ -76,10 +76,12 @@ function emitLegacyFixture(
     scene: fixture["kc.scene"],
     launchSite: fixture["kc.launchSite"],
   });
-  // A synthetic occupancy-only entry (no `unlocked`/`ready`) so it never
-  // shows up in the site picker itself, `deriveSpaceCenterState` just scans
-  // for ANY entry with a boolean `padOccupied`, same trick
-  // `SpaceCenterStatus/stream.test.tsx` documents.
+  /**
+   * A synthetic occupancy-only entry (no `unlocked`/`ready`) so it never
+   * shows up in the site picker itself, `deriveSpaceCenterState` just scans
+   * for ANY entry with a boolean `padOccupied`, same trick
+   * `SpaceCenterStatus/stream.test.tsx` documents.
+   */
   stream.emit("spaceCenter.launchSites", [
     ...((fixture["kc.launchSites"] as unknown[] | undefined) ?? []),
     {

@@ -60,21 +60,18 @@ const actionGroupActions = [
 
 export type ActionGroupActions = typeof actionGroupActions;
 
-// ---------------------------------------------------------------------------
-// Augment slots
-//
-// ActionGroup is a single-group control, so its slot props carry the identity
-// and live readout of the *one* group this instance drives. An augment binds a
-// Kerbalism/mod-subsystem status describing WHAT that group toggles, e.g.
-// "AG3 → radiators": using the group id/datum to scope itself.
-//   • `action-group.badges`  : inline in the header row; per-group indicators.
-//   • `action-group.sections`: richer whole-widget status block in the body.
-// Both receive the same context; the placement differs.
-// ---------------------------------------------------------------------------
-
 /**
- * The context both ActionGroup slots pass to their augments. An
- * augment reads the `groupId` to decide whether/how to describe the toggled
+ * The two augment slots this widget exposes. ActionGroup is a single-group
+ * control, so slot props carry the identity and live readout of the *one*
+ * group this instance drives. An augment binds a Kerbalism/mod-subsystem
+ * status describing WHAT that group toggles, e.g. "AG3 → radiators", using
+ * the group id/datum to scope itself.
+ *
+ * - `action-group.badges`: inline in the header row; per-group indicators.
+ * - `action-group.sections`: richer whole-widget status block in the body.
+ *
+ * Both slots receive this same context; only the placement differs. An
+ * augment reads `groupId` to decide whether/how to describe the toggled
  * subsystem, and can reflect the live `value` / `stateLabel` if it wants to.
  */
 export interface ActionGroupSlotContext {
@@ -88,21 +85,19 @@ export interface ActionGroupSlotContext {
   stateLabel: string;
 }
 
-// Declaration-merge the slot ids → props type into core's `SlotRegistry`.
-// Co-located here (not a central file) so
-// parallel slot work on other widgets can't collide. This makes
-// `registerAugment` and `<AugmentSlot name="action-group.badges" ...>` type-check
-// against `ActionGroupSlotContext` rather than the loose fallback.
+/**
+ * Declaration-merges the slot ids → props type into core's `SlotRegistry`.
+ * Co-located here (not a central file) so parallel slot work on other
+ * widgets can't collide. This makes `registerAugment` and
+ * `<AugmentSlot name="action-group.badges" ...>` type-check against
+ * `ActionGroupSlotContext` rather than the loose fallback.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "action-group.badges": ActionGroupSlotContext;
     "action-group.sections": ActionGroupSlotContext;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Value resolution
-// ---------------------------------------------------------------------------
 
 /**
  * Resolves one group's live value off the canonical payloads.
@@ -151,16 +146,15 @@ function resolveGroupValue(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Delayed-command dispatch (command-surface-delay-audit #1-4): every toggle
-// this widget fires (Stage, Abort, SAS/RCS/Gear/Brake/Light, AGX customs)
-// actuates the vessel, so it rides `useCommand` instead of the legacy
-// `useExecuteAction` string path, the same toggle -> absolute bridge
-// `map-command.ts`'s `toggleHome`/`actionGroupHome` apply, but built here
-// directly off the group's already-known live `value` (this widget already
-// reads it for the state pill), no separate current-value store sample
-// needed.
-// ---------------------------------------------------------------------------
+/**
+ * Delayed-command dispatch: every toggle this widget fires (Stage, Abort,
+ * SAS/RCS/Gear/Brake/Light, AGX customs) actuates the vessel, so it rides
+ * `useCommand` instead of the legacy `useExecuteAction` string path, the
+ * same toggle -> absolute bridge `map-command.ts`'s
+ * `toggleHome`/`actionGroupHome` apply, but built here directly off the
+ * group's already-known live `value` (this widget already reads it for the
+ * state pill), no separate current-value store sample needed.
+ */
 
 /** Sentinel: the current value isn't a boolean yet (unknown/numeric Stage
  * read through the wrong branch), so a toggle can't safely be inverted.
@@ -217,10 +211,6 @@ export function buildToggleArgs(
   }
   return { enabled: nextState };
 }
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 
 /**
  * Resolves this instance's group + live value, then renders the view.
@@ -282,26 +272,31 @@ function ActionGroupView({
 }) {
   const currentLabel = config?.label ?? group?.name ?? "";
 
-  // `value` now arrives as a prop, resolved one-arg off the canonical
-  // `vessel.control` / `vessel.structure` Topics by the wrappers above, the
-  // last `useTelemetry("data", group.value)` shim read is gone, and with it
-  // `mapTopic.coverage`'s dynamic-key blind spot: the ACTION_GROUPS registry
-  // no longer carries read keys at all. The `.toggle` side rides `useCommand`
-  // (delayed-command-ux migration): `toggleCommandFor`/`buildToggleArgs`
-  // below apply the same toggle -> absolute bridge `map-command.ts`'s
-  // `toggleHome`/`actionGroupHome` do, off the group's own already-known
-  // `value` instead of a separate store sample.
-  // These two reads have clean canonical homes of their own:
-  //  - `t.isPaused`     -> `time.warp.paused`
-  //  - `comm.connected` -> `comms.link.connected`
+  /**
+   * `value` now arrives as a prop, resolved one-arg off the canonical
+   * `vessel.control` / `vessel.structure` Topics by the wrappers above; the
+   * last `useTelemetry("data", group.value)` shim read is gone, and with it
+   * `mapTopic.coverage`'s dynamic-key blind spot, the ACTION_GROUPS registry
+   * no longer carries read keys at all. The `.toggle` side rides
+   * `useCommand`: `toggleCommandFor`/`buildToggleArgs` below apply the same
+   * toggle -> absolute bridge `map-command.ts`'s
+   * `toggleHome`/`actionGroupHome` do, off the group's own already-known
+   * `value` instead of a separate store sample.
+   *
+   * These two reads have clean canonical homes of their own:
+   * - `t.isPaused` -> `time.warp.paused`
+   * - `comm.connected` -> `comms.link.connected`
+   */
   const isPaused = useTelemetry("time.warp")?.paused;
   const commConnected = useTelemetry("comms.link")?.connected;
   const openAlarms = useAlarmsLauncher();
 
-  // The toggle command name depends on which group this instance is
-  // configured for (fixed per mount, changes only on a config edit), so it's
-  // recomputed every render and handed to `useCommand`, which is fine to
-  // call with a varying string, hooks don't care about argument identity.
+  /**
+   * The toggle command name depends on which group this instance is
+   * configured for (fixed per mount, changes only on a config edit), so it's
+   * recomputed every render and handed to `useCommand`, which is fine to
+   * call with a varying string, hooks don't care about argument identity.
+   */
   const toggleCommand = group ? toggleCommandFor(group) : null;
   const toggleCmd = useCommand(toggleCommand ?? "");
   usePanelDelay(toggleCmd);
@@ -336,10 +331,12 @@ function ActionGroupView({
     );
   }
 
-  // Most groups are boolean (ON/OFF). A few, e.g. Stage's `v.currentStage`:
-  // report a numeric state, so coercing every non-true value to OFF mislabels
-  // them. Treat numbers as their own readout and only fall back to ON/OFF for
-  // genuine booleans.
+  /**
+   * Most groups are boolean (ON/OFF). A few, e.g. Stage's `v.currentStage`,
+   * report a numeric state, so coercing every non-true value to OFF mislabels
+   * them. Treat numbers as their own readout and only fall back to ON/OFF for
+   * genuine booleans.
+   */
   const isNumeric = typeof value === "number";
   const isOn = isNumeric ? value > 0 : value === true;
   const isUnknown = value === undefined;
@@ -351,10 +348,12 @@ function ActionGroupView({
         ? "ON"
         : "OFF";
 
-  // Props both augment slots pass down. Built after the `!group`
-  // guard, so this is a plain object rather than a hook, no `useMemo` may run
-  // conditionally. A fresh reference per render is fine: the live `value`
-  // changes anyway, and `AugmentSlot`'s subscription is store-driven.
+  /**
+   * Props both augment slots pass down. Built after the `!group` guard, so
+   * this is a plain object rather than a hook, no `useMemo` may run
+   * conditionally. A fresh reference per render is fine: the live `value`
+   * changes anyway, and `AugmentSlot`'s subscription is store-driven.
+   */
   const slotContext: ActionGroupSlotContext = {
     groupId: group.name,
     label: currentLabel,
@@ -362,17 +361,21 @@ function ActionGroupView({
     stateLabel,
   };
 
-  // Surface the most common reasons the action wouldn't fire if the user
-  // pressed it now. Mirrors Telemachus's action-group response codes 1–4
-  // (paused / no power / antenna off / antenna missing), codes 0 and 5 are
-  // covered upstream (0 = OK, 5 = handled by `requires: ["flight"]`).
+  /**
+   * Surface the most common reasons the action wouldn't fire if the user
+   * pressed it now. Mirrors Telemachus's action-group response codes 1–4
+   * (paused / no power / antenna off / antenna missing), codes 0 and 5 are
+   * covered upstream (0 = OK, 5 = handled by `requires: ["flight"]`).
+   */
   let unavailableReason: string | null = null;
   if (isPaused === true) unavailableReason = "Paused";
   else if (commConnected === false) unavailableReason = "No signal";
 
-  // Selective rendering: drop the secondary "official name" line when the
-  // widget is narrow. The state pill is itself the toggle control, so it is
-  // present at every size (no separate vertical-room gate).
+  /**
+   * Selective rendering: drop the secondary "official name" line when the
+   * widget is narrow. The state pill is itself the toggle control, so it is
+   * present at every size (no separate vertical-room gate).
+   */
   const cols = w ?? 6;
   const showOfficialName = cols >= 5;
   // Precision Control has no toggle key, the pill stays a read-only indicator
@@ -404,21 +407,26 @@ function ActionGroupView({
     setEditing(false);
   };
 
-  // Only meaningful while editing (Enter commits, Escape cancels the
-  // input): the trigger itself is a real `<button>` now, so Enter/Space
-  // activation is native and needs no handler of its own.
+  /**
+   * Only meaningful while editing (Enter commits, Escape cancels the
+   * input): the trigger itself is a real `<button>` now, so Enter/Space
+   * activation is native and needs no handler of its own.
+   */
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") commitEdit();
     if (e.key === "Escape") cancelEdit();
   };
 
   return (
-    // The panel names the WIDGET; the group's own name is a control, not a
-    // heading. It is an inline rename affordance (a button that swaps in a text
-    // input), and `panelTitle` renders its argument inside PanelTitle's h3, so
-    // passing it through would nest a button and an input in a heading and
-    // uppercase the operator's own label into the bargain. It reads as the
-    // first line of the body instead, which is where a control belongs.
+    /**
+     * The panel names the WIDGET; the group's own name is a control, not a
+     * heading. It is an inline rename affordance (a button that swaps in a
+     * text input), and `panelTitle` renders its argument inside
+     * PanelTitle's h3, so passing it through would nest a button and an
+     * input in a heading and uppercase the operator's own label into the
+     * bargain. It reads as the first line of the body instead, which is
+     * where a control belongs.
+     */
     <Panel
       panelTitle="ACTION GROUP"
       panelAside={
@@ -443,9 +451,11 @@ function ActionGroupView({
             />
           </Stack>
         ) : (
-          // A real `<button>` rather than a `div role="button"`: native
-          // Enter/Space activation and a native focus ring, no bespoke
-          // keydown handler or focus-visible CSS needed.
+          /**
+           * A real `<button>` rather than a `div role="button"`: native
+           * Enter/Space activation and a native focus ring, no bespoke
+           * keydown handler or focus-visible CSS needed.
+           */
           <Stack
             as="button"
             gap="xs"
@@ -525,10 +535,7 @@ function ActionGroupView({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Config component (rendered inside modal)
-// ---------------------------------------------------------------------------
-
+// Config component, rendered inside the dashboard item's config modal.
 function ActionGroupConfigComponent({
   config,
   onSave,
@@ -582,10 +589,6 @@ function ActionGroupConfigComponent({
     </ConfigForm>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
 
 registerComponent<ActionGroupConfig>({
   id: "action-group",

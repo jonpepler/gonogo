@@ -101,13 +101,17 @@ for (const [typeName, units] of Object.entries(GENERATED_TYPE_UNITS)) {
   registerTypeUnits(typeName, units, GENERATED_TYPE_SHAPES[typeName] ?? {});
 }
 
-// ── Compile-time invariant (checked by `pnpm build`/`typecheck`) ────────────────────
-// Proves the augmentation above is in-program and resolves each Topic to its real payload
-// type rather than the `unknown` a missing augmentation would leave. This is the per-Uplink
-// half of the SDK's `_AssertNoTopicResolvesToUnknown`, devolved here because the SDK leaf
-// cannot see this augmenting module (2026-07-20). Kept inline (type-only, erased at
-// runtime) rather than in a `.test-d.ts`: the client's build tsconfig does not exclude
-// `*.test-d.ts`, so a separate file would be emitted into `dist`.
+/**
+ * Compile-time invariant, checked by `pnpm build`/`typecheck`. Proves the
+ * augmentation above is in-program and resolves each Topic to its real
+ * payload type rather than the `unknown` a missing augmentation would
+ * leave. This is the per-Uplink half of the SDK's
+ * `_AssertNoTopicResolvesToUnknown`, devolved here because the SDK leaf
+ * cannot see this augmenting module. Kept inline (type-only, erased at
+ * runtime) rather than in a `.test-d.ts`: the client's build tsconfig does
+ * not exclude `*.test-d.ts`, so a separate file would be emitted into
+ * `dist`.
+ */
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
     ? true

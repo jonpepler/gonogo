@@ -99,11 +99,14 @@ describe("GreenhouseSection: radiation-too-high badge", () => {
       ],
       0.005,
     );
-    // Kerbalism halts food production the instant ambient exceeds
-    // tolerance (see GreenhouseSection's own doc comment, grounded against
-    // Greenhouse.cs), so the row never claims "Growing" while this flag is
-    // up, even if the mod's own `issue` field hasn't reported it yet: that
-    // exact contradiction was the operator-reported bug this reconciles.
+    /**
+     * Kerbalism halts food production the instant ambient exceeds
+     * tolerance (see GreenhouseSection's own doc comment, grounded
+     * against Greenhouse.cs), so the row never claims "Growing" while
+     * this flag is up, even if the mod's own `issue` field hasn't
+     * reported it yet: that exact contradiction was the operator-reported
+     * bug this reconciles.
+     */
     expect(screen.queryByText("Growing")).not.toBeInTheDocument();
     expect(screen.getByText("Halted")).toBeInTheDocument();
     expect(screen.getByText("Radiation too high")).toBeInTheDocument();
@@ -112,12 +115,14 @@ describe("GreenhouseSection: radiation-too-high badge", () => {
   it("uses warning severity, not critical, for the radiation-too-high badge", () => {
     renderSection([row({ radiationToleranceRadPerSec: 0.001 })], 0.005);
     const badgeClass = screen.getByText("Radiation too high").className;
-    // Severity drives styled-components' generated class, not an inline
-    // style (`toHaveStyle` can't see a `var()`-based rule, same jsdom gap
-    // Card's own tone tests document); comparing classes against reference
-    // `Badge` instances at each severity is the same technique
-    // `Badge.test.tsx`'s own "applies a different class for different
-    // tones" case already uses.
+    /**
+     * Severity drives styled-components' generated class, not an inline
+     * style (`toHaveStyle` can't see a `var()`-based rule, same jsdom gap
+     * Card's own tone tests document); comparing classes against
+     * reference `Badge` instances at each severity is the same technique
+     * `Badge.test.tsx`'s own "applies a different class for different
+     * tones" case already uses.
+     */
     const { unmount: unmountWarning } = render(
       <Badge severity="warning" size="sm">
         ref

@@ -339,10 +339,12 @@ describe("KosUplinkExecutor", () => {
 
     const { transport: t2, client: c2 } = makeClient();
     const commands2 = captureDispatches(t2);
-    // First call against the new client switches adoption, it tears down
-    // every c1 subscription/queue (rejecting `stale`) AND subscribes to
-    // c2's kos.processors, but rejects itself: c2's processors haven't
-    // reported "cpu-a" yet.
+    /**
+     * First call against the new client switches adoption, it tears down
+     * every c1 subscription/queue (rejecting `stale`) AND subscribes to
+     * c2's kos.processors, but rejects itself: c2's processors haven't
+     * reported "cpu-a" yet.
+     */
     await expect(
       executor.run(c2, "cpu-a", "0:/x.ks", [], null),
     ).rejects.toThrow(/no known CPU/);
@@ -351,9 +353,11 @@ describe("KosUplinkExecutor", () => {
     expect(t1.isSubscribed("kos.processors")).toBe(false);
     expect(t1.isSubscribed("kos.run.1")).toBe(false);
 
-    // Now that c2 is adopted and its kos.processors is subscribed, publish
-    // the CPU list and retry: this is the realistic case (a caller races
-    // the processors channel right after a reconnect, then succeeds).
+    /**
+     * Now that c2 is adopted and its kos.processors is subscribed, publish
+     * the CPU list and retry: this is the realistic case (a caller races
+     * the processors channel right after a reconnect, then succeeds).
+     */
     t2.emit("kos.processors", [
       { coreId: 9, tag: "cpu-a", hasBooted: true, processorMode: "READY" },
     ] satisfies KosProcessorInfo[]);

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // The "resolves to a core gonogo Value type" half of the uplink-types-out-of-
-// core plan's Unit guard (§5b): a wire-visible Value<"..."> / Vec3Of<"..."> in
+// core plan's Unit guard: a wire-visible Value<"..."> / Vec3Of<"..."> in
 // this Uplink's OWN generated contract must still resolve to the core
 // unit-system module (@ksp-gonogo/sitrep-sdk), never a locally hand-rolled
 // Value type. See AvionicsRtConfig.Configure's `valueImportFrom` argument,

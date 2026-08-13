@@ -653,12 +653,12 @@ describe("MapViewComponent", () => {
     });
   });
 
-  // Proves T10's read-back loop end to end: an augment's `settings` block
-  // reaches the config UI via `AugmentSettingsPanel`, a saved edit lands in
-  // the widget's persisted config namespaced by augment id, and a subsequent
-  // render of the widget itself surfaces that value back on
-  // `ctx.augmentSettings`: the same object `useCoverageGate` and any
-  // augment's own settings already know how to read.
+  // Proves the augment-settings read-back loop end to end: an augment's
+  // `settings` block reaches the config UI via `AugmentSettingsPanel`, a
+  // saved edit lands in the widget's persisted config namespaced by augment
+  // id, and a subsequent render of the widget itself surfaces that value
+  // back on `ctx.augmentSettings`: the same object `useCoverageGate` and
+  // any augment's own settings already know how to read.
   describe("augment settings read-back", () => {
     afterEach(() => {
       for (const unmount of trees) unmount();

@@ -223,11 +223,13 @@ describe("SpaceCenterStatusComponent", () => {
     expect((upgradeButtons[0] as HTMLButtonElement).disabled).toBe(true);
   });
 
-  // Augment slots (Uplink architecture §4): the widget exposes
-  // `space-center-status.badges` (header) and `space-center-status.sections`
-  // (body, appended to the facility list). With no augment registered the
-  // slots render nothing and the widget is unchanged; once an augment binds a
-  // slot its component appears in the widget's space.
+  /**
+   * Augment slots: the widget exposes `space-center-status.badges` (header)
+   * and `space-center-status.sections` (body, appended to the facility
+   * list). With no augment registered the slots render nothing and the
+   * widget is unchanged; once an augment binds a slot its component appears
+   * in the widget's space.
+   */
   it("renders with empty augment slots when nothing is registered", () => {
     const { container } = renderWidget();
     expect(screen.getByText(/SPACE CENTER/i)).toBeInTheDocument();

@@ -115,10 +115,12 @@ function renderTree(fixture: StreamFixture) {
 }
 
 describe("TechTreeComponent", () => {
-  // Reset the action-handler + augment registries at the START of each test,
-  // by this point the prior test's tree is already unmounted (RTL
-  // auto-cleanup), so these registry mutations never fire against a live
-  // component (no manual `cleanup()` needed to order them).
+  /**
+   * Reset the action-handler + augment registries at the START of each
+   * test, by this point the prior test's tree is already unmounted (RTL
+   * auto-cleanup), so these registry mutations never fire against a live
+   * component (no manual `cleanup()` needed to order them).
+   */
   beforeEach(() => {
     clearActionHandlers();
     clearAugments();
@@ -286,10 +288,10 @@ describe("TechTreeComponent", () => {
   });
 
   it("renders a bound augment once per node row, carrying each node's identity", async () => {
-    // A test Uplink binds `tech-tree.badges` and echoes the slot props back.
-    // Proves (a) the slot is exposed, (b) an augment composes into it, and (c)
-    // the per-node props carry the right node so the badge lands on the right
-    // row. `requires` is omitted so no Domain presence gate applies.
+    /* A test Uplink binds `tech-tree.badges` and echoes the slot props back.
+       Proves (a) the slot is exposed, (b) an augment composes into it, and
+       (c) the per-node props carry the right node so the badge lands on the
+       right row. `requires` is omitted so no Domain presence gate applies. */
     registerAugment<"tech-tree.badges">({
       id: "test-tech-badge",
       augments: "tech-tree.badges",

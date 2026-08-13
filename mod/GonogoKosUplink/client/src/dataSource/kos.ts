@@ -66,10 +66,12 @@ export class KosDataSource {
 
   private readonly callTimeoutMs: number;
 
-  // The ONLY transport executeScript() dispatches through: the kos.run
-  // Uplink command + kos.run.<coreId> channel. Also owns the standing
-  // kos.processors subscription that feeds CPU discovery. See
-  // kosUplinkExecutor.ts.
+  /**
+   * The ONLY transport executeScript() dispatches through: the kos.run
+   * Uplink command + kos.run.<coreId> channel. Also owns the standing
+   * kos.processors subscription that feeds CPU discovery. See
+   * kosUplinkExecutor.ts.
+   */
   private readonly uplinkExecutor: KosUplinkExecutor;
 
   constructor(opts: KosDataSourceOptions = {}) {
@@ -106,8 +108,6 @@ export class KosDataSource {
     this.uplinkExecutor.dispose();
   }
 
-  // --- Public widget API ---
-
   /**
    * Run a script on the named CPU and resolve with its parsed [KOSDATA]
    * object, dispatched over the `kos.run` Uplink (see `kosUplinkExecutor.ts`),
@@ -141,11 +141,13 @@ export class KosDataSource {
     return this.uplinkExecutor.run(client, cpu, script, args, managed ?? null);
   }
 
-  // Host-side relay handle for station peer-relayed calls (see
-  // PeerHostService.handleUplinkRelay / PeerClientDataSource.relay). Only
-  // the "executeScript" method is exposed today, the kOS-specific
-  // isScriptError-via-errorMeta unwrap is the calling client's own
-  // responsibility, not this source's.
+  /**
+   * Host-side relay handle for station peer-relayed calls (see
+   * PeerHostService.handleUplinkRelay / PeerClientDataSource.relay). Only
+   * the "executeScript" method is exposed today, the kOS-specific
+   * isScriptError-via-errorMeta unwrap is the calling client's own
+   * responsibility, not this source's.
+   */
   async relay(method: string, args: unknown): Promise<unknown> {
     if (method === "executeScript") {
       const a = args as {

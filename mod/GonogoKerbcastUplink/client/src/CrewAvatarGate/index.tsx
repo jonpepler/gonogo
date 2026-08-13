@@ -23,16 +23,16 @@ import { selectKerbalCamera } from "./selectKerbalCamera";
 
 /**
  * kerbcast crew-avatar augment: fills CrewStatus's `crew-status.avatar`
- * slot (facecam-stage6 consumption design) with a live per-kerbal face,
- * layering an EVA/IVA badge and a click-to-spotlight modal over kerbcast-
- * react's shared `KerbalFaceFeed` primitive.
+ * slot with a live per-kerbal face, layering an EVA/IVA badge and a
+ * click-to-spotlight modal over kerbcast-react's shared `KerbalFaceFeed`
+ * primitive.
  *
  * Two gates, both zero-cost when off/absent:
  *  - `requires: "kerbcast"` (below), the augment doesn't mount at all
  *    without the Uplink present; `<AugmentSlot>` enforces this.
- *  - the "kerbcast.embeddedFacecams" kill-switch (design item g): a
- *    COMPONENT-BOUNDARY split: OFF returns before the subscribing child
- *    mounts, so no facecam stream is ever requested.
+ *  - the "kerbcast.embeddedFacecams" kill-switch: a COMPONENT-BOUNDARY
+ *    split: OFF returns before the subscribing child mounts, so no
+ *    facecam stream is ever requested.
  *
  * `selectKerbalCamera` correlates CrewStatus's name-keyed roster row
  * against kerbcast's `kind: Kerbal` cameras by `cameraName` (see that
@@ -173,10 +173,10 @@ registerAugment({
 
 export { selectKerbalCamera };
 
-// ── Styles ────────────────────────────────────────────────────────────────
-// Inline style objects + ui-kit primitives (Badge, TextButton) rather than a
-// bespoke styled-components import: TextButton already carries the no-chrome
-// reset and the shared `:focus-visible` ring; only the sizing here is local.
+// Styles: inline style objects + ui-kit primitives (Badge, TextButton) rather
+// than a bespoke styled-components import: TextButton already carries the
+// no-chrome reset and the shared `:focus-visible` ring; only the sizing here
+// is local.
 
 const AVATAR_BUTTON_STYLE: CSSProperties = {
   position: "relative",

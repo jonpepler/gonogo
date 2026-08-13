@@ -65,9 +65,11 @@ export class CpuRegistryService {
   }
 
   list(): readonly KosCpuEntry[] {
-    // Sort: online first; then by recency of lastSeenAt; then alphabetical
-    // by label/tagname. Online-first matters for the picker, the CPUs the
-    // user can actually run a script on right now should sit at the top.
+    /**
+     * Sort: online first; then by recency of lastSeenAt; then alphabetical
+     * by label/tagname. Online-first matters for the picker, the CPUs the
+     * user can actually run a script on right now should sit at the top.
+     */
     const decorated = this.entries.map((e) => this.decorate(e));
     return decorated.sort((a, b) => {
       if (a.online !== b.online) return a.online ? -1 : 1;

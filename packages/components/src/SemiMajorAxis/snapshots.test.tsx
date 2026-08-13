@@ -3,9 +3,8 @@
  *
  * Catches structural drift (rendered text, element order, attribute
  * changes) across every scenario × mode combination registered for the
- * widget. The matching PNG renders live in
- * `local_docs/renders/semi-major-axis-widget/` and cover the visual
- * layer that DOM snapshots can't (styled-components CSS, fonts, etc).
+ * widget. A matching set of PNG renders covers the visual layer that DOM
+ * snapshots can't (styled-components CSS, fonts, etc).
  *
  * SemiMajorAxis reads exclusively off the SDK stream now (`vessel.orbit.sma`
  * for the headline value, the derived `vessel.state.referenceBodyName` for the

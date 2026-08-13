@@ -64,9 +64,9 @@ export function AltitudeRail({
         flexDirection: "column",
         alignItems: "center",
         height: "100%",
-        // Root-relative on purpose, so the rail's internal rhythm tracks the
-        // browser font size. The px spacing ladder would freeze it, which is
-        // an accessibility regression rather than a cleanup.
+        /* Root-relative on purpose, so the rail's internal rhythm tracks the
+           browser font size. The px spacing ladder would freeze it, which is
+           an accessibility regression rather than a cleanup. */
         gap: "0.25rem",
         minWidth: 0,
       }}

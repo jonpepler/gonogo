@@ -13,9 +13,7 @@ import {
   RadiationSection,
 } from "./RadiationSection";
 
-// ---------------------------------------------------------------------------
 // pushRadiationSample: pure buffer management, no React involved.
-// ---------------------------------------------------------------------------
 
 function sample(ut: number, ambient = 0, shielded = 0): RadiationSample {
   return { ut, ambientRadPerSec: ambient, shieldedRadPerSec: shielded };
@@ -94,9 +92,7 @@ describe("doseRateDecimals", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
 // RadiationSection component
-// ---------------------------------------------------------------------------
 
 const CARRIED = ["kerbalism.spaceweather"];
 

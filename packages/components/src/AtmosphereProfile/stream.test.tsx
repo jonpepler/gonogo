@@ -29,10 +29,12 @@ describe("AtmosphereProfile: genuinely runs off the stream (M3 batch 2)", () => 
   it("reads body/altitude/density/temperatures off the real stream pipeline, not legacy", async () => {
     registerStockBodies();
     const fixture = setupStreamFixture({
-      // vessel.state's carried-channels gate is parent-channel-scoped
-      // (vesselStateChannel.inputs): listed in full even though this test's
-      // own reads (useStream/canonical useTelemetry) don't consult the gate,
-      // to keep the widget's legacy useDataStreamStatus badge reading "live".
+      /**
+       * vessel.state's carried-channels gate is parent-channel-scoped
+       * (vesselStateChannel.inputs): listed in full even though this test's
+       * own reads (useStream/canonical useTelemetry) don't consult the gate,
+       * to keep the widget's legacy useDataStreamStatus badge reading "live".
+       */
       carriedChannels: [
         "vessel.orbit",
         "vessel.flight",
@@ -65,9 +67,11 @@ describe("AtmosphereProfile: genuinely runs off the stream (M3 batch 2)", () => 
     expect(fixture.transport.isSubscribed("system.bodies")).toBe(true);
 
     act(() => {
-      // Loaded quality drives deriveVesselState onto the "measured" basis,
-      // which reads altitudeAsl off vessel.flight at viewUt, the OnRails
-      // default would leave it permanently null (see doc comment above).
+      /**
+       * Loaded quality drives deriveVesselState onto the "measured" basis,
+       * which reads altitudeAsl off vessel.flight at viewUt, the OnRails
+       * default would leave it permanently null (see doc comment above).
+       */
       fixture.emit("vessel.orbit", {}, { quality: Quality.Loaded });
       fixture.emit("vessel.flight", {
         altitudeAsl: 80,
@@ -89,9 +93,11 @@ describe("AtmosphereProfile: genuinely runs off the stream (M3 batch 2)", () => 
       });
     });
 
-    // The body now resolves off the stream, so the pressure curve/live chip
-    // render for real, proving every one of the five migrated reads
-    // genuinely flows through the real TimelineStore.
+    /**
+     * The body now resolves off the stream, so the pressure curve/live chip
+     * render for real, proving every one of the five migrated reads
+     * genuinely flows through the real TimelineStore.
+     */
     await waitFor(() => {
       expect(visibleText(container)).toContain("1.217 kg/m³");
     });

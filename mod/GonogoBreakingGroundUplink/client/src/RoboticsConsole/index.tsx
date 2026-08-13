@@ -103,11 +103,13 @@ function num(v: unknown, fallback = 0): number {
   return magnitudeOr(v as Quantityish, fallback);
 }
 
-// A piston's extension is a LENGTH, not a percentage. The contract declares
-// ServoEntry.CurrentExtension/TargetExtension as metres, and a decompile of
-// ModuleRoboticServoPiston confirms it: the value is a Vector3.Dot of two
-// world positions along the servo's main axis. This label said "%" and was
-// wrong on screen at every piston readout in the widget.
+/**
+ * A piston's extension is a LENGTH, not a percentage. The contract declares
+ * ServoEntry.CurrentExtension/TargetExtension as metres, and a decompile of
+ * ModuleRoboticServoPiston confirms it: the value is a Vector3.Dot of two
+ * world positions along the servo's main axis. This label said "%" and was
+ * wrong on screen at every piston readout in the widget.
+ */
 const unitFor = (type: ServoType) => (type === "piston" ? "m" : "°");
 
 /**
@@ -186,12 +188,13 @@ function RoboticsConsoleComponent({
   const roboticsRaw = useTelemetry("robotics.servos");
   const available = useTelemetry("robotics.available")?.available;
 
-  // Delayed vessel commands (Breaking Ground robotics-audit-migration): the
-  // servo motor/lock/target are actuated on the craft, subject to the same
-  // signal delay as any other flight-control command, so this widget
-  // dispatches over `useCommand` (not the legacy `useExecuteAction` string
-  // path) to pick up per-command in-flight state for free, same shape as
-  // MechJeb.
+  /**
+   * Delayed vessel commands: the servo motor/lock/target are actuated on
+   * the craft, subject to the same signal delay as any other
+   * flight-control command, so this widget dispatches over `useCommand`
+   * (not the legacy `useExecuteAction` string path) to pick up per-command
+   * in-flight state for free, same shape as MechJeb.
+   */
   const targetCmd = useCommand("robotics.servo.setTarget");
   const motorCmd = useCommand("robotics.servo.setMotor");
   const lockCmd = useCommand("robotics.servo.setLock");
@@ -264,15 +267,17 @@ function RoboticsConsoleComponent({
   }
 
   const unit = unitFor(selected.type);
-  // At the registered minSize (h=4) even the readout + Target stepper alone
-  // are within a few px of the panel's full height; adding the motor/lock
-  // toggles and the joint list on top of them clipped the Target stepper row
-  // mid-glyph (overflow:auto has no visible scroll affordance in this static
-  // Body). The readout + Target stepper are the essential "controls" the
-  // widget's render-harness mode comment means by minSize's "readout +
-  // controls"; the toggles and the joint list are both secondary and drop
-  // out below h=6 rather than fighting the stepper for space. Mirrors
-  // CommSignal/TargetPicker's rows-based section gating.
+  /**
+   * At the registered minSize (h=4) even the readout + Target stepper alone
+   * are within a few px of the panel's full height; adding the motor/lock
+   * toggles and the joint list on top of them clipped the Target stepper
+   * row mid-glyph (overflow:auto has no visible scroll affordance in this
+   * static Body). The readout + Target stepper are the essential
+   * "controls" the widget's render-harness mode comment means by
+   * minSize's "readout + controls"; the toggles and the joint list are
+   * both secondary and drop out below h=6 rather than fighting the stepper
+   * for space. Mirrors CommSignal/TargetPicker's rows-based section gating.
+   */
   const rows = h ?? 8;
   const showToggles = rows >= 6;
   const showServoList = servos.length > 1 && rows >= 6;

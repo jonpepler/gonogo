@@ -1,9 +1,8 @@
 // SCANsat per-scan-type coverage readout for MapView.
 //
 // Fills MapView's `map-view.sections` slot with the compact below-map
-// coverage panel: moved out of core MapView (T8b,
-// docs/superpowers/plans/2026-07-18-mapview-overlay-host-foundation.md) so
-// core MapView no longer reads `scansat.coverage.<body>.<type>` or
+// coverage panel: moved out of core MapView so core MapView no longer
+// reads `scansat.coverage.<body>.<type>` or
 // `scansat.scanningVessels` itself (Uplink invariant #5, "augment, don't
 // embed"). This is a direct port of the old MapView-internal
 // `CoveragePanelView`/`CoverageRow`/`COVERAGE_TYPES`
@@ -139,10 +138,11 @@ function CoverageRow({
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────
-// Structural inline styles (CSS-var tokens): this is a bespoke coverage grid,
-// no reusable ui-kit primitive fits, so the layout stays local rather than
-// carrying styled-components into a consumer widget.
+/**
+ * Structural inline styles (CSS-var tokens): this is a bespoke coverage
+ * grid, no reusable ui-kit primitive fits, so the layout stays local rather
+ * than carrying styled-components into a consumer widget.
+ */
 
 const COVERAGE_COLUMN: CSSProperties = {
   flexShrink: 0,

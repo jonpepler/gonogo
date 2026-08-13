@@ -80,9 +80,12 @@ function normHeights(
   return { norm, rangeMeters: range };
 }
 
-// Elevation bands + a neutral hypsometric ramp (low → high). Colour IS altitude;
-// the boundaries between bands are the iso-height contour lines (close together
-// = steep, a bullseye = a crater/peak). No simulated light anywhere.
+/**
+ * Elevation bands + a neutral hypsometric ramp (low → high). Colour IS
+ * altitude; the boundaries between bands are the iso-height contour lines
+ * (close together = steep, a bullseye = a crater/peak). No simulated light
+ * anywhere.
+ */
 const HYPSO_BANDS = 6;
 // Dimmed, desaturated low→high ramp: a low-key "tech" elevation palette. The
 // high band is a muted grey, not a harsh cream/white.
@@ -265,15 +268,20 @@ export function TouchdownReticle({
     biome ? `, ${biome}` : ""
   } (${sourceLabel})`;
 
-  // The predicted site is the ANCHOR at centre; the current position sits
-  // off-centre by the drift, in the direction OPPOSITE the downrange bearing
-  // (site → vessel), scaled to the reticle and clamped to the rim for far sites.
+  /**
+   * The predicted site is the ANCHOR at centre; the current position sits
+   * off-centre by the drift, in the direction OPPOSITE the downrange
+   * bearing (site → vessel), scaled to the reticle and clamped to the rim
+   * for far sites.
+   */
   const offLen =
     drift != null ? Math.min(1, drift.distanceMeters / span) * (C - 18) : 0;
 
-  // The landing ZONE: a ring of possible touchdown around the centred site,
-  // radius mapped through the same sliding scale (clamped so it stays legible
-  // inside the box). A dispersion cue, not a pinpoint.
+  /**
+   * The landing ZONE: a ring of possible touchdown around the centred site,
+   * radius mapped through the same sliding scale (clamped so it stays
+   * legible inside the box). A dispersion cue, not a pinpoint.
+   */
   const zonePx =
     zoneRadiusMeters != null && zoneRadiusMeters > 0
       ? Math.max(4, Math.min(C - 8, (zoneRadiusMeters / span) * (C - 18)))

@@ -146,25 +146,30 @@ function StrategiesComponent({
   w,
   h,
 }: Readonly<ComponentProps<StrategiesConfig>>) {
-  // The whole career snapshot rides ONE
-  // canonical Topic, `career.status` (CareerStatus). economy.{funds,
-  // reputation,science} and strategies.all are the fields this widget reads,
-  // the wire's `career.status.strategies.all` carries the full `id`/costs/
-  // canActivate/canDeactivate/effect-text shape `parseStrategies` needs
-  // (career-capture-extend-report.md; note `department`, not the legacy
-  // `departmentName`, which parseStrategies normalizes). No legacy read
-  // fallback: the canonical Topic read has none. The activate/deactivate
-  // COMMANDS still have no command home (KNOWN_COMMAND_GAPS) and fall back to
-  // the legacy DataSource via `useExecuteAction` automatically: a later
-  // migration will move the write path too.
+  /**
+   * The whole career snapshot rides ONE canonical Topic, `career.status`
+   * (CareerStatus). economy.{funds,reputation,science} and strategies.all
+   * are the fields this widget reads; the wire's
+   * `career.status.strategies.all` carries the full `id`/costs/
+   * canActivate/canDeactivate/effect-text shape `parseStrategies` needs
+   * (career-capture-extend-report.md; note `department`, not the legacy
+   * `departmentName`, which parseStrategies normalizes). No legacy read
+   * fallback: the canonical Topic read has none. The activate/deactivate
+   * COMMANDS still have no command home (KNOWN_COMMAND_GAPS) and fall back
+   * to the legacy DataSource via `useExecuteAction` automatically: a later
+   * migration will move the write path too.
+   */
   const career = useTelemetry("career.status");
   const stratsRaw = career?.strategies?.all;
   const funds = career?.economy?.funds;
   const reputation = career?.economy?.reputation;
   const science = career?.economy?.science;
-  // Activating/deactivating a strategy is an Administration-building action
-  // with no vessel signal delay, so it dispatches at the meta-vantage
-  // (instant). The handles are contributed to the panel delay rail by usePanelDelay.
+  /**
+   * Activating/deactivating a strategy is an Administration-building action
+   * with no vessel signal delay, so it dispatches at the meta-vantage
+   * (instant). The handles are contributed to the panel delay rail by
+   * usePanelDelay.
+   */
   const activateCmd = useCommand("career.strategy.activate", {
     vantage: META_VANTAGE,
   });
@@ -234,10 +239,12 @@ function StrategiesComponent({
     (s) =>
       !s.canActivate &&
       s.activateBlockedReason !== "" &&
-      // "more than 1 active strategies at this level" is the soft cap,
-      // the strategy IS eligible, just blocked by the active count. Keep
-      // those visible in the Available list so the operator sees them as
-      // options once they deactivate the running strategy.
+      /**
+       * "more than 1 active strategies at this level" is the soft cap, the
+       * strategy IS eligible, just blocked by the active count. Keep those
+       * visible in the Available list so the operator sees them as options
+       * once they deactivate the running strategy.
+       */
       !/active strategies at this level/i.test(s.activateBlockedReason),
   );
   const softBlocked = inactive.filter(
@@ -246,13 +253,15 @@ function StrategiesComponent({
       /active strategies at this level/i.test(s.activateBlockedReason),
   );
 
-  // Over-cap detection: the KSP UI silently allows a save to carry
-  // more active strategies than the admin building's level allows
-  // (see project_ksp_strategy_overcap_quirk). Telemachus's blocked
-  // reason text encodes the cap, e.g. "more than 2 active strategies
-  // at this level"; if any softBlocked strategy mentions a cap N and
-  // we have more than N active, surface that visually so the operator
-  // doesn't mistake the over-cap save for a fully-staffed T3 admin.
+  /**
+   * Over-cap detection: the KSP UI silently allows a save to carry more
+   * active strategies than the admin building's level allows (see
+   * project_ksp_strategy_overcap_quirk). Telemachus's blocked reason text
+   * encodes the cap, e.g. "more than 2 active strategies at this level"; if
+   * any softBlocked strategy mentions a cap N and we have more than N
+   * active, surface that visually so the operator doesn't mistake the
+   * over-cap save for a fully-staffed T3 admin.
+   */
   const inferredCap = (() => {
     for (const s of softBlocked) {
       const m = s.activateBlockedReason.match(/(\d+)\s+active strategies/i);

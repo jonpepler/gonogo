@@ -233,8 +233,6 @@ function Metres({ m }: { m: number }) {
   return <Unit value={value("m", m)} decimals={Math.abs(m) >= 1000 ? 2 : 0} />;
 }
 
-// ── Config ────────────────────────────────────────────────────────────────────
-
 function GroundSurveyConfigComponent({
   config,
   onSave,
@@ -305,8 +303,6 @@ function GroundSurveyConfigComponent({
     </ConfigForm>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 /* A column inside the panel's aside slot, which lays its own children out as
    a wrapping row: the badge, the speed and any augment stack vertically and
@@ -394,8 +390,6 @@ const StripWrap = styled.div`
     flex: 1;
   }
 `;
-
-// ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<GroundSurveyConfig>({
   id: "ground-survey",

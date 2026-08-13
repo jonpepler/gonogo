@@ -82,16 +82,19 @@ export interface LifeSupportSlotContext {
   ambientRadiationRadPerSecond: number;
 }
 
-// Declaration-merge the slot id → props type into the sdk facade's
-// `SlotRegistry`. Co-located here (not centralised in
-// `mod/sitrep-sdk/src/api/slots.ts`, unlike a packages/components-owned
-// slot) because this augment is now the Uplink's OWN, this file is always
-// part of Kerbalism's own compiled program, so there is no cross-package
-// reachability problem for the slot's OWNER (see slots.ts's own header for
-// the full reasoning, and Scanning/index.tsx for the matching pattern). This
-// is what types `registerAugment({ augments: "life-support.sections", ... })`
-// and `<AugmentSlot name="life-support.sections" props={...} />` against
-// `LifeSupportSlotContext` rather than the loose fallback.
+/**
+ * Declaration-merge the slot id → props type into the sdk facade's
+ * `SlotRegistry`. Co-located here (not centralised in
+ * `mod/sitrep-sdk/src/api/slots.ts`, unlike a packages/components-owned
+ * slot) because this augment is now the Uplink's OWN, this file is always
+ * part of Kerbalism's own compiled program, so there is no cross-package
+ * reachability problem for the slot's OWNER (see slots.ts's own header
+ * for the full reasoning, and Scanning/index.tsx for the matching
+ * pattern). This is what types
+ * `registerAugment({ augments: "life-support.sections", ... })` and
+ * `<AugmentSlot name="life-support.sections" props={...} />` against
+ * `LifeSupportSlotContext` rather than the loose fallback.
+ */
 declare module "@ksp-gonogo/sitrep-sdk" {
   interface SlotRegistry {
     "life-support.sections": LifeSupportSlotContext;
@@ -206,9 +209,11 @@ function GreenhouseEntryRow({
         </Value>
         <Cluster gap="xs" justify="end" wrap>
           {tooHigh && (
-            // `warning`, not `critical`: recoverable once the storm passes,
-            // the same rung the host widget's Degraded status uses for it
-            // (see this file's doc comments).
+            /**
+             * `warning`, not `critical`: recoverable once the storm
+             * passes, the same rung the host widget's Degraded status
+             * uses for it (see this file's doc comments).
+             */
             <Badge
               role="status"
               aria-live="polite"
@@ -235,10 +240,13 @@ function GreenhouseEntryRow({
         {fmtRatePerDay(g.foodRatePerSec)}
       </Value>
       {blocked && (
-        // The bare "-fg" warning token is meant to sit ON the warning "-bg"
-        // (e.g. inside a Badge); standalone on the panel's dark surface it
-        // is near-black. "-fg-muted" is the standalone-warning-text token
-        // (LaunchDirector, CommSignal, DeployedScience all use it).
+        /**
+         * The bare "-fg" warning token is meant to sit ON the warning
+         * "-bg" (e.g. inside a Badge); standalone on the panel's dark
+         * surface it is near-black. "-fg-muted" is the
+         * standalone-warning-text token (LaunchDirector, CommSignal,
+         * DeployedScience all use it).
+         */
         <Value
           tone="warn"
           size="xs"
@@ -258,11 +266,13 @@ function GreenhouseSection({
   // No greenhouse part on the vessel, the common case. Render nothing
   // rather than an empty "Greenhouse" header with no content beneath it.
   if (greenhouses.length === 0) return null;
-  // The overwhelmingly common case is exactly one greenhouse part: fold the
-  // section identity straight into that one row's title ("Greenhouse")
-  // instead of spending a whole extra line on a header no one needs. Only a
-  // multi-greenhouse vessel (rare) gets a shared header, with each row then
-  // titled by its own crop.
+  /**
+   * The overwhelmingly common case is exactly one greenhouse part: fold
+   * the section identity straight into that one row's title
+   * ("Greenhouse") instead of spending a whole extra line on a header no
+   * one needs. Only a multi-greenhouse vessel (rare) gets a shared
+   * header, with each row then titled by its own crop.
+   */
   if (greenhouses.length === 1) {
     return (
       <Stack gap="xs">

@@ -36,7 +36,7 @@ import { FuelStatusComponent } from "./index";
  * fixture reproduces that real shape rather than the flatter one a naive
  * reading of the old (buggy) mapping would suggest.
  */
-describe("FuelStatus: genuinely runs off the stream (M3 batch 1 + P4a dv.* migration)", () => {
+describe("FuelStatus: genuinely runs off the stream, including the dv.* wire migration", () => {
   it("reads current stage + vessel-total resources off the real stream pipeline, not legacy", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["vessel.structure", "vessel.resources"],
@@ -73,18 +73,22 @@ describe("FuelStatus: genuinely runs off the stream (M3 batch 1 + P4a dv.* migra
     });
 
     await waitFor(() => expect(visibleText()).toContain("Stage 2"));
-    // MonoPropellant (RCS) and ElectricCharge (Power) both stream a
-    // positive max and render; XenonGas's max === 0 so it's filtered out,
-    // exercising the widget's own "resources absent from the vessel are
-    // skipped" rule off REAL streamed data, not a fixture shortcut.
+    /**
+     * MonoPropellant (RCS) and ElectricCharge (Power) both stream a
+     * positive max and render; XenonGas's max === 0 so it's filtered out,
+     * exercising the widget's own "resources absent from the vessel are
+     * skipped" rule off REAL streamed data, not a fixture shortcut.
+     */
     expect(screen.getByText("RCS")).toBeTruthy();
     expect(screen.getByText("Power")).toBeTruthy();
     // formatAmount: <100 -> 2 decimals, >=100 -> 1 decimal.
     expect(visibleText()).toContain("30.00 / 30.00");
     expect(visibleText()).toContain("150.0 / 200.0");
-    // LiquidFuel/Oxidizer read the GAPPED stage-scoped keys, with no
-    // legacy source in this file they never arrive, so max stays 0 and
-    // they're filtered out of the resource list exactly like XenonGas.
+    /**
+     * LiquidFuel/Oxidizer read the GAPPED stage-scoped keys, with no legacy
+     * source in this file they never arrive, so max stays 0 and they're
+     * filtered out of the resource list exactly like XenonGas.
+     */
     expect(screen.queryByText("Liquid Fuel")).not.toBeInTheDocument();
     expect(screen.queryByText("Oxidizer")).not.toBeInTheDocument();
   });

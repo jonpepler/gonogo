@@ -89,11 +89,13 @@ async function streamSnapshot(
     });
   });
 
-  // Wait for the emitted `career.status` to land in the store (fixture-
-  // independent: every fixture emits it, even the null "feature-unavailable"
-  // one). The same `notifyStore` that makes it samplable drives the widget's
-  // `useSyncExternalStore` subscription, so once it's present the DOM has
-  // committed the read.
+  /**
+   * Wait for the emitted `career.status` to land in the store
+   * (fixture-independent: every fixture emits it, even the null
+   * "feature-unavailable" one). The same `notifyStore` that makes it
+   * samplable drives the widget's `useSyncExternalStore` subscription, so
+   * once it's present the DOM has committed the read.
+   */
   await waitFor(() => {
     if (!stream.store.sample("career.status", stream.store.currentFrame())) {
       throw new Error("career.status not sampled yet");

@@ -33,10 +33,12 @@ export function KosCpuDiscovery({
 
   useEffect(() => {
     if (!client) return;
-    // kosSource is always the registered "kos" Uplink handle in-process
-    // (this component only mounts on the main screen), so the instanceof
-    // check that used to guard a generic getDataSource("kos") lookup isn't
-    // needed here: it imports the concrete instance directly.
+    /**
+     * kosSource is always the registered "kos" Uplink handle in-process
+     * (this component only mounts on the main screen), so the instanceof
+     * check that used to guard a generic getDataSource("kos") lookup isn't
+     * needed here: it imports the concrete instance directly.
+     */
     kosSource.attachTelemetryClient(client);
   }, [client]);
 

@@ -4,8 +4,7 @@ import { setupStreamFixture } from "../test/setupStreamFixture";
 import { useGroundSurveySamples } from "./useGroundSurveySamples";
 
 /**
- * Encodes producer↔consumer disagreement **L1**
- * (`docs/superpowers/specs/2026-07-24-producer-consumer-disagreements.md`).
+ * Encodes producer↔consumer disagreement **L1**.
  *
  * PRODUCER: the mod publishes TWO distinct terrain-height quantities,
  * `vessel.flight.altitudeTerrain` (KSP `radarAltitude`, from the CENTRE OF

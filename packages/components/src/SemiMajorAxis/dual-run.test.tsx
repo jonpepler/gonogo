@@ -19,7 +19,7 @@ import { SemiMajorAxisComponent } from "./index";
  * legacy source registered anywhere in this file.
  */
 
-describe("SemiMajorAxis: renders off the stream alone (R6 Wave 1)", () => {
+describe("SemiMajorAxis: renders off the stream alone", () => {
   it("renders sma and the derived reference-body subtitle purely off the stream", async () => {
     const fixture = setupStreamFixture({
       // `o.referenceBody` -> `vessel.state.referenceBodyName` is "carried" only

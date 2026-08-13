@@ -38,7 +38,7 @@ import { CurrentOrbitComponent } from "./index";
  * `vessel.orbit`: the carried-channels gate is parent-channel-scoped, not
  * per-field (see `vessel-state.ts`'s `vesselStateChannel` doc comment).
  */
-describe("CurrentOrbit: genuinely runs off the stream (M3 batch 2)", () => {
+describe("CurrentOrbit: genuinely runs off the stream", () => {
   it("reads sma/eccentricity/inclination/argPe/period off the real stream pipeline, not legacy", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: [

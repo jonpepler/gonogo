@@ -39,11 +39,11 @@ import {
 // which itself imports `ShipDiagramSvg`/`ShipDiagram`).
 export type { ShipMapPartMetaEntry, ShipMapPartMeterEntry };
 
-// ---------------------------------------------------------------------------
-// Augment slots (Uplink architecture). ShipMap is a HOST that exposes
-// two slots; no first-party augment fills them here, so each
-// renders nothing until an Uplink registers an augment into it.
-// ---------------------------------------------------------------------------
+/**
+ * Augment slots. ShipMap is a HOST that exposes two slots; no first-party
+ * augment fills them here, so each renders nothing until an Uplink registers
+ * an augment into it.
+ */
 
 /**
  * Props for `ship-map.overlay`: an OVERLAY slot, rendered in a
@@ -75,8 +75,8 @@ export interface ShipMapOverlayContext {
 }
 
 /**
- * Props for `ship-map.badges`: the widget's BROAD escape-hatch slot (spec
- * §4.8 composable badges), rendered in the header meta row. Meant for small
+ * Props for `ship-map.badges`: the widget's BROAD escape-hatch slot
+ * (composable badges), rendered in the header meta row. Meant for small
  * inline status chips an Uplink wants beside the part count; badge augments
  * read their own Topics via hooks, so only labelling context is passed down.
  */
@@ -87,24 +87,28 @@ export interface ShipMapBadgesContext {
   hottestPartName: string | null;
 }
 
-// Co-located declaration-merge of this widget's slot ids → their props (spec
-// §4.6). Kept next to the widget (not in a central registry file) so parallel
-// slot work on other widgets never collides on this seam.
+/**
+ * Co-located declaration-merge of this widget's slot ids → their props. Kept
+ * next to the widget (not in a central registry file) so parallel slot work
+ * on other widgets never collides on this seam.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "ship-map.overlay": ShipMapOverlayContext;
     "ship-map.badges": ShipMapBadgesContext;
   }
 
-  // The framework's first widget-authored `ContributionRegistry` slots
-  // (contribution-slots-spec §13.4): every OTHER first-party contribution to
-  // date rides the automatic `${componentId}.badges` slot, which is a
-  // runtime string, never a declared member of this registry (see
-  // `useWidgetBadges`'s own doc comment). These two are genuinely typed,
-  // declared slots: `ship-map.part-meters` (per-part resource meters) and
-  // `ship-map.part-meta` (per-part status/metadata rows), each fed by BOTH
-  // the built-in `core` contribution (`./partMetersContribution.ts`) and a
-  // Kerbalism-style Uplink contribution, on equal footing.
+  /**
+   * The framework's first widget-authored `ContributionRegistry` slots:
+   * every OTHER first-party contribution to date rides the automatic
+   * `${componentId}.badges` slot, which is a runtime string, never a
+   * declared member of this registry (see `useWidgetBadges`'s own doc
+   * comment). These two are genuinely typed, declared slots:
+   * `ship-map.part-meters` (per-part resource meters) and
+   * `ship-map.part-meta` (per-part status/metadata rows), each fed by BOTH
+   * the built-in `core` contribution (`./partMetersContribution.ts`) and a
+   * Kerbalism-style Uplink contribution, on equal footing.
+   */
   interface ContributionRegistry {
     "ship-map.part-meters": {
       entry: ShipMapPartMeterEntry;
@@ -154,11 +158,13 @@ function ShipMapComponent(_props: Readonly<ComponentProps<ShipMapConfig>>) {
   );
   const liveByFlightId = usePartsLive(flightIds);
 
-  // The unified self-contribution path (spec §13.4): every per-part meter and
-  // meta row, built-in and Kerbalism alike, arrives through these two typed
-  // slots. Grouped by partId here, once, so `ShipDiagramSvg` (the compact
-  // in-body fill bars) and `ShipDiagram` (the hover tooltip) both read the
-  // SAME per-part lookup rather than each re-deriving it.
+  /**
+   * The unified self-contribution path: every per-part meter and meta row,
+   * built-in and Kerbalism alike, arrives through these two typed slots.
+   * Grouped by partId here, once, so `ShipDiagramSvg` (the compact in-body
+   * fill bars) and `ShipDiagram` (the hover tooltip) both read the SAME
+   * per-part lookup rather than each re-deriving it.
+   */
   const meterContributions = useContributions("ship-map.part-meters");
   const metaContributions = useContributions("ship-map.part-meta");
   const partMeters = useMemo(
@@ -418,8 +424,6 @@ function renderBody(
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 // Structural inline styles (CSS-var tokens): a bespoke map column, no reusable
 // ui-kit primitive fits, so the layout stays local. The one kit piece it reuses
 // (Box) takes only this map's column layout inline. The DiagramWrap `::before`
@@ -501,8 +505,6 @@ const TINT_LAYER: CSSProperties = {
   zIndex: 0,
 };
 
-// ── Registration ──────────────────────────────────────────────────────────────
-
 registerComponent<ShipMapConfig>({
   id: "ship-map",
   name: "Ship Map",
@@ -516,8 +518,8 @@ registerComponent<ShipMapConfig>({
   // base-frame projection) and a broad badges escape-hatch slot in the header
   // meta row. No first-party augment fills either yet.
   augmentSlots: ["ship-map.overlay", "ship-map.badges"],
-  // The self-contribution slots (spec §13.4): per-part resource meters and
-  // per-part status/meta rows. The built-in `core` contribution
+  // The self-contribution slots: per-part resource meters and per-part
+  // status/meta rows. The built-in `core` contribution
   // (./partMetersContribution.ts) always fills the first; a Kerbalism-style
   // Uplink may fill both.
   contributionSlots: ["ship-map.part-meters", "ship-map.part-meta"],

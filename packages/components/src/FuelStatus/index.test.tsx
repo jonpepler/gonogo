@@ -36,9 +36,11 @@ import { FuelStatusComponent } from "./index";
  *   `providedStore` doesn't auto-register the production derived channels.
  */
 
-// Rendered trees, tracked so afterEach can unmount them BEFORE clearing the
-// augment registry: clearAugments() firing on a still-mounted AugmentSlot is
-// a state update outside act() (CLAUDE.md → Testing Philosophy).
+/**
+ * Rendered trees, tracked so afterEach can unmount them BEFORE clearing the
+ * augment registry: clearAugments() firing on a still-mounted AugmentSlot is
+ * a state update outside act() (CLAUDE.md → Testing Philosophy).
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {
@@ -187,9 +189,11 @@ describe("FuelStatusComponent", () => {
     });
   });
 
-  // Regression: at 21:08 BST on 2026-05-17 the widget crashed with
-  // `twr.toFixed is not a function` on a stage row whose TWR/ΔV fields were
-  // null instead of numbers. The crash took the whole widget down.
+  /**
+   * Regression: the widget crashed with `twr.toFixed is not a function` on
+   * a stage row whose TWR/ΔV fields were null instead of numbers. The crash
+   * took the whole widget down.
+   */
   it("survives a stage row with non-numeric TWR / ΔV", async () => {
     const fixture = makeFixture();
     const { container } = renderFuel(fixture);
@@ -248,21 +252,25 @@ describe("FuelStatusComponent", () => {
       ]);
     });
 
-    // No error boundary fallback, the panel rendered. The non-numeric stage
-    // falls back to the null-display placeholder rather than crashing (wait
-    // for the stage stack to land off the stream, since the panel title
-    // alone renders before any data).
+    /**
+     * No error boundary fallback, the panel rendered. The non-numeric stage
+     * falls back to the null-display placeholder rather than crashing (wait
+     * for the stage stack to land off the stream, since the panel title
+     * alone renders before any data).
+     */
     await waitFor(() =>
       expect(
         screen.queryAllByText(new RegExp(`TWR\\s+${NULL_DISPLAY}`)).length,
       ).toBeGreaterThan(0),
     );
     expect(visibleText(container)).toContain("FUEL · ΔV");
-    // The stage's ΔV is a BARE placeholder, where this used to look for the
-    // placeholder followed by "m/s". `<Unit>` renders no symbol beside an
-    // absent value on purpose: a null with a unit after it claims a reading
-    // in metres per second that was never taken. The column header still
-    // says what the column is.
+    /**
+     * The stage's ΔV is a BARE placeholder, where this used to look for the
+     * placeholder followed by "m/s". `<Unit>` renders no symbol beside an
+     * absent value on purpose: a null with a unit after it claims a reading
+     * in metres per second that was never taken. The column header still
+     * says what the column is.
+     */
     expect(screen.queryAllByText(NULL_DISPLAY).length).toBeGreaterThan(0);
   });
 
@@ -308,9 +316,11 @@ describe("FuelStatusComponent", () => {
     expect(screen.queryByText("VAC")).not.toBeNull();
     expect(screen.queryByText("2min 5s")).not.toBeNull();
 
-    // Per-stage ΔV picks the vacuum column.
-    // `visibleText`, not `.textContent`: a readout carries a hidden word for
-    // screen readers, so the raw text reads "2500 m/s metres per second".
+    /**
+     * Per-stage ΔV picks the vacuum column. `visibleText`, not
+     * `.textContent`: a readout carries a hidden word for screen readers,
+     * so the raw text reads "2500 m/s metres per second".
+     */
     const stageValueTexts = Array.from(container.querySelectorAll("span")).map(
       (el) => visibleText(el),
     );
@@ -318,9 +328,11 @@ describe("FuelStatusComponent", () => {
     expect(stageValueTexts).toContain("1700 m/s");
   });
 
-  // Augment slots (Uplink architecture §4): the widget exposes
-  // `fuel-status.badges` (header) and `fuel-status.sections` (body). With no
-  // augment registered the slots render nothing and the widget is unchanged.
+  /**
+   * Augment slots: the widget exposes `fuel-status.badges` (header) and
+   * `fuel-status.sections` (body). With no augment registered the slots
+   * render nothing and the widget is unchanged.
+   */
   it("renders with empty augment slots when nothing is registered", async () => {
     const fixture = makeFixture();
     const { container } = renderFuel(fixture);

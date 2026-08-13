@@ -1,22 +1,22 @@
 import { resourceColor } from "@ksp-gonogo/ui-kit";
 import { useMemo } from "react";
 
-// ---------------------------------------------------------------------------
-// Client-side resource-colour PROCESSOR (operator feedback on the Ship
-// Systems radiation render pass): turns a live resource-name list into a
-// stable `name -> colour` map, wrapping ui-kit's own `resourceColor(name)` as
-// the internal. Widgets read the map through `useResourceColorMap`, never
-// call `resourceColor` inline per-row: the map is the one source of truth
-// for "what colour is this resource" across every row in a render pass, and
-// memoising it means a resource's colour is computed once per render pass
-// rather than once per row.
-//
-// Works for any resource name, including a future Uplink's custom resources:
-// `resourceColor` itself already falls back to a deterministic hashed hue
-// for anything outside its curated table (see that module's own doc
-// comment), so an unrecognised name still gets a stable, legible colour
-// rather than breaking the map.
-// ---------------------------------------------------------------------------
+/**
+ * Client-side resource-colour PROCESSOR (operator feedback on the Ship
+ * Systems radiation render pass): turns a live resource-name list into a
+ * stable `name -> colour` map, wrapping ui-kit's own `resourceColor(name)`
+ * as the internal. Widgets read the map through `useResourceColorMap`,
+ * never call `resourceColor` inline per-row: the map is the one source of
+ * truth for "what colour is this resource" across every row in a render
+ * pass, and memoising it means a resource's colour is computed once per
+ * render pass rather than once per row.
+ *
+ * Works for any resource name, including a future Uplink's custom
+ * resources: `resourceColor` itself already falls back to a deterministic
+ * hashed hue for anything outside its curated table (see that module's
+ * own doc comment), so an unrecognised name still gets a stable, legible
+ * colour rather than breaking the map.
+ */
 
 /** NUL-separated: a resource name is never expected to contain a NUL byte,
  *  unlike a space (a third-party Uplink could plausibly name one "Waste

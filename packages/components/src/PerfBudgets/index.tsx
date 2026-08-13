@@ -184,14 +184,13 @@ const TONE_COLOR: Record<Tone, string> = {
   over: "var(--color-status-nogo-bg)",
 };
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-// Structural inline styles (CSS-var tokens): a bespoke budget list + dot
-// summary, no reusable ui-kit primitive fits the layout, so it stays local.
-// The one kit piece it reuses (Card) takes only this widget's column layout
-// inline. Per-tone colour (text + fills) is applied inline at the call site
-// from TONE_COLOR.
-
+/**
+ * Structural inline styles (CSS-var tokens): a bespoke budget list + dot
+ * summary, no reusable ui-kit primitive fits the layout, so it stays local.
+ * The one kit piece it reuses (Card) takes only this widget's column layout
+ * inline. Per-tone colour (text + fills) is applied inline at the call site
+ * from TONE_COLOR.
+ */
 const LIST: CSSProperties = {
   listStyle: "none",
   // No top margin: Panel.Body supplies the inset and the gap between the title
@@ -282,8 +281,6 @@ const DOT: CSSProperties = {
   height: "10px",
   borderRadius: "var(--radius-circle)",
 };
-
-// ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<PerfBudgetsConfig>({
   id: "perf-budgets",

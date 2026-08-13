@@ -34,8 +34,7 @@ export interface KosScriptListingResult {
 const IDLE: KosScriptListingResult = { paths: [], loading: false, hint: null };
 
 /**
- * Live drive listing for the `/`-script picker (kos-terminal-script-picker,
- * hub-wizard-kos Phase 1 increment (b)): dispatches the resurrected
+ * Live drive listing for the `/`-script picker: dispatches the resurrected
  * `KOS_FILES_SCRIPT` ("list" op) via the surviving `KosDataSource.
  * executeScript` RPC for each of `LISTED_VOLUMES`, merges the FILE (not
  * directory) entries, and filters to `*.ks`/`*.ksm`: the only RUNPATH-able
@@ -63,10 +62,12 @@ export function useKosScriptListing(
   enabled: boolean,
 ): KosScriptListingResult {
   const [result, setResult] = useState<KosScriptListingResult>(IDLE);
-  // Tracks the (coreId, cpuTag) pair a fetch has already been kicked off
-  // for, so re-opening the picker doesn't re-dispatch; see the doc
-  // comment above. Reset (by identity) whenever coreId/cpuTag actually
-  // change, via the dependency array below rather than manual comparison.
+  /**
+   * Tracks the (coreId, cpuTag) pair a fetch has already been kicked off
+   * for, so re-opening the picker doesn't re-dispatch; see the doc comment
+   * above. Reset (by identity) whenever coreId/cpuTag actually change, via
+   * the dependency array below rather than manual comparison.
+   */
   const fetchedForRef = useRef<string | null>(null);
 
   useEffect(() => {

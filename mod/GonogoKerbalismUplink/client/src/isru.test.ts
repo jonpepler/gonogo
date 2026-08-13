@@ -88,9 +88,11 @@ describe("kerbalism's namespaces of the elected isru.* payloads", () => {
     expect(ext).toBeDefined();
     expect(ext?.issue).toBe("not deployed");
 
-    // Each accessor answers for its OWN namespace only. A payload carrying some
-    // other provider's sub-tree is not this provider's data with fields missing, it
-    // is an absence, and the reader has to say so.
+    /**
+     * Each accessor answers for its OWN namespace only. A payload carrying
+     * some other provider's sub-tree is not this provider's data with
+     * fields missing, it is an absence, and the reader has to say so.
+     */
     expect(
       readKerbalismIsruDrillExt({
         extensions: { someprovider: { issue: "made up" } },
@@ -101,19 +103,22 @@ describe("kerbalism's namespaces of the elected isru.* payloads", () => {
     expect(readKerbalismIsruConverterExt(undefined)).toBeUndefined();
   });
 
-  // ── The end-to-end assertion this whole mechanism exists to make good on ──────
-  //
-  // A quantity inside a provider's namespace is a real gonogo Value and has to
-  // survive decode like any other. Nothing in core can know that: the bag is opaque
-  // by construction, so `wrapTopicPayload` can only walk into it because ./isru.ts
-  // registered which generated type each namespace holds
-  // (`registerProviderExtensionShape`) and ./topics.ts fed this Uplink's own
-  // generated TYPE units in (`registerTypeUnits`). Delete either and this is the
-  // assertion that goes red with the rest of the file staying green.
-  //
-  // Unlike this Uplink's science bags, no `registerUnit` call is involved: every unit
-  // here is already in the first-party catalog. So this isolates the SHAPE
-  // registration as the load-bearing half, which the science proof could not.
+  /**
+   * The end-to-end assertion this whole mechanism exists to make good on.
+   *
+   * A quantity inside a provider's namespace is a real gonogo Value and has
+   * to survive decode like any other. Nothing in core can know that: the bag
+   * is opaque by construction, so `wrapTopicPayload` can only walk into it
+   * because ./isru.ts registered which generated type each namespace holds
+   * (`registerProviderExtensionShape`) and ./topics.ts fed this Uplink's own
+   * generated TYPE units in (`registerTypeUnits`). Delete either and this is
+   * the assertion that goes red with the rest of the file staying green.
+   *
+   * Unlike this Uplink's science bags, no `registerUnit` call is involved:
+   * every unit here is already in the first-party catalog. So this isolates
+   * the SHAPE registration as the load-bearing half, which the science proof
+   * could not.
+   */
   it("hydrates an extension's quantities into wrapped Values at decode time", async () => {
     const entries = await decoded<IsruDrillEntry[]>(
       ISRU_DRILLS_TOPIC,
@@ -158,13 +163,14 @@ describe("kerbalism's namespaces of the elected isru.* payloads", () => {
     expect(scrubber?.broken).toBe(true);
   });
 
-  // ── What separates this bag from the science one ─────────────────────────────
-  //
-  // Kerbalism's science has to leave core fields null, because its figures are in
-  // megabytes and core's are in mits. Its ISRU does not: a Kerbalism drill's rate is
-  // in the same resource units a stock drill's is. So the shared shape is fully
-  // filled and a widget that never imports the accessors above still renders a
-  // complete, correct row.
+  /**
+   * What separates this bag from the science one: Kerbalism's science has to
+   * leave core fields null, because its figures are in megabytes and core's
+   * are in mits. Its ISRU does not: a Kerbalism drill's rate is in the same
+   * resource units a stock drill's is. So the shared shape is fully filled
+   * and a widget that never imports the accessors above still renders a
+   * complete, correct row.
+   */
   it("fills every shared field, so a core-only widget renders a complete row", async () => {
     const entries = await decoded<IsruDrillEntry[]>(
       ISRU_DRILLS_TOPIC,
@@ -190,10 +196,13 @@ describe("kerbalism's namespaces of the elected isru.* payloads", () => {
     expect(entries[1]?.rate).toMatchObject({ magnitude: 0, unit: "units/s" });
   });
 
-  // Kerbalism runs a CO2 scrubber and a regolith-electrolysis plant on the same
-  // module, so this channel carries both. Filtering would mean gonogo asserting a
-  // taxonomy the engine does not draw; the deliberate cost is that the same part also
-  // appears on kerbalism.lifesupport, from the supply side.
+  /**
+   * Kerbalism runs a CO2 scrubber and a regolith-electrolysis plant on the
+   * same module, so this channel carries both. Filtering would mean gonogo
+   * asserting a taxonomy the engine does not draw; the deliberate cost is
+   * that the same part also appears on kerbalism.lifesupport, from the
+   * supply side.
+   */
   it("carries life-support processes alongside ISRU ones, unfiltered", async () => {
     const entries = await decoded<IsruConverterEntry[]>(
       ISRU_CONVERTERS_TOPIC,

@@ -69,8 +69,8 @@ const VESSEL_PARTS_WIRE = {
   ],
 };
 
-describe("PowerSystems: genuinely runs off the stream (M3 science/parts batch)", () => {
-  it("uses the SAME total for PROD/NET as the itemized per-part rows sum to, even when parts.power's totalProductionEc disagrees (M3 whole-branch review #3)", async () => {
+describe("PowerSystems: genuinely runs off the stream", () => {
+  it("uses the SAME total for PROD/NET as the itemized per-part rows sum to, even when parts.power's totalProductionEc disagrees", async () => {
     // Before the fix: `totalProduced` preferred the streamed scalar
     // whenever present, so PROD/NET could show a number that contradicts
     // the itemized Producers rows below it: and NET drives a

@@ -2,20 +2,20 @@ import type { BadgeEntry } from "@ksp-gonogo/ui-kit";
 import { SHIP_SYSTEMS, type ShipSystems } from "../processor";
 import { KERBALISM } from "../uplink";
 
-// ---------------------------------------------------------------------------
-// The Ship Systems panel badge (contribution-slots-spec §13.2, panelBadges).
-// A pure contribution to the widget's auto-wired `${componentId}.badges` slot,
-// fed by the SAME `SHIP_SYSTEMS` Processor the widget body reads via
-// useProcessor. This is the dogfood: one per-frame `summarise` evaluation, two
-// consumers (the widget renders the rows, this derives a one-line header
-// status), never two derivations. The host mounts it on the Panel with zero
-// widget-side wiring.
-//
-// The badge flags only a problem: the single most-urgent shortage (a root
-// cause first, since acting on a symptom is wasted effort, then a supply below
-// its low threshold). It returns null when nothing is short, so a nominal
-// vessel carries no header clutter.
-// ---------------------------------------------------------------------------
+/**
+ * The Ship Systems panel badge. A pure contribution to the widget's
+ * auto-wired `${componentId}.badges` slot, fed by the SAME `SHIP_SYSTEMS`
+ * Processor the widget body reads via useProcessor. This is the dogfood:
+ * one per-frame `summarise` evaluation, two consumers (the widget renders
+ * the rows, this derives a one-line header status), never two
+ * derivations. The host mounts it on the Panel with zero widget-side
+ * wiring.
+ *
+ * The badge flags only a problem: the single most-urgent shortage (a root
+ * cause first, since acting on a symptom is wasted effort, then a supply
+ * below its low threshold). It returns null when nothing is short, so a
+ * nominal vessel carries no header clutter.
+ */
 
 function statusBadges(ship: ShipSystems | undefined): BadgeEntry[] | null {
   if (!ship) return null;

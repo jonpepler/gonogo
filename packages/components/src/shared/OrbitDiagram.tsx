@@ -669,13 +669,12 @@ function ApsisLabel({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Bounding-box pipeline: small composable steps that drive both variants'
-// viewBox math. The SVG group applies rotate(-argPe) and y is flipped vs
-// the orbital frame; both transforms are linear so the projected extents
-// stay axis-aligned and we can work in a single frame.
-// ---------------------------------------------------------------------------
-
+/**
+ * Bounding-box pipeline: small composable steps that drive both variants'
+ * viewBox math. The SVG group applies rotate(-argPe) and y is flipped vs
+ * the orbital frame; both transforms are linear so the projected extents
+ * stay axis-aligned and we can work in a single frame.
+ */
 interface BBox {
   xMin: number;
   xMax: number;
@@ -813,12 +812,11 @@ function toViewBox(box: BBox): { x: number; y: number; w: number; h: number } {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Maneuver handles: rendered inside the rotated <g> above so callers feed
-// positions in the orbital plane (periapsis on +x, +y north) and we handle
-// the SVG y-flip at the edges.
-// ---------------------------------------------------------------------------
-
+/**
+ * Maneuver handles: rendered inside the rotated <g> above so callers feed
+ * positions in the orbital plane (periapsis on +x, +y north) and we handle
+ * the SVG y-flip at the edges.
+ */
 interface InternalHandleProps extends ManeuverHandleProps {
   sma: number;
   ecc: number;

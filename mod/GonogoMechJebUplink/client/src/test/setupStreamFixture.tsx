@@ -82,24 +82,29 @@ export function setupStreamFixture(opts: StreamFixtureOptions): StreamFixture {
     warpRate: () => 1,
     delaySeconds: () => opts.delaySeconds ?? 0,
   });
-  // A carried channel written as a `.`-terminated prefix sentinel (e.g.
-  // "fleet." or any per-subject dynamic namespace) is a DYNAMIC whole-topic
-  // namespace: tell the
-  // store so a 3+-segment dynamic topic (fleet.<guid>.delay) is subscribed/
-  // sampled whole, not mis-split into a `<parent>.<field>` the wire never
-  // publishes. Exact (non-`.`-terminated) carried topics are unaffected.
+  /**
+   * A carried channel written as a `.`-terminated prefix sentinel (e.g.
+   * "fleet." or any per-subject dynamic namespace) is a DYNAMIC
+   * whole-topic namespace: tell the store so a 3+-segment dynamic topic
+   * (fleet.<guid>.delay) is subscribed/sampled whole, not mis-split into
+   * a `<parent>.<field>` the wire never publishes. Exact
+   * (non-`.`-terminated) carried topics are unaffected.
+   */
   const carriedList = Array.from(opts.carriedChannels);
   const store = new TimelineStore(clock, {
     dynamicWholeTopicPrefixes: carriedList.filter((t) => t.endsWith(".")),
   });
   store.registerDerivedChannel(vesselStateChannel);
   store.registerDerivedChannel(spaceCenterStateChannel);
-  // FuelStatus's stage-scoped resource bars (`dv.currentStageResource(Max)`,
-  // dv-stage-resources.ts) need these registered too, same story as
-  // vesselStateChannel/spaceCenterStateChannel above: every caller of this
-  // shared helper (including the probe/visual-gate render harness) gets them
-  // for free instead of each widget's own test file registering them by
-  // hand (FuelStatus/index.test.tsx used to be the only place that did).
+  /**
+   * FuelStatus's stage-scoped resource bars (`dv.currentStageResource(Max)`,
+   * dv-stage-resources.ts) need these registered too, same story as
+   * vesselStateChannel/spaceCenterStateChannel above: every caller of
+   * this shared helper (including the probe/visual-gate render harness)
+   * gets them for free instead of each widget's own test file
+   * registering them by hand (FuelStatus/index.test.tsx used to be the
+   * only place that did).
+   */
   store.registerDerivedChannel(dvCurrentStageResourceChannel);
   store.registerDerivedChannel(dvCurrentStageResourceMaxChannel);
   if (opts.pinnedUt !== undefined) clock.scrubTo(opts.pinnedUt);

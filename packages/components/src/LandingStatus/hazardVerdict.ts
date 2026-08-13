@@ -1,7 +1,7 @@
 /**
  * The landing-site hazard verdict: SAFE / MARGINAL / DIVERT, telemetry alerting
  * (never GO/NO-GO, which is human-only). Worst-band-wins across four axes with
- * agent-3's researched defaults, plus a hard water-DIVERT override:
+ * researched defaults, plus a hard water-DIVERT override:
  *
  * | axis            | SAFE | MARGINAL | DIVERT | anchor                       |
  * | slope (deg)     | <=5  | 5-15     | >15    | Apollo LM 12-degree limit    |

@@ -62,10 +62,12 @@ interface Scenario {
 }
 
 const SCENARIOS: Record<string, Scenario> = {
-  // Descending but no radius resolves (`radius: null`) -> deriveLanding's
-  // real "can't resolve reference body" path, same qualitative "waiting for
-  // a landing prediction" empty state the old fixture's `land.timeToImpact:
-  // null` sentinel meant to depict.
+  /**
+   * Descending but no radius resolves (`radius: null`) -> deriveLanding's
+   * real "can't resolve reference body" path, same qualitative "waiting for
+   * a landing prediction" empty state the old fixture's `land.timeToImpact:
+   * null` sentinel meant to depict.
+   */
   "pre-burn-cruise": {
     body: { ...MUN, radius: null },
     descent: {
@@ -74,9 +76,11 @@ const SCENARIOS: Record<string, Scenario> = {
       surfaceSpeed: 20,
     },
   },
-  // Mun, h=2800m/vDown=42.5 m/s/aMax=3 -> timeToImpact≈38.1s,
-  // speedAtImpact≈107.8 m/s, bestSpeedAtImpact=0 (burn fits),
-  // suicideBurnCountdown≈31.4s (not urgent).
+  /**
+   * Mun, h=2800m/vDown=42.5 m/s/aMax=3 -> timeToImpact≈38.1s,
+   * speedAtImpact≈107.8 m/s, bestSpeedAtImpact=0 (burn fits),
+   * suicideBurnCountdown≈31.4s (not urgent).
+   */
   "suicide-burn-approaching": {
     body: MUN,
     descent: { heightFromTerrain: 2800, verticalSpeed: 42.5, surfaceSpeed: 50 },
@@ -100,9 +104,11 @@ const SCENARIOS: Record<string, Scenario> = {
     descent: { heightFromTerrain: 0.3, verticalSpeed: 0, surfaceSpeed: 0 },
     situation: 0,
   },
-  // Kerbin (atmospheric), h=28000m/vDown=210.4 m/s, no propulsion (a
-  // passive reentry) -> timeToImpact≈57.1s, best/suicide stay null.
-  // Ambient values are DIRECT vessel.flight reads, unchanged by migration.
+  /**
+   * Kerbin (atmospheric), h=28000m/vDown=210.4 m/s, no propulsion (a
+   * passive reentry) -> timeToImpact≈57.1s, best/suicide stay null.
+   * Ambient values are DIRECT vessel.flight reads, unchanged by migration.
+   */
   "kerbin-reentry-atmospheric": {
     body: KERBIN,
     descent: {
@@ -189,10 +195,12 @@ async function snapshotLandingStatusFixture(
         atmosphericTemperature: scenario.descent.atmosphericTemperature ?? 0,
         externalTemperature: scenario.descent.externalTemperature ?? 0,
       });
-      // The lowest-point burn datum the widget PREFERS (over the CoM radar
-      // altitude on vessel.flight): present in these near-surface descent
-      // scenarios, so the health badge reads live and the AGL is the
-      // surface datum rather than the CoM fallback.
+      /**
+       * The lowest-point burn datum the widget PREFERS (over the CoM radar
+       * altitude on vessel.flight): present in these near-surface descent
+       * scenarios, so the health badge reads live and the AGL is the
+       * surface datum rather than the CoM fallback.
+       */
       stream.emit("vessel.surface", {
         heightFromTerrain: scenario.descent.heightFromTerrain,
         // A landed vessel carries the touchdown UT, the widget's landed gate.
@@ -219,13 +227,16 @@ async function snapshotLandingStatusFixture(
     }
   });
 
-  // vessel.state (and its derived landing scalars) only resolve once the
-  // provider's ingest->beginFrame() rAF tick has run (the pinned view-clock's
-  // first frame). Flush two rAF ticks: deterministic and mode-independent,
-  // unlike a text-based gate: the body name lives in the subtitle, which is
-  // size-gated off (`rows >= 6`) in the compact/landscape h=5 modes, so a
-  // `waitFor(body.name)` would time out there even though the widget rendered
-  // fine. Mirrors `widgetDomSnapshot.tsx`'s `flushProviderFrame`.
+  /**
+   * vessel.state (and its derived landing scalars) only resolve once the
+   * provider's ingest->beginFrame() rAF tick has run (the pinned
+   * view-clock's first frame). Flush two rAF ticks: deterministic and
+   * mode-independent, unlike a text-based gate: the body name lives in the
+   * subtitle, which is size-gated off (`rows >= 6`) in the
+   * compact/landscape h=5 modes, so a `waitFor(body.name)` would time out
+   * there even though the widget rendered fine. Mirrors
+   * `widgetDomSnapshot.tsx`'s `flushProviderFrame`.
+   */
   await act(async () => {
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));

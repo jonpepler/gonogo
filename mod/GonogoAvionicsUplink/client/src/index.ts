@@ -1,9 +1,9 @@
 // GonogoAvionicsUplink client for gonogo.
 //
 // Co-located with the GonogoAvionicsUplink C# mod (mod/GonogoAvionicsUplink):
-// one directory holds the mod and the client TS it ships (Uplink architecture
-// §1). Importing this package's entry point side-effects the widget
-// registration into the global component registry:
+// one directory holds the mod and the client TS it ships. Importing this
+// package's entry point side-effects the widget registration into the
+// global component registry:
 //
 //   - `AvionicsGoNoGo` → registerComponent({ id: "avionics-go-no-go", ... })
 //     so the RP-1 controllable-mass ascent go/no-go is placeable from the

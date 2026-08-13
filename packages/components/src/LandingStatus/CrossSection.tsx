@@ -118,9 +118,12 @@ export function CrossSection({
     horizontalSpeed,
   )}`;
 
-  // Terrain spans nearly the full box width (a 1px inset inside the rounded
-  // border, matching the top-down reticle) and is clipped to the rounded rect
-  // below, so it fills the container without spilling past the sides/corners.
+  /**
+   * Terrain spans nearly the full box width (a 1px inset inside the rounded
+   * border, matching the top-down reticle) and is clipped to the rounded
+   * rect below, so it fills the container without spilling past the
+   * sides/corners.
+   */
   const pad = 5;
   const plotW = SIZE - pad * 2;
   const baseY = SIZE - 16;
@@ -129,11 +132,14 @@ export function CrossSection({
   // descending vessel + its velocity vector (which must never clip the surface).
   const amp = (baseY - topY) * 0.55;
 
-  // Terrain rendered as JUST the top surface line (the skyline): an open polyline
-  // of the profile points, over a soft closed fill that reads "ground below".
-  // No bottom/closure line and no ground baseline, only the top terrain line.
-  // The fill closes at the SQUARE's bottom edge (not the terrain baseline) so the
-  // ground reads solid all the way down, with no abrupt stop above the bottom.
+  /**
+   * Terrain rendered as JUST the top surface line (the skyline): an open
+   * polyline of the profile points, over a soft closed fill that reads
+   * "ground below". No bottom/closure line and no ground baseline, only the
+   * top terrain line. The fill closes at the SQUARE's bottom edge (not the
+   * terrain baseline) so the ground reads solid all the way down, with no
+   * abrupt stop above the bottom.
+   */
   const fillBottom = SIZE - 4; // inner bottom edge of the panel rect
   let topLine = ""; // open polyline: the surface profile only
   let fillArea = ""; // closed polygon (fill only, no stroke): ground beneath
@@ -153,14 +159,17 @@ export function CrossSection({
   const siteHeight = profile ? profile[(profile.length - 1) >> 1] : 0;
   const siteY = profile ? baseY - siteHeight * amp : baseY;
 
-  // Vessel: the current position, ABOVE the terrain, upwind of the site. Two
-  // axes of motion:
-  //  - VERTICAL: it descends down the plot as altitude drops (agl/(agl+K)), high
-  //    in the sky when far up, easing onto the surface at touchdown.
-  //  - HORIZONTAL: it CONVERGES on the site (plot centre) as the ground-track
-  //    drift shrinks: far downrange it sits well upwind (left), and by touchdown
-  //    (drift ≈ 0) it coincides with the site marker, so the descent visibly
-  //    arrives AT the predicted point rather than sailing past it.
+  /**
+   * Vessel: the current position, ABOVE the terrain, upwind of the site. Two
+   * axes of motion:
+   *  - VERTICAL: it descends down the plot as altitude drops (agl/(agl+K)),
+   *    high in the sky when far up, easing onto the surface at touchdown.
+   *  - HORIZONTAL: it CONVERGES on the site (plot centre) as the
+   *    ground-track drift shrinks: far downrange it sits well upwind (left),
+   *    and by touchdown (drift ≈ 0) it coincides with the site marker, so
+   *    the descent visibly arrives AT the predicted point rather than
+   *    sailing past it.
+   */
   const SITE_FRAC = 0.5; // site sits at the slice centre
   const MIN_VESSEL_FRAC = 0.12; // furthest upwind, at/above full-scale drift
   // Sliding scale, shared with the top-down reticle (defaults to the fixed 3 km).

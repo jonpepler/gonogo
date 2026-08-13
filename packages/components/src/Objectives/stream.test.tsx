@@ -17,7 +17,7 @@ afterEach(() => {
   clearActionHandlers();
 });
 
-describe("Objectives: genuinely runs off the stream (M3b career-detail batch)", () => {
+describe("Objectives: genuinely runs off the stream", () => {
   it("renders contract-parameter objectives derived from career.status.contracts.active", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["career.status"],

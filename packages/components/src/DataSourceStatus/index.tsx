@@ -110,9 +110,11 @@ function DataSourceStatusComponent({
     setConfiguringId(null);
   };
 
-  // Selective rendering: at small sizes the per-source rows lose their
-  // config buttons and retry chrome; tinier collapses to a healthy/total
-  // count badge.
+  /**
+   * Selective rendering: at small sizes the per-source rows lose their
+   * config buttons and retry chrome; tinier collapses to a healthy/total
+   * count badge.
+   */
   const cols = w ?? 12;
   const rows = h ?? 10;
   const showFullRows = rows >= 6 && cols >= 6;
@@ -292,8 +294,6 @@ function RemoteVersionPill({ sourceId }: { sourceId: string }) {
     </Badge>
   );
 }
-
-// --- Style helpers ---
 
 // Resets the semantic `<ul>`'s own bullet/margin/padding; `Stack` supplies
 // the flex-column + gap.

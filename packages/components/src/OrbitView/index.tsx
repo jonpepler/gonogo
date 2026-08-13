@@ -98,11 +98,11 @@ interface OrbitViewConfig {
   showMarkers?: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Augment slots (Uplink architecture). OrbitView is a HOST that exposes
-// two slots; no first-party augment fills them here, so
-// each renders nothing until an Uplink registers an augment into it.
-// ---------------------------------------------------------------------------
+/**
+ * Augment slots (Uplink architecture). OrbitView is a HOST that exposes
+ * two slots; no first-party augment fills them here, so each renders
+ * nothing until an Uplink registers an augment into it.
+ */
 
 /**
  * Props for `orbit-view.overlay`: an OVERLAY slot, rendered in a
@@ -191,23 +191,25 @@ function OrbitViewComponent({
     },
   });
 
-  // Every read rides the SDK stream directly, no legacy
-  // `useTelemetry("data", ...)` fallback.
-  //  - `vessel.orbit` (raw Topic) carries the elements `sma`/`ecc`/`argPe`.
-  //  - `vessel.state` (client-side derived channel) carries
-  //    `trueAnomaly` (propagated at view-UT), `parentBodyName` (identity
-  //    index → `system.bodies` name), `basis` ("propagated" | "measured"),
-  //    and the apsis RADII. It isn't a wire `TopicId`, so it reads through
-  //    the provider-optional `useStreamOptional`.
-  //  - The apsis radii are read from `vessel.state.apoapsisRadius`/
-  //    `periapsisRadius` rather than computed here (`sma·(1±ecc)`), that
-  //    formula is meaningless for apoapsis on a hyperbolic orbit (sma<0
-  //    makes it a finite but GARBAGE negative number) and for both apsides
-  //    in the "measured" basis (Loaded-basis osculating elements). Correctly
-  //    `null` in both cases per `deriveVesselState`'s `trySolve`/
-  //    `trySolveAnomalies` (non-throwing: see `vessel-state.ts`).
-  //  - `useBodyRotation` derives the pole marker client-side from the body's
-  //    `rotationPeriod` + view-UT; `useIsOrbiting` stays a shared hook.
+  /**
+   * Every read rides the SDK stream directly, no legacy
+   * `useTelemetry("data", ...)` fallback.
+   *  - `vessel.orbit` (raw Topic) carries the elements `sma`/`ecc`/`argPe`.
+   *  - `vessel.state` (client-side derived channel) carries
+   *    `trueAnomaly` (propagated at view-UT), `parentBodyName` (identity
+   *    index → `system.bodies` name), `basis` ("propagated" | "measured"),
+   *    and the apsis RADII. It isn't a wire `TopicId`, so it reads through
+   *    the provider-optional `useStreamOptional`.
+   *  - The apsis radii are read from `vessel.state.apoapsisRadius`/
+   *    `periapsisRadius` rather than computed here (`sma·(1±ecc)`), that
+   *    formula is meaningless for apoapsis on a hyperbolic orbit (sma<0
+   *    makes it a finite but GARBAGE negative number) and for both apsides
+   *    in the "measured" basis (Loaded-basis osculating elements). Correctly
+   *    `null` in both cases per `deriveVesselState`'s `trySolve`/
+   *    `trySolveAnomalies` (non-throwing: see `vessel-state.ts`).
+   *  - `useBodyRotation` derives the pole marker client-side from the body's
+   *    `rotationPeriod` + view-UT; `useIsOrbiting` stays a shared hook.
+   */
   const orbit = useTelemetry("vessel.orbit");
   const vesselState = useStreamOptional<VesselState>("vessel.state");
   const sma = orbit?.sma;
@@ -237,22 +239,26 @@ function OrbitViewComponent({
     typeof bodyName === "string" ? bodyName : null,
   );
 
-  // Apoapsis is intentionally NOT required, it's `null` on a hyperbolic
-  // orbit (no apoapsis exists) by design, not an error. Periapsis is
-  // always real whenever there IS an orbit, so it (plus sma/eccentricity)
-  // is the true "do we have an orbit" signal. `!= null` catches both
-  // `null` and `undefined` (a naive `apoapsisRadius ?? undefined` upstream
-  // must not be able to flip this gate).
+  /**
+   * Apoapsis is intentionally NOT required, it's `null` on a hyperbolic
+   * orbit (no apoapsis exists) by design, not an error. Periapsis is
+   * always real whenever there IS an orbit, so it (plus sma/eccentricity)
+   * is the true "do we have an orbit" signal. `!= null` catches both
+   * `null` and `undefined` (a naive `apoapsisRadius ?? undefined` upstream
+   * must not be able to flip this gate).
+   */
   const hasOrbit = sma != null && eccentricity != null && periapsisR != null;
 
-  // Selective rendering: at small sizes the SVG diagram doesn't have room
-  // to be readable, so collapse to a single status pill (the user's
-  // canonical example for "tiny mode"). Accept either:
-  //   - Square / portrait ≥ 5 cols × 5 rows (the original threshold), or
-  //   - Landscape ≥ 8 cols × 3 rows (wide-short, e.g. the dashboard's
-  //     header strip: the diagram + chrome render side-by-side so the
-  //     diagram gets a usable square slot at panel height instead of
-  //     being squeezed under the title.).
+  /**
+   * Selective rendering: at small sizes the SVG diagram doesn't have room
+   * to be readable, so collapse to a single status pill (the user's
+   * canonical example for "tiny mode"). Accept either:
+   *   - Square / portrait ≥ 5 cols × 5 rows (the original threshold), or
+   *   - Landscape ≥ 8 cols × 3 rows (wide-short, e.g. the dashboard's
+   *     header strip: the diagram + chrome render side-by-side so the
+   *     diagram gets a usable square slot at panel height instead of
+   *     being squeezed under the title.).
+   */
   const cols = w ?? 9;
   const rows = h ?? 18;
   const showDiagram = (rows >= 5 && cols >= 5) || (cols >= 8 && rows >= 3);
@@ -261,11 +267,13 @@ function OrbitViewComponent({
   const isLandscape = cols >= 8 && rows < 5;
   const showSubtitle = rows >= 4;
 
-  // 3×3 minSize panel is ~104 px wide; the multi-word pill labels wrap
-  // to two lines ("STABLE\nORBIT", "SUB-\nORBITAL"). At that size,
-  // abbreviate so the status fits on one line, abbreviations are the
-  // standard mission-control shorthand the operator already reads
-  // elsewhere (e.g. flight-plan annotations).
+  /**
+   * 3×3 minSize panel is ~104 px wide; the multi-word pill labels wrap
+   * to two lines ("STABLE\nORBIT", "SUB-\nORBITAL"). At that size,
+   * abbreviate so the status fits on one line, abbreviations are the
+   * standard mission-control shorthand the operator already reads
+   * elsewhere (e.g. flight-plan annotations).
+   */
   const compactPill = cols < 4 || rows < 4;
   let pillLabel = NULL_DISPLAY;
   let pillTone: ReadoutTone = "default";
@@ -310,10 +318,12 @@ function OrbitViewComponent({
     />
   ) : null;
 
-  // Slot props. `badges` carries just the body name for labelling;
-  // `overlay` carries the diagram's body-centric projection so an augment can
-  // draw in the SVG's coordinate space. `overlay` is null until the elements
-  // resolve: the wrapper only mounts the slot once there's a diagram beneath.
+  /**
+   * Slot props. `badges` carries just the body name for labelling;
+   * `overlay` carries the diagram's body-centric projection so an augment can
+   * draw in the SVG's coordinate space. `overlay` is null until the elements
+   * resolve: the wrapper only mounts the slot once there's a diagram beneath.
+   */
   const badgesContext: OrbitBadgesContext = { bodyName };
   // Mirrors `OrbitDiagram`'s own `HYPERBOLIC_SCALE` constant so the overlay
   // slot's declared `scale` matches the diagram's ACTUAL bounds on a
@@ -383,22 +393,26 @@ function OrbitViewComponent({
     );
   }
 
-  // The diagram runs under the title rather than beside it. In portrait the
-  // title row was eating most of the vertical space (the comment on the
-  // landscape branch above says so), and an orbit ellipse is the kind of
-  // content that wants the whole tile: the corner it loses to a backed title
-  // is far cheaper than the row the title used to reserve. Only when there IS
-  // a diagram, though. The no-data and pill-only branches are centred text,
-  // and floating a title over centred text just overlaps it.
+  /**
+   * The diagram runs under the title rather than beside it. In portrait the
+   * title row was eating most of the vertical space (the comment on the
+   * landscape branch above says so), and an orbit ellipse is the kind of
+   * content that wants the whole tile: the corner it loses to a backed title
+   * is far cheaper than the row the title used to reserve. Only when there IS
+   * a diagram, though. The no-data and pill-only branches are centred text,
+   * and floating a title over centred text just overlaps it.
+   */
   const drawingFillsPanel = hasOrbit && showDiagram;
-  // The body name used to be `panelSubtitle`, which the floating-header case
-  // rendered for free (no body row, it floated in the header alongside the
-  // title). Now that subtitles are gone entirely, the two cases split:
-  // floating keeps that free placement by riding along in the aside next to
-  // the badges slot (still zero body cost); the non-floating case moves it
-  // into the body as a caption, same as everywhere else the subtitle sweep
-  // touched, gated on the same height tier (`showSubtitle`) the caption used
-  // to gate on.
+  /**
+   * The body name used to be `panelSubtitle`, which the floating-header case
+   * rendered for free (no body row, it floated in the header alongside the
+   * title). Now that subtitles are gone entirely, the two cases split:
+   * floating keeps that free placement by riding along in the aside next to
+   * the badges slot (still zero body cost); the non-floating case moves it
+   * into the body as a caption, same as everywhere else the subtitle sweep
+   * touched, gated on the same height tier (`showSubtitle`) the caption used
+   * to gate on.
+   */
   const showBodyNameInAside = drawingFillsPanel && bodyName !== undefined;
   const showBodyNameInBody =
     !drawingFillsPanel && showSubtitle && bodyName !== undefined;

@@ -64,12 +64,14 @@ describe("KosDataSource.executeScript: Uplink cutover", () => {
     setActiveTelemetryClientForTests(client);
 
     const source = makeSource();
-    // kos.processors delivers nothing until something subscribes, and
-    // executeScript() is what lazily subscribes (via the shared
-    // KosUplinkExecutor): so a cold first call always rejects with "no
-    // known CPU". Prime it (swallowed), then publish the CPU list, then
-    // issue the real call under test: the same two-step sequence a
-    // widget hits right after a fresh reconnect.
+    /**
+     * kos.processors delivers nothing until something subscribes, and
+     * executeScript() is what lazily subscribes (via the shared
+     * KosUplinkExecutor): so a cold first call always rejects with "no
+     * known CPU". Prime it (swallowed), then publish the CPU list, then
+     * issue the real call under test: the same two-step sequence a widget
+     * hits right after a fresh reconnect.
+     */
     source.executeScript("datastream", "0:/priming.ks", []).catch(() => {});
     transport.emit("kos.processors", [
       {

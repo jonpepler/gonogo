@@ -73,9 +73,12 @@ describe("deriveCrewSurvival", () => {
   });
 
   it("normalizes each rule by its OWN fatalThreshold, not a fixed 1.0", () => {
-    // Kerbalism's default profile gives radiation a fatal threshold of 50
-    // while stress uses 1; a rule reader that assumed 1.0 for everything
-    // would read this radiation accumulator as 4500% instead of 90%.
+    /**
+     * Kerbalism's default profile gives radiation a fatal threshold of
+     * 50 while stress uses 1; a rule reader that assumed 1.0 for
+     * everything would read this radiation accumulator as 4500% instead
+     * of 90%.
+     */
     const result = deriveCrewSurvival(
       {
         count: value("count", 1),
@@ -95,9 +98,11 @@ describe("deriveCrewSurvival", () => {
   });
 
   it("picks the WORST rule regardless of name, not a fixed allowlist", () => {
-    // A rule name outside the old base widget's hardcoded 7-name allowlist
-    // (e.g. a custom rule under a non-stock profile) must still surface as
-    // the worst rule if it is in fact the worst.
+    /**
+     * A rule name outside the old base widget's hardcoded 7-name
+     * allowlist (e.g. a custom rule under a non-stock profile) must
+     * still surface as the worst rule if it is in fact the worst.
+     */
     const result = deriveCrewSurvival(
       {
         count: value("count", 1),

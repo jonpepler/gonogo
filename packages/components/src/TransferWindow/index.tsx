@@ -76,9 +76,11 @@ const transferWindowActions = [
 
 export type TransferWindowActions = typeof transferWindowActions;
 
-// State-descriptive labels for the phase relationship: this is an instrument
-// that SHOWS state, not one that issues commands. IDEAL: the phase is at the
-// Hohmann ideal; NEAR: approaching it; FAR: well off it.
+/**
+ * State-descriptive labels for the phase relationship: this is an instrument
+ * that SHOWS state, not one that issues commands. IDEAL: the phase is at the
+ * Hohmann ideal; NEAR: approaching it; FAR: well off it.
+ */
 const STATUS_LABEL: Record<string, string> = {
   go: "IDEAL",
   soon: "NEAR",
@@ -93,9 +95,11 @@ const STATUS_SEVERITY: Record<string, Severity | undefined> = {
   off: undefined,
 };
 
-// Days and years here are Kerbin's (6h, 426d), not Earth's: a transfer to
-// Duna is quoted in the same calendar the game's own map view and the
-// dashboard's mission clock use.
+/**
+ * Days and years here are Kerbin's (6h, 426d), not Earth's: a transfer to
+ * Duna is quoted in the same calendar the game's own map view and the
+ * dashboard's mission clock use.
+ */
 const fmtDays = (sec: number): string =>
   `${Math.round(sec / KSP_DAY_SECONDS)} d`;
 
@@ -130,9 +134,11 @@ function TransferWindowComponent({
     [origin, bodies],
   );
 
-  // Seed the destination from the Target API: a targeted body defaults the
-  // transfer to it. An explicit pick wins; otherwise the targeted body, then
-  // the first sibling.
+  /**
+   * Seed the destination from the Target API: a targeted body defaults the
+   * transfer to it. An explicit pick wins; otherwise the targeted body, then
+   * the first sibling.
+   */
   const targetList = useTelemetry("target.available");
   const targetBodyIndex = useMemo(
     () =>
@@ -209,9 +215,11 @@ function TransferWindowComponent({
   const selIdx = Math.min(selectedWindow, Math.max(0, windows.length - 1));
   const selected = windows[selIdx] ?? null;
 
-  // Focus the porkchop on the selected window: window 0 is the base chart;
-  // later windows rebuild centred on their own departure so their Δv surface
-  // shows (each is a synodic period later, same bowl shape).
+  /**
+   * Focus the porkchop on the selected window: window 0 is the base chart;
+   * later windows rebuild centred on their own departure so their Δv surface
+   * shows (each is a synodic period later, same bowl shape).
+   */
   const focusedPorkchop = useMemo(() => {
     if (!origin || !dest || !selected || selected.index === 0) {
       return basePorkchop;
@@ -267,10 +275,13 @@ function TransferWindowComponent({
     >
       <Body>
         {solution ? (
-          // Responsive on the body's own width (container query): stacked when
-          // narrow: dial + list, then the chart below; side-by-side when wide,
-          // dial + list on the left, the chart flowing to the right. The
-          // chart holds a minimum size and grows to fill whatever space is free.
+          /**
+           * Responsive on the body's own width (container query): stacked
+           * when narrow: dial + list, then the chart below; side-by-side when
+           * wide, dial + list on the left, the chart flowing to the right.
+           * The chart holds a minimum size and grows to fill whatever space
+           * is free.
+           */
           <ContentGrid>
             <LeftCol>
               <NowRow>
@@ -466,10 +477,12 @@ function PhaseDial({ solution }: { solution: TransferSolution }) {
   );
 }
 
-// Continuous Δv → colour ramp: violet (the cheap optimum) sweeping through
-// blue/cyan/green/yellow/orange to red (the worst). A smooth hue sweep with no
-// discrete banding, so the bowl reads as smooth concentric shading. `t` is the
-// capped, normalised Δv in [0,1].
+/**
+ * Continuous Δv → colour ramp: violet (the cheap optimum) sweeping through
+ * blue/cyan/green/yellow/orange to red (the worst). A smooth hue sweep with
+ * no discrete banding, so the bowl reads as smooth concentric shading. `t` is
+ * the capped, normalised Δv in [0,1].
+ */
 const clamp01 = (t: number): number => (t < 0 ? 0 : t > 1 ? 1 : t);
 const rampColor = (t: number): string =>
   `hsl(${(258 * (1 - clamp01(t))).toFixed(1)}, 66%, 48%)`;
@@ -500,11 +513,13 @@ function Porkchop({
   const min = grid.minDeltaV;
   const max = grid.maxDeltaV;
   if (cols === 0 || rows === 0 || min == null || max == null) return null;
-  // Colour scale is capped near the optimum (min → min·1.8, but never past the
-  // real max) so the low-Δv bullseye keeps full contour resolution; cells beyond
-  // the cap (the far, off-ridge transfers) saturate in the top band, the way a
-  // canonical porkchop clips its contours rather than letting outliers wash the
-  // scale flat.
+  /**
+   * Colour scale is capped near the optimum (min → min·1.8, but never past
+   * the real max) so the low-Δv bullseye keeps full contour resolution; cells
+   * beyond the cap (the far, off-ridge transfers) saturate in the top band,
+   * the way a canonical porkchop clips its contours rather than letting
+   * outliers wash the scale flat.
+   */
   const scaleMax = Math.min(max, min * 1.8);
   const scaleSpan = scaleMax - min || 1;
   const capped = scaleMax < max;
@@ -725,18 +740,22 @@ registerComponent<TransferWindowConfig>({
 
 export { TransferWindowComponent };
 
-// Internal padding for the two boxes that draw their own edge: the selectable
-// window row (a bordered button) and the expander beneath it. Panel.Body owns
-// the panel-wide inset now, so this is only about the gap between a box's
-// border and its own text. One constant, two call sites, so the pair cannot
-// drift apart.
+/**
+ * Internal padding for the two boxes that draw their own edge: the
+ * selectable window row (a bordered button) and the expander beneath it.
+ * Panel.Body owns the panel-wide inset now, so this is only about the gap
+ * between a box's border and its own text. One constant, two call sites, so
+ * the pair cannot drift apart.
+ */
 const TEXT_PAD = "var(--space-12)";
 // Container-query breakpoint (body inline-size) at which the chart flows from
 // under the list (stacked) to beside it (side-by-side).
 const WIDE_AT = "560px";
-// Panel.Body already pads, scrolls and glows; all this adds is the query
-// container, so the content grid reflows on the body's own width rather than
-// the viewport's (a container cannot query itself, hence the wrapper).
+/**
+ * Panel.Body already pads, scrolls and glows; all this adds is the query
+ * container, so the content grid reflows on the body's own width rather than
+ * the viewport's (a container cannot query itself, hence the wrapper).
+ */
 const Body = styled.div`
   flex: 1;
   min-height: 0;
@@ -745,9 +764,12 @@ const Body = styled.div`
   container-type: inline-size;
 `;
 
-// Holds the dial + list + chart. Stacked (dial/list, then chart below) when
-// narrow; side-by-side (list left, chart right) past WIDE_AT. `min-height: 100%`
-// lets the chart's flex-grow claim any spare vertical space in the tile.
+/**
+ * Holds the dial + list + chart. Stacked (dial/list, then chart below) when
+ * narrow; side-by-side (list left, chart right) past WIDE_AT. `min-height:
+ * 100%` lets the chart's flex-grow claim any spare vertical space in the
+ * tile.
+ */
 const ContentGrid = styled.div`
   flex: 1;
   min-height: 100%;
@@ -784,9 +806,12 @@ const NowRow = styled.div`
   align-items: center;
 `;
 
-// The chart box grows to fill whatever space the tile/column gives it, down to
-// a sensible minimum height. The SVG scales to fit (preserveAspectRatio meet),
-// so the whole diagram: axes, legend and all: stays visible and undistorted.
+/**
+ * The chart box grows to fill whatever space the tile/column gives it, down
+ * to a sensible minimum height. The SVG scales to fit (preserveAspectRatio
+ * meet), so the whole diagram: axes, legend and all: stays visible and
+ * undistorted.
+ */
 const MapBox = styled.div`
   flex: 1 1 auto;
   min-height: 220px;

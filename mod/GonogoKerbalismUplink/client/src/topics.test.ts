@@ -9,9 +9,11 @@ import {
 import { renderHook, waitFor } from "@ksp-gonogo/test-utils";
 import { describe, expect, it } from "vitest";
 import { setupStreamFixture } from "./test/setupStreamFixture";
-// Side-effect import: registers `kerbalism.available` plus the five relocated
-// structured Topics into the SDK's runtime registry, and feeds this Uplink's own
-// generated unit/shape maps into BOTH halves of it.
+/**
+ * Side-effect import: registers `kerbalism.available` plus the five
+ * relocated structured Topics into the SDK's runtime registry, and feeds
+ * this Uplink's own generated unit/shape maps into BOTH halves of it.
+ */
 import {
   KERBALISM_AVAILABLE_TOPIC,
   KERBALISM_CREW_TOPIC,
@@ -69,14 +71,16 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
     }
   });
 
-  // ── Half one: the Topic's OWN fields (registerTopicUnits) ────────────────────
-  // The runtime-hydration half of the uplink-types-out-of-core plan's Unit guard
-  // (§5b): a decode test, not just a generated-file type check. Drives the REAL
-  // TelemetryClient/StubTransport pipeline (setupStreamFixture), so this proves
-  // registerTopicUnits (topics.ts) actually reaches wrapTopicPayload's
-  // decode-time lookup. Without that call, radiationRadPerSecond and
-  // stormEjectionSpeed would arrive as bare numbers here even though
-  // ./__generated__/contract.ts still types them Value<"rad/s">/Value<"m/s">.
+  /**
+   * Half one: the Topic's OWN fields (registerTopicUnits). A decode test,
+   * not just a generated-file type check. Drives the REAL
+   * TelemetryClient/StubTransport pipeline (setupStreamFixture), so this
+   * proves registerTopicUnits (topics.ts) actually reaches
+   * wrapTopicPayload's decode-time lookup. Without that call,
+   * radiationRadPerSecond and stormEjectionSpeed would arrive as bare
+   * numbers here even though ./__generated__/contract.ts still types them
+   * Value<"rad/s">/Value<"m/s">.
+   */
   it('hydrates spaceweather\'s own fields into Value<"rad/s">/Value<"m/s"> at decode time', async () => {
     const fixture = setupStreamFixture({
       carriedChannels: [KERBALISM_SPACEWEATHER_TOPIC],
@@ -99,9 +103,11 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
       expect(result.current?.radiationRadPerSecond).toBeDefined();
     });
 
-    // A plain number would fail these (no `.magnitude`/`.unit` own properties):
-    // this is the non-vacuous proof the field decoded through wrapTopicPayload
-    // rather than passing through bare.
+    /**
+     * A plain number would fail these (no `.magnitude`/`.unit` own
+     * properties): this is the non-vacuous proof the field decoded
+     * through wrapTopicPayload rather than passing through bare.
+     */
     expect(result.current?.radiationRadPerSecond).toMatchObject({
       magnitude: 0.000_11,
       unit: "rad/s",
@@ -124,23 +130,25 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
     expect(result.current?.blackout).toBe(false);
   });
 
-  // ── Half two: NESTED shapes (registerTypeUnits) ──────────────────────────────
-  // wrapTopicPayload learns a field holds another shape from shapesForTopic, then
-  // recurses through wrapTypePayload, which resolves that shape BY TYPE NAME via
-  // unitsForType/shapesForType. Those read the SDK's TYPE-keyed generated maps,
-  // which no longer carry a single Kerbalism entry, so the topic registration
-  // ALONE leaves every nested quantity bare while the generated type still says
-  // Value<...>. These are the assertions that fail if the registerTypeUnits loop
-  // is dropped from topics.ts (or from the SDK); the topic-level test above stays
-  // green throughout, which is what makes the two demonstrably not
-  // interchangeable.
-  //
-  // Verified by doing it, not assumed: deleting that loop turns exactly the four
-  // tests below red and leaves the other seven in this file green. Each failure
-  // is the bare number where a Value was expected: a per-kerbal dose of 12.5
-  // instead of Value<"units">, a star distance of 13599840256 instead of
-  // Value<"m">, a habitat volume of 3.5 instead of Value<"m³">, a resource
-  // density of 1 instead of Value<"kg/m³">.
+  /**
+   * Half two: NESTED shapes (registerTypeUnits). wrapTopicPayload learns a
+   * field holds another shape from shapesForTopic, then recurses through
+   * wrapTypePayload, which resolves that shape BY TYPE NAME via
+   * unitsForType/shapesForType. Those read the SDK's TYPE-keyed generated
+   * maps, which no longer carry a single Kerbalism entry, so the topic
+   * registration ALONE leaves every nested quantity bare while the
+   * generated type still says Value<...>. These are the assertions that
+   * fail if the registerTypeUnits loop is dropped from topics.ts (or from
+   * the SDK); the topic-level test above stays green throughout, which is
+   * what makes the two demonstrably not interchangeable.
+   *
+   * Verified by doing it, not assumed: deleting that loop turns exactly
+   * the four tests below red and leaves the other seven in this file
+   * green. Each failure is the bare number where a Value was expected: a
+   * per-kerbal dose of 12.5 instead of Value<"units">, a star distance of
+   * 13599840256 instead of Value<"m">, a habitat volume of 3.5 instead of
+   * Value<"m³">, a resource density of 1 instead of Value<"kg/m³">.
+   */
   it("hydrates the per-kerbal rule dose nested two levels down", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: [KERBALISM_CREW_TOPIC],
@@ -175,9 +183,11 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
       magnitude: 3_600,
       unit: "s",
     });
-    // The nested rule's fields: reachable ONLY through the TYPE registry, since
-    // KerbalismCrewRule is not a Topic and the SDK's generated type map does not
-    // know it exists any more.
+    /**
+     * The nested rule's fields: reachable ONLY through the TYPE registry,
+     * since KerbalismCrewRule is not a Topic and the SDK's generated type
+     * map does not know it exists any more.
+     */
     const dose = result.current?.[0]?.rules?.[0];
     expect(dose?.value).toMatchObject({ magnitude: 12.5, unit: "units" });
     expect(dose?.degenPerSec).toMatchObject({
@@ -235,10 +245,12 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
       unit: "m",
     });
     expect(star?.star).toBe("Sun");
-    // A Vec3 on a NESTED type: no earlier relocated slice had one at all, let
-    // alone one reached through an array. The unit is declared on the FIELD and
-    // emitted as three dotted leaf keys, so proving it arrived means checking
-    // the leaves, not the parent.
+    /**
+     * A Vec3 on a NESTED type: no earlier relocated slice had one at all,
+     * let alone one reached through an array. The unit is declared on the
+     * FIELD and emitted as three dotted leaf keys, so proving it arrived
+     * means checking the leaves, not the parent.
+     */
     expect(star?.direction?.x).toMatchObject({ magnitude: 0, unit: "1" });
     expect(star?.direction?.y).toMatchObject({ magnitude: 1, unit: "1" });
     expect(star?.direction?.z).toMatchObject({ magnitude: 0, unit: "1" });
@@ -312,12 +324,15 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
     });
   });
 
-  // The name-keyed-map form, which this Domain is now the only holder of
-  // anywhere in the contract: the unit belongs to each VALUE and the key is a
-  // resource/rule NAME, so nothing may camel-case it. Both halves appear here:
-  // `rates`/`ruleEnvModifiers` are maps of bare SCALARS on the Topic itself,
-  // and `profile.resources` is a map of nested SHAPES (the `*`-prefixed shape
-  // entry), which only the TYPE registry can resolve.
+  /**
+   * The name-keyed-map form, which this Domain is now the only holder of
+   * anywhere in the contract: the unit belongs to each VALUE and the key
+   * is a resource/rule NAME, so nothing may camel-case it. Both halves
+   * appear here: `rates`/`ruleEnvModifiers` are maps of bare SCALARS on
+   * the Topic itself, and `profile.resources` is a map of nested SHAPES
+   * (the `*`-prefixed shape entry), which only the TYPE registry can
+   * resolve.
+   */
   it("wraps every value of a name-keyed rate map, keys untouched", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: [KERBALISM_LIFESUPPORT_TOPIC],
@@ -395,10 +410,12 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
       expect(result.current?.resources?.Water?.density).toBeDefined();
     });
 
-    // KerbalismProfile.resources is Dictionary<string, KerbalismResourceDef>,
-    // emitted as the `*KerbalismResourceDef` shape entry: the VALUES are the
-    // payloads, so treating the dictionary itself as one would look for
-    // `density` on the map and find nothing.
+    /**
+     * KerbalismProfile.resources is Dictionary<string, KerbalismResourceDef>,
+     * emitted as the `*KerbalismResourceDef` shape entry: the VALUES are
+     * the payloads, so treating the dictionary itself as one would look
+     * for `density` on the map and find nothing.
+     */
     const water = result.current?.resources?.Water;
     expect(water?.density).toMatchObject({ magnitude: 1.0, unit: "kg/m³" });
     expect(water?.lowThreshold).toMatchObject({
@@ -428,11 +445,13 @@ describe("kerbalism structured Topics (relocated out of Sitrep.Contract)", () =>
     });
   });
 
-  // kerbalism.features is the all-non-quantity contrast case: every field is a
-  // flag, so nothing on it wraps. Registered anyway (topics.ts loops over the
-  // generated map rather than naming topics), and asserted here so "nothing
-  // wrapped" is a stated property of this Topic rather than an
-  // indistinguishable-from-broken silence.
+  /**
+   * kerbalism.features is the all-non-quantity contrast case: every field
+   * is a flag, so nothing on it wraps. Registered anyway (topics.ts loops
+   * over the generated map rather than naming topics), and asserted here
+   * so "nothing wrapped" is a stated property of this Topic rather than
+   * an indistinguishable-from-broken silence.
+   */
   it("leaves kerbalism.features bare: it declares no quantities", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: [KERBALISM_FEATURES_TOPIC],

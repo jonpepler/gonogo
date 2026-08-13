@@ -14,12 +14,15 @@ const CARRIED = [
   "kerbalism.spaceweather",
 ];
 
-// A minimal-but-real profile: three Supplies (Water/ElectricCharge/Oxygen), a
-// crew "drinking" rule, a Water Recycler process that drinks ElectricCharge
-// and WasteWater to produce Water, and a scrubber process that drains a wear
-// pseudo-resource. Bare numbers throughout: `StubTransport.emit` wraps them
-// into `Value`s the same way a real wire frame arrives (see that method's own
-// doc comment), and `mag()` reads either shape regardless.
+/**
+ * A minimal-but-real profile: three Supplies
+ * (Water/ElectricCharge/Oxygen), a crew "drinking" rule, a Water Recycler
+ * process that drinks ElectricCharge and WasteWater to produce Water, and
+ * a scrubber process that drains a wear pseudo-resource. Bare numbers
+ * throughout: `StubTransport.emit` wraps them into `Value`s the same way
+ * a real wire frame arrives (see that method's own doc comment), and
+ * `mag()` reads either shape regardless.
+ */
 const PROFILE = {
   name: "Test Profile",
   resources: {
@@ -71,10 +74,13 @@ const PROFILE = {
   ],
 };
 
-// ElectricCharge is the ROOT CAUSE (nothing in the profile produces it, and
-// it's short); Water is DOWNSTREAM (its one producer, the Water Recycler,
-// also drinks the short ElectricCharge). Both drain fast enough to carry a
-// real time-to-empty; Oxygen is healthy and steady, the sorting contrast.
+/**
+ * ElectricCharge is the ROOT CAUSE (nothing in the profile produces it,
+ * and it's short); Water is DOWNSTREAM (its one producer, the Water
+ * Recycler, also drinks the short ElectricCharge). Both drain fast enough
+ * to carry a real time-to-empty; Oxygen is healthy and steady, the
+ * sorting contrast.
+ */
 const LIFE_SUPPORT = {
   rates: {
     Water: -0.0005,
@@ -185,18 +191,22 @@ describe("ShipSystemsComponent", () => {
     renderWidget(fixture);
     emitAll(fixture);
 
-    // Limiting-factors banner names the actual root, not the symptom.
-    // Renders twice by design: once in the panel-level banner, once as the
-    // per-row footnote on Water's own row (the same duplicated-diagnosis
-    // convention the banner has always used).
+    /**
+     * Limiting-factors banner names the actual root, not the symptom.
+     * Renders twice by design: once in the panel-level banner, once as
+     * the per-row footnote on Water's own row (the same
+     * duplicated-diagnosis convention the banner has always used).
+     */
     await screen.findByText("Limiting factors");
     expect(
       screen.getAllByText(/Water is being limited by Electric Charge/).length,
     ).toBeGreaterThan(0);
 
-    // Supplies render root (Electric Charge) above the shortage it explains
-    // (Water), Oxygen (healthy, no role) sorts last: `summarise`'s own order,
-    // never re-sorted by the widget.
+    /**
+     * Supplies render root (Electric Charge) above the shortage it
+     * explains (Water), Oxygen (healthy, no role) sorts last:
+     * `summarise`'s own order, never re-sorted by the widget.
+     */
     const meters = await screen.findAllByRole("meter");
     const labels = meters.map((m) => m.getAttribute("aria-label"));
     expect(labels.slice(0, 3)).toEqual(["Electric Charge", "Water", "Oxygen"]);
@@ -207,12 +217,14 @@ describe("ShipSystemsComponent", () => {
     renderWidget(fixture);
     emitAll(fixture);
 
-    // Water is downstream of Electric Charge: the footnote reads subject
-    // (Water, the row it sits on) is being limited by object (Electric
-    // Charge, the blocker), by DISPLAY name (never the raw profile key
-    // "ElectricCharge"), and the reverse never appears on Electric
-    // Charge's own row. Also carries a time-to-empty prediction for the
-    // SUBJECT resource (Water), not the blocker.
+    /**
+     * Water is downstream of Electric Charge: the footnote reads subject
+     * (Water, the row it sits on) is being limited by object (Electric
+     * Charge, the blocker), by DISPLAY name (never the raw profile key
+     * "ElectricCharge"), and the reverse never appears on Electric
+     * Charge's own row. Also carries a time-to-empty prediction for the
+     * SUBJECT resource (Water), not the blocker.
+     */
     await screen.findByText("Limiting factors");
     const messages = screen.getAllByText(
       /Water is being limited by Electric Charge\./,
@@ -232,9 +244,11 @@ describe("ShipSystemsComponent", () => {
     renderWidget(fixture);
     emitAll(fixture);
 
-    // "20 / 400" renders twice by design: once in the Supplies meter row,
-    // once in the pinned Power footer (the same duplicated-readout
-    // convention "always show the funds balance" uses elsewhere).
+    /**
+     * "20 / 400" renders twice by design: once in the Supplies meter row,
+     * once in the pinned Power footer (the same duplicated-readout
+     * convention "always show the funds balance" uses elsewhere).
+     */
     const ecCaptions = await screen.findAllByText(/20 \/ 400/);
     expect(ecCaptions).toHaveLength(2);
     for (const caption of ecCaptions) {
@@ -270,15 +284,17 @@ describe("ShipSystemsComponent", () => {
       screen.getByRole("button", { name: "Show rate breakdown for Water" }),
     );
 
-    // Water's ledger has one term of each sign: the Water Recycler produces
-    // Water (+0.00018/s once scaled by its capacity), the crew's "drinking"
-    // rule consumes it (-0.00001/s * 2 crew = -0.00002/s). Sorted by
-    // magnitude, the recycler (the larger term) sets the scale: its bar
-    // reaches the track's own half-width mark (50%), the drinking rule's is
-    // a fraction of that (0.00002 / 0.00018 * 50). The scaling math itself
-    // is `@ksp-gonogo/ui-kit`'s `DivergingBar`, unit-tested there; this only
-    // confirms ShipSystems wires each term's real rate and the ledger's own
-    // scale into it.
+    /**
+     * Water's ledger has one term of each sign: the Water Recycler
+     * produces Water (+0.00018/s once scaled by its capacity), the
+     * crew's "drinking" rule consumes it (-0.00001/s * 2 crew =
+     * -0.00002/s). Sorted by magnitude, the recycler (the larger term)
+     * sets the scale: its bar reaches the track's own half-width mark
+     * (50%), the drinking rule's is a fraction of that (0.00002 / 0.00018
+     * * 50). The scaling math itself is `@ksp-gonogo/ui-kit`'s
+     * `DivergingBar`, unit-tested there; this only confirms ShipSystems
+     * wires each term's real rate and the ledger's own scale into it.
+     */
     const bars = container.querySelectorAll('[data-testid="diverging-bar"]');
     expect(bars).toHaveLength(2);
 
@@ -312,11 +328,13 @@ describe("ShipSystemsComponent", () => {
     );
     expect(waterCard).not.toBeNull();
     expect(ecCard).not.toBeNull();
-    // categoryColor now renders a short centred `::before` tab (operator
-    // feedback: a full-width `border-top` read as a second meter), not a
-    // real `border-top` `toHaveStyle` can see on the element itself; assert
-    // via the injected <style> text instead, same technique Card's own
-    // categoryColor tests use for the identical jsdom gap.
+    /**
+     * categoryColor now renders a short centred `::before` tab (operator
+     * feedback: a full-width `border-top` read as a second meter), not a
+     * real `border-top` `toHaveStyle` can see on the element itself;
+     * assert via the injected <style> text instead, same technique
+     * Card's own categoryColor tests use for the identical jsdom gap.
+     */
     const styleText = Array.from(document.querySelectorAll("style"))
       .map((s) => s.textContent)
       .join("\n");
@@ -376,9 +394,12 @@ describe("ShipSystemsComponent: radiation", () => {
     // ambient reading via the life-support.sections augment slot.
     expect(screen.getByText("Radiation too high")).toBeInTheDocument();
 
-    // No second "System halted" pill: the halt folds into the single header
-    // status instead (operator feedback called the two-pill header a colour
-    // pile-up). Here the vessel is already Critical, which outranks it.
+    /**
+     * No second "System halted" pill: the halt folds into the single
+     * header status instead (operator feedback called the two-pill
+     * header a colour pile-up). Here the vessel is already Critical,
+     * which outranks it.
+     */
     expect(screen.queryByText("System halted")).not.toBeInTheDocument();
     expect(screen.getByText("Critical")).toBeInTheDocument();
   });

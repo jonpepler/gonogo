@@ -1,15 +1,13 @@
 /**
- * `useKerbcastStream`'s optional delayed-playout wiring (M2 design §5,
- * "media delay (kerbcast)"), post cross-browser kerbcast video-delay
- * (2026-07-16). `useDelayedPlayout` now returns a discriminated
- * `DelayedPlayoutResult` (`"raw" | "connecting" | "delayed" |
- * "unavailable"`) instead of `MediaStream | null`, and tries TWO backends
- * in order (Chrome's main-thread Breakout Box, then a worker-hosted one)
- * before ever reporting `"unavailable"`. Per decision 5 of the design
- * (`docs/superpowers/specs/2026-07-16-kerbcast-video-delay-cross-browser-design.md`),
- * there is NO live-passthrough fallback anymore when delay was requested:
- * a browser that can build neither backend reports `"unavailable"`, full
- * stop: never the raw stream.
+ * `useKerbcastStream`'s optional delayed-playout wiring ("media delay
+ * (kerbcast)"), post cross-browser kerbcast video-delay (2026-07-16).
+ * `useDelayedPlayout` now returns a discriminated `DelayedPlayoutResult`
+ * (`"raw" | "connecting" | "delayed" | "unavailable"`) instead of
+ * `MediaStream | null`, and tries TWO backends in order (Chrome's
+ * main-thread Breakout Box, then a worker-hosted one) before ever
+ * reporting `"unavailable"`. There is NO live-passthrough fallback anymore
+ * when delay was requested: a browser that can build neither backend
+ * reports `"unavailable"`, full stop: never the raw stream.
  *
  * jsdom can't produce a real WebRTC `MediaStream`/track, has no
  * `MediaStreamTrackProcessor`/`Generator` (Chrome's shape), and has no
@@ -293,8 +291,8 @@ describe("useKerbcastStream: delayed playout wiring", () => {
     });
     // Neither backend can be built here (no WebCodecs track-IO APIs, and the
     // fake clock has no snapshot() for the worker backend to fall back on),
-    // this is the "can't delay -> no video" case (decision 5). The
-    // opaque token must NEVER surface.
+    // this is the "can't delay -> no video" case. The opaque token must
+    // NEVER surface.
     expect(latest).toMatchObject({ kind: "unavailable" });
     expect(
       (latest as unknown as DelayedPlayoutResult & { kind: "unavailable" })

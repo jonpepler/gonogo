@@ -61,30 +61,29 @@ interface DistanceToTargetConfig {
   cameraFlightId?: number | null;
 }
 
-// ── Augment slots (Uplink architecture) ─────────────────────────────────────
-//
-// This widget owns three slots (`augment-slot-map.md`, DistanceToTarget row).
-// Two are OVERLAY slots on the docking HUD and so PASS slot-props, an
-// overlay augment must draw in the HUD's own reticle space, so it receives
-// the parent's coordinate frame:
-//
-//   • `distance-to-target.camera` : a video backdrop behind the reticle/HUD.
-//     FILLED: a camera Uplink's augment now draws the close-range docking
-//     view here (not a standalone CameraFeed instance). The built-in
-//     `HudCamera` backdrop this slot once carried has been REMOVED along with
-//     it: it hard-wired one specific camera mod into the core widget, which
-//     is precisely what the slot exists to avoid. This widget no longer knows
-//     what a camera is: it decides WHETHER a backdrop should show
-//     (`hudMode`/viewport size) and passes its reticle frame down; the augment
-//     decides WHICH camera and renders it. An install with no camera Uplink
-//     composes the HUD with no video layer.
-//   • `distance-to-target.overlay`: alignment markers layered on top of the
-//     crosshair/reticle. A precision-docking / laser-rangefinder Uplink draws
-//     into the reticle box using the passed context. Composable by priority
-//     so several rangefinder/marker augments coexist.
-//
-// The third is the broad `.badges` escape hatch, an inline header indicator
-// (e.g. an autopilot Uplink's active docking-mode chip).
+/**
+ * This widget owns three augment slots. Two are OVERLAY slots on the docking
+ * HUD and so PASS slot-props, an overlay augment must draw in the HUD's own
+ * reticle space, so it receives the parent's coordinate frame:
+ *
+ *   • `distance-to-target.camera` : a video backdrop behind the reticle/HUD.
+ *     FILLED: a camera Uplink's augment now draws the close-range docking
+ *     view here (not a standalone CameraFeed instance). The built-in
+ *     `HudCamera` backdrop this slot once carried has been REMOVED along with
+ *     it: it hard-wired one specific camera mod into the core widget, which
+ *     is precisely what the slot exists to avoid. This widget no longer knows
+ *     what a camera is: it decides WHETHER a backdrop should show
+ *     (`hudMode`/viewport size) and passes its reticle frame down; the augment
+ *     decides WHICH camera and renders it. An install with no camera Uplink
+ *     composes the HUD with no video layer.
+ *   • `distance-to-target.overlay`: alignment markers layered on top of the
+ *     crosshair/reticle. A precision-docking / laser-rangefinder Uplink draws
+ *     into the reticle box using the passed context. Composable by priority
+ *     so several rangefinder/marker augments coexist.
+ *
+ * The third is the broad `.badges` escape hatch, an inline header indicator
+ * (e.g. an autopilot Uplink's active docking-mode chip).
+ */
 
 /**
  * Coordinate/context the docking-HUD overlay slots pass down so an augment
@@ -134,12 +133,14 @@ export interface DistanceToTargetBadgeContext {
   distance: number | undefined;
 }
 
-// Declaration-merge the slot ids → props types into core's `SlotRegistry` (a
-// hybrid, declaration-merging approach). Co-located here per-widget: no shared
-// central registry file: so parallel slot work in other widgets never collides.
-// This is what makes `registerAugment` / `<AugmentSlot props={...}>` type-check the
-// contexts above precisely, rather than the loose `Record<string, unknown>`
-// fallback an unmerged slot id would get.
+/**
+ * Declaration-merge the slot ids → props types into core's `SlotRegistry` (a
+ * hybrid, declaration-merging approach). Co-located here per-widget: no
+ * shared central registry file, so parallel slot work in other widgets never
+ * collides. This is what makes `registerAugment` / `<AugmentSlot props={...}>`
+ * type-check the contexts above precisely, rather than the loose
+ * `Record<string, unknown>` fallback an unmerged slot id would get.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "distance-to-target.camera": DistanceToTargetHudContext;
@@ -148,11 +149,12 @@ declare module "@ksp-gonogo/core" {
   }
 }
 
-// The facade-sealed-client copy of this merge lives in
-// `mod/sitrep-sdk/src/api/slots.ts`, not a second `declare module
-// "@ksp-gonogo/sitrep-sdk"` block here: see MapView/index.tsx's identical
-// comment / that module's header for why
-// (docs/superpowers/plans/2026-07-19-facade-sealing.md §2.3).
+/**
+ * The facade-sealed-client copy of this merge lives in
+ * `mod/sitrep-sdk/src/api/slots.ts`, not a second `declare module
+ * "@ksp-gonogo/sitrep-sdk"` block here: see MapView/index.tsx's identical
+ * comment / that module's header for why.
+ */
 
 // Distances are in metres. Hysteresis prevents strobing at the thresholds.
 const HUD_ENTER_M = 100;
@@ -170,32 +172,38 @@ function DistanceToTargetComponent({
   const autoSwitch = config?.autoSwitch !== false;
   const hudMode: DockingHudMode = config?.hudMode ?? "hud-with-camera";
 
-  // Canonical native reads: the whole `vessel.target`/`vessel.dock` Topics,
-  // off the shim (Target API). Every scalar/angle is derived client-side from
-  // the Vec3 fields (`vecMagnitude`/`radialSpeed`/`deriveDockAngles`).
+  /**
+   * Canonical native reads: the whole `vessel.target`/`vessel.dock` Topics,
+   * off the shim (Target API). Every scalar/angle is derived client-side
+   * from the Vec3 fields (`vecMagnitude`/`radialSpeed`/`deriveDockAngles`).
+   */
   const target = useTelemetry("vessel.target");
   const dock = useTelemetry("vessel.dock");
 
   const tarName = resolveTargetName(target?.name);
   const tarKind = target?.kind;
   const tarType = targetKindLabel(tarKind);
-  // Closest approach is now MOD-side (the elected ITargetApproachSolver),
-  // carried on `vessel.target.closestApproach`: replaces the former SDK-side
-  // two-body solve (o.closestTgtApprUT / vessel.state.closestApproachUt).
-  // `t.universalTime` stays dropped: the "current time" IS the SDK view-UT the
-  // propagation is evaluated at, read directly via `useViewUt`.
-  // `.magnitude`: a UT the widget subtracts the view-UT from, so it wants a
-  // number. `Number.isFinite` on the wrapper answered "no approach" for every
-  // real one and the TCA readout was a permanent em dash.
+  /**
+   * Closest approach is now MOD-side (the elected ITargetApproachSolver),
+   * carried on `vessel.target.closestApproach`: replaces the former SDK-side
+   * two-body solve (o.closestTgtApprUT / vessel.state.closestApproachUt).
+   * `t.universalTime` stays dropped: the "current time" IS the SDK view-UT
+   * the propagation is evaluated at, read directly via `useViewUt`.
+   * `.magnitude`: a UT the widget subtracts the view-UT from, so it wants a
+   * number. `Number.isFinite` on the wrapper answered "no approach" for
+   * every real one and the TCA readout was a permanent em dash.
+   */
   const closestApproachUT = magnitudeOf(target?.closestApproach?.time);
   const universalTime = useViewUt();
 
   const tarRelPos = target?.relativePosition && bare(target.relativePosition);
   const tarRelVelVec =
     target?.relativeVelocity && bare(target.relativeVelocity);
-  // vessel.dock is null unless the target is a docking port with a free
-  // port on the active vessel: undefined here legitimately means "not a
-  // docking scenario right now", not "still loading".
+  /**
+   * vessel.dock is null unless the target is a docking port with a free
+   * port on the active vessel: undefined here legitimately means "not a
+   * docking scenario right now", not "still loading".
+   */
   const dockRelPos = dock?.relativePosition && bare(dock.relativePosition);
   const dockRelVelVec = dock?.relativeVelocity && bare(dock.relativeVelocity);
   const dockDistanceStream = dock?.distance?.magnitude;
@@ -211,9 +219,12 @@ function DistanceToTargetComponent({
     : undefined;
   const dockAx = derivedDockAngles?.ax;
   const dockAy = derivedDockAngles?.ay;
-  // Docking-port roll (az) misalignment isn't on the wire at all, vessel.dock
-  // carries only RelativePosition/RelativeVelocity/Distance + a scalar
-  // ForwardDot. The true third axis is unavailable and renders NULL_DISPLAY.
+  /**
+   * Docking-port roll (az) misalignment isn't on the wire at all,
+   * vessel.dock carries only RelativePosition/RelativeVelocity/Distance + a
+   * scalar ForwardDot. The true third axis is unavailable and renders
+   * NULL_DISPLAY.
+   */
   const dockAz: number | undefined = undefined;
   const dockX = dockRelPos?.x;
   const dockY = dockRelPos?.y;
@@ -226,10 +237,12 @@ function DistanceToTargetComponent({
   const dockingRelVel = derivedDockRelVel ?? relVel;
   const dockingDistance = dockDistanceStream ?? tarDistance;
 
-  // Header `.badges` slot context: a fresh object each render so the indicator
-  // tracks live target data. Passed as the tracking panel's `panelAside`, so it
-  // renders next to the widget title; the specialised approach/docking modes
-  // keep their own bespoke headers.
+  /**
+   * Header `.badges` slot context: a fresh object each render so the
+   * indicator tracks live target data. Passed as the tracking panel's
+   * `panelAside`, so it renders next to the widget title; the specialised
+   * approach/docking modes keep their own bespoke headers.
+   */
   const badgeContext: DistanceToTargetBadgeContext = {
     targetName: tarName,
     targetType: tarType,
@@ -240,22 +253,27 @@ function DistanceToTargetComponent({
   // upgrade direction is asymmetric (smaller window to enter than to exit).
   const [mode, setMode] = useState<ViewMode>("tracking");
 
-  // "Close-ops eligible" = a real target that isn't a celestial body, drives
-  // the mid-range APPROACH view (rendezvous distance/closing rate), valid for
-  // any Vessel/Part target, matching the old `tarType !== "CelestialBody"`.
+  /**
+   * "Close-ops eligible" = a real target that isn't a celestial body,
+   * drives the mid-range APPROACH view (rendezvous distance/closing rate),
+   * valid for any Vessel/Part target, matching the old
+   * `tarType !== "CelestialBody"`.
+   */
   const dockable =
     tarKind !== undefined &&
     tarKind !== TargetKind.Body &&
     tarName !== undefined;
 
-  // The docking HUD's reticle + α/β alignment instrument only has signal when
-  // the mod is actually publishing `vessel.dock`, which it does ONLY for a
-  // docking-port target with a free "Ready" port on the active vessel
-  // (VesselDock.cs). A plain Vessel/Other target (or a port with no free port
-  // on our side) has no dock channel, so promoting it to the HUD on distance
-  // alone rendered a dead-centre reticle with every alignment row NULL_DISPLAY. Gate HUD
-  // entry on the dock channel actually carrying a relative position, NOT on
-  // "any non-body target under 100 m".
+  /**
+   * The docking HUD's reticle + α/β alignment instrument only has signal
+   * when the mod is actually publishing `vessel.dock`, which it does ONLY
+   * for a docking-port target with a free "Ready" port on the active vessel
+   * (VesselDock.cs). A plain Vessel/Other target (or a port with no free
+   * port on our side) has no dock channel, so promoting it to the HUD on
+   * distance alone rendered a dead-centre reticle with every alignment row
+   * NULL_DISPLAY. Gate HUD entry on the dock channel actually carrying a
+   * relative position, NOT on "any non-body target under 100 m".
+   */
   const dockingAvailable = dockRelPos !== undefined;
 
   useEffect(() => {
@@ -291,9 +309,11 @@ function DistanceToTargetComponent({
     );
   }
 
-  // Size-aware degrades: docking + approach modes ignore widget size when
-  // choosing which view to enter (distance-driven) but the rendered chrome
-  // needs to back off when the slot is small.
+  /**
+   * Size-aware degrades: docking + approach modes ignore widget size when
+   * choosing which view to enter (distance-driven) but the rendered chrome
+   * needs to back off when the slot is small.
+   */
   const rows = h ?? 5;
   const cols = w ?? 6;
 
@@ -404,8 +424,6 @@ function DisplayDash() {
   );
 }
 
-// ── Approach HUD ──────────────────────────────────────────────────────────────
-
 interface ApproachHudProps {
   name: string;
   distance: number | undefined;
@@ -471,13 +489,15 @@ function ApproachHud({
   cols,
   rows,
 }: ApproachHudProps) {
-  // Narrow widget: the "Closing rate" label wraps and the TCA value
-  // ("T−02:05") clips at the right edge in the auto/1fr grid. Stack
-  // labels above values so each value gets the full inner width.
-  // Threshold is `< 6`: at exactly 5 cols (the tall-narrow portrait
-  // extreme) the auto label column eats so much width that the closing
-  // -rate value "−4.7 m/s" loses its trailing "s" off the right edge.
-  // 6-col and wider keep the paired label/value layout.
+  /**
+   * Narrow widget: the "Closing rate" label wraps and the TCA value
+   * ("T−02:05") clips at the right edge in the auto/1fr grid. Stack labels
+   * above values so each value gets the full inner width. Threshold is
+   * `< 6`: at exactly 5 cols (the tall-narrow portrait extreme) the auto
+   * label column eats so much width that the closing-rate value
+   * "−4.7 m/s" loses its trailing "s" off the right edge. 6-col and wider
+   * keep the paired label/value layout.
+   */
   const stack = cols < 6;
   const closing = relVel !== undefined && Number.isFinite(relVel) && relVel < 0;
   const closingMagnitude =
@@ -491,12 +511,14 @@ function ApproachHud({
       ? closestApproachUT - universalTime
       : null;
 
-  // Tiniest reachable size (minSize h=4): the stacked label/value grid is
-  // six lines tall and overflows the box, the closing-rate value and TCA
-  // get clipped off the bottom edge. Mirror the tracking-tiny layout (the
-  // distance is the headline, since it's the widget's name) and fold
-  // closing rate into a one-line subreadout. TCA is the most derived value
-  // and is the cut space forces here.
+  /**
+   * Tiniest reachable size (minSize h=4): the stacked label/value grid is
+   * six lines tall and overflows the box, the closing-rate value and TCA
+   * get clipped off the bottom edge. Mirror the tracking-tiny layout (the
+   * distance is the headline, since it's the widget's name) and fold
+   * closing rate into a one-line subreadout. TCA is the most derived value
+   * and is the cut space forces here.
+   */
   if (rows < 5) {
     return (
       <Panel panelTitle="APPROACH">
@@ -576,8 +598,6 @@ function ApproachHud({
   );
 }
 
-// ── Docking HUD ───────────────────────────────────────────────────────────────
-
 interface DockingHudProps {
   name: string;
   distance: number | undefined;
@@ -654,9 +674,12 @@ function Reticle({
         border: `2px solid ${aligned ? "var(--color-accent-fg)" : "var(--color-status-warning-bg)"}`,
         borderRadius: "var(--radius-circle)",
         transform: "translate(-50%, -50%)",
-        // left/top are an instant telemetry chase (the reticle follows a live
-        // target), so they use --duration-instant/--ease-linear rather than an
-        // eased hover rung. Only the border-colour change is a slower UI cue.
+        /**
+         * left/top are an instant telemetry chase (the reticle follows a
+         * live target), so they use --duration-instant/--ease-linear rather
+         * than an eased hover rung. Only the border-colour change is a
+         * slower UI cue.
+         */
         transition:
           "left var(--duration-instant) var(--ease-linear), top var(--duration-instant) var(--ease-linear), border-color var(--duration-base) var(--ease-linear)",
         // Ring only: centre stays transparent so the crosshair stays visible.
@@ -730,30 +753,40 @@ function DockingHud(props: DockingHudProps) {
     rows,
   } = props;
 
-  // Wide + short (e.g. 18×5): too few rows for the vertical
-  // viewport-over-overlay stack, but plenty of horizontal room. Flow to a
-  // row layout: reticle on the left, readout panel beside it on the right;
-  // instead of dropping the reticle entirely.
+  /**
+   * Wide + short (e.g. 18×5): too few rows for the vertical
+   * viewport-over-overlay stack, but plenty of horizontal room. Flow to a
+   * row layout: reticle on the left, readout panel beside it on the right;
+   * instead of dropping the reticle entirely.
+   */
   const wideShort = cols >= 12 && rows < 6;
-  // Tiny widget: the viewport collapses to near-zero height after the
-  // overlay takes its share, so the reticle clips at the top edge and
-  // becomes useless. Drop it entirely and let the numeric readouts fill
-  // the slot. In the wide-short row layout the viewport gets its height
-  // from the full panel height, so it's kept there even at rows < 6.
+  /**
+   * Tiny widget: the viewport collapses to near-zero height after the
+   * overlay takes its share, so the reticle clips at the top edge and
+   * becomes useless. Drop it entirely and let the numeric readouts fill the
+   * slot. In the wide-short row layout the viewport gets its height from
+   * the full panel height, so it's kept there even at rows < 6.
+   */
   const showViewport = wideShort || (rows >= 6 && cols >= 4);
-  // Narrow widget: HudGrid auto/1fr columns can't hold "0.12 m / -0.07 m"
-  // or "0.3° · -0.2° · 0.8°" without wrapping. Stack so each readout
-  // owns the row width.
+  /**
+   * Narrow widget: HudGrid auto/1fr columns can't hold "0.12 m / -0.07 m"
+   * or "0.3° · -0.2° · 0.8°" without wrapping. Stack so each readout owns
+   * the row width.
+   */
   const stackReadouts = cols < 5;
-  // Tiniest reachable size (3×4 minSize): even stacked, "0.12 m / -0.07 m"
-  // still overflows a ~70 px content area. Drop the X/Y and α/β/γ
-  // detail rows here: Δv alone is the headline closing/opening cue and
-  // the precision-instruments view is reserved for compact and above.
+  /**
+   * Tiniest reachable size (3×4 minSize): even stacked, "0.12 m / -0.07 m"
+   * still overflows a ~70 px content area. Drop the X/Y and α/β/γ detail
+   * rows here: Δv alone is the headline closing/opening cue and the
+   * precision-instruments view is reserved for compact and above.
+   */
   const showAlignmentDetail = cols >= 4;
 
-  // Angular mapping to HUD coords. Clamp beyond ±8° so the reticle stays
-  // inside the visible box: past that the pilot isn't docking, they're
-  // reorienting.
+  /**
+   * Angular mapping to HUD coords. Clamp beyond ±8° so the reticle stays
+   * inside the visible box: past that the pilot isn't docking, they're
+   * reorienting.
+   */
   const MAX_DEG = 8;
   const axClamped =
     ax === undefined ? 0 : Math.max(-MAX_DEG, Math.min(MAX_DEG, ax));
@@ -763,9 +796,11 @@ function DockingHud(props: DockingHudProps) {
   const dx = axClamped / MAX_DEG;
   const dy = -ayClamped / MAX_DEG;
 
-  // forwardDot (cosine of port-forward-vector angle) is the more direct
-  // alignment signal when available: 0.9998 ~= within ~1° of dead-on,
-  // matching the derived-angle heuristic's < 1° threshold below.
+  /**
+   * forwardDot (cosine of port-forward-vector angle) is the more direct
+   * alignment signal when available: 0.9998 ~= within ~1° of dead-on,
+   * matching the derived-angle heuristic's < 1° threshold below.
+   */
   const aligned =
     forwardDot !== undefined
       ? forwardDot > 0.9998
@@ -777,10 +812,12 @@ function DockingHud(props: DockingHudProps) {
   // Closing if relVel is negative (standard KSP convention: positive = opening).
   const closing = relVel !== undefined && Number.isFinite(relVel) && relVel < 0;
 
-  // Overlay/camera slot context: the reticle coordinate frame an augment needs
-  // to draw in the HUD's own space. `reticleTravelPct` (40) is the
-  // `50 + dx·40 %` factor the built-in reticle uses, so an augment marker at
-  // `50 + offset·reticleTravelPct` % lands in the same space.
+  /**
+   * Overlay/camera slot context: the reticle coordinate frame an augment
+   * needs to draw in the HUD's own space. `reticleTravelPct` (40) is the
+   * `50 + dx·40 %` factor the built-in reticle uses, so an augment marker at
+   * `50 + offset·reticleTravelPct` % lands in the same space.
+   */
   const hudContext: DistanceToTargetHudContext = {
     maxDeg: MAX_DEG,
     reticleOffset: { x: dx, y: dy },
@@ -854,9 +891,12 @@ function DockingHud(props: DockingHudProps) {
         style={{
           padding: "var(--space-6) var(--space-10) var(--space-8)",
           background: "rgba(0, 0, 0, 0.55)",
-          // Wide-short row layout docks the overlay to the side: fixed-width
-          // right column with a left divider instead of the full-width bottom
-          // bar. Centre it vertically so it reads as a paired panel.
+          /**
+           * Wide-short row layout docks the overlay to the side:
+           * fixed-width right column with a left divider instead of the
+           * full-width bottom bar. Centre it vertically so it reads as a
+           * paired panel.
+           */
           ...(wideShort
             ? {
                 flex: "0 0 240px",
@@ -1000,8 +1040,6 @@ function DockingHud(props: DockingHudProps) {
   );
 }
 
-// ── Config component ──────────────────────────────────────────────────────────
-
 function DistanceToTargetConfigComponent({
   config,
   onSave,
@@ -1010,16 +1048,18 @@ function DistanceToTargetConfigComponent({
   const [hudMode, setHudMode] = useState<DockingHudMode>(
     config?.hudMode ?? "hud-with-camera",
   );
-  // Carried through untouched rather than edited here. The camera PICKER left
-  // with the built-in HudCamera: listing and labelling cameras needs a camera
-  // mod's SDK, and this widget deliberately no longer depends on one. The
-  // augment that fills `distance-to-target.camera` now selects the camera
-  // itself: for a DOCKING HUD it can identify the actual docking camera,
-  // which is strictly better than the manual pick this replaced (that existed
-  // only because nothing could tell docking cameras apart). An operator who
-  // had pinned a camera keeps it: the value still round-trips through config
-  // and reaches the augment via `DistanceToTargetHudContext`, which honours it
-  // as an override.
+  /**
+   * Carried through untouched rather than edited here. The camera PICKER
+   * left with the built-in HudCamera: listing and labelling cameras needs a
+   * camera mod's SDK, and this widget deliberately no longer depends on
+   * one. The augment that fills `distance-to-target.camera` now selects the
+   * camera itself: for a DOCKING HUD it can identify the actual docking
+   * camera, which is strictly better than the manual pick this replaced
+   * (that existed only because nothing could tell docking cameras apart).
+   * An operator who had pinned a camera keeps it: the value still
+   * round-trips through config and reaches the augment via
+   * `DistanceToTargetHudContext`, which honours it as an override.
+   */
   const pinnedCameraId = config?.cameraFlightId;
 
   const candidate = useMemo<DistanceToTargetConfig>(
@@ -1068,8 +1108,6 @@ function DistanceToTargetConfigComponent({
     </ConfigForm>
   );
 }
-
-// ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<DistanceToTargetConfig>({
   id: "distance-to-target",

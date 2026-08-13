@@ -39,7 +39,7 @@ import { OrbitalAscentComponent } from "./index";
  * not exercised, not because the stream structurally can't serve them. The
  * widget still renders its chrome, which the assertions below confirm.
  */
-describe("OrbitalAscent: v.body genuinely runs off the stream (R6)", () => {
+describe("OrbitalAscent: v.body genuinely runs off the stream", () => {
   it("resolves the streamed parent-body name off the real pipeline, not legacy", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: [

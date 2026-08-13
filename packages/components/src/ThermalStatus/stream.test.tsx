@@ -20,7 +20,7 @@ import { ThermalStatusComponent } from "./index";
  * heat-shield batch) and `hottestPartName` (this batch's un-gap) both stream
  * from the SAME `vessel.thermal` emission.
  */
-describe("ThermalStatus: genuinely runs off the stream (M3 batch 1)", () => {
+describe("ThermalStatus: genuinely runs off the stream", () => {
   it("reads the hottest-part headline ratio and name off the real stream pipeline, not legacy", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: ["vessel.thermal"],

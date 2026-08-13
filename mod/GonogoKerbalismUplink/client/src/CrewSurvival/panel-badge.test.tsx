@@ -24,7 +24,7 @@ import "./badge";
  * The `render-widget` probe harness cannot stand in for this: it
  * deliberately never mounts `PanelBadgesProvider` (see
  * `probe-entry.tsx`'s own comment), so no widget's panel badge, this one
- * included, ever appears in a `local_docs/renders/**` PNG.
+ * included, ever appears in a visual-gate render.
  */
 
 const CARRIED = ["vessel.crew", "kerbalism.crew", "kerbalism.available"];
@@ -69,10 +69,12 @@ function emit(
   act(() => {
     fixture.emit("vessel.crew", crew);
     fixture.emit("kerbalism.crew", kerbals);
-    // The contribution's `requires: "kerbalism"` gate reads this directly
-    // off the client (`contributionsRuntime.tsx`), unlike an augment's own
-    // `RequiresGuard`; a raw-component augment test can skip it, this one
-    // cannot.
+    /**
+     * The contribution's `requires: "kerbalism"` gate reads this directly
+     * off the client (`contributionsRuntime.tsx`), unlike an augment's
+     * own `RequiresGuard`; a raw-component augment test can skip it, this
+     * one cannot.
+     */
     fixture.emit("kerbalism.available", true);
   });
 }

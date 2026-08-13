@@ -9,11 +9,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { KeplerPeriodComponent } from "./index";
 
-// Rendered trees, tracked so afterEach can unmount them BEFORE clearBodies()
-// notifies the body-registry subscribers. RTL auto-cleanup runs after this
-// file's afterEach, so it can't be relied on to unmount first, clearBodies()
-// firing on a still-mounted widget is a state update outside act(), the
-// documented anti-pattern in CLAUDE.md.
+/**
+ * Rendered trees, tracked so afterEach can unmount them BEFORE clearBodies()
+ * notifies the body-registry subscribers. RTL auto-cleanup runs after this
+ * file's afterEach, so it can't be relied on to unmount first, clearBodies()
+ * firing on a still-mounted widget is a state update outside act(), the
+ * documented anti-pattern in CLAUDE.md.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {
@@ -94,10 +96,12 @@ describe("KeplerPeriod: renders the reference curve off the stream (R6 Wave 1)",
       </fixture.Provider>,
     );
 
-    // Kerbin's low orbit (kerbin-lko fixture) expressed as the derived
-    // channel's inputs: `referenceBodyIndex`/`parentBodyIndex` point at
-    // Kerbin (stock index 1), so `resolveBodyName` -> "Kerbin" and the widget
-    // resolves a real BodyDefinition with a `gm` to build the curve from.
+    /**
+     * Kerbin's low orbit (kerbin-lko fixture) expressed as the derived
+     * channel's inputs: `referenceBodyIndex`/`parentBodyIndex` point at
+     * Kerbin (stock index 1), so `resolveBodyName` -> "Kerbin" and the widget
+     * resolves a real BodyDefinition with a `gm` to build the curve from.
+     */
     act(() => {
       fixture.emit("vessel.orbit", {
         sma: 680000,

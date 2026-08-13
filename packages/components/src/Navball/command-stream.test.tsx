@@ -36,8 +36,8 @@ const STOCK_GROUPS_ALL_OFF = Array.from({ length: 10 }, (_, i) => ({
  *    button dispatches `vessel.control.setSasMode` directly via
  *    `useCommand`, the mode name resolved to its ordinal off `SAS_MODES`'
  *    own array position (see `setSasMode` in index.tsx). Also unconditional.
- * 3. **continuous, delayed control-stream (control-delay-stream-viz Task 4)**:
- *    the throttle ZERO button. Throttle is now the one continuous axis with
+ * 3. **continuous, delayed control-stream**: the throttle ZERO button.
+ *    Throttle is now the one continuous axis with
  *    a real bidirectional channel (`vessel.control.throttle`), so it rides
  *    `useControlStream` instead of `useExecuteAction`: the button sets local
  *    commanded state, the hook's coalesced write half dispatches
@@ -49,8 +49,8 @@ const STOCK_GROUPS_ALL_OFF = Array.from({ length: 10 }, (_, i) => ({
  *
  * `set-pitch`/`set-yaw`/`set-roll`/`translate-*`/`set-*-trim` stay on the
  * legacy `useExecuteAction` string path + the carried-gated `map-command.ts`
- * shim (K5 in the command-surface delay audit, unmigrated): `VesselControl`
- * has no pitch/yaw/roll READ fields or `[SitrepControlChannel]`
+ * shim (unmigrated): `VesselControl` has no pitch/yaw/roll READ fields or
+ * `[SitrepControlChannel]`
  * declarations yet, so there's no channel for those axes to ride, and
  * closing a full attitude-control loop across signal delay is a
  * control-theory problem needing a select-then-commit `CommandGroup` design
@@ -68,12 +68,14 @@ const CONTROL_MODE_CONFIG = { controlMode: true };
 const CONTROL_SIZE = { w: 10, h: 20 };
 
 beforeEach(() => {
-  // Navball registers ~30 actions via useActionInput on every mount, this
-  // file mounts it 6 times (one per test) inside the same 1000ms rolling
-  // window the `useActionInput register/sec` PerfBudget (threshold 50)
-  // tracks, which would trip on the 2nd mount alone. Reset before each test,
-  // the codebase's established idiom for this exact repeated-mount shape
-  // (see Navball/dual-run.test.tsx, useActionInput.test.tsx).
+  /**
+   * Navball registers ~30 actions via useActionInput on every mount, this
+   * file mounts it 6 times (one per test) inside the same 1000ms rolling
+   * window the `useActionInput register/sec` PerfBudget (threshold 50)
+   * tracks, which would trip on the 2nd mount alone. Reset before each
+   * test, the codebase's established idiom for this exact repeated-mount
+   * shape (see Navball/dual-run.test.tsx, useActionInput.test.tsx).
+   */
   PerfBudget.getAll()
     .find((b) => b.name.startsWith("useActionInput register"))
     ?.reset();

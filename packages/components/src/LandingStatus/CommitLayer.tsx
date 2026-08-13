@@ -87,9 +87,11 @@ export function CommitLayer({
 }: Readonly<CommitLayerProps>) {
   const countdown = suicideBurnCountdown;
 
-  // Uncommandable: a full round-trip no longer fits inside the remaining burn
-  // window, so a command sent now cannot be confirmed (or corrected) in time.
-  // Void once landed: there is no burn window left.
+  /**
+   * Uncommandable: a full round-trip no longer fits inside the remaining
+   * burn window, so a command sent now cannot be confirmed (or corrected)
+   * in time. Void once landed: there is no burn window left.
+   */
   const _uncommandable =
     !landed &&
     roundTripSeconds != null &&
@@ -129,10 +131,12 @@ export function CommitLayer({
       heroTone = urgent ? "alert" : "warning";
     }
   } else {
-    // The burn-GO deadline: the last instant a human GO can still reach the
-    // vessel in time to START the suicide burn (T_ignition − N). Named apart
-    // from the COMMIT POINT (the impact-command deadline below) to avoid a
-    // "COMMITTED vs commit point" clash.
+    /**
+     * The burn-GO deadline: the last instant a human GO can still reach the
+     * vessel in time to START the suicide burn (T_ignition − N). Named
+     * apart from the COMMIT POINT (the impact-command deadline below) to
+     * avoid a "COMMITTED vs commit point" clash.
+     */
     heroCaption = "BURN GO IN";
     if (committed) {
       heroValue = "BURN LOCKED";
@@ -149,10 +153,12 @@ export function CommitLayer({
     }
   }
 
-  // The instantaneous ignition cue AND a no-landing-vector (imminent unavoidable
-  // impact) interrupt (assertive): both are ABORT-class. Uncommandable / blind
-  // are sustained states, announced politely, per the a11y rule that reserves
-  // assertive for ABORT-class events.
+  /**
+   * The instantaneous ignition cue AND a no-landing-vector (imminent
+   * unavoidable impact) interrupt (assertive): both are ABORT-class.
+   * Uncommandable / blind are sustained states, announced politely, per the
+   * a11y rule that reserves assertive for ABORT-class events.
+   */
   const alarmed = urgent || noLandingVector;
 
   return (

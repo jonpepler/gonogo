@@ -43,12 +43,14 @@ import {
 } from "../ecosystem";
 import { SHIP_SYSTEMS, type ShipSystems } from "../processor";
 import { KERBALISM } from "../uplink";
-// Side-effect import: registers the `life-support.sections` augment filler
-// (the Greenhouse section) and the SlotRegistry declaration merge for that
-// slot id, see that file's own doc comment. Life support is a Kerbalism
-// concept, so this augment lives here in the Uplink (not
-// `@ksp-gonogo/components`), replacing the deleted `LifeSupportSystems`
-// widget that used to own it.
+/**
+ * Side-effect import: registers the `life-support.sections` augment
+ * filler (the Greenhouse section) and the SlotRegistry declaration merge
+ * for that slot id, see that file's own doc comment. Life support is a
+ * Kerbalism concept, so this augment lives here in the Uplink (not
+ * `@ksp-gonogo/components`), replacing the deleted `LifeSupportSystems`
+ * widget that used to own it.
+ */
 import "./GreenhouseSection";
 import { radiationTooHigh } from "./GreenhouseSection";
 import { RadiationSection } from "./RadiationSection";
@@ -56,20 +58,20 @@ import { useResourceColorMap } from "./resourceColorMap";
 
 type ShipSystemsConfig = Record<string, never>;
 
-// ---------------------------------------------------------------------------
-// Tone + format helpers. `Tone` mirrors the vocabulary `Meter`/`Value`/
-// `Badge` (via `severityFromBadgeTone`) already speak; nothing here invents a
-// second colour system.
-//
-// `neutral` is the RESTING tone, and it is load-bearing (operator feedback:
-// "the mix of colours everywhere ... is what makes it nauseating"). A status
-// tone means something is WRONG; a healthy reading renders quiet grey, and
-// its level is carried by the bar's fill fraction plus the text beside it,
-// never by paint. In particular a LEVEL alone is not a status: a steady
-// half-empty tank, or a nearly-empty waste container, is a fact, not an
-// alarm, so tones escalate only off an actual drain, a diagnosis role, or an
-// explicit low-threshold flag.
-// ---------------------------------------------------------------------------
+/**
+ * Tone + format helpers. `Tone` mirrors the vocabulary `Meter`/`Value`/
+ * `Badge` (via `severityFromBadgeTone`) already speak; nothing here
+ * invents a second colour system.
+ *
+ * `neutral` is the RESTING tone, and it is load-bearing (operator
+ * feedback: "the mix of colours everywhere ... is what makes it
+ * nauseating"). A status tone means something is WRONG; a healthy reading
+ * renders quiet grey, and its level is carried by the bar's fill fraction
+ * plus the text beside it, never by paint. In particular a LEVEL alone is
+ * not a status: a steady half-empty tank, or a nearly-empty waste
+ * container, is a fact, not an alarm, so tones escalate only off an
+ * actual drain, a diagnosis role, or an explicit low-threshold flag.
+ */
 
 type Tone = "neutral" | "go" | "info" | "warn" | "nogo";
 
@@ -86,9 +88,11 @@ const SOON_EMPTY_SEC = 600;
 export function fmtAmt(n: number): string {
   if (!Number.isFinite(n)) return "0";
   const rounded = Math.round(n);
-  // Collapse to a bare integer only when it does not ERASE a nonzero value:
-  // rounding e.g. -0.01 to "0" would hide a real (small) drain, which is
-  // exactly the rate an operator opens the ledger to read.
+  /**
+   * Collapse to a bare integer only when it does not ERASE a nonzero
+   * value: rounding e.g. -0.01 to "0" would hide a real (small) drain,
+   * which is exactly the rate an operator opens the ledger to read.
+   */
   if (Math.abs(n - rounded) < 0.05 && !(rounded === 0 && n !== 0)) {
     return String(rounded);
   }
@@ -228,20 +232,18 @@ function toGreenhouseRow(g: KerbalismGreenhouseEntry): GreenhouseRow {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Widget
-// ---------------------------------------------------------------------------
-
 function ShipSystemsComponent(
   _props: Readonly<ComponentProps<ShipSystemsConfig>>,
 ) {
   const ship = useProcessor(SHIP_SYSTEMS);
-  // Read outside the Processor (unlike the four `kerbalism.profile`/
-  // `lifesupport`/resources/crew deps `SHIP_SYSTEMS` already shares with the
-  // panel badge): nothing else in this widget's own render derives from
-  // `kerbalism.spaceweather`, so a second Processor dependant is not worth
-  // adding for one section. Read unconditionally, ahead of both early
-  // returns below, to keep hook order stable.
+  /**
+   * Read outside the Processor (unlike the four `kerbalism.profile`/
+   * `lifesupport`/resources/crew deps `SHIP_SYSTEMS` already shares with
+   * the panel badge): nothing else in this widget's own render derives
+   * from `kerbalism.spaceweather`, so a second Processor dependant is not
+   * worth adding for one section. Read unconditionally, ahead of both
+   * early returns below, to keep hook order stable.
+   */
   const weather = useTelemetry("kerbalism.spaceweather");
   const utNow = useUtNow();
 
@@ -303,11 +305,13 @@ function ShipSystemsBody({
   utNow: number | undefined;
 }) {
   const { summary } = ship;
-  // The "Limiting factors" banner names a cause's ROOT resource but the
-  // sentence's subject is the resource it explains (see `LimitedByMessage`),
-  // so its own time-to-empty has to come from that OTHER row, not the
-  // cause's. displayName is unique per profile (it is the key the operator
-  // reads by), so it is a safe lookup key here.
+  /**
+   * The "Limiting factors" banner names a cause's ROOT resource but the
+   * sentence's subject is the resource it explains (see
+   * `LimitedByMessage`), so its own time-to-empty has to come from that
+   * OTHER row, not the cause's. displayName is unique per profile (it is
+   * the key the operator reads by), so it is a safe lookup key here.
+   */
   const rowsByDisplayName = new Map(
     [...summary.supplies, ...summary.other].map((r) => [r.displayName, r]),
   );
@@ -316,19 +320,23 @@ function ShipSystemsBody({
   const greenhouses = (ship.lifeSupport?.greenhouses ?? []).map(
     toGreenhouseRow,
   );
-  // Ambient, not habitat/shielded: a greenhouse part's own tolerance is an
-  // exposure limit on what's hitting the HULL, not the crew-shielded figure
-  // (see the per-row threshold check this feeds, below).
+  /**
+   * Ambient, not habitat/shielded: a greenhouse part's own tolerance is
+   * an exposure limit on what's hitting the HULL, not the crew-shielded
+   * figure (see the per-row threshold check this feeds, below).
+   */
   const ambientRadiationRadPerSecond = mag(weather?.radiationRadPerSecond);
 
-  // The power footer: ElectricCharge is universal across every Kerbalism
-  // profile (stock and RO both declare it), so it is worth a permanently
-  // visible readout the way the old widget's hardcoded Power meter was,
-  // even though it is ALSO just another row in `summary.supplies` above.
-  // Duplicating the reading rather than special-casing its layout only
-  // matches the "spending funds: always show the balance" duplication
-  // convention elsewhere in this codebase: the operator should not have to
-  // scroll to find the one number that ends the mission.
+  /**
+   * The power footer: ElectricCharge is universal across every Kerbalism
+   * profile (stock and RO both declare it), so it is worth a permanently
+   * visible readout the way the old widget's hardcoded Power meter was,
+   * even though it is ALSO just another row in `summary.supplies` above.
+   * Duplicating the reading rather than special-casing its layout only
+   * matches the "spending funds: always show the balance" duplication
+   * convention elsewhere in this codebase: the operator should not have
+   * to scroll to find the one number that ends the mission.
+   */
   const ecRow =
     summary.supplies.find((r) => r.name === "ElectricCharge") ??
     summary.other.find((r) => r.name === "ElectricCharge");
@@ -342,18 +350,22 @@ function ShipSystemsBody({
 
   const pressurized = mag(habitat?.pressure) > 0.5;
 
-  // A halted greenhouse is a WIDGET-level event, not just a per-row one: it
-  // folds into the header status (see `overallStatus`) so an operator
-  // scanning the panel header still catches it without a second pill.
+  /**
+   * A halted greenhouse is a WIDGET-level event, not just a per-row one:
+   * it folds into the header status (see `overallStatus`) so an operator
+   * scanning the panel header still catches it without a second pill.
+   */
   const anyGreenhouseHalted = greenhouses.some((g) =>
     radiationTooHigh(g, ambientRadiationRadPerSecond),
   );
   const status = overallStatus(ship, anyGreenhouseHalted);
 
-  // Every resource this render pass shows a Card for, supplies and other
-  // alike: one colour map covers both sections so the same resource always
-  // strips the same colour regardless of which bucket `summarise` sorted it
-  // into.
+  /**
+   * Every resource this render pass shows a Card for, supplies and other
+   * alike: one colour map covers both sections so the same resource
+   * always strips the same colour regardless of which bucket `summarise`
+   * sorted it into.
+   */
   const resourceColors = useResourceColorMap([
     ...summary.supplies.map((r) => r.name),
     ...summary.other.map((r) => r.name),
@@ -372,12 +384,15 @@ function ShipSystemsBody({
         </Badge>
       }
       panelFooter={
-        // The power footer, PINNED below the scroller by the Panel itself
-        // (not merely rendered last, which still scrolled away with the
-        // body): ElectricCharge is universal across every Kerbalism profile,
-        // so it earns the one permanently visible readout, the same
-        // "duplicate the balance next to where it matters" convention the
-        // funds rule uses. Rendered only when the profile carries EC.
+        /**
+         * The power footer, PINNED below the scroller by the Panel itself
+         * (not merely rendered last, which still scrolled away with the
+         * body): ElectricCharge is universal across every Kerbalism
+         * profile, so it earns the one permanently visible readout, the
+         * same "duplicate the balance next to where it matters"
+         * convention the funds rule uses. Rendered only when the profile
+         * carries EC.
+         */
         ecRow && (
           <Meter
             label="Power"
@@ -404,9 +419,11 @@ function ShipSystemsBody({
         )}
 
         {summary.causes.length > 0 && (
-          // Card, matching every other container in this widget now
-          // (operator feedback: the widget used to hand-stitch `Box`
-          // inconsistently, some rows boxed, some not).
+          /**
+           * Card, matching every other container in this widget now
+           * (operator feedback: the widget used to hand-stitch `Box`
+           * inconsistently, some rows boxed, some not).
+           */
           <Card role="status" aria-live="polite">
             <Stack gap="xs">
               <Value tone="nogo" weight="semibold" size="sm">
@@ -635,10 +652,12 @@ function ResourceLedgerRow({
   );
 
   return (
-    // testid escape hatch: a plain visual container, no role/label of its
-    // own to query by (the Meter it wraps already carries the accessible
-    // name), so a stable hook is the only way a test can reach THIS row's
-    // own Card to assert its categoryColor strip.
+    /**
+     * testid escape hatch: a plain visual container, no role/label of its
+     * own to query by (the Meter it wraps already carries the accessible
+     * name), so a stable hook is the only way a test can reach THIS row's
+     * own Card to assert its categoryColor strip.
+     */
     <Card
       categoryColor={categoryColor}
       data-testid={`resource-card-${row.name}`}
@@ -653,12 +672,15 @@ function ResourceLedgerRow({
           size="sm"
         />
         {row.role === "downstream" && row.blockedBy.length > 0 && (
-          // `tone="warn"` alone renders --color-status-warning-fg, a
-          // near-black meant for text ON the warning "-bg" orange, e.g.
-          // inside a Badge. Standalone on this row's dark surface that is
-          // functionally invisible. The `-fg-muted` override is the same
-          // fix GreenhouseSection.tsx documents for the identical landmine
-          // (LaunchDirector, CommSignal, DeployedScience hit it too).
+          /**
+           * `tone="warn"` alone renders --color-status-warning-fg, a
+           * near-black meant for text ON the warning "-bg" orange, e.g.
+           * inside a Badge. Standalone on this row's dark surface that is
+           * functionally invisible. The `-fg-muted` override is the same
+           * fix GreenhouseSection.tsx documents for the identical
+           * landmine (LaunchDirector, CommSignal, DeployedScience hit it
+           * too).
+           */
           <Value
             tone="warn"
             size="xs"
@@ -722,23 +744,28 @@ function LimitedByMessage({
 function LedgerBody({ ledger }: { ledger: Ledger }) {
   const hasResidual =
     ledger.residual !== undefined && Math.abs(ledger.residual) > 1e-6;
-  // Every bar in this ledger scales against the largest |rate| among ITS OWN
-  // terms (never a cross-resource or cross-row scale), matching the
-  // kerbalism-graph-mock prototype (`kerbalism-graph-mock/water-entity.html`)
-  // `DivergingBar` ports the design from: the biggest term reaches the
-  // half-bar mark, everything else is relative to it. 0 when there are no
-  // terms (the "No modelled sources" branch never reaches `DivergingBar`).
+  /**
+   * Every bar in this ledger scales against the largest |rate| among ITS
+   * OWN terms (never a cross-resource or cross-row scale), matching the
+   * kerbalism-graph-mock prototype
+   * (`kerbalism-graph-mock/water-entity.html`) `DivergingBar` ports the
+   * design from: the biggest term reaches the half-bar mark, everything
+   * else is relative to it. 0 when there are no terms (the "No modelled
+   * sources" branch never reaches `DivergingBar`).
+   */
   const maxAbsRate = Math.max(
     0,
     ...ledger.terms.map((t) => Math.abs(t.ratePerSecond)),
   );
   return (
-    // No `minWidth`: a fixed floor here is exactly what used to force this
-    // panel wider than the row that hosts it (see this component's own
-    // history), spilling the ledger past the widget's right edge at any
-    // width narrower than the floor. `width: 100%` lets it size to whatever
-    // the accordion panel actually has, at every panel width down to
-    // minSize.
+    /**
+     * No `minWidth`: a fixed floor here is exactly what used to force
+     * this panel wider than the row that hosts it (see this component's
+     * own history), spilling the ledger past the widget's right edge at
+     * any width narrower than the floor. `width: 100%` lets it size to
+     * whatever the accordion panel actually has, at every panel width
+     * down to minSize.
+     */
     <Stack gap="xs" style={{ width: "100%", minWidth: 0 }}>
       {ledger.terms.length === 0 ? (
         <Value tone="muted" size="xs">
@@ -746,14 +773,17 @@ function LedgerBody({ ledger }: { ledger: Ledger }) {
         </Value>
       ) : (
         ledger.terms.map((term) => (
-          // `wrap`: the rate ("-0.01/s") is one unbreakable token (no space
-          // for the browser's own text-wrap to catch), so once the term
-          // NAME has shrunk as far as ITS wrapping allows, the rate has
-          // nowhere left to shrink to. Flex-wrapping the row lets the
-          // trailing group drop to a line of its own at the narrowest panel
-          // widths instead of forcing the row (and everything above it)
-          // wider than the panel, which is exactly the overflow this
-          // component used to have (see this function's own doc comment).
+          /**
+           * `wrap`: the rate ("-0.01/s") is one unbreakable token (no
+           * space for the browser's own text-wrap to catch), so once the
+           * term NAME has shrunk as far as ITS wrapping allows, the rate
+           * has nowhere left to shrink to. Flex-wrapping the row lets the
+           * trailing group drop to a line of its own at the narrowest
+           * panel widths instead of forcing the row (and everything
+           * above it) wider than the panel, which is exactly the
+           * overflow this component used to have (see this function's
+           * own doc comment).
+           */
           <Cluster
             key={`${term.kind}-${term.name}-${term.flightId ?? ""}`}
             justify="between"
@@ -804,14 +834,16 @@ function LedgerBody({ ledger }: { ledger: Ledger }) {
         </Cluster>
       )}
       {hasResidual && ledger.residual !== undefined && (
-        // Same near-black-on-dark landmine as the row footnote above: the
-        // `-fg-muted` override keeps this readable on the panel surface.
-        // Every term above is already scaled by Kerbalism's own live modifier
-        // product (envModifier/ruleEnvModifiers, option a'), so this residual
-        // is no longer "modifiers we didn't model" -- it is a genuine
-        // model-vs-reality gap (timewarp catch-up between samples, a consumer
-        // this ledger doesn't enumerate) and is worth keeping visible as
-        // exactly that, never hidden.
+        /**
+         * Same near-black-on-dark landmine as the row footnote above: the
+         * `-fg-muted` override keeps this readable on the panel surface.
+         * Every term above is already scaled by Kerbalism's own live
+         * modifier product (envModifier/ruleEnvModifiers, option a'), so
+         * this residual is no longer "modifiers we didn't model" -- it is
+         * a genuine model-vs-reality gap (timewarp catch-up between
+         * samples, a consumer this ledger doesn't enumerate) and is
+         * worth keeping visible as exactly that, never hidden.
+         */
         <Value
           tone="warn"
           size="xs"
@@ -848,9 +880,12 @@ registerComponent<ShipSystemsConfig>({
   defaultConfig: {},
   actions: [],
   requires: ["flight"],
-  // Reuses the `life-support.sections` slot id the deleted LifeSupportSystems
-  // widget used to own (see the render-site comment above): the Greenhouse
-  // augment, now living alongside this widget, fills it out of the box.
+  /**
+   * Reuses the `life-support.sections` slot id the deleted
+   * LifeSupportSystems widget used to own (see the render-site comment
+   * above): the Greenhouse augment, now living alongside this widget,
+   * fills it out of the box.
+   */
   augmentSlots: ["life-support.sections"],
   owner: KERBALISM,
 });

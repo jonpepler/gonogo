@@ -3,8 +3,7 @@
 // widgets that live outside MapView's `map-view.base` slot tree (currently
 // only Minimap.tsx) can compute the same per-tile reveal composite without
 // importing @ksp-gonogo/components, that package's scan-canvas internals
-// are slated for deletion once every consumer has its own copy (T9,
-// docs/superpowers/plans/2026-07-18-mapview-overlay-host-foundation.md).
+// are slated for deletion once every consumer has its own copy.
 // Kept behaviourally identical to the original; a future task could hoist a
 // single shared implementation into @ksp-gonogo/data without changing
 // behaviour, the same way TerrainBase/paintTile.ts's tileToPixelRect is a

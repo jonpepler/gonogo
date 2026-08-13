@@ -113,11 +113,13 @@ export interface ContractBadgeContext {
   section: "active" | "offered";
 }
 
-// Declaration-merge the slot id → props type into core's `SlotRegistry` (spec
-// §4.6). Co-located here (not in a shared central file) so parallel slot work in
-// other widgets can't collide. Makes `registerAugment({ augments:
-// "contract-manager.badges" })` and `<AugmentSlot name="contract-manager.badges"
-// props={...} />` type-check precisely against `ContractBadgeContext`.
+/**
+ * Declaration-merge the slot id → props type into core's `SlotRegistry`.
+ * Co-located here (not in a shared central file) so parallel slot work in
+ * other widgets can't collide. Makes `registerAugment({ augments:
+ * "contract-manager.badges" })` and `<AugmentSlot name="contract-manager.badges"
+ * props={...} />` type-check precisely against `ContractBadgeContext`.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "contract-manager.badges": ContractBadgeContext;
@@ -144,11 +146,11 @@ function isKnownParamState(value: string): value is ContractParameterState {
  * wire shape" pattern ScienceBench's `parseExperiments` established
  * (`partName ?? part`, map-topic.ts's doc comment). The new shape's
  * `parameters` only carry `{title, state}` (no `optional`/`parameterType`/
- * altitude bounds: decompile-confirmed exact shape, career-capture-extend-
- * report.md); those extra fields simply stay undefined on a new-wire
- * parameter, degrading the AltitudeProgress bar/optional-badge gracefully
- * rather than breaking. Drops malformed entries; tolerates unknown
- * parameter states by collapsing to "Incomplete".
+ * altitude bounds: decompile-confirmed exact shape); those extra fields
+ * simply stay undefined on a new-wire parameter, degrading the
+ * AltitudeProgress bar/optional-badge gracefully rather than breaking.
+ * Drops malformed entries; tolerates unknown parameter states by collapsing
+ * to "Incomplete".
  */
 export function parseContracts(raw: unknown): ContractEntry[] | null {
   if (raw === null || raw === undefined) return null;
@@ -157,18 +159,22 @@ export function parseContracts(raw: unknown): ContractEntry[] | null {
   for (const entry of raw) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
     const e = entry as Record<string, unknown>;
-    // Accept string (current) OR number (legacy DLL). KSP contract IDs
-    // routinely exceed Number.MAX_SAFE_INTEGER, so the fork emits them
-    // as strings since 2026-05-11. Older DLLs emit numbers, which we
-    // stringify so downstream consumers have one type to deal with.
+    /**
+     * Accept string (current) OR number (legacy DLL). KSP contract IDs
+     * routinely exceed Number.MAX_SAFE_INTEGER, so the fork emits them
+     * as strings since 2026-05-11. Older DLLs emit numbers, which we
+     * stringify so downstream consumers have one type to deal with.
+     */
     let id: string | null = null;
     if (typeof e.id === "string" && e.id.length > 0) id = e.id;
     else if (typeof e.id === "number" && Number.isFinite(e.id))
       id = String(e.id);
     if (id === null) continue;
-    // agency/agent, repCompletion/reputationCompletion, deadlineUt/
-    // dateDeadline: legacy vs. career.status field names for the same
-    // value: prefer whichever the payload actually carries.
+    /**
+     * agency/agent, repCompletion/reputationCompletion, deadlineUt/
+     * dateDeadline: legacy vs. career.status field names for the same
+     * value: prefer whichever the payload actually carries.
+     */
     const agency =
       typeof e.agency === "string"
         ? e.agency
@@ -230,9 +236,11 @@ function parseParameters(raw: unknown): ContractParameter[] {
  * `contractId: number` shape.
  */
 export function contractIdToSafeNumber(id: string): number | null {
-  // Long.TryParse accepts negative IDs too, which JS Number can also
-  // represent. Reject scientific-notation strings since they'd already
-  // be lossy at this point.
+  /**
+   * Long.TryParse accepts negative IDs too, which JS Number can also
+   * represent. Reject scientific-notation strings since they'd already
+   * be lossy at this point.
+   */
   if (!/^-?\d+$/.test(id)) return null;
   const n = Number(id);
   if (!Number.isFinite(n)) return null;
@@ -270,10 +278,12 @@ function ContractManagerComponent({
   // propagated basis): collapse to `undefined` for the numeric comparisons.
   const vAltitude =
     useStream<VesselState>("vessel.state")?.altitudeAsl ?? undefined;
-  // Career actions dispatch at the meta-vantage: accepting/declining/cancelling
-  // a contract is a program-desk action with no vessel signal delay, so it
-  // stays instant regardless of the selected command centre. The handles are
-  // contributed to the panel delay rail by usePanelDelay (nothing at meta-vantage).
+  /**
+   * Career actions dispatch at the meta-vantage: accepting/declining/cancelling
+   * a contract is a program-desk action with no vessel signal delay, so it
+   * stays instant regardless of the selected command centre. The handles are
+   * contributed to the panel delay rail by usePanelDelay (nothing at meta-vantage).
+   */
   const acceptCmd = useCommand("career.contract.accept", {
     vantage: META_VANTAGE,
   });
@@ -295,13 +305,15 @@ function ContractManagerComponent({
 
   const rows = h ?? 8;
   const showSubtitle = rows >= 4;
-  // Wide-short boxes (landscape-18x5) strand the single-column card list: one
-  // card fills the full width while the rest scroll off the short height, and
-  // the right ~75% sits empty. Only the shape signal can see this, the size
-  // bucket reads the same `normal` at 18x5 as at 5x18. Flow the cards into a
-  // width-following multi-column grid only when landscape; portrait and square
-  // keep the unchanged single column so those sizes can't regress. The section
-  // labels (Active / Offered) stay outside the grid so the grouping holds.
+  /**
+   * Wide-short boxes (landscape-18x5) strand the single-column card list: one
+   * card fills the full width while the rest scroll off the short height, and
+   * the right ~75% sits empty. Only the shape signal can see this, the size
+   * bucket reads the same `normal` at 18x5 as at 5x18. Flow the cards into a
+   * width-following multi-column grid only when landscape; portrait and square
+   * keep the unchanged single column so those sizes can't regress. The section
+   * labels (Active / Offered) stay outside the grid so the grouping holds.
+   */
   const { shape } = getWidgetShape(w, h);
   const multiColumn = shape === "landscape";
 
@@ -460,11 +472,13 @@ function ContractManagerComponent({
                     {p.state === "Incomplete" &&
                       createAlarm &&
                       contractIdToSafeNumber(c.id) === null && (
-                        // Big-id contracts (KSP-generated longs above
-                        // Number.MAX_SAFE_INTEGER) can't be addressed by the
-                        // current alarm trigger shape (contractId: number).
-                        // Render a disabled icon with explanation rather
-                        // than hide: keeps the row layout consistent.
+                        /**
+                         * Big-id contracts (KSP-generated longs above
+                         * Number.MAX_SAFE_INTEGER) can't be addressed by the
+                         * current alarm trigger shape (contractId: number).
+                         * Render a disabled icon with explanation rather
+                         * than hide: keeps the row layout consistent.
+                         */
                         <ParameterAlarmButton
                           type="button"
                           disabled
@@ -587,10 +601,12 @@ function DeclineButton({ onConfirm }: { onConfirm: () => void }) {
 function CancelButton({ onConfirm }: { onConfirm: () => void }) {
   const [armed, setArmed] = useState(false);
 
-  // Cancel forfeits any work in progress on the contract, same arm-then-
-  // confirm pattern as Decline but stronger framing in the confirm copy
-  // because the loss is bigger (you may have already spent funds /
-  // achieved partial parameters).
+  /**
+   * Cancel forfeits any work in progress on the contract, same arm-then-
+   * confirm pattern as Decline but stronger framing in the confirm copy
+   * because the loss is bigger (you may have already spent funds /
+   * achieved partial parameters).
+   */
   useEffect(() => {
     if (!armed) return;
     const id = setTimeout(() => setArmed(false), ARM_TIMEOUT_MS);
@@ -621,8 +637,6 @@ function CancelButton({ onConfirm }: { onConfirm: () => void }) {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 const Empty = styled.div`
   color: var(--color-text-faint);
   font-size: var(--font-size-sm);
@@ -636,15 +650,17 @@ const Summary = styled.div`
   font-variant-numeric: tabular-nums;
 `;
 
-// Single column by default (portrait / square). In landscape we switch to a
-// width-following grid: `auto-fill` + a min card width derives the column count
-// from the available width rather than hardcoding a fixed "2 columns", so the
-// same rule fills an 18-wide box with several columns and would scale up if the
-// widget were dropped wider. `align-content: start` keeps short lists from
-// stretching. The 8px gap matches the single-column flex spacing the Body
-// inner used to own between cards, so portrait/square are byte-for-byte
-// unchanged. Each Active / Offered section is its own CardList so the section
-// labels stay full-width and the grouping holds.
+/**
+ * Single column by default (portrait / square). In landscape we switch to a
+ * width-following grid: `auto-fill` + a min card width derives the column count
+ * from the available width rather than hardcoding a fixed "2 columns", so the
+ * same rule fills an 18-wide box with several columns and would scale up if the
+ * widget were dropped wider. `align-content: start` keeps short lists from
+ * stretching. The 8px gap matches the single-column flex spacing the Body
+ * inner used to own between cards, so portrait/square are byte-for-byte
+ * unchanged. Each Active / Offered section is its own CardList so the section
+ * labels stay full-width and the grouping holds.
+ */
 const CARD_MIN_WIDTH = "240px";
 const CardList = styled.div<{ $multiColumn: boolean }>`
   ${({ $multiColumn }) =>
@@ -930,10 +946,12 @@ function AltitudeProgress({
   );
 }
 
-// The shared `length` ladder, so a high-orbit contract target does not render
-// as five digits of km. Decimals stay tied to the magnitude the way the
-// hand-rolled version had them: this label sits inline in a contract row and
-// its width matters more than its last digit.
+/**
+ * The shared `length` ladder, so a high-orbit contract target does not render
+ * as five digits of km. Decimals stay tied to the magnitude the way the
+ * hand-rolled version had them: this label sits inline in a contract row and
+ * its width matters more than its last digit.
+ */
 function AltitudeShort({ m }: { m: number }) {
   return <Unit value={value("m", m)} decimals={Math.abs(m) < 10_000 ? 1 : 0} />;
 }
@@ -1008,8 +1026,6 @@ const Optional = styled.span`
   font-style: italic;
 `;
 
-// ── Registration ──────────────────────────────────────────────────────────────
-
 registerComponent<ContractManagerConfig>({
   id: "contract-manager",
   name: "Contract Manager",
@@ -1023,9 +1039,11 @@ registerComponent<ContractManagerConfig>({
     "contracts.active",
     "contracts.offered",
     "contracts.completedRecent",
-    // Consumed by AltitudeProgress on altitude-bounded contract
-    // parameters. Without listing it here the orchestrator never
-    // subscribes and the bar stays empty in production.
+    /**
+     * Consumed by AltitudeProgress on altitude-bounded contract
+     * parameters. Without listing it here the orchestrator never
+     * subscribes and the bar stays empty in production.
+     */
     "v.altitude",
   ],
   defaultConfig: {},

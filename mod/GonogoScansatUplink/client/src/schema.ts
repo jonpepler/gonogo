@@ -7,9 +7,8 @@
  * `packages/core/src/schemas/scansat.ts` still holds a duplicate copy for
  * `packages/components`'s MapView (not yet migrated off it) and
  * `packages/core/src/schemas/telemachus.ts` (still-shipped legacy
- * Telemachus `scan.*` keys): see T9 in
- * `docs/superpowers/plans/2026-07-18-mapview-overlay-host-foundation.md`
- * for the deletion of that copy once MapView's augment migration lands.
+ * Telemachus `scan.*` keys): that copy is slated for deletion once
+ * MapView's augment migration lands.
  */
 
 /**

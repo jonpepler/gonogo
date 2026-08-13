@@ -59,20 +59,22 @@ import { OrbitalEventChips } from "../shared/OrbitalEventChips";
 // `target.available` list now, so there is nothing per-instance to save.
 type TargetPickerConfig = Record<string, never>;
 
-// ── Augment slots (Uplink architecture) ─────────────────────────────
-// Two host-owned slots any Uplink may compose into. Neither carries slot props:
-// they are not overlay or typed-contract slots, a bound augment
-// reads its OWN Topics via hooks and fires its own actions, so both pass `{}`.
-//
-//  - `target-picker.sections`: a body slot for a fleet-management Uplink (mission
-//    tagging / constellation grouping) to add a filter/grouping view alongside
-//    the stock Suggested / Bodies / Vessels / Parts sections. No confirmed filler yet.
-//  - `target-picker.badges`: the broad inline-indicator escape hatch (slot-map
-//    "Feedback round 1"), sitting in the header next to the title.
-//
-// Typed here via co-located `SlotRegistry` declaration-merging so
-// the ids type-check at the `AugmentSlot` / `registerAugment` sites rather than
-// falling back to the loose `Record<string, unknown>`.
+/**
+ * Two host-owned augment slots any Uplink may compose into. Neither carries
+ * slot props: they are not overlay or typed-contract slots, a bound augment
+ * reads its OWN Topics via hooks and fires its own actions, so both pass `{}`.
+ *
+ * - `target-picker.sections`: a body slot for a fleet-management Uplink
+ *   (mission tagging / constellation grouping) to add a filter/grouping view
+ *   alongside the stock Suggested / Bodies / Vessels / Parts sections. No
+ *   confirmed filler yet.
+ * - `target-picker.badges`: the broad inline-indicator escape hatch, sitting
+ *   in the header next to the title.
+ *
+ * Typed here via co-located `SlotRegistry` declaration-merging so the ids
+ * type-check at the `AugmentSlot` / `registerAugment` sites rather than
+ * falling back to the loose `Record<string, unknown>`.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "target-picker.sections": Record<string, never>;
@@ -217,13 +219,12 @@ function TargetPickerComponent({
   w,
   h,
 }: Readonly<ComponentProps<TargetPickerConfig>>) {
-  // Canonical native reads: the whole `target.available` list, and the
-  // target-detail scalars off the whole `vessel.target` Topic (name, kind,
-  // and the Vec3 fields distance/Δv derive from), the same native-shim
-  // reads DistanceToTarget uses, not the `vessel.state` derived channel
-  // (which isn't a wire Topic and so can't be declared in
-  // `dataRequirements`: see the ratchet test in
-  // `packages/core/src/hooks/mapTopic.coverage.test.ts`).
+  /* Canonical native reads: the whole `target.available` list, and the
+     target-detail scalars off the whole `vessel.target` Topic (name, kind,
+     and the Vec3 fields distance/Δv derive from), the same native-shim reads
+     DistanceToTarget uses, not the `vessel.state` derived channel (which
+     isn't a wire Topic and so can't be declared in `dataRequirements`: see
+     the ratchet test in `packages/core/src/hooks/mapTopic.coverage.test.ts`). */
   const available = useTelemetry("target.available");
   const target = useTelemetry("vessel.target");
   const tarName = resolveTargetName(target?.name);
@@ -236,13 +237,13 @@ function TargetPickerComponent({
     tarRelPos && tarRelVelVec
       ? radialSpeed(tarRelPos, tarRelVelVec)
       : undefined;
-  // Delayed vessel commands (command-surface-delay-audit #18-20): setting or
-  // clearing the KSP target is dispatched to the craft, subject to signal
-  // delay, so this rides `useCommand` instead of the legacy
-  // `useExecuteAction` string path. Both `tar.setTargetBody/Vessel/Part`
-  // resolve to the SAME `vessel.target.set` command (map-command.ts), keyed
-  // by the `TargetKind` ordinal already on the entry (the same enum
-  // `target.available` entries carry `entry.kind` as).
+  /* Delayed vessel commands: setting or clearing the KSP target is dispatched
+     to the craft, subject to signal delay, so this rides `useCommand` instead
+     of the legacy `useExecuteAction` string path. Both
+     `tar.setTargetBody/Vessel/Part` resolve to the SAME `vessel.target.set`
+     command (map-command.ts), keyed by the `TargetKind` ordinal already on
+     the entry (the same enum `target.available` entries carry `entry.kind`
+     as). */
   const setTargetCmd = useCommand("vessel.target.set");
   const clearTargetCmd = useCommand("vessel.target.clear");
   usePanelDelay(setTargetCmd);
@@ -262,11 +263,11 @@ function TargetPickerComponent({
     },
   });
 
-  // Pending state, which row is awaiting the `vessel.target` readback after
-  // a click. We render a spinner on that row until the readback confirms (or
-  // a 5 s safety net clears it). `id` is `entryId(entry)`, so a Suggested row
-  // and its category-section twin (the same underlying entry, rendered
-  // twice) both light up together.
+  /* Pending state: which row is awaiting the `vessel.target` readback after a
+     click. We render a spinner on that row until the readback confirms (or a
+     5 s safety net clears it). `id` is `entryId(entry)`, so a Suggested row
+     and its category-section twin (the same underlying entry, rendered
+     twice) both light up together. */
   const [pendingTarget, setPendingTarget] = useState<{
     id: string;
     expectedName: string;
@@ -311,19 +312,18 @@ function TargetPickerComponent({
         { label },
       );
     }
-    // T1: an `Other`/unknown-kind entry (a modded ITargetable) has no id-based
-    // `tar.setTarget*` command to re-select it: the producer only surfaces one
-    // when it's ALREADY the current target: so a click is intentionally a
-    // graceful no-op here (the row still shows name + distance + the TARGET
-    // tag). Documented so this fall-through reads as deliberate, not an
-    // accidental missing branch.
+    /* An `Other`/unknown-kind entry (a modded ITargetable) has no id-based
+       `tar.setTarget*` command to re-select it: the producer only surfaces
+       one when it's ALREADY the current target, so a click is intentionally
+       a graceful no-op here (the row still shows name + distance + the
+       TARGET tag). Documented so this fall-through reads as deliberate, not
+       an accidental missing branch. */
   };
   const clearTarget = () => {
     setPendingTarget(null);
     void clearTargetCmd.send(null, { label: "Clear target" });
   };
 
-  // ── target.available -> Suggested + categorised sections ─────────────────
   const entries = available?.entries ?? [];
   const filterText = filter.trim().toLowerCase();
   const isFiltering = filterText.length > 0;
@@ -343,9 +343,7 @@ function TargetPickerComponent({
     [nameFiltered],
   );
 
-  // Asteroid/comet toggle applies to Vessel-kind entries only (Bodies/Parts
-  // are unaffected, a Part's vesselType is its owning vessel's, but the
-  // toggle is scoped to the Vessels category + Suggested vessels per spec).
+  // Asteroid/comet toggle applies to Vessel-kind entries only (Bodies/Parts are unaffected, a Part's vesselType is its owning vessel's, but the toggle is scoped to the Vessels category + Suggested vessels).
   const visible = useMemo(
     () =>
       nameFiltered.filter(
@@ -371,11 +369,12 @@ function TargetPickerComponent({
     () => sortByDistance(visible.filter((e) => e.kind === TargetKind.Part)),
     [visible],
   );
-  // T1: anything that isn't a Body/Vessel/Part: `TargetKind.Other` (a modded
-  // ITargetable the producer surfaces as the current target) or any kind the
-  // consumer doesn't recognise: buckets here rather than falling into no list
-  // and rendering invisibly. Distance is kind-agnostic (every ITargetable has
-  // a transform), so it shows + distance-sorts like the others.
+  /* Anything that isn't a Body/Vessel/Part: `TargetKind.Other` (a modded
+     ITargetable the producer surfaces as the current target) or any kind
+     the consumer doesn't recognise, buckets here rather than falling into
+     no list and rendering invisibly. Distance is kind-agnostic (every
+     ITargetable has a transform), so it shows + distance-sorts like the
+     others. */
   const otherList = useMemo(
     () =>
       sortByDistance(
@@ -640,8 +639,6 @@ function CategorySection({
   );
 }
 
-// ── Config component ──────────────────────────────────────────────────────────
-
 function TargetPickerConfigComponent(
   _props: Readonly<ConfigComponentProps<TargetPickerConfig>>,
 ) {
@@ -658,8 +655,6 @@ function TargetPickerConfigComponent(
     </ConfigForm>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 /** Chip row that collapses to zero height when there's no encounter / apsis
  *  data: keeps the header tight in the common steady-orbit case. */
@@ -888,8 +883,6 @@ const CompactDistance = styled.div`
   letter-spacing: 0.04em;
 `;
 
-// ── Registration ──────────────────────────────────────────────────────────────
-
 registerComponent<TargetPickerConfig>({
   id: "target-picker",
   name: "Target Picker",
@@ -900,9 +893,7 @@ registerComponent<TargetPickerConfig>({
   minSize: { w: 3, h: 3 },
   component: TargetPickerComponent,
   configComponent: TargetPickerConfigComponent,
-  // Two host-owned augment slots: a body `.sections` slot for a
-  // fleet-management Uplink's filter/grouping view, and the broad `.badges`
-  // escape hatch in the header. Unfilled until an Uplink binds them.
+  // Two host-owned augment slots: a body `.sections` slot for a fleet-management Uplink's filter/grouping view, and the broad `.badges` escape hatch in the header. Unfilled until an Uplink binds them.
   augmentSlots: ["target-picker.sections", "target-picker.badges"],
   dataRequirements: ["target.available", "vessel.target"],
   defaultConfig: {},
@@ -911,10 +902,11 @@ registerComponent<TargetPickerConfig>({
   requires: ["flight"],
 });
 
-// Test-only surface for the T3 drift-guard (`enumLabelDrift.test.ts`), aliased
-// rather than exported bare, since LaunchDirector declares an identically-named
-// `VESSEL_TYPE_LABELS` const of its own and the package barrel (`src/index.ts`)
-// re-exports every widget's `*`, which would otherwise collide.
+/* Test-only surface for the drift-guard (`enumLabelDrift.test.ts`), aliased
+   rather than exported bare, since LaunchDirector declares an identically-
+   named `VESSEL_TYPE_LABELS` const of its own and the package barrel
+   (`src/index.ts`) re-exports every widget's `*`, which would otherwise
+   collide. */
 export {
   SITUATION_LABELS as TARGET_PICKER_SITUATION_LABELS,
   TargetPickerComponent,

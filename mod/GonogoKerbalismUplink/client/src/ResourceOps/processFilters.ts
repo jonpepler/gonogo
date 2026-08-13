@@ -5,36 +5,38 @@ import type {
 import { readKerbalismIsruConverterExt } from "../isru";
 import { KERBALISM } from "../uplink";
 
-// ---------------------------------------------------------------------------
-// Kerbalism's own axis on ResourceOps' filter slot: one facet per PROCESS
-// running on the vessel, plus its broken state.
-//
-// ── Why this is the honest answer, and what it deliberately is not ──────────
-// Kerbalism does not distinguish an ISRU process from a life-support one: a
-// scrubber, a water recycler and a Molten Regolith Electrolysis plant are the
-// same `ProcessController` running different chemistry (see `../isru.ts`'s
-// header). So `isru.converters` carries all of them, the list is long, and the
-// obvious-looking fix, a "life support" toggle, would be gonogo asserting a
-// taxonomy the engine does not draw.
-//
-// What Kerbalism CAN say is which process each row IS, because that is a thing
-// it genuinely models: `processToken` is the ProcessController pseudo-resource
-// that identifies the process in the loaded profile, and `title` is the name
-// the profile's own author gave it. Every label below is therefore Kerbalism's
-// word, not ours, and the axis is more useful than the generic by-resource one
-// precisely because it is the provider's.
-//
-// Not contributed, on purpose: a facet built on the profile's `isSupply` flag.
-// The flag is real, but a filter standing on it would read as the life-support
-// split while not being it, since an MRE plant produces Oxygen (a declared
-// supply) and would land on the "life support" side of a line it has no
-// business being near. Naming a filter after a real field is not enough; the
-// filter has to MEAN what its label implies. Per-process is honest all the way
-// down.
-//
-// Gated `requires: "kerbalism"`, so on any other install these facets simply
-// never appear and the widget shows the built-in by-resource axis alone.
-// ---------------------------------------------------------------------------
+/**
+ * Kerbalism's own axis on ResourceOps' filter slot: one facet per PROCESS
+ * running on the vessel, plus its broken state.
+ *
+ * Why this is the honest answer, and what it deliberately is not:
+ * Kerbalism does not distinguish an ISRU process from a life-support one:
+ * a scrubber, a water recycler and a Molten Regolith Electrolysis plant
+ * are the same `ProcessController` running different chemistry (see
+ * `../isru.ts`'s header). So `isru.converters` carries all of them, the
+ * list is long, and the obvious-looking fix, a "life support" toggle,
+ * would be gonogo asserting a taxonomy the engine does not draw.
+ *
+ * What Kerbalism CAN say is which process each row IS, because that is a
+ * thing it genuinely models: `processToken` is the ProcessController
+ * pseudo-resource that identifies the process in the loaded profile, and
+ * `title` is the name the profile's own author gave it. Every label below
+ * is therefore Kerbalism's word, not ours, and the axis is more useful
+ * than the generic by-resource one precisely because it is the
+ * provider's.
+ *
+ * Not contributed, on purpose: a facet built on the profile's `isSupply`
+ * flag. The flag is real, but a filter standing on it would read as the
+ * life-support split while not being it, since an MRE plant produces
+ * Oxygen (a declared supply) and would land on the "life support" side of
+ * a line it has no business being near. Naming a filter after a real
+ * field is not enough; the filter has to MEAN what its label implies.
+ * Per-process is honest all the way down.
+ *
+ * Gated `requires: "kerbalism"`, so on any other install these facets
+ * simply never appear and the widget shows the built-in by-resource axis
+ * alone.
+ */
 
 type ResourceOpsFilter = ContributionEntry<"resource-ops.filters">;
 /** The widget's row union, read back off the slot's own entry type rather than
@@ -46,9 +48,11 @@ const PROCESS_GROUP = "kerbalism-process";
 const BROKEN_ID = "broken";
 
 function converterOf(unit: ResourceOpsUnit): IsruConverterEntry | null {
-  // A drill is not a Kerbalism process, so every facet here rejects one. That
-  // is the intended reading: asking for "the Scrubber" is not asking to also
-  // see the vessel's Ore drill.
+  /**
+   * A drill is not a Kerbalism process, so every facet here rejects one.
+   * That is the intended reading: asking for "the Scrubber" is not asking
+   * to also see the vessel's Ore drill.
+   */
   return unit.kind === "converter" ? unit.converter : null;
 }
 

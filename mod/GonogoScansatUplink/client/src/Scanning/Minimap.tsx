@@ -22,8 +22,8 @@ import {
 
 /**
  * Live "camera view" of the active vessel's sub-point. Paints its own
- * coverage-gated biome surface (the same `paintTile` technique T8c's
- * `BiomeBase` map-view.base augment uses) into an offscreen canvas, then
+ * coverage-gated biome surface (the same `paintTile` technique
+ * `BiomeBase`'s map-view.base augment uses) into an offscreen canvas, then
  * draws a windowed crop of it plus the vessel crosshair and any anomalies
  * that fall inside the window. There is no separate dark fog-overlay
  * canvas composited on top: per the settled "no fog layer" model

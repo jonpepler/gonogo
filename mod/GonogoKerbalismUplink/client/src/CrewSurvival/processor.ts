@@ -6,35 +6,38 @@ import type {
 import { mag } from "../ecosystem";
 import { KERBALISM } from "../uplink";
 
-// ---------------------------------------------------------------------------
-// Per-kerbal Kerbalism survival: dose/stress/etc rule state plus a death
-// clock, derived once per frame off the vessel's real crew roster
-// (`vessel.crew`, the same identity source CrewStatus itself renders) joined
-// against Kerbalism's own per-kerbal rule accumulators (`kerbalism.crew`).
-//
-// This is the derivation that used to live INLINE in CrewStatus
-// (`packages/components`), contaminating the vanilla base widget with a
-// Kerbalism-specific read. It now lives here, the Kerbalism Uplink's own
-// Processor, consumed by the `crew-status.survival` augment (index.tsx)
-// and the panel badge (badge.ts): one per-frame derivation, two consumers,
-// same dogfood pattern as `SHIP_SYSTEMS`/`ship-systems-badge`.
-//
-// Joins by NAME: it is the only identity both `vessel.crew.crew[]`
-// (`CrewMember`) and `kerbalism.crew[]` (`KerbalismCrewEntry`) carry in
-// common. A kerbal absent from `kerbalism.crew` (no Kerbalism data reported
-// for them yet, or the mod not installed) still gets a roster entry here
-// with no rules, so a consumer can render "stable" rather than nothing.
-//
-// Deliberately does NOT re-derive the shared "time to life-support
-// depletion" cross-resource clock the old inline code computed from
-// `kerbalism.lifesupport`/`kerbalism.profile`/`vessel.resources`: that is
-// Ship Systems' own domain now (`summarise`/`timeToEmptySeconds` in
-// `../ecosystem`), and duplicating it here would be a second derivation of
-// the same fact. `deathClockSec` below is read straight off the wire's own
-// `KerbalismCrewEntry.deathClockSec` (currently always `null`, the mod does
-// not yet resolve a rule's linked resource; see that field's own contract
-// doc), leaving room for the mod to fill it in later with zero client change.
-// ---------------------------------------------------------------------------
+/**
+ * Per-kerbal Kerbalism survival: dose/stress/etc rule state plus a death
+ * clock, derived once per frame off the vessel's real crew roster
+ * (`vessel.crew`, the same identity source CrewStatus itself renders)
+ * joined against Kerbalism's own per-kerbal rule accumulators
+ * (`kerbalism.crew`).
+ *
+ * This is the derivation that used to live INLINE in CrewStatus
+ * (`packages/components`), contaminating the vanilla base widget with a
+ * Kerbalism-specific read. It now lives here, the Kerbalism Uplink's own
+ * Processor, consumed by the `crew-status.survival` augment (index.tsx)
+ * and the panel badge (badge.ts): one per-frame derivation, two
+ * consumers, same dogfood pattern as `SHIP_SYSTEMS`/`ship-systems-badge`.
+ *
+ * Joins by NAME: it is the only identity both `vessel.crew.crew[]`
+ * (`CrewMember`) and `kerbalism.crew[]` (`KerbalismCrewEntry`) carry in
+ * common. A kerbal absent from `kerbalism.crew` (no Kerbalism data
+ * reported for them yet, or the mod not installed) still gets a roster
+ * entry here with no rules, so a consumer can render "stable" rather than
+ * nothing.
+ *
+ * Deliberately does NOT re-derive the shared "time to life-support
+ * depletion" cross-resource clock the old inline code computed from
+ * `kerbalism.lifesupport`/`kerbalism.profile`/`vessel.resources`: that is
+ * Ship Systems' own domain now (`summarise`/`timeToEmptySeconds` in
+ * `../ecosystem`), and duplicating it here would be a second derivation
+ * of the same fact. `deathClockSec` below is read straight off the
+ * wire's own `KerbalismCrewEntry.deathClockSec` (currently always `null`,
+ * the mod does not yet resolve a rule's linked resource; see that
+ * field's own contract doc), leaving room for the mod to fill it in
+ * later with zero client change.
+ */
 
 /** One rule's current 0..1-toward-fatal fraction. */
 export interface KerbalRuleState {
@@ -179,12 +182,15 @@ export function deriveCrewSurvival(
 export const CREW_SURVIVAL = KERBALISM.registerProcessor({
   id: "crew-survival",
   deps: ["vessel.crew", "kerbalism.crew"] as const,
-  // Explicitly typed (rather than relying on inference through the sdk
-  // facade's intentionally loose `compute: (values: any) => R` leaf
-  // signature, see registerProcessor's own doc comment): an `any`-typed
-  // receiver does not contextually type a chained `.map()`/`.filter()`
-  // callback's own parameters, which trips `noImplicitAny` on every one of
-  // them the moment more than plain property access is needed.
+  /**
+   * Explicitly typed (rather than relying on inference through the sdk
+   * facade's intentionally loose `compute: (values: any) => R` leaf
+   * signature, see registerProcessor's own doc comment): an `any`-typed
+   * receiver does not contextually type a chained
+   * `.map()`/`.filter()` callback's own parameters, which trips
+   * `noImplicitAny` on every one of them the moment more than plain
+   * property access is needed.
+   */
   compute: ([crew, kerbals]: readonly [
     VesselCrew | undefined,
     KerbalismCrewEntry[] | undefined,

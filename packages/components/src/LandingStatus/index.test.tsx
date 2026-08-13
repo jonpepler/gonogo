@@ -140,11 +140,13 @@ describe("LandingStatusComponent", () => {
   it("does NOT report a survivable burn-now touchdown when horizontal velocity dominates", async () => {
     renderWidget();
     act(() => {
-      // The spec's worked Mun case: h=5km, descending 50 m/s but carrying
-      // 540 m/s of (mostly horizontal) surface speed, aMax=20 m/s^2.
-      // g≈1.63 -> horizontal≈538 m/s, best burn-now touchdown≈328 m/s (NOT 0),
-      // and the burn cannot be nulled within the remaining altitude, there is
-      // no descent trajectory to a safe touchdown.
+      /**
+       * The spec's worked Mun case: h=5km, descending 50 m/s but carrying
+       * 540 m/s of (mostly horizontal) surface speed, aMax=20 m/s^2. g≈1.63
+       * -> horizontal≈538 m/s, best burn-now touchdown≈328 m/s (NOT 0), and
+       * the burn cannot be nulled within the remaining altitude, there is no
+       * descent trajectory to a safe touchdown.
+       */
       emitVessel(stream, {
         body: MUN,
         quality: Quality.Loaded,
@@ -162,9 +164,11 @@ describe("LandingStatusComponent", () => {
     expect(
       await screen.findByRole("img", { name: /ground speed 538 m\/s/i }),
     ).toBeInTheDocument();
-    // Burn-now touchdown is a large nonzero speed (the fatal-direction fix),
-    // and it's LED as the killer fact under the hero (UNAVOIDABLE IMPACT), as
-    // well as detailed in the readout grid.
+    /**
+     * Burn-now touchdown is a large nonzero speed (the fatal-direction fix),
+     * and it's LED as the killer fact under the hero (UNAVOIDABLE IMPACT),
+     * as well as detailed in the readout grid.
+     */
     expect(visibleText()).toMatch(/328 m\/s/);
     expect(screen.getByText("UNAVOIDABLE IMPACT")).toBeInTheDocument();
     // No viable safe trajectory exists, so the hero reads NO LANDING VECTOR.
@@ -233,14 +237,16 @@ describe("LandingStatusComponent", () => {
         heightFromTerrain: 2755,
       });
     });
-    // The number and its unit are separate elements now (a <Quantity>), so
-    // getByText, which concatenates only DIRECT text nodes, never sees the
-    // pair. The container does.
-    //
-    // "2.76", not "2.75": 2755 m is 2.755 km, exactly half way, and the kit
-    // rounds the decimal through `Intl` where it used to round the binary
-    // value through `toFixed`. The stored double for 2.755 sits a hair under,
-    // so the old answer went down.
+    /**
+     * The number and its unit are separate elements now (a <Quantity>), so
+     * getByText, which concatenates only DIRECT text nodes, never sees the
+     * pair. The container does.
+     *
+     * "2.76", not "2.75": 2755 m is 2.755 km, exactly half way, and the kit
+     * rounds the decimal through `Intl` where it used to round the binary
+     * value through `toFixed`. The stored double for 2.755 sits a hair
+     * under, so the old answer went down.
+     */
     await screen.findByText("2.76");
     expect(visibleText(container)).toContain("2.76 km");
     // 2800 m is the CoM altitude this test exists to prove is NOT used.
@@ -510,9 +516,12 @@ describe("LandingStatusComponent", () => {
   it("escalates to role=alert on a no-landing-vector (ABORT-class) state", async () => {
     renderWidget();
     act(() => {
-      // The worked Mun case: the burn can't be nulled in the remaining altitude
-      // (540 m/s surface, h=5km), no safe trajectory, so the hero reads NO
-      // LANDING VECTOR and the section escalates to role=alert (assertive).
+      /**
+       * The worked Mun case: the burn can't be nulled in the remaining
+       * altitude (540 m/s surface, h=5km), no safe trajectory, so the hero
+       * reads NO LANDING VECTOR and the section escalates to role=alert
+       * (assertive).
+       */
       emitVessel(stream, {
         body: MUN,
         quality: Quality.Loaded,

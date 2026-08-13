@@ -24,9 +24,11 @@ import { EscapeProfileComponent } from "./index";
  * SVG renders nothing under jsdom regardless, so this asserts on the title +
  * body-driven Notice only.
  */
-// vessel.state's carried-channels gate is parent-channel-scoped: every
-// vessel.state.* field needs ALL of vesselStateChannel.inputs carried, not just
-// the two parentBodyName consults.
+/**
+ * vessel.state's carried-channels gate is parent-channel-scoped: every
+ * vessel.state.* field needs ALL of vesselStateChannel.inputs carried, not
+ * just the two parentBodyName consults.
+ */
 const VESSEL_STATE_INPUTS = [
   "vessel.orbit",
   "vessel.flight",
@@ -38,7 +40,7 @@ const VESSEL_STATE_INPUTS = [
   "vessel.propulsion",
 ] as const;
 
-describe("EscapeProfile: reads v.body off the stream (R6)", () => {
+describe("EscapeProfile: reads v.body off the stream", () => {
   it("surfaces the streamed body name in the Unknown-body notice, with no legacy source", async () => {
     const fixture = setupStreamFixture({
       carriedChannels: VESSEL_STATE_INPUTS,
@@ -53,10 +55,13 @@ describe("EscapeProfile: reads v.body off the stream (R6)", () => {
       </fixture.Provider>,
     );
 
-    // "Proxima" is not a stock body, so a resolved streamed name drives the
-    // widget's Unknown-body Notice: an observable proof the value streamed.
-    // vessel.orbit gates the whole derived vessel.state record (deriveVesselState),
-    // so it must be present for parentBodyName to resolve at all.
+    /**
+     * "Proxima" is not a stock body, so a resolved streamed name drives the
+     * widget's Unknown-body Notice: an observable proof the value streamed.
+     * vessel.orbit gates the whole derived vessel.state record
+     * (deriveVesselState), so it must be present for parentBodyName to
+     * resolve at all.
+     */
     act(() => {
       fixture.emit("vessel.orbit", {
         referenceBodyIndex: 3,

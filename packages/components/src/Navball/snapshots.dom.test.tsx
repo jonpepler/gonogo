@@ -2,8 +2,7 @@
  * Widget-level DOM snapshots: complements the dial-only SVG snapshot
  * in `snapshots.test.ts` by covering the full Navball widget (header,
  * mode badges, dial, throttle column, control surface) across every
- * registered mode. The matching PNG renders live in
- * `local_docs/renders/navball-widget/`.
+ * registered mode.
  *
  * Every value read is off the stream now (vessel.attitude / vessel.control /
  * the derived vessel.state / comms.delay), so these render through a real

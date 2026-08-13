@@ -133,12 +133,15 @@ function warningFor(
 ): { label: string; tone: MeterTone } | null {
   if (kerbal.tone !== "nogo") return null;
   if (kerbal.deathClockSec !== null) {
-    // A death clock is a DURATION, not a scalar quantity: it must render
-    // through `formatDuration`, the same composite ladder the delay/countdown
-    // strips use, never `speakQuantity(value("s", ...))`. Routing a duration
-    // through the scalar `time` unit-kind is how this used to render "~4M TO
-    // FATAL", an ambiguous "M" indistinguishable from metres once the Badge's
-    // `text-transform: uppercase` got hold of it.
+    /**
+     * A death clock is a DURATION, not a scalar quantity: it must render
+     * through `formatDuration`, the same composite ladder the
+     * delay/countdown strips use, never `speakQuantity(value("s", ...))`.
+     * Routing a duration through the scalar `time` unit-kind is how this
+     * used to render "~4M TO FATAL", an ambiguous "M" indistinguishable
+     * from metres once the Badge's `text-transform: uppercase` got hold
+     * of it.
+     */
     return {
       label: `~${formatDuration(Math.max(0, kerbal.deathClockSec))} to fatal`,
       tone: kerbal.tone,

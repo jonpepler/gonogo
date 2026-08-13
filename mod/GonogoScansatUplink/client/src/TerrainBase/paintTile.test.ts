@@ -115,10 +115,9 @@ describe("withAlpha", () => {
 });
 
 describe("effectiveAlpha: restores the layerOpacity * coverageAlpha split", () => {
-  // spec: local_docs/spec-mapview-stackable-layers.md §1, a layer's own
-  // translucency (e.g. a layer drawn on top of another, more opaque one)
-  // and its surveyed-ness (coverageAlpha, unchanged) are separate channels
-  // that must MULTIPLY, not collapse into one.
+  // A layer's own translucency (e.g. a layer drawn on top of another, more
+  // opaque one) and its surveyed-ness (coverageAlpha, unchanged) are
+  // separate channels that must MULTIPLY, not collapse into one.
   it("is the product of coverageAlpha and layerOpacity", () => {
     expect(effectiveAlpha(1, 1)).toBe(1);
     expect(effectiveAlpha(1, 0.6)).toBeCloseTo(0.6, 5);
@@ -133,10 +132,10 @@ describe("effectiveAlpha: restores the layerOpacity * coverageAlpha split", () =
 
 describe("paintTile: fixed paint-resolution semantics", () => {
   // Pins the resolution choice this task had to settle explicitly (see the
-  // module header comment in paintTile.ts and preflight-T6-T9.md's T8c
-  // section): the canvas MUST be a fixed internal resolution, independent
-  // of MapView's live viewport size, or every resize/zoom tick would force
-  // a full repaint of the whole scan grid.
+  // module header comment in paintTile.ts): the canvas MUST be a fixed
+  // internal resolution, independent of MapView's live viewport size, or
+  // every resize/zoom tick would force a full repaint of the whole scan
+  // grid.
   it("paints at the fixed BASE_LAYER_CANVAS_W x H resolution by default, regardless of any 'viewport size'", () => {
     const { ctx, calls } = makeFakeCtx();
     paintTile(ctx, 1, 1, NO_OFFSETS, gate(), () => "255, 0, 0");

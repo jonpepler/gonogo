@@ -1,7 +1,6 @@
 /**
  * Backend 0: encoded transform on the receiver (encoded-video-delay work,
- * 2026-07-16: `local_docs/reports/encoded-video-delay-report.md`'s
- * reconciliation). Proves the wiring is real: when
+ * 2026-07-16). Proves the wiring is real: when
  * `KerbcastDataSource.getReceiverForStream` resolves a receiver and
  * `RTCRtpScriptTransform` exists, this backend is tried FIRST and, on
  * success, surfaces `raw` itself (unchanged) as the delayed stream, no new

@@ -58,11 +58,13 @@ export interface LaunchDirectorSlotContext {
   funds: number | undefined;
 }
 
-// Declaration-merge the slot ids → props type into core's `SlotRegistry` (spec
-// §4.6). Co-located here (not a shared central file) so parallel slot work on
-// other widgets can't collide. This makes `registerAugment` and
-// `<AugmentSlot name="launch-director.sections" ...>` type-check against
-// `LaunchDirectorSlotContext` rather than the loose fallback.
+/**
+ * Declaration-merge the slot ids → props type into core's `SlotRegistry`.
+ * Co-located here (not a shared central file) so parallel slot work on
+ * other widgets can't collide. This makes `registerAugment` and
+ * `<AugmentSlot name="launch-director.sections" ...>` type-check against
+ * `LaunchDirectorSlotContext` rather than the loose fallback.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "launch-director.badges": LaunchDirectorSlotContext;
@@ -242,16 +244,18 @@ function LaunchDirectorComponent({
   const careerFunds = magnitudeOf(
     useTelemetry("career.status")?.economy?.funds,
   );
-  // career.funds -> career.status.economy.funds is the one
-  // MAPPED read in this widget (a funds spender per CLAUDE.md's "always show
-  // the balance" rule). kc.savedShips/kc.crewRoster resolve to their own
-  // dedicated topics too (map-topic.ts); crash.hasRecent/crash.lastCrash now
-  // read their topics directly (useStream/useTelemetry), off the shim.
-  // The rest of the kc.*/ksp.* reads below stay legacy, kc.* has no
-  // career.status equivalent shape (see map-topic.ts's doc comment on the
-  // facilities gap), the others are separate provider families or
-  // vessel-provider gaps with no wire home yet. The vessel-switcher below
-  // reads `target.available` directly (a canonical topic, no shim).
+  /**
+   * career.funds -> career.status.economy.funds is the one MAPPED read in
+   * this widget (a funds spender per CLAUDE.md's "always show the balance"
+   * rule). kc.savedShips/kc.crewRoster resolve to their own dedicated
+   * topics too (map-topic.ts); crash.hasRecent/crash.lastCrash now read
+   * their topics directly (useStream/useTelemetry), off the shim. The rest
+   * of the kc.* / ksp.* reads below stay legacy, kc.* has no career.status
+   * equivalent shape (see map-topic.ts's doc comment on the facilities
+   * gap), the others are separate provider families or vessel-provider
+   * gaps with no wire home yet. The vessel-switcher below reads
+   * `target.available` directly (a canonical topic, no shim).
+   */
   // In-flight context: populated when scene === "Flight".
   const vesselName = useTelemetry("vessel.identity")?.name;
   const missionTime = useStream<VesselState>("vessel.state")?.met;
@@ -259,36 +263,46 @@ function LaunchDirectorComponent({
   const revertAvailability = useTelemetry("ksp.revertAvailability");
   const canRevertToLaunch = revertAvailability?.canRevertToLaunch;
   const canRevertToEditor = revertAvailability?.canRevertToEditor;
-  // crash.hasRecent is a real wire boolean (CrashUplink, ReliableOrdered)
-  // but still missing from the SDK's hand-declared Topic tail, the backing
-  // C# const lacks the "...Topic" suffix topics.test.ts's crosscheck scans
-  // for, so `useTelemetry("crash.hasRecent")` won't typecheck. `useStream`
-  // is the sanctioned read for an untyped tail topic: same route off the
-  // mounted store, no legacy shim. FlightOutcomeBanner reads it identically.
+  /**
+   * crash.hasRecent is a real wire boolean (CrashUplink, ReliableOrdered)
+   * but still missing from the SDK's hand-declared Topic tail, the backing
+   * C# const lacks the "...Topic" suffix topics.test.ts's crosscheck scans
+   * for, so `useTelemetry("crash.hasRecent")` won't typecheck. `useStream`
+   * is the sanctioned read for an untyped tail topic: same route off the
+   * mounted store, no legacy shim. FlightOutcomeBanner reads it identically.
+   */
   const crashHasRecent = useStream<boolean>("crash.hasRecent");
-  // crash.hasRecent is session-wide, a debris crash from a previous flight
-  // would block recovery of a successfully landed craft. Pull the most
-  // recent crash snapshot too so we can scope the gate to the active
-  // vessel only. User reported this twice on 2026-05-17 (21:15, 23:12 BST).
+  /**
+   * crash.hasRecent is session-wide, a debris crash from a previous flight
+   * would block recovery of a successfully landed craft. Pull the most
+   * recent crash snapshot too so we can scope the gate to the active
+   * vessel only. User reported this twice on 2026-05-17 (21:15, 23:12 BST).
+   */
   const lastCrash = useTelemetry("crash.lastCrash");
-  // For the revert-staleness guard below: a revert rewinds universal time
-  // below the crash snapshot's capture ut. t.universalTime is dropped as a
-  // data key (it was never a stream; it IS the SDK view-UT), so read that
-  // directly.
+  /**
+   * For the revert-staleness guard below: a revert rewinds universal time
+   * below the crash snapshot's capture ut. t.universalTime is dropped as a
+   * data key (it was never a stream; it IS the SDK view-UT), so read that
+   * directly.
+   */
   const universalTime = useViewUt();
-  // `target.available` ships the switcher's real roster: the producer
-  // (TargetProvider) already excludes the active vessel itself, so no extra
-  // exclusion is needed here. Narrow to Vessel-kind entries only; bodies and
-  // parts aren't "switch active vessel" targets.
+  /**
+   * `target.available` ships the switcher's real roster: the producer
+   * (TargetProvider) already excludes the active vessel itself, so no extra
+   * exclusion is needed here. Narrow to Vessel-kind entries only; bodies and
+   * parts aren't "switch active vessel" targets.
+   */
   const targetAvailable = useTelemetry("target.available");
   const availableVessels = targetAvailable?.entries?.filter(
     (e) => e.kind === TargetKind.Vessel,
   );
-  // LAUNCH itself (a delayed command to the pad) still rides `execute` below;
-  // the non-launch scene ops (recover / revert / to-tracking-station / switch
-  // vessel) are KSC-desk actions with no vessel signal delay, so they dispatch
-  // at the meta-vantage (instant). Their handles are contributed to the panel
-  // delay rail by usePanelDelay below.
+  /**
+   * LAUNCH itself (a delayed command to the pad) still rides `execute`
+   * below; the non-launch scene ops (recover / revert / to-tracking-station
+   * / switch vessel) are KSC-desk actions with no vessel signal delay, so
+   * they dispatch at the meta-vantage (instant). Their handles are
+   * contributed to the panel delay rail by usePanelDelay below.
+   */
   const execute = useExecuteAction("data");
   const recoverCmd = useCommand("ksp.recover", { vantage: META_VANTAGE });
   const revertLaunchCmd = useCommand("ksp.revertToLaunch", {
@@ -325,9 +339,11 @@ function LaunchDirectorComponent({
   const [armed, setArmed] = useState<
     "launch" | "recover" | "revert" | "revert-vab" | "tracking-station" | null
   >(null);
-  // While the launch RPC is in flight (and until the scene flips to Flight
-  // or a 10s safety timeout elapses), suppress the launch button so an
-  // impatient double-click doesn't fire two `ksp.launch` actions.
+  /**
+   * While the launch RPC is in flight (and until the scene flips to Flight
+   * or a 10s safety timeout elapses), suppress the launch button so an
+   * impatient double-click doesn't fire two `ksp.launch` actions.
+   */
   const [launching, setLaunching] = useState(false);
   const scene = useTelemetry("spaceCenter.scene")?.scene;
 
@@ -364,10 +380,12 @@ function LaunchDirectorComponent({
   const rows = h ?? 9;
   const showSubtitle = rows >= 4;
 
-  // Props both augment slots pass down. A plain object rather than a
-  // hook so it can sit above the early return without a conditional `useMemo`; a
-  // fresh reference per render is fine since `AugmentSlot`'s subscription is
-  // store-driven and the live selection changes anyway.
+  /**
+   * Props both augment slots pass down. A plain object rather than a hook
+   * so it can sit above the early return without a conditional `useMemo`;
+   * a fresh reference per render is fine since `AugmentSlot`'s subscription
+   * is store-driven and the live selection changes anyway.
+   */
   const slotContext: LaunchDirectorSlotContext = {
     scene,
     inFlight: scene === "Flight",
@@ -399,18 +417,21 @@ function LaunchDirectorComponent({
 
   const inFlight = scene === "Flight";
   const activeName = vesselName ?? padVesselTitle ?? "(unnamed)";
-  // Only treat recovery as "crash-blocked" when the most recent crash is
-  // for the active vessel: otherwise a debris crash from earlier in the
-  // session would stop the operator recovering a successful landing.
-  // Falls back to the session-wide flag if the snapshot hasn't arrived
-  // yet (rare; the host emits both keys in the same WS tick) so the gate
-  // is fail-safe rather than fail-open.
-  // A crash snapshot dated AFTER the current universal time belongs to a
-  // reverted (undone) timeline: reverting rewinds UT below the capture ut.
-  // Telemachus clears the snapshot server-side on the same rule; this
-  // mirror keeps the gate correct against older deployed builds. User hit
-  // this on 2026-06-12: post-revert, the chip blocked recovery forever
-  // because the reverted vessel shares the crashed vessel's name.
+  /**
+   * Only treat recovery as "crash-blocked" when the most recent crash is
+   * for the active vessel: otherwise a debris crash from earlier in the
+   * session would stop the operator recovering a successful landing. Falls
+   * back to the session-wide flag if the snapshot hasn't arrived yet
+   * (rare; the host emits both keys in the same WS tick) so the gate is
+   * fail-safe rather than fail-open.
+   *
+   * A crash snapshot dated AFTER the current universal time belongs to a
+   * reverted (undone) timeline: reverting rewinds UT below the capture ut.
+   * Telemachus clears the snapshot server-side on the same rule; this
+   * mirror keeps the gate correct against older deployed builds. User hit
+   * this on 2026-06-12: post-revert, the chip blocked recovery forever
+   * because the reverted vessel shares the crashed vessel's name.
+   */
   const crashStale =
     lastCrash != null &&
     magnitudeOf(lastCrash.ut) !== null &&
@@ -429,8 +450,8 @@ function LaunchDirectorComponent({
     <Panel
       panelTitle="LAUNCH & RECOVERY"
       /* Inline header badges: an Uplink (e.g. a life-support summary) can
-         surface an indicator beside the title without a bespoke slot (spec
-         §4.8). Renders nothing until an augment binds. */
+         surface an indicator beside the title without a bespoke slot.
+         Renders nothing until an augment binds. */
       panelAside={
         <AugmentSlot name="launch-director.badges" props={slotContext} />
       }
@@ -507,10 +528,13 @@ function LaunchDirectorComponent({
               onArm={() => setArmed("revert")}
               onConfirm={() => {
                 setArmed(null);
-                // Revert always to VAB by default; the mod's revertToEditor
-                // command accepts vab|sph but the widget doesn't know which
-                // editor the original craft came from from flight state
-                // alone. Prefer the explicit choice when we have it.
+                /**
+                 * Revert always to VAB by default; the mod's
+                 * revertToEditor command accepts vab|sph but the widget
+                 * doesn't know which editor the original craft came from
+                 * flight state alone. Prefer the explicit choice when we
+                 * have it.
+                 */
                 void revertEditorCmd.send({ editor: "vab" });
               }}
               label="Revert to VAB"
@@ -725,9 +749,11 @@ function InFlightPanel({
   );
   const switchableVessels = useMemo(() => {
     const entries = availableVessels ?? [];
-    // Filter SpaceObjects (asteroids / comets) by default, same UX call as
-    // the TargetPicker. The toggle below reveals them for the long tail
-    // where the operator actually wants to switch to one.
+    /**
+     * Filter SpaceObjects (asteroids / comets) by default, same UX call as
+     * the TargetPicker. The toggle below reveals them for the long tail
+     * where the operator actually wants to switch to one.
+     */
     const list = showSpaceObjects
       ? entries
       : entries.filter((e) => e.vesselType !== VesselType.SpaceObject);
@@ -880,9 +906,11 @@ function formatMissionTime(s: number | null): string {
   return `T+${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
 }
 
-// Through the shared `length` ladder rather than a local km ceiling: this is
-// the in-flight altitude readout, and a Mun transfer sits at ~12 Mm, which the
-// hand-rolled version rendered as "12000.0 km".
+/**
+ * Through the shared `length` ladder rather than a local km ceiling: this is
+ * the in-flight altitude readout, and a Mun transfer sits at ~12 Mm, which the
+ * hand-rolled version rendered as "12000.0 km".
+ */
 function Altitude({ m }: { m: number | null }) {
   if (m === null) return NULL_DISPLAY;
   return <Unit value={value("m", m)} />;
@@ -941,8 +969,6 @@ function ArmedButton({
     </ArmButton>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const Body = styled(ScrollArea)`
   flex: 1;
@@ -1375,8 +1401,6 @@ const ConfirmButton = styled.button<{
   }
 `;
 
-// ── Registration ──────────────────────────────────────────────────────────────
-
 registerComponent<LaunchDirectorConfig>({
   id: "launch-director",
   name: "Launch & Recovery",
@@ -1386,9 +1410,11 @@ registerComponent<LaunchDirectorConfig>({
   defaultSize: { w: 7, h: 10 },
   minSize: { w: 4, h: 6 },
   component: LaunchDirectorComponent,
-  // Header badges + a pre-launch checklist section (augment-slot-map:
-  // launch-director.badges / .sections). Unfilled until a life-support /
-  // logistics Uplink binds: the launch flow renders exactly as before.
+  /**
+   * Header badges + a pre-launch checklist section (augment-slot-map:
+   * launch-director.badges / .sections). Unfilled until a life-support /
+   * logistics Uplink binds: the launch flow renders exactly as before.
+   */
   augmentSlots: ["launch-director.badges", "launch-director.sections"],
   dataRequirements: [
     "kc.savedShips",
@@ -1413,11 +1439,13 @@ registerComponent<LaunchDirectorConfig>({
   pushable: true,
 });
 
-// Test-only surface for the T3 drift-guard (`../TargetPicker/enumLabelDrift.test.ts`),
-// aliased rather than exported bare, since TargetPicker declares an
-// identically-named `VESSEL_TYPE_LABELS` const of its own and the package
-// barrel (`src/index.ts`) re-exports every widget's `*`, which would
-// otherwise collide.
+/**
+ * Test-only surface for the drift-guard (`../TargetPicker/enumLabelDrift.test.ts`),
+ * aliased rather than exported bare, since TargetPicker declares an
+ * identically-named `VESSEL_TYPE_LABELS` const of its own and the package
+ * barrel (`src/index.ts`) re-exports every widget's `*`, which would
+ * otherwise collide.
+ */
 export {
   LaunchDirectorComponent,
   VESSEL_TYPE_LABELS as LAUNCH_DIRECTOR_VESSEL_TYPE_LABELS,

@@ -32,12 +32,14 @@ import {
 } from "@ksp-gonogo/ui-kit";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-// SectionsScroll + PowerRow below keep styled-components: the first styles
-// ScrollArea's internal `[data-scroll-area-inner]` element (a child component's
-// internals, which inline style can't reach and ScrollArea exposes no prop
-// for), the second is a passive row `:hover` highlight (no ui-kit primitive
-// fits a non-selectable hover row; a JS per-row hover would add state + a
-// re-render per mouse-move to a potentially long list). Both documented.
+/**
+ * SectionsScroll + PowerRow below keep styled-components: the first styles
+ * ScrollArea's internal `[data-scroll-area-inner]` element (a child component's
+ * internals, which inline style can't reach and ScrollArea exposes no prop
+ * for), the second is a passive row `:hover` highlight (no ui-kit primitive
+ * fits a non-selectable hover row; a JS per-row hover would add state + a
+ * re-render per mouse-move to a potentially long list). Both documented.
+ */
 // biome-ignore lint/style/noRestrictedImports: ScrollArea-internals selector + passive row :hover, no inline/primitive equivalent (see above)
 import styled from "styled-components";
 import { magnitudeOf } from "../shared/magnitude";
@@ -76,26 +78,26 @@ interface Contribution {
   nominalFlow?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Augment slots (PowerSystems is THE worked
-// example: see augment-slot-map.md "Power / resources").
-//
-// `power-systems.sections`: a Table/section slot in the body, below the
-// net-rate/producer-consumer readout. The canonical first filler is
-// Kerbalism's EC-broker breakdown (Kerbalism re-derives EC production/
-// consumption via its own `ResourceBrokers`), contributed as an augment that
-// reads ONLY Kerbalism's own Topics. Core never references it, the host
-// composes whatever is registered.
-//
-// `power-systems.badges`: a broad escape-hatch badge slot in the header, next
-// to the title, for a small status/indicator an Uplink wants to surface (e.g. a
-// Kerbalism warning glyph).
-//
-// Both carry the widget's current resource focus as slot props so an augment
-// renders against the resource the operator is actually looking at,
-// slot-parameterised augments; the parent's context passed down. No augment
-// ships here yet: the slots render nothing until one registers.
-// ---------------------------------------------------------------------------
+/**
+ * Augment slots (PowerSystems is THE worked example for the "Power /
+ * resources" case).
+ *
+ * `power-systems.sections`: a Table/section slot in the body, below the
+ * net-rate/producer-consumer readout. The canonical first filler is
+ * Kerbalism's EC-broker breakdown (Kerbalism re-derives EC production/
+ * consumption via its own `ResourceBrokers`), contributed as an augment that
+ * reads ONLY Kerbalism's own Topics. Core never references it, the host
+ * composes whatever is registered.
+ *
+ * `power-systems.badges`: a broad escape-hatch badge slot in the header, next
+ * to the title, for a small status/indicator an Uplink wants to surface (e.g. a
+ * Kerbalism warning glyph).
+ *
+ * Both carry the widget's current resource focus as slot props so an augment
+ * renders against the resource the operator is actually looking at,
+ * slot-parameterised augments; the parent's context passed down. No augment
+ * ships here yet: the slots render nothing until one registers.
+ */
 
 /** Props both PowerSystems slots pass to their augments. */
 export interface PowerSystemsSlotContext {
@@ -107,13 +109,15 @@ export interface PowerSystemsSlotContext {
   resource: string;
 }
 
-// Declaration-merge the slot ids → props types into core's `SlotRegistry`
-// (the declaration-merging hybrid base). Co-located here so parallel slot work
-// on other widgets never collides on a shared central file. This is what types
-// `registerAugment({ augments: "power-systems.sections", ... })` and
-// `<AugmentSlot name="power-systems.sections" props={...} />` against
-// `PowerSystemsSlotContext` rather than the loose `Record<string, unknown>`
-// fallback an unmerged slot id would receive.
+/**
+ * Declaration-merge the slot ids → props types into core's `SlotRegistry`.
+ * Co-located here so parallel slot work on other widgets never collides on
+ * a shared central file. This is what types
+ * `registerAugment({ augments: "power-systems.sections", ... })` and
+ * `<AugmentSlot name="power-systems.sections" props={...} />` against
+ * `PowerSystemsSlotContext` rather than the loose `Record<string, unknown>`
+ * fallback an unmerged slot id would receive.
+ */
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     "power-systems.sections": PowerSystemsSlotContext;
@@ -133,25 +137,26 @@ function PowerSystemsComponent({
   );
   const liveByFlightId = usePartsLive(flightIds);
 
-  // `parts.power` mixed-source enrichment. The
-  // per-part Producers/Consumers/Idle breakdown above stays entirely on
-  // `useTopology`/`usePartsLive` (both bypass the mapTopic shim by design,
-  // both read `vessel.parts` directly, stream-native; `usePartsLive`'s
-  // `resources` join rides the SAME payload's per-part `resources` map, no
-  // separate subscription).
-  // `parts.power.totalProductionEc` is a SEPARATE vessel-wide
-  // measurement of the same quantity the itemized rows sum to.
-  //
-  // This measurement used to WIN over the topology-summed
-  // total whenever carried, so PROD/NET (which drives a charge/consume
-  // read the operator relies on) could silently contradict the itemized
-  // Producers rows right below it: the widget's own tests enshrined a
-  // PROD of +42.00 over a single +5.00 row as "expected". Fixed: PROD/NET
-  // now ALWAYS derive from the itemized total (`computedTotalProduced`
-  // below), so they can never disagree with the rows. When the streamed
-  // measurement meaningfully DISAGREES with that total, it's surfaced
-  // separately as an explicitly-labeled "MEASURED" reading (see the
-  // `Totals` cells) instead of being silently dropped OR silently winning.
+  /**
+   * `parts.power` mixed-source enrichment. The per-part
+   * Producers/Consumers/Idle breakdown above stays entirely on
+   * `useTopology`/`usePartsLive` (both bypass the mapTopic shim by design,
+   * both read `vessel.parts` directly, stream-native; `usePartsLive`'s
+   * `resources` join rides the SAME payload's per-part `resources` map, no
+   * separate subscription). `parts.power.totalProductionEc` is a SEPARATE
+   * vessel-wide measurement of the same quantity the itemized rows sum to.
+   *
+   * This measurement used to WIN over the topology-summed total whenever
+   * carried, so PROD/NET (which drives a charge/consume read the operator
+   * relies on) could silently contradict the itemized Producers rows right
+   * below it: the widget's own tests enshrined a PROD of +42.00 over a
+   * single +5.00 row as "expected". Fixed: PROD/NET now ALWAYS derive from
+   * the itemized total (`totalProduced` below), so they can never
+   * disagree with the rows. When the streamed measurement meaningfully
+   * DISAGREES with that total, it's surfaced separately as an
+   * explicitly-labeled "MEASURED" reading (see the `Totals` cells) instead
+   * of being silently dropped OR silently winning.
+   */
   const streamPower = useTelemetry("parts.power");
 
   const defaultResource = config?.defaultResource ?? "ElectricCharge";
@@ -627,8 +632,6 @@ function formatUnits(v: number): string {
   return v.toFixed(1);
 }
 
-// ── Config ────────────────────────────────────────────────────────────────────
-
 function PowerSystemsConfigComponent({
   config,
   onSave,
@@ -667,13 +670,13 @@ function PowerSystemsConfigComponent({
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-// Structural inline styles (CSS-var tokens): a bespoke totals/sparkline/section
-// board, no reusable ui-kit primitive fits the layout, so it stays local. Toned
-// numeric readouts render through ui-kit `Value` (tone -fg); cell backgrounds/
-// borders stay on -bg tokens (correct). Two styled blocks remain (SectionsScroll,
-// PowerRow), see the import's biome-ignore.
+/**
+ * Structural inline styles (CSS-var tokens): a bespoke totals/sparkline/section
+ * board, no reusable ui-kit primitive fits the layout, so it stays local. Toned
+ * numeric readouts render through ui-kit `Value` (tone -fg); cell backgrounds/
+ * borders stay on -bg tokens (correct). Two styled blocks remain (SectionsScroll,
+ * PowerRow), see the import's biome-ignore.
+ */
 
 const RESOURCE_SELECT: CSSProperties = {
   maxWidth: "50%",
@@ -903,8 +906,6 @@ const COMPACT_NET: CSSProperties = {
   fontSize: "16px",
   fontWeight: 700,
 };
-
-// ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<PowerSystemsConfig>({
   id: "power-systems",

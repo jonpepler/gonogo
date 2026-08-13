@@ -3,38 +3,36 @@ import { buildResourcesByFlightId } from "@ksp-gonogo/data";
 import type { VesselParts } from "@ksp-gonogo/sitrep-sdk";
 import type { ShipMapPartMeterEntry } from "./shipTopology";
 
-// ---------------------------------------------------------------------------
-// The built-in half of the `ship-map.part-meters` self-contribution (spec
-// §13.4, the framework's flagship demonstration): the five classic
-// drainable propellants, moved off ShipDiagramSvg's old hardcoded `DRAINABLE`
-// Set + `resourceColor` switch and onto the SAME contribution slot a
-// Kerbalism-style Uplink contributes its own supply tanks to
-// (`mod/GonogoKerbalismUplink/client/src/ShipMap/partMeters.ts`). ShipMap
-// itself no longer knows which resource deserves a meter; that judgement
-// call now lives entirely in contributions, this one included.
-//
-// Deliberately NOT widened to "every resource on every part": the deleted
-// `DRAINABLE` comment's own reasoning still holds (a bar on every resource on
-// every part is worse than bars on five well-chosen ones), it just now lives
-// here instead of gating a hardcoded Set. A future contribution is free to
-// add more resources; this one keeps the original five so the built-in
-// behaviour is unchanged.
-//
-// Reads `vessel.parts` directly (the same Topic `usePartsLive`/`useTopology`
-// already derive ShipMap's own view-model from) rather than a React hook:
-// contributions are evaluated by the aggregator outside any component, so the
-// pure `buildResourcesByFlightId` reshaping helper is shared instead of
-// duplicated.
-// ---------------------------------------------------------------------------
+/**
+ * The built-in half of the `ship-map.part-meters` self-contribution (the
+ * framework's flagship demonstration): the five classic drainable
+ * propellants, moved off ShipDiagramSvg's old hardcoded `DRAINABLE` Set +
+ * `resourceColor` switch and onto the SAME contribution slot a
+ * Kerbalism-style Uplink contributes its own supply tanks to
+ * (`mod/GonogoKerbalismUplink/client/src/ShipMap/partMeters.ts`). ShipMap
+ * itself no longer knows which resource deserves a meter; that judgement
+ * call now lives entirely in contributions, this one included.
+ *
+ * Deliberately NOT widened to "every resource on every part": the deleted
+ * `DRAINABLE` comment's own reasoning still holds (a bar on every resource on
+ * every part is worse than bars on five well-chosen ones), it just now lives
+ * here instead of gating a hardcoded Set. A future contribution is free to
+ * add more resources; this one keeps the original five so the built-in
+ * behaviour is unchanged.
+ *
+ * Reads `vessel.parts` directly (the same Topic `usePartsLive`/`useTopology`
+ * already derive ShipMap's own view-model from) rather than a React hook:
+ * contributions are evaluated by the aggregator outside any component, so
+ * the pure `buildResourcesByFlightId` reshaping helper is shared instead of
+ * duplicated.
+ */
 
 /**
  * The five classic drainable propellants this contribution watches. Used
  * to be a `Record<string, MeterTone>` that ALSO doubled as each resource's
  * fill colour, five bespoke CSS-var picks standing in for "what is this
- * resource" (see the design doc, `local_docs/design/2026-08-08-resource-
- * colour-system.md`, for the full case against that conflation): a fixed
- * per-resource tone with no reference at all to how full the tank actually
- * was. The fill colour is now the resource's IDENTITY
+ * resource": a fixed per-resource tone with no reference at all to how full
+ * the tank actually was. The fill colour is now the resource's IDENTITY
  * (`resourceColor(resource)`, derived by the renderer straight from
  * `resource`, not carried on this entry at all), so this contribution only
  * needs to name which resources earn a meter; `statusFor` below supplies

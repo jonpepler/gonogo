@@ -139,10 +139,12 @@ export function buildLedger({
   const terms: LedgerTerm[] = [];
 
   for (const entry of lifeSupport?.processes ?? []) {
-    // Broken or switched off contributes nothing, and saying so is more useful
-    // than omitting the row: the operator wants to know the recycler is fitted
-    // AND idle. Callers that want the fitted-but-idle rows render terms with a
-    // zero rate; here they are simply not part of the sum.
+    /**
+     * Broken or switched off contributes nothing, and saying so is more
+     * useful than omitting the row: the operator wants to know the recycler
+     * is fitted AND idle. Callers that want the fitted-but-idle rows render
+     * terms with a zero rate; here they are simply not part of the sum.
+     */
     if (entry.broken === true || entry.running !== true) continue;
     const def = entry.resource ? byModifier.get(entry.resource) : undefined;
     if (!def) continue;
@@ -153,12 +155,14 @@ export function buildLedger({
       (Number.isNaN(perCapacityOut) ? 0 : perCapacityOut) -
       (Number.isNaN(perCapacityIn) ? 0 : perCapacityIn);
     if (signed === 0) continue;
-    // Kerbalism's own live modifier product (pressure/radiation/lamps/...),
-    // reflected mod-side and shipped as one double per process instance,
-    // capacity join token already excluded. Absent/null (an older mod build,
-    // or the reflection target having moved) means "no correction available",
-    // which is exactly what k = 1 encodes: falls back to the pre-a' nominal
-    // rate rather than zeroing the term.
+    /**
+     * Kerbalism's own live modifier product (pressure/radiation/lamps/...),
+     * reflected mod-side and shipped as one double per process instance,
+     * capacity join token already excluded. Absent/null (an older mod build,
+     * or the reflection target having moved) means "no correction
+     * available", which is exactly what k = 1 encodes: falls back to the
+     * pre-a' nominal rate rather than zeroing the term.
+     */
     const envModifier = mag(entry.envModifier, 1);
     terms.push({
       name: def.name || entry.title || entry.resource || "process",
@@ -181,11 +185,13 @@ export function buildLedger({
           ? perSecond
           : 0;
     if (signed === 0) continue;
-    // Same live modifier product as the process terms above, keyed by rule
-    // name on kerbalism.lifesupport.ruleEnvModifiers rather than living on the
-    // rule definition itself (see KerbalismLifeSupport.RuleEnvModifiers' doc
-    // comment: the profile channel's mapper is KSP-free/off-main-thread, so a
-    // live Modifiers.Evaluate read can't land there). Missing name -> 1.
+    /**
+     * Same live modifier product as the process terms above, keyed by rule
+     * name on kerbalism.lifesupport.ruleEnvModifiers rather than living on
+     * the rule definition itself (see KerbalismLifeSupport.RuleEnvModifiers'
+     * doc comment: the profile channel's mapper is KSP-free/off-main-thread,
+     * so a live Modifiers.Evaluate read can't land there). Missing name -> 1.
+     */
     const ruleEnvModifier = mag(
       rule.name ? lifeSupport?.ruleEnvModifiers?.[rule.name] : undefined,
       1,
@@ -651,10 +657,12 @@ export function summarise({
   for (const loop of loops) {
     for (const name of loop) if (!loopOf.has(name)) loopOf.set(name, loop);
   }
-  // `diagnose` works in raw profile keys (ElectricCharge); a row is read by
-  // an operator, so blockedBy/explains carry the same displayName every
-  // other row field uses, never the bare key a widget would have to
-  // re-resolve (or worse, print verbatim).
+  /**
+   * `diagnose` works in raw profile keys (ElectricCharge); a row is read by
+   * an operator, so blockedBy/explains carry the same displayName every
+   * other row field uses, never the bare key a widget would have to
+   * re-resolve (or worse, print verbatim).
+   */
   const displayNameOf = (name: string): string =>
     facts.get(name)?.displayName ?? name;
 

@@ -41,9 +41,12 @@ describe("TouchdownReticle", () => {
     expect(container.querySelector("circle[stroke-dasharray]")).toBeNull();
   });
 
-  // The verdict banner + biome/source readout are now composed by the widget
-  // (below the plots) so the reticle stays a bare square that aligns with the
-  // cross-section; the source still rides the reticle's accessible label.
+  /**
+   * The verdict banner + biome/source readout are now composed by the
+   * widget (below the plots) so the reticle stays a bare square that aligns
+   * with the cross-section; the source still rides the reticle's
+   * accessible label.
+   */
   it("labels a sub-vessel fallback honestly as an estimate (in the label)", () => {
     render(<TouchdownReticle {...base} sampleSource="sub-vessel" />);
     const img = screen.getByRole("img", { name: /touchdown site/i });

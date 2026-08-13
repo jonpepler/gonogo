@@ -23,7 +23,7 @@ beforeEach(() => {
   clearActionHandlers();
 });
 
-describe("WarpControl: genuinely runs off the stream (M3 pilot)", () => {
+describe("WarpControl: genuinely runs off the stream", () => {
   it("reads the recorded time.warp state off the real stream pipeline, not legacy", async () => {
     // No legacy "data" DataSource registered anywhere in this file, if the
     // widget's reads were still secretly falling back to legacy, there

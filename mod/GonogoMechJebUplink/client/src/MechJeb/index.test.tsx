@@ -138,20 +138,25 @@ describe("MechJeb in-flight indicator (surfaces in the Panel delay rail)", () =>
       return sent?.requestId as string;
     });
 
-    // From here on, once a row is showing, `InFlightList`'s `useCountdown`
-    // keeps a real 1 Hz interval ticking for as long as it's mounted. Under
-    // real timers that tick is a live background race against this test's
-    // own remaining async steps: on a loaded machine (e.g. the full
-    // monorepo test run) the interval can fire between renders with no
-    // `act()` in scope, which is a real "not wrapped in act" bug in the
-    // TEST, not the component (see ManeuverPlanner's own
-    // `shouldAdvanceTime` countdown test for the same pattern). Fake timers
-    // make every tick happen only where we ask for it.
+    /**
+     * From here on, once a row is showing, `InFlightList`'s
+     * `useCountdown` keeps a real 1 Hz interval ticking for as long as
+     * it's mounted. Under real timers that tick is a live background
+     * race against this test's own remaining async steps: on a loaded
+     * machine (e.g. the full monorepo test run) the interval can fire
+     * between renders with no `act()` in scope, which is a real "not
+     * wrapped in act" bug in the TEST, not the component (see
+     * ManeuverPlanner's own `shouldAdvanceTime` countdown test for the
+     * same pattern). Fake timers make every tick happen only where we ask
+     * for it.
+     */
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      // Echo it into the pending queue: dispatchedAt/oneWaySeconds anchor
-      // the in-flight window; validAt/deliveredAt also anchor useUtNow to
-      // 100.
+      /**
+       * Echo it into the pending queue: dispatchedAt/oneWaySeconds anchor
+       * the in-flight window; validAt/deliveredAt also anchor useUtNow to
+       * 100.
+       */
       act(() => {
         fixture.emit(
           "system.uplink.pending",
@@ -175,13 +180,16 @@ describe("MechJeb in-flight indicator (surfaces in the Panel delay rail)", () =>
         await vi.advanceTimersByTimeAsync(20);
       });
 
-      // The delay UX now surfaces in the Panel's delay rail (the first in-flow
-      // child of the body scroller, above the header), not as an inline body
-      // child: this is what the usePanelDelay migration moves. Collapsed, the
-      // rail is a glow-strip SUMMARY (accessible name "In-flight commands: N in
-      // flight", no per-command text) and the delay-ux-v3 redesign conveys the
-      // countdown by the glow's position, not a "Ns" string; the command's own
-      // label is revealed only when the rail is pinned open.
+      /**
+       * The delay UX now surfaces in the Panel's delay rail (the first
+       * in-flow child of the body scroller, above the header), not as an
+       * inline body child: this is what the usePanelDelay migration
+       * moves. Collapsed, the rail is a glow-strip SUMMARY (accessible
+       * name "In-flight commands: N in flight", no per-command text) and
+       * the delay-ux-v3 redesign conveys the countdown by the glow's
+       * position, not a "Ns" string; the command's own label is revealed
+       * only when the rail is pinned open.
+       */
       const rail = screen.getByLabelText(/In-flight commands/);
       expect(rail.closest("[data-panel-rail]")).not.toBeNull();
 

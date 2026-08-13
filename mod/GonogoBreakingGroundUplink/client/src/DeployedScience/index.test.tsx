@@ -16,9 +16,11 @@ import {
   parseBases,
 } from "./index";
 
-// One flat entry off the new `deployed.bases` wire (see index.tsx's
-// `parseBases`/`groupFlatDeployedEntries`): grouped by `vesselName` into the
-// widget's `DeployedBase[]` display shape client-side.
+/**
+ * One flat entry off the new `deployed.bases` wire (see index.tsx's
+ * `parseBases`/`groupFlatDeployedEntries`): grouped by `vesselName` into
+ * the widget's `DeployedBase[]` display shape client-side.
+ */
 const flatEntry = (
   over: Record<string, unknown> = {},
 ): Record<string, unknown> => ({
@@ -172,10 +174,13 @@ describe("DeployedScienceComponent", () => {
   });
 
   it("renders a bound sections augment per experiment card, carrying its datum", async () => {
-    // A test Uplink binds `deployed-science.sections` and echoes back the
-    // per-card experiment props. Proves (a) the slot is exposed, (b) an
-    // augment composes into it once per experiment, and (c) the props carry
-    // the right experiment/body so a per-card augment targets correctly.
+    /**
+     * A test Uplink binds `deployed-science.sections` and echoes back the
+     * per-card experiment props. Proves (a) the slot is exposed, (b) an
+     * augment composes into it once per experiment, and (c) the props
+     * carry the right experiment/body so a per-card augment targets
+     * correctly.
+     */
     registerAugment<"deployed-science.sections">({
       id: "test-deployed-section",
       augments: "deployed-science.sections",
@@ -208,9 +213,11 @@ describe("DeployedScienceComponent", () => {
       ]);
     });
 
-    // One augment per experiment card, each carrying its own card's datum
-    // (name + progress + body) in DOM order, proves the per-card props
-    // identity is correct.
+    /**
+     * One augment per experiment card, each carrying its own card's datum
+     * (name + progress + body) in DOM order, proves the per-card props
+     * identity is correct.
+     */
     const sections = await waitFor(() => {
       const found = screen.getAllByTestId("deployed-section");
       expect(found).toHaveLength(2);

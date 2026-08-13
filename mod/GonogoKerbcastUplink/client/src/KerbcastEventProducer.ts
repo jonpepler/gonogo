@@ -10,9 +10,8 @@ import { type EventOccurrence, EventTimeline } from "@ksp-gonogo/sitrep-client";
 /**
  * The synthetic event-stream topic id the kerbcast Uplink publishes its
  * discrete occurrences under. Not a codegen'd wire topic, the Uplink
- * SYNTHESISES it from kerbcast's raw edges (per the kerbcast decision,
- * `local_docs/kerbalism-RO-design-DECISIONS.md` §New PRIMITIVES). An `event`
- * alarm targets `{ kind: "event", topic: KERBCAST_EVENTS_TOPIC, eventKind }`.
+ * SYNTHESISES it from kerbcast's raw edges. An `event` alarm targets
+ * `{ kind: "event", topic: KERBCAST_EVENTS_TOPIC, eventKind }`.
  */
 export const KERBCAST_EVENTS_TOPIC = "kerbcast.events";
 

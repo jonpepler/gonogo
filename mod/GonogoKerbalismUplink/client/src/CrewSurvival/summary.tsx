@@ -11,23 +11,23 @@ import type { KerbalismSpaceWeather } from "../__generated__/contract";
 import { mag } from "../ecosystem";
 import { KERBALISM } from "../uplink";
 
-// ---------------------------------------------------------------------------
-// CrewStatus's `crew-status.summary` augment: the ONE whole-widget slot
-// (`CrewStatus/index.tsx`'s own doc comment), fed straight off the
-// `kerbalism.spaceweather` Topic (no Processor: the same "nothing else
-// shares this derivation" reasoning `SpaceWeather/badge.ts` uses for the
-// same Topic). A vessel radiation condition affects the WHOLE crew
-// together, never one kerbal, so it belongs here rather than on the
-// per-kerbal `.survival`/`.badges` slots above.
-//
-// Mirrors `SpaceWeather`'s own vocabulary (`statusFor` in
-// packages/components/src/SpaceWeather/index.tsx) so a vessel already
-// showing "Storm in progress"/"Exposed" on its Space Weather widget reads
-// consistently here too: a storm in progress is the most severe condition
-// (nogo), a high ambient/habitat dose short of a storm is "exposed" (warn).
-// Renders nothing when the vessel is sheltered/nominal, so a quiet
-// magnetosphere carries no banner clutter above the roster.
-// ---------------------------------------------------------------------------
+/**
+ * CrewStatus's `crew-status.summary` augment: the ONE whole-widget slot
+ * (`CrewStatus/index.tsx`'s own doc comment), fed straight off the
+ * `kerbalism.spaceweather` Topic (no Processor: the same "nothing else
+ * shares this derivation" reasoning `SpaceWeather/badge.ts` uses for the
+ * same Topic). A vessel radiation condition affects the WHOLE crew
+ * together, never one kerbal, so it belongs here rather than on the
+ * per-kerbal `.survival`/`.badges` slots above.
+ *
+ * Mirrors `SpaceWeather`'s own vocabulary (`statusFor` in
+ * packages/components/src/SpaceWeather/index.tsx) so a vessel already
+ * showing "Storm in progress"/"Exposed" on its Space Weather widget reads
+ * consistently here too: a storm in progress is the most severe condition
+ * (nogo), a high ambient/habitat dose short of a storm is "exposed"
+ * (warn). Renders nothing when the vessel is sheltered/nominal, so a
+ * quiet magnetosphere carries no banner clutter above the roster.
+ */
 
 /** rad/h at or above which the crew reads as exposed to a high radiation
  *  environment even without an active storm. Matches SpaceWeather's own
@@ -48,9 +48,11 @@ function radiationSummaryFor(
   if (weather.stormInProgress === true) {
     return { label: "Radiation storm in progress", tone: "nogo" };
   }
-  // Habitat dose (post-shielding, what the crew actually absorbs) is the
-  // right reading for a CREW status summary; falls back to the ambient
-  // reading when the mod hasn't resolved a habitat-specific figure yet.
+  /**
+   * Habitat dose (post-shielding, what the crew actually absorbs) is the
+   * right reading for a CREW status summary; falls back to the ambient
+   * reading when the mod hasn't resolved a habitat-specific figure yet.
+   */
   const doseRadPerHour =
     mag(
       weather.habitatRadiationRadPerSecond ?? weather.radiationRadPerSecond,

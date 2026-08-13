@@ -67,10 +67,12 @@ const ANSI_RE =
   /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_?]/g;
 
 export function stripAnsi(text: string): string {
-  // Most plain-PRINT chunks have no escape character; the indexOf check
-  // is roughly an order of magnitude cheaper than running the regex
-  // `replace` blindly. Worth doing because parseKosData is called per
-  // PTY chunk during active kOS widget polling.
+  /**
+   * Most plain-PRINT chunks have no escape character; the indexOf check is
+   * roughly an order of magnitude cheaper than running the regex `replace`
+   * blindly. Worth doing because parseKosData is called per PTY chunk during
+   * active kOS widget polling.
+   */
   if (text.indexOf("\x1b") === -1) return text;
   return text.replace(ANSI_RE, "");
 }

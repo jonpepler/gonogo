@@ -200,10 +200,12 @@ function outputToResult(
   return { error: output.trim() };
 }
 
-// Splits `a, "b, c", 3` into ["a", '"b, c"', "3"]. Copied from
-// MockKosTelnet.ts (not exported there): the production data source
-// builds these with its own escaping, so a fixture just has to round-trip
-// what it sent.
+/**
+ * Splits `a, "b, c", 3` into ["a", '"b, c"', "3"]. Copied from
+ * MockKosTelnet.ts (not exported there): the production data source builds
+ * these with its own escaping, so a fixture just has to round-trip what it
+ * sent.
+ */
 function splitArgs(raw: string): string[] {
   const out: string[] = [];
   let depth = 0;

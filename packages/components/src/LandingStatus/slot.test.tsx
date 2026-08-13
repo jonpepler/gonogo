@@ -19,12 +19,15 @@ import {
   LandingStatusComponent,
 } from "./index";
 
-// Rendered trees, tracked so afterEach can unmount them synchronously before
-// clearAugments() notifies the augment-slot subscribers and before the pinned-UT
-// ViewClock's next requestAnimationFrame tick fires. RTL auto-cleanup runs after
-// this file's afterEach, so it can't be relied on to unmount first, either
-// update landing on the still-mounted widget (its AugmentSlot header) is a state
-// update outside act(), the documented anti-pattern in CLAUDE.md.
+/**
+ * Rendered trees, tracked so afterEach can unmount them synchronously before
+ * clearAugments() notifies the augment-slot subscribers and before the
+ * pinned-UT ViewClock's next requestAnimationFrame tick fires. RTL
+ * auto-cleanup runs after this file's afterEach, so it can't be relied on
+ * to unmount first, either: an update landing on the still-mounted widget
+ * (its AugmentSlot header) is a state update outside act(), the documented
+ * anti-pattern in CLAUDE.md.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {
@@ -116,9 +119,11 @@ describe("LandingStatus: augment slots (spec §4)", () => {
   });
 
   it("exposes the badges slot (empty until an augment binds)", () => {
-    // The registry entry is asserted indirectly: the widget's own module-load
-    // registration declared the slot as its extension point.
-    // (See registerComponent `augmentSlots` in ./index.tsx.)
+    /**
+     * The registry entry is asserted indirectly: the widget's own
+     * module-load registration declared the slot as its extension point
+     * (see registerComponent `augmentSlots` in ./index.tsx).
+     */
     expect(getAugmentsForSlot("landing-status.badges")).toEqual([]);
   });
 
@@ -150,10 +155,12 @@ describe("LandingStatus: augment slots (spec §4)", () => {
     });
 
     const badge = await screen.findByTestId("landing-status-badge-augment");
-    // The slot passed the widget's labelling context down: the current
-    // body and its atmosphere flag (Mun is a vacuum body). The pinned view
-    // clock's first frame tick (and so `vessel.state.parentBodyName`) lands
-    // asynchronously: wait rather than asserting on the pre-frame "?".
+    /**
+     * The slot passed the widget's labelling context down: the current
+     * body and its atmosphere flag (Mun is a vacuum body). The pinned view
+     * clock's first frame tick (and so `vessel.state.parentBodyName`) lands
+     * asynchronously: wait rather than asserting on the pre-frame "?".
+     */
     await waitFor(() => expect(badge.textContent).toBe("Mun|vac"));
   });
 });

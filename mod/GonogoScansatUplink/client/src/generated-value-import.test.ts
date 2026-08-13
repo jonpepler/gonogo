@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // The "resolves to a core gonogo Value type" half of the uplink-types-out-of-
-// core plan's Unit guard (§5b): a wire-visible Value<"..."> / Vec3Of<"..."> in
+// core plan's Unit guard: a wire-visible Value<"..."> / Vec3Of<"..."> in
 // this Uplink's OWN generated contract must still resolve to the core
 // unit-system module (@ksp-gonogo/sitrep-sdk), never a locally hand-rolled
 // Value type. See ScansatRtConfig.Configure's `valueImportFrom` argument,
@@ -16,9 +16,9 @@ import { describe, expect, it } from "vitest";
 // groundTrackLonHalfDeg), ScanSensorEntry's four (fov + minAlt/maxAlt/bestAlt),
 // ScanTrackColor's four count channels and ScanAnomalyEntry's latitude/longitude
 // all genuinely retype to Value<...> (see ../__generated__/contract.ts). No type
-// in this set is an inbound-only "...Args" for ApplyUnitValueTypes to skip (the
-// case some earlier relocations had; see the plan doc), so every one of the five
-// types contributes.
+// in this set is an inbound-only "...Args" for ApplyUnitValueTypes to skip
+// (the case some earlier relocations had), so every one of the five types
+// contributes.
 
 const generatedContractPath = join(
   dirname(fileURLToPath(import.meta.url)),

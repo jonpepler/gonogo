@@ -287,12 +287,11 @@ describe("KerbcastDataSource: keepalive + reconnect", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Dynamic slot subscription: exercised against the SDK's canonical protocol
-// fake (MockSidecar) rather than the local transport fake, so these tests cover
-// the real subscribe → slot-map round-trip the sidecar speaks.
-// ---------------------------------------------------------------------------
-
+/**
+ * Dynamic slot subscription: exercised against the SDK's canonical protocol
+ * fake (MockSidecar) rather than the local transport fake, so these tests
+ * cover the real subscribe → slot-map round-trip the sidecar speaks.
+ */
 describe("KerbcastDataSource: dynamic slot subscription", () => {
   function mockFetch(): void {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
@@ -404,11 +403,10 @@ describe("KerbcastDataSource: dynamic slot subscription", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// relayOffer: the main screen's half of the station broker. Forwards a
-// station's offer to the local sidecar's /offer and returns the answer.
-// ---------------------------------------------------------------------------
-
+/**
+ * relayOffer: the main screen's half of the station broker. Forwards a
+ * station's offer to the local sidecar's /offer and returns the answer.
+ */
 describe("KerbcastDataSource: relayOffer (station broker)", () => {
   it("POSTs the offer to the sidecar /offer and returns the answer", async () => {
     setSetting(GAME_HOST_KEY, "sidehost");
@@ -449,13 +447,12 @@ describe("KerbcastDataSource: relayOffer (station broker)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// registerUplinkHandle("kerbcast", ...): the host-side relay handle a
-// station's peer-relayed negotiate() call dispatches through (see
-// PeerHostService.handleUplinkRelay). Delegates to the module singleton's
-// relayOffer(), unchanged.
-// ---------------------------------------------------------------------------
-
+/**
+ * registerUplinkHandle("kerbcast", ...): the host-side relay handle a
+ * station's peer-relayed negotiate() call dispatches through (see
+ * PeerHostService.handleUplinkRelay). Delegates to the module singleton's
+ * relayOffer(), unchanged.
+ */
 describe("KerbcastDataSource module: registerUplinkHandle('kerbcast', ...) registration", () => {
   it("delegates the 'negotiate' relay method to the kerbcastSource singleton's relayOffer", async () => {
     setSetting(GAME_HOST_KEY, "sidehost");
@@ -499,11 +496,10 @@ describe("KerbcastDataSource module: registerUplinkHandle('kerbcast', ...) regis
   });
 });
 
-// ---------------------------------------------------------------------------
-// Brokered (station) mode: the station relays the handshake through the host
-// and takes TURN creds from the broadcast, never touching localhost.
-// ---------------------------------------------------------------------------
-
+/**
+ * Brokered (station) mode: the station relays the handshake through the host
+ * and takes TURN creds from the broadcast, never touching localhost.
+ */
 describe("KerbcastDataSource: brokered (station) mode", () => {
   const TURN: RTCIceServer = {
     urls: ["turn:relay.example:3478"],

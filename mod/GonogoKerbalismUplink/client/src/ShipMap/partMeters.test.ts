@@ -110,10 +110,11 @@ describe("computeKerbalismPartMeters", () => {
   });
 
   it('flags a below-threshold reading "low", further below "critical", at-or-above threshold null', () => {
-    // Status is a SEPARATE signal from the fill colour now (design doc,
-    // local_docs/design/2026-08-08-resource-colour-system.md): the fill is
-    // Water's own identity colour regardless of level, this only says how
-    // full the tank is.
+    /**
+     * Status is a SEPARATE signal from the fill colour now: the fill is
+     * Water's own identity colour regardless of level, this only says how
+     * full the tank is.
+     */
     const low = computeKerbalismPartMeters(
       wire([part("3", { Water: { amount: 27, maxAmount: 180 } })]), // 15% < 20% threshold, above critical (6.6%)
       SUPPLY_PROFILE,

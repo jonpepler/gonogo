@@ -52,20 +52,26 @@ import { useId } from "react";
 const SIZE = 160;
 const OUTER_RADIUS = 6; // matches the widget's other rounded panels
 
-// --- Action-urgency thresholds (dot colour) --------------------------------
-// Colour is driven ENTIRELY by the do-nothing outcome (`projectedTouchdownSpeed`)
-// plus how much altitude is left to do something about it, never by the
-// vessel's current speed, which only sets the dot's X position.
-//
-// A do-nothing touchdown at/under this speed is a soft, walkable-away
-// landing (stock landing legs shrug off single-digit-to-low-teens m/s), ride
-// it down, no action needed. GREEN regardless of altitude.
+/**
+ * Action-urgency thresholds (dot colour). Colour is driven ENTIRELY by the
+ * do-nothing outcome (`projectedTouchdownSpeed`) plus how much altitude is
+ * left to do something about it, never by the vessel's current speed, which
+ * only sets the dot's X position.
+ */
+
+/**
+ * A do-nothing touchdown at/under this speed is a soft, walkable-away landing
+ * (stock landing legs shrug off single-digit-to-low-teens m/s), ride it down,
+ * no action needed. GREEN regardless of altitude.
+ */
 const SURVIVABLE_TOUCHDOWN_MPS = 12;
 // A do-nothing touchdown at/over this speed is lethal to hull and crew.
 const LETHAL_TOUCHDOWN_MPS = 45;
-// Below this altitude, a lethal-range touchdown means there's no longer
-// meaningful room to burn/deploy/correct, escalate CAUTION to URGENT. Above
-// it, a lethal-range reading is still just a warning: there's time to act.
+/**
+ * Below this altitude, a lethal-range touchdown means there's no longer
+ * meaningful room to burn/deploy/correct, escalate CAUTION to URGENT. Above
+ * it, a lethal-range reading is still just a warning: there's time to act.
+ */
 const CRITICAL_ALTITUDE_M = 1500;
 
 /** Saturated instrument colours for the urgency dot, mapped onto the theme's
@@ -118,72 +124,83 @@ const URGENCY_COPY: Record<EnvelopeUrgency, string> = {
   urgent: "URGENT, slow now",
 };
 
-// --- Atmosphere haze (visible, but stays behind the curve) ------------------
-// Default sky-blue, used when the body is unknown or has no registered
-// `atmosphereColor` (airless-but-shouldn't-happen safety). Kept to a single
-// muted hue rather than a hue ramp so it reads as texture/context, not a
-// second legend.
+/**
+ * Atmosphere haze (visible, but stays behind the curve). Default sky-blue,
+ * used when the body is unknown or has no registered `atmosphereColor`
+ * (airless-but-shouldn't-happen safety). Kept to a single muted hue rather
+ * than a hue ramp so it reads as texture/context, not a second legend.
+ */
 const ATMOSPHERE_TINT_COLOR = "var(--color-status-info-fg)";
-// Peak (banded) opacity, AT THE GROUND (fades toward 0 with altitude). The
-// plot has no background of its own, it sits directly on the frame's dark
-// `surface-sunken`, so the haze has to run hotter than it would over a
-// lighter panel to still read clearly at a glance; still under the
-// curve/dot's own opacity so it stays clearly background.
+/**
+ * Peak (banded) opacity, AT THE GROUND (fades toward 0 with altitude). The
+ * plot has no background of its own, it sits directly on the frame's dark
+ * `surface-sunken`, so the haze has to run hotter than it would over a
+ * lighter panel to still read clearly at a glance; still under the
+ * curve/dot's own opacity so it stays clearly background.
+ */
 const ATMOSPHERE_MAX_OPACITY = 0.52;
-// A flat, uniform low-opacity wash of the SAME body colour across the whole
-// plot, drawn beneath the banded gradient. Without it, `surface-sunken`
-// (near-black) swallows the haze entirely up in the thin-air region where
-// the banded opacity fades toward 0, this keeps a faint colour cue there
-// too while the banding on top still carries the actual density read.
+/**
+ * A flat, uniform low-opacity wash of the SAME body colour across the whole
+ * plot, drawn beneath the banded gradient. Without it, `surface-sunken`
+ * (near-black) swallows the haze entirely up in the thin-air region where
+ * the banded opacity fades toward 0, this keeps a faint colour cue there too
+ * while the banding on top still carries the actual density read.
+ */
 const ATMOSPHERE_BASE_OPACITY = 0.12;
-// Rendered as a HANDFUL of soft "atmosphere levels" rather than one smooth
-// gradient (Jon: should look a little like the in-game altimeter's banded
-// blue). Bands are density HALVINGS (1, 1/2, 1/4, …), since density decays
-// exponentially with altitude, halving-bands land compressed near the
-// ground and spread out higher up, same shape as the real atmosphere.
-// Below this density fraction there's no band left; it fades to nothing.
+/**
+ * Rendered as a HANDFUL of soft "atmosphere levels" rather than one smooth
+ * gradient (Jon: should look a little like the in-game altimeter's banded
+ * blue). Bands are density HALVINGS (1, 1/2, 1/4, …), since density decays
+ * exponentially with altitude, halving-bands land compressed near the ground
+ * and spread out higher up, same shape as the real atmosphere. Below this
+ * density fraction there's no band left; it fades to nothing.
+ */
 const ATMOSPHERE_BAND_FLOOR_DENSITY = 0.03;
 // Softens the band edges into gentle transitions instead of hard stripes.
 const ATMOSPHERE_BAND_BLUR = 3;
 
-// --- HUD label styling -------------------------------------------------------
-// Labels sit ON TOP of the full-bleed plot content, but land in the plot's
-// clear corners (see `classifyUrgency`'s callers below), so legibility comes
-// from POSITION first. Only a very faint drop-shadow backs the text, never
-// a solid backdrop block, for the rare case a corner still crosses the
-// curve or dot. Text is the only thing that keeps an inset from the edge;
-// the plot itself is full-bleed.
+/**
+ * HUD label styling. Labels sit ON TOP of the full-bleed plot content, but
+ * land in the plot's clear corners (see `classifyUrgency`'s callers below),
+ * so legibility comes from POSITION first. Only a very faint drop-shadow
+ * backs the text, never a solid backdrop block, for the rare case a corner
+ * still crosses the curve or dot. Text is the only thing that keeps an inset
+ * from the edge; the plot itself is full-bleed.
+ */
 const TEXT_PAD = 8;
-// Soft, low-opacity shadow (not an outline/halo), barely visible against a
-// clear background, just enough contrast where the curve/dot happen to pass
-// underneath.
+/**
+ * Soft, low-opacity shadow (not an outline/halo), barely visible against a
+ * clear background, just enough contrast where the curve/dot happen to pass
+ * underneath.
+ */
 const LABEL_SHADOW_COLOR = "var(--color-surface-raised)";
 const LABEL_SHADOW_BLUR = 1;
 const LABEL_SHADOW_OPACITY = 0.7;
 
-// --- Vessel dot + drag-to-weight arrow ---------------------------------------
+// Vessel dot + drag-to-weight arrow.
 // Dot radius, pulled out so the drag arrow can anchor flush to its edge.
 const DOT_RADIUS = 6;
 
-// A faint, solo OPEN chevron (no shaft/trailing line, no fill) sat just
-// above the vessel dot, centred on the dot's x and pointing UP, away from
-// the dot. It's a stroked "^", two arms angling down-and-outward from an
-// apex, not a filled triangle, so the open bottom of the V itself reads as
-// a small triangular gap even though the arms' ends touch the dot's top
-// edge (no added offset). Drag is "pulling the vessel back", the opposite
-// intuition from a shaft that grows out of the dot, so the mark sits on the
-// OPPOSITE side of the dot from the old design and carries no direction of
-// travel, only a size. Its SIZE (not length) scales with the drag-to-weight
-// ratio (aggregate drag force ÷ vessel weight; >1 decelerating, 1 at
-// terminal, <1 accelerating): a near-invisible point at a low ratio, growing
-// toward a chevron a little wider than the dot itself at
-// `DRAG_ARROW_MAX_RATIO`, clamped so a huge reading never runs away. Height
-// scales with width (not independently), kept deliberately SHALLOW
-// (`DRAG_ARROW_ASPECT` well under 1) so it reads as a wide, flat arrowhead
-// rather than a tall spike. Deliberately monochrome/faint (the same muted
-// label token as the HUD text) so it never competes with the dot's action
-// colour or the atmosphere haze. Opt-in only, so every existing
-// caller/render/test is unaffected.
+/**
+ * A faint, solo OPEN chevron (no shaft/trailing line, no fill) sat just above
+ * the vessel dot, centred on the dot's x and pointing UP, away from the dot.
+ * It's a stroked "^", two arms angling down-and-outward from an apex, not a
+ * filled triangle, so the open bottom of the V itself reads as a small
+ * triangular gap even though the arms' ends touch the dot's top edge (no
+ * added offset). Drag is "pulling the vessel back", the opposite intuition
+ * from a shaft that grows out of the dot, so the mark sits on the OPPOSITE
+ * side of the dot from the old design and carries no direction of travel,
+ * only a size. Its SIZE (not length) scales with the drag-to-weight ratio
+ * (aggregate drag force ÷ vessel weight; >1 decelerating, 1 at terminal, <1
+ * accelerating): a near-invisible point at a low ratio, growing toward a
+ * chevron a little wider than the dot itself at `DRAG_ARROW_MAX_RATIO`,
+ * clamped so a huge reading never runs away. Height scales with width (not
+ * independently), kept deliberately SHALLOW (`DRAG_ARROW_ASPECT` well under
+ * 1) so it reads as a wide, flat arrowhead rather than a tall spike.
+ * Deliberately monochrome/faint (the same muted label token as the HUD text)
+ * so it never competes with the dot's action colour or the atmosphere haze.
+ * Opt-in only, so every existing caller/render/test is unaffected.
+ */
 const DRAG_ARROW_MAX_RATIO = 3; // clamp: beyond this the size stops growing
 const DRAG_ARROW_MIN_WIDTH = 1.5; // px width at a near-zero ratio, a faint sliver
 const DRAG_ARROW_MAX_WIDTH = 14; // px width at the clamp, a touch past the dot's 12px diameter
@@ -224,9 +241,11 @@ export interface DescentEnvelopeProps {
   dragDisplay?: DragDisplay;
 }
 
-// `writeQuantity`, not a hand-written suffix: these land in SVG `<text>`,
-// which cannot contain a `<span>`, so `<Unit>` will not go in one. The symbol
-// and the ladder still come from the unit registry.
+/**
+ * `writeQuantity`, not a hand-written suffix: these land in SVG `<text>`,
+ * which cannot contain a `<span>`, so `<Unit>` will not go in one. The symbol
+ * and the ladder still come from the unit registry.
+ */
 function fmtSpeed(v: number): string {
   return writeQuantity(value("m/s", v), { decimals: 0 });
 }
@@ -288,9 +307,11 @@ export function DescentEnvelope(props: Readonly<DescentEnvelopeProps>) {
   const ratio = vtNow / vtGround;
   const envelopeAt = (alt: number) => vtGround * ratio ** (alt / alt0);
 
-  // Relative air density vs. the ground (1 at the surface, decaying with
-  // altitude), derived from the SAME model as the curve (v_t ∝ 1/√ρ, so
-  // ρ ∝ 1/v_t²), so the haze bands and the curve never disagree.
+  /**
+   * Relative air density vs. the ground (1 at the surface, decaying with
+   * altitude), derived from the SAME model as the curve (v_t ∝ 1/√ρ, so
+   * ρ ∝ 1/v_t²), so the haze bands and the curve never disagree.
+   */
   const relativeDensity = (alt: number) => {
     const vt = envelopeAt(alt);
     return vt > 0 ? Math.min(1, (vtGround / vt) ** 2) : 0;
@@ -299,10 +320,13 @@ export function DescentEnvelope(props: Readonly<DescentEnvelopeProps>) {
   const altTop = alt0 * 1.12;
   const maxSpeed = Math.max(vtNow, vtGround, speedNow ?? 0) * 1.12;
 
-  // Full-bleed plot: speed/altitude map straight across the WHOLE svg (0..SIZE
-  // on both axes), no inset. Content is clipped to the rounded container via
-  // `clipId` below, so the curve/dot can bleed right up to (and get rounded
-  // off by) the edges, same as the rest of the app's full-bleed visuals.
+  /**
+   * Full-bleed plot: speed/altitude map straight across the WHOLE svg
+   * (0..SIZE on both axes), no inset. Content is clipped to the rounded
+   * container via `clipId` below, so the curve/dot can bleed right up to
+   * (and get rounded off by) the edges, same as the rest of the app's
+   * full-bleed visuals.
+   */
   const px = (speed: number) => (speed / maxSpeed) * SIZE;
   const py = (alt: number) => (1 - alt / altTop) * SIZE;
 
@@ -314,19 +338,23 @@ export function DescentEnvelope(props: Readonly<DescentEnvelopeProps>) {
   }
   const curvePts = curve.join(" ");
 
-  // Snap continuous density down to the nearest density-HALVING "level"
-  // (1, 1/2, 1/4, …), floored to 0 below `ATMOSPHERE_BAND_FLOOR_DENSITY` so
-  // it still fades to nothing at the top rather than stepping forever.
+  /**
+   * Snap continuous density down to the nearest density-HALVING "level" (1,
+   * 1/2, 1/4, …), floored to 0 below `ATMOSPHERE_BAND_FLOOR_DENSITY` so it
+   * still fades to nothing at the top rather than stepping forever.
+   */
   const bandLevel = (density: number): number => {
     if (density < ATMOSPHERE_BAND_FLOOR_DENSITY) return 0;
     return Math.min(1, 2 ** Math.floor(Math.log2(density)));
   };
 
-  // Haze gradient stops, densely sampled (finer than the curve's own
-  // sampling) so the density-halving bands read as flat steps once rendered;
-  // `ATMOSPHERE_BAND_BLUR` then softens those steps into gentle transitions.
-  // Vertical gradient: offset 0% = top of the plot (thin air), offset 100% =
-  // bottom (ground).
+  /**
+   * Haze gradient stops, densely sampled (finer than the curve's own
+   * sampling) so the density-halving bands read as flat steps once rendered;
+   * `ATMOSPHERE_BAND_BLUR` then softens those steps into gentle transitions.
+   * Vertical gradient: offset 0% = top of the plot (thin air), offset 100% =
+   * bottom (ground).
+   */
   const HAZE_STOPS = 48;
   const hazeStops = Array.from({ length: HAZE_STOPS + 1 }, (_, i) => {
     const offset = (i / HAZE_STOPS) * 100;
@@ -349,10 +377,12 @@ export function DescentEnvelope(props: Readonly<DescentEnvelopeProps>) {
   const urgency = classifyUrgency(vtGround, alt0);
   const dotColor = URGENCY_COLOR[urgency];
 
-  // Drag-to-weight arrowhead geometry. Sits just above the dot's TOP edge,
-  // centred on the dot's x, apex pointing up/away. SIZE (not length) scales
-  // with the ratio, clamped at `DRAG_ARROW_MAX_RATIO` so a big reading never
-  // runs away. Only when the caller opts in with a positive ratio.
+  /**
+   * Drag-to-weight arrowhead geometry. Sits just above the dot's TOP edge,
+   * centred on the dot's x, apex pointing up/away. SIZE (not length) scales
+   * with the ratio, clamped at `DRAG_ARROW_MAX_RATIO` so a big reading never
+   * runs away. Only when the caller opts in with a positive ratio.
+   */
   const showDragArrow =
     dragDisplay === "arrow" &&
     vesselX != null &&

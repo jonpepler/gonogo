@@ -102,9 +102,12 @@ export function deriveDelayClocks(inp: DelayClockInputs): DelayClocks {
   const landed = inp.landed === true;
 
   const countdown = inp.suicideBurnCountdown;
-  // Once landed every descent countdown is void: the burn is over, there is no
-  // commit point left and no future blind moment. Gate on the landed STATE, not
-  // the impact figure (which can stay non-zero after touchdown).
+  /**
+   * Once landed every descent countdown is void: the burn is over, there is
+   * no commit point left and no future blind moment. Gate on the landed
+   * STATE, not the impact figure (which can stay non-zero after
+   * touchdown).
+   */
   const commitInSeconds =
     !landed &&
     countdown != null &&

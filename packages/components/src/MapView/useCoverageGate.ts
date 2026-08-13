@@ -4,7 +4,7 @@
 // indexes into the returned composite grid to decide each tile's alpha:
 // 0 = fully un-covered (paint nothing / black), 255 = fully covered
 // (paint at full opacity). Replaces the old MapView-internal
-// `useFogMask.ts`'s dark-overlay-canvas shape (deleted, T9): there is no
+// `useFogMask.ts`'s dark-overlay-canvas shape (deleted): there is no
 // separate canvas to draw on top of the map anymore.
 import {
   type FogRevealSourceDefinition,

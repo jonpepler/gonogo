@@ -15,12 +15,14 @@ function newFixture() {
     carriedChannels: CARRIED,
     pinnedUt: 10,
   });
-  // `useProcessor`'s dependency resolution reads straight off the
-  // TimelineStore, it does not itself call `client.subscribe` the way
-  // `useTelemetry`/`useStream` do (see ShipSystems/index.test.tsx's own doc
-  // comment on this same gap). A dummy subscribe per topic flips
-  // `StubTransport.emit`'s subscription gate the way a companion widget
-  // reading the same topic would in production.
+  /**
+   * `useProcessor`'s dependency resolution reads straight off the
+   * TimelineStore, it does not itself call `client.subscribe` the way
+   * `useTelemetry`/`useStream` do (see ShipSystems/index.test.tsx's own
+   * doc comment on this same gap). A dummy subscribe per topic flips
+   * `StubTransport.emit`'s subscription gate the way a companion widget
+   * reading the same topic would in production.
+   */
   for (const topic of CARRIED) fixture.client.subscribe(topic, () => {});
   return fixture;
 }
@@ -65,16 +67,18 @@ function emit(
 }
 
 beforeEach(() => {
-  // The Processor evaluator's runtime cache (evaluated value + frame
-  // generation) is a MODULE-GLOBAL singleton keyed by Processor id, shared
-  // across every fixture in this file. Each test below mounts its own fresh
-  // TelemetryProvider/TimelineStore whose frame-generation counter restarts
-  // at 0, so without a reset a later test's frame can coincide with an
-  // earlier test's `lastFrameGeneration` and silently keep serving that
-  // earlier test's stale computed value forever (see clearProcessorRuntime's
-  // own doc comment in sitrep-client for the full mechanism). Resetting
-  // before each test is the same isolation sitrep-client's own Processor
-  // tests use.
+  /**
+   * The Processor evaluator's runtime cache (evaluated value + frame
+   * generation) is a MODULE-GLOBAL singleton keyed by Processor id,
+   * shared across every fixture in this file. Each test below mounts its
+   * own fresh TelemetryProvider/TimelineStore whose frame-generation
+   * counter restarts at 0, so without a reset a later test's frame can
+   * coincide with an earlier test's `lastFrameGeneration` and silently
+   * keep serving that earlier test's stale computed value forever (see
+   * clearProcessorRuntime's own doc comment in sitrep-client for the full
+   * mechanism). Resetting before each test is the same isolation
+   * sitrep-client's own Processor tests use.
+   */
   clearProcessorRuntime();
 });
 
@@ -96,9 +100,11 @@ describe("CrewSurvivalAugment", () => {
   it("renders nothing before any survival data has arrived", () => {
     const fixture = newFixture();
     renderAugment(fixture, "Jebediah Kerman", 0);
-    // No emit at all: useProcessor(CREW_SURVIVAL) has nothing to derive from
-    // yet, the augment must render nothing rather than a "stable" default
-    // for a kerbal it knows nothing about.
+    /**
+     * No emit at all: useProcessor(CREW_SURVIVAL) has nothing to derive
+     * from yet, the augment must render nothing rather than a "stable"
+     * default for a kerbal it knows nothing about.
+     */
     expect(screen.queryByLabelText("survival meters")).not.toBeInTheDocument();
   });
 
@@ -121,11 +127,14 @@ describe("CrewSurvivalAugment", () => {
     const meter = await screen.findByRole("meter", { name: "Radiation dose" });
     expect(meter).toHaveAttribute("aria-valuenow", "90");
     expect(meter).toHaveAttribute("aria-valuetext", "90 %");
-    // The `.survival` slot is meter-only now: no badge restating the same
-    // rule name/percentage underneath it (that used to render literally as
-    // "Radiation dose 90 %" text of its own, the exact redundant-restatement
-    // bug this augment used to have; the consequence badge moved to
-    // CrewSurvivalBadgeAugment, tested separately below).
+    /**
+     * The `.survival` slot is meter-only now: no badge restating the same
+     * rule name/percentage underneath it (that used to render literally
+     * as "Radiation dose 90 %" text of its own, the exact
+     * redundant-restatement bug this augment used to have; the
+     * consequence badge moved to CrewSurvivalBadgeAugment, tested
+     * separately below).
+     */
     expect(screen.queryByText(/critical/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/radiation dose 90 %/i)).not.toBeInTheDocument();
   });
@@ -198,10 +207,13 @@ describe("CrewSurvivalAugment", () => {
   });
 
   it("renders nothing for a kerbal Kerbalism reports no rules or clock for", async () => {
-    // Renders BOTH rows in one test: Jebediah's meter appearing is the proof
-    // the Processor actually re-evaluated for THIS test's data (not a stale
-    // value from a previous test), so Bill's absence right beside it is a
-    // meaningful negative, not just "nothing has happened yet".
+    /**
+     * Renders BOTH rows in one test: Jebediah's meter appearing is the
+     * proof the Processor actually re-evaluated for THIS test's data
+     * (not a stale value from a previous test), so Bill's absence right
+     * beside it is a meaningful negative, not just "nothing has happened
+     * yet".
+     */
     const fixture = newFixture();
     const jeb = render(
       <fixture.Provider>
@@ -287,10 +299,12 @@ describe("CrewSurvivalBadgeAugment", () => {
         rules: [{ name: "stress", value: 0.6, fatalThreshold: 1 }],
       },
     ]);
-    // The meter (from `.survival`) is the proof the Processor evaluated;
-    // the badge's absence right beside it is the meaningful negative, same
-    // "prove data arrived, then assert a negative" pattern as the roster
-    // test above.
+    /**
+     * The meter (from `.survival`) is the proof the Processor evaluated;
+     * the badge's absence right beside it is the meaningful negative,
+     * same "prove data arrived, then assert a negative" pattern as the
+     * roster test above.
+     */
     await screen.findByRole("meter", { name: "Stress" });
     expect(screen.queryByText(/critical/i)).not.toBeInTheDocument();
   });

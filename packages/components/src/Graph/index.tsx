@@ -104,8 +104,6 @@ function formatNumericTick(value: number, unit?: string): string {
   return unit ? `${text}${unit}` : text;
 }
 
-// ── Axis resolution ───────────────────────────────────────────────────────────
-
 function resolveAxes(
   configs: GraphSeriesConfig[],
   metaMap: Map<string, DataKeyMeta>,
@@ -132,13 +130,13 @@ function resolveAxes(
   });
 }
 
-// ── GraphView ────────────────────────────────────────────────────────────────
-//
-// The shared rendering engine. Takes a resolved GraphConfig and optional
-// reference curves (pre-computed by the caller: typically a domain-specific
-// preset widget like OrbitalAscent that wants to overlay an ideal curve on top
-// of live telemetry). Curves are injected as synthetic ChartSeries entries
-// alongside the live ones; the X domain expands to cover them.
+/**
+ * The shared rendering engine. Takes a resolved GraphConfig and optional
+ * reference curves (pre-computed by the caller: typically a domain-specific
+ * preset widget like OrbitalAscent that wants to overlay an ideal curve on top
+ * of live telemetry). Curves are injected as synthetic ChartSeries entries
+ * alongside the live ones; the X domain expands to cover them.
+ */
 
 /**
  * A pre-computed reference curve to overlay on the chart. The caller is
@@ -539,8 +537,6 @@ export function GraphView({
   );
 }
 
-// ── Registered widget ────────────────────────────────────────────────────────
-
 function GraphComponent({
   config,
   w,
@@ -548,8 +544,6 @@ function GraphComponent({
 }: Readonly<ComponentProps<GraphConfig>>) {
   return <GraphView config={config} w={w} h={h} />;
 }
-
-// ── Config component ──────────────────────────────────────────────────────────
 
 function GraphConfigComponent({
   config,
@@ -897,13 +891,13 @@ function parseDomain(
   return [min, max];
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-// Structural inline styles (CSS-var tokens): a bespoke plot frame + config
-// form, no reusable ui-kit primitive fits the layout, so it stays local. The
-// two hover-bearing config buttons reuse ui-kit GhostButton / IconButton (the
-// only inline-inexpressible bit is `:hover`); the plot slots that need a ref
-// for the ResizeObserver stay plain divs (ui-kit Fill is not forwardRef).
+/**
+ * Structural inline styles (CSS-var tokens): a bespoke plot frame + config
+ * form, no reusable ui-kit primitive fits the layout, so it stays local. The
+ * two hover-bearing config buttons reuse ui-kit GhostButton / IconButton (the
+ * only inline-inexpressible bit is `:hover`); the plot slots that need a ref
+ * for the ResizeObserver stay plain divs (ui-kit Fill is not forwardRef).
+ */
 
 // The plot is visual content, so it gets a frame rather than an argument with
 // the body inset. `flush`: LineChart already draws inside its own MARGIN, so
@@ -1007,8 +1001,6 @@ const REMOVE_BUTTON: CSSProperties = {
 
 // Unit symbols are case-sensitive, so they opt out of the header's uppercase.
 const GRAPH_UNITS: CSSProperties = { textTransform: "none" };
-
-// ── Registration ──────────────────────────────────────────────────────────────
 
 registerComponent<GraphConfig>({
   id: "graph",

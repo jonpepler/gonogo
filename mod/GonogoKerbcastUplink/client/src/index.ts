@@ -1,46 +1,48 @@
-// kerbcast Uplink client for gonogo.
-//
-// Co-located with the GonogoKerbcastUplink C# mod (mod/GonogoKerbcastUplink):
-// one directory holds the mod and the client TS it ships (Uplink architecture
-// §1), the same layout every sibling Uplink client uses. It keeps the npm name
-// `@ksp-gonogo/gonogo-kerbcast-uplink`: `@ksp-gonogo/kerbcast` is NOT available to
-// rename onto, being the external kerbcast protocol SDK this package consumes
-// from public npm (see .npmrc). So the package NAME deviates from the sibling
-// convention; the layout does not.
-//
-// This client owns BOTH kerbcast planes, which is the one place it differs
-// from a control-plane-only Uplink client:
-//   - the CONTROL plane rides the Uplink's Topics (`kerbcast.cameras`,
-//     `kerbcast.available`) like any other Uplink;
-//   - the MEDIA plane does not ride Topics at all, video stays on kerbcast's
-//     own WebRTC path, because a keyframed telemetry channel is the wrong
-//     shape for encoded media (KerbcastUplink.cs's own header).
-// The two meet at `cameraId` === kerbcast's `flightId`, which
-// `KerbcastCameraEntryBuilder.Build` establishes mod-side.
-//
-// Importing this package's entry point side-effects four registrations
-// into @ksp-gonogo/core's global registries:
-//
-//   - `KerbcastDataSource` → registerDataSource("kerbcast", ...) so the
-//     sidecar connection appears in the Data Sources widget alongside the
-//     other registered sources.
-//   - `CameraFeed` component → registerComponent({ id: "camera-feed", ... })
-//     so it's placeable from the dashboard widget picker.
-//   - `DockingCameraAugment` → registerAugment({ id: "kerbcast-docking-camera",
-//     ... }) filling @ksp-gonogo/components's DistanceToTarget widget's
-//     `distance-to-target.camera` slot with the close-range docking-camera
-//     backdrop. This REPLACED that widget's built-in `HudCamera`, which had
-//     kerbcast wired directly into the core client, the thing this package's
-//     move exists to end.
-//   - `KerbcastAvatarAugment` → registerAugment({ id: "kerbcast-crew-avatar",
-//     ... }) filling @ksp-gonogo/components's CrewStatus widget's
-//     `crew-status.avatar` slot with a live per-kerbal face (facecam-stage6
-//     consumption design). Correlates by kerbal NAME against kerbcast's
-//     `kind: Kerbal` cameras: see CrewAvatarGate/selectKerbalCamera.ts.
-//
-// To wire it into the app: `import "@ksp-gonogo/gonogo-kerbcast-uplink";` during app
-// bootstrap (alongside the other data-source/registration imports in
-// app/src/dataSources/index.ts).
+/**
+ * kerbcast Uplink client for gonogo.
+ *
+ * Co-located with the GonogoKerbcastUplink C# mod (mod/GonogoKerbcastUplink):
+ * one directory holds the mod and the client TS it ships, the same layout
+ * every sibling Uplink client uses. It keeps the npm name
+ * `@ksp-gonogo/gonogo-kerbcast-uplink`: `@ksp-gonogo/kerbcast` is NOT available to
+ * rename onto, being the external kerbcast protocol SDK this package consumes
+ * from public npm (see .npmrc). So the package NAME deviates from the sibling
+ * convention; the layout does not.
+ *
+ * This client owns BOTH kerbcast planes, which is the one place it differs
+ * from a control-plane-only Uplink client:
+ *   - the CONTROL plane rides the Uplink's Topics (`kerbcast.cameras`,
+ *     `kerbcast.available`) like any other Uplink;
+ *   - the MEDIA plane does not ride Topics at all, video stays on kerbcast's
+ *     own WebRTC path, because a keyframed telemetry channel is the wrong
+ *     shape for encoded media (KerbcastUplink.cs's own header).
+ * The two meet at `cameraId` === kerbcast's `flightId`, which
+ * `KerbcastCameraEntryBuilder.Build` establishes mod-side.
+ *
+ * Importing this package's entry point side-effects four registrations
+ * into @ksp-gonogo/core's global registries:
+ *
+ *   - `KerbcastDataSource` → registerDataSource("kerbcast", ...) so the
+ *     sidecar connection appears in the Data Sources widget alongside the
+ *     other registered sources.
+ *   - `CameraFeed` component → registerComponent({ id: "camera-feed", ... })
+ *     so it's placeable from the dashboard widget picker.
+ *   - `DockingCameraAugment` → registerAugment({ id: "kerbcast-docking-camera",
+ *     ... }) filling @ksp-gonogo/components's DistanceToTarget widget's
+ *     `distance-to-target.camera` slot with the close-range docking-camera
+ *     backdrop. This REPLACED that widget's built-in `HudCamera`, which had
+ *     kerbcast wired directly into the core client, the thing this package's
+ *     move exists to end.
+ *   - `KerbcastAvatarAugment` → registerAugment({ id: "kerbcast-crew-avatar",
+ *     ... }) filling @ksp-gonogo/components's CrewStatus widget's
+ *     `crew-status.avatar` slot with a live per-kerbal face. Correlates by
+ *     kerbal NAME against kerbcast's `kind: Kerbal` cameras: see
+ *     CrewAvatarGate/selectKerbalCamera.ts.
+ *
+ * To wire it into the app: `import "@ksp-gonogo/gonogo-kerbcast-uplink";` during app
+ * bootstrap (alongside the other data-source/registration imports in
+ * app/src/dataSources/index.ts).
+ */
 
 export type { CameraFeedConfig } from "./CameraFeed";
 export { CameraFeed, isPartCamera } from "./CameraFeed";

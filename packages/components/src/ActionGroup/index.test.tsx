@@ -20,12 +20,14 @@ import { axe } from "../test/axe";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { ActionGroupComponent, type ActionGroupSlotContext } from "./index";
 
-// Rendered trees, tracked so afterEach can unmount them BEFORE disconnecting the
-// legacy source or clearing the action-handler/augment registries. RTL
-// auto-cleanup runs after this file's afterEach, so it can't be relied on to
-// unmount first: buffered.disconnect()/clearActionHandlers()/clearAugments()
-// firing on a still-mounted widget is a state update outside act(), the
-// documented anti-pattern in CLAUDE.md.
+/**
+ * Rendered trees, tracked so afterEach can unmount them BEFORE disconnecting
+ * the legacy source or clearing the action-handler/augment registries. RTL
+ * auto-cleanup runs after this file's afterEach, so it can't be relied on to
+ * unmount first: buffered.disconnect()/clearActionHandlers()/clearAugments()
+ * firing on a still-mounted widget is a state update outside act(), the
+ * documented anti-pattern in CLAUDE.md.
+ */
 const renderedTrees: Array<() => void> = [];
 
 function render(ui: ReactElement) {
@@ -43,8 +45,8 @@ function unmountAll() {
  * The widget reads nothing off a legacy `data` source: group values come off
  * the canonical `vessel.control` / `vessel.structure` stream (see
  * `emitControl`), `isPaused` / `commConnected` off `time.warp` / `comms.link`,
- * and the toggle dispatch itself (delayed-command-ux migration) rides
- * `useCommand`, asserted against `fixture.transport.sentCommands`.
+ * and the toggle dispatch itself rides `useCommand`, asserted against
+ * `fixture.transport.sentCommands`.
  */
 describe("ActionGroupComponent", () => {
   let fixture: ReturnType<typeof setupStreamFixture>;
@@ -275,26 +277,31 @@ describe("ActionGroupComponent", () => {
   it("has no axe violations with the pill toggle button", async () => {
     const { container } = renderGroup({ actionGroupId: "SAS" });
     emitControl({ sas: true });
-    // Let the emitted frame settle BEFORE axe runs. `emitControl` delivers on a
-    // deferred `beginFrame` (a `queueMicrotask` under jsdom: see
-    // `setupStreamFixture`/`scheduleFrame`), so the render reflecting `sas:true`
-    // lands one microtask after the sync `act()` returns. Every other test here
-    // follows the emit with an RTL `findBy`/`waitFor`, which polls with the
-    // act-environment OFF and quietly absorbs that frame; this test alone went
-    // straight into `axe()`, whose long scan runs with the act-environment ON
-    // but no `act()` on the stack: so the deferred frame re-rendered
-    // `ActionGroupComponent` mid-scan, outside act (the load-dependent
-    // "not wrapped in act" warning). Settling on the rendered state first, the
-    // same guard the Navball/FleetComms axe tests use, drains it cleanly.
+    /**
+     * Let the emitted frame settle BEFORE axe runs. `emitControl` delivers on
+     * a deferred `beginFrame` (a `queueMicrotask` under jsdom: see
+     * `setupStreamFixture`/`scheduleFrame`), so the render reflecting
+     * `sas:true` lands one microtask after the sync `act()` returns. Every
+     * other test here follows the emit with an RTL `findBy`/`waitFor`, which
+     * polls with the act-environment OFF and quietly absorbs that frame;
+     * this test alone went straight into `axe()`, whose long scan runs with
+     * the act-environment ON but no `act()` on the stack: so the deferred
+     * frame re-rendered `ActionGroupComponent` mid-scan, outside act (the
+     * load-dependent "not wrapped in act" warning). Settling on the
+     * rendered state first, the same guard the Navball/FleetComms axe tests
+     * use, drains it cleanly.
+     */
     await screen.findByText("ON");
     expect(await axe(container)).toHaveNoViolations();
   });
 
   describe("augment slots", () => {
     beforeEach(() => clearAugments());
-    // Unmount before clearAugments() notifies the augment registry's
-    // subscribers, else a still-mounted AugmentSlot re-renders outside act()
-    // (CLAUDE.md → Testing Philosophy, act() warning pattern).
+    /**
+     * Unmount before clearAugments() notifies the augment registry's
+     * subscribers, else a still-mounted AugmentSlot re-renders outside
+     * act() (CLAUDE.md → Testing Philosophy, act() warning pattern).
+     */
     afterEach(() => {
       unmountAll();
       clearAugments();

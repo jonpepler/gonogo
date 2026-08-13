@@ -68,10 +68,13 @@ export function useMissionEvents(): MissionEvent[] {
   const identity = useTelemetry("vessel.identity");
   const career = useTelemetry("career.status");
 
-  // Source-attributed reputation losses: one delayed per-vessel topic each, so the
-  // subscription set is the roster PLUS every guid seen earlier. A destroyed vessel
-  // leaves the roster while its own event is still crossing its light-time, and a
-  // live-roster-only set would have dropped that guid before the news arrived.
+  /**
+   * Source-attributed reputation losses: one delayed per-vessel topic each,
+   * so the subscription set is the roster PLUS every guid seen earlier. A
+   * destroyed vessel leaves the roster while its own event is still crossing
+   * its light-time, and a live-roster-only set would have dropped that guid
+   * before the news arrived.
+   */
   const roster = useTelemetry("system.vessels");
   const rosterGuids = useMemo(
     () =>
@@ -111,10 +114,13 @@ export function useMissionEvents(): MissionEvent[] {
     if (changed) flush();
   }, [flightStarted, flightEnded, vesselChanged, crash, recovery]);
 
-  // Source-attributed reputation losses. Separate from the Tier-A effect above because
-  // this is a LIST that grows as each vessel's event is revealed, not a set of single
-  // "last" slots, and each row is stamped with how old the news is at the moment it
-  // arrives (the whole point of the delayed reveal).
+  /**
+   * Source-attributed reputation losses. Separate from the Tier-A effect
+   * above because this is a LIST that grows as each vessel's event is
+   * revealed, not a set of single "last" slots, and each row is stamped with
+   * how old the news is at the moment it arrives (the whole point of the
+   * delayed reveal).
+   */
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the revealed losses; `add` is stable and `ut` must not re-stamp an already-added row.
   useEffect(() => {
     const changed = add(
@@ -138,10 +144,12 @@ export function useMissionEvents(): MissionEvent[] {
     const docked = dock != null;
     const vType = isEvaType(identity?.vesselType);
     const contracts = career?.contracts?.completedRecent;
-    // The magnitude: this is an edge DETECTOR, comparing one frame's science
-    // against the last and reporting the difference in a label. Science
-    // renders as a glyph rather than a suffix, so there is no symbol to
-    // carry into a string, and the comparison wants a plain number.
+    /**
+     * The magnitude: this is an edge DETECTOR, comparing one frame's science
+     * against the last and reporting the difference in a label. Science
+     * renders as a glyph rather than a suffix, so there is no symbol to
+     * carry into a string, and the comparison wants a plain number.
+     */
     const science = magnitudeOf(career?.economy?.science) ?? undefined;
 
     let changed = add(

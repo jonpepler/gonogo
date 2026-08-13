@@ -1024,6 +1024,9 @@ registerComponent<SystemViewConfig>({
     // directly (`useTelemetry("comms.network")`), on top of the built-in
     // contribution's own subscription through the SlotAggregator.
     "comms.network",
+    // Command traffic (Task 6): read directly via `useLatestValue`, same
+    // reasoning as `comms.network` above.
+    "system.uplink.pending",
   ],
   defaultConfig: { frame: "auto" },
   actions: [],

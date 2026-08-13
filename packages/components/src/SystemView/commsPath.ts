@@ -52,10 +52,10 @@ function resolveHomeNodeIds(network: CommsNetwork): ReadonlySet<string> {
   return ids;
 }
 
-/** The exact id `computeCommsNetworkEntities` (`vesselOrbitsContribution.ts`)
- *  assigns a `comms.network` edge's contributed `connection-line` entity.
- *  Exported for `commsTraffic.ts`, which needs to walk the SAME edges by id
- *  to place a pulse, never re-deriving a different id scheme. */
+/** The id a `comms.network` edge's contributed `connection-line` entity is
+ *  assigned. `vesselOrbitsContribution.ts` calls this to produce the id;
+ *  `commsTraffic.ts` calls it again to walk the SAME edges by id and place a
+ *  pulse. One definition, so producer and consumers can never drift apart. */
 export function edgeEntityId(edge: CommsNetworkEdge): string {
   return `comms-edge:${edge.a}:${edge.b}`;
 }

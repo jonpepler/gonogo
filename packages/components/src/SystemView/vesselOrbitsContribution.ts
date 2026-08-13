@@ -10,6 +10,7 @@ import {
   VesselType,
 } from "@ksp-gonogo/sitrep-sdk";
 import { magnitudeOf, magnitudeOr } from "@ksp-gonogo/ui-kit";
+import { edgeEntityId } from "./commsPath";
 import type {
   SystemEntity,
   SystemEntityMeta,
@@ -263,7 +264,7 @@ export function computeCommsNetworkEntities(
     if (!from || !to) continue;
 
     entities.push({
-      id: `comms-edge:${edge.a}:${edge.b}`,
+      id: edgeEntityId(edge),
       position: from,
       shape: { kind: "connection-line", to },
       style: { emphasis: "faint" },

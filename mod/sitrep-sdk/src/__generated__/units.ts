@@ -115,6 +115,7 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
     gravParameter: "m³/s²",
     hasOcean: "flag",
     index: "id",
+    isHome: "flag",
     name: "text",
     parentIndex: "id",
     radius: "m",

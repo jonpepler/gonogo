@@ -317,6 +317,74 @@ namespace Sitrep.Host.Tests
             Assert.Equal(70_000.0, parsedAtmo["depth"]);
         }
 
+        [Fact]
+        public void BuildSystemBodiesCarriesIsHomeTrueOnExactlyTheHomeBody()
+        {
+            // The home-body join hardening: `isHome` replaces the old
+            // "body index 1 is home" client-side convention, so the provider
+            // must pass the raw producer's `isHome` flag through unchanged,
+            // true on exactly the flagged body and null (not false) on every
+            // other body the raw producer didn't flag at all.
+            var snapshot = new KspSnapshot
+            {
+                Ut = 0.0,
+                Values = new Dictionary<string, object?>
+                {
+                    ["bodies"] = new List<object?>
+                    {
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = "Kerbol",
+                            ["index"] = 0,
+                        },
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = "Kerbin",
+                            ["index"] = 1,
+                            ["parentIndex"] = 0,
+                            ["isHome"] = true,
+                        },
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = "Mun",
+                            ["index"] = 2,
+                            ["parentIndex"] = 1,
+                        },
+                    },
+                },
+            };
+
+            var payload = SystemViewProvider.BuildSystemBodies(snapshot);
+            var root = Assert.IsType<Dictionary<string, object?>>(payload);
+            var bodies = Assert.IsType<List<object?>>(root["bodies"]);
+
+            var star = Assert.IsType<Dictionary<string, object?>>(bodies[0]);
+            var kerbin = Assert.IsType<Dictionary<string, object?>>(bodies[1]);
+            var mun = Assert.IsType<Dictionary<string, object?>>(bodies[2]);
+
+            Assert.Null(star["isHome"]);
+            Assert.Equal(true, kerbin["isHome"]);
+            Assert.Null(mun["isHome"]);
+
+            // Serializes cleanly through the real production path, true on
+            // exactly the one body after a round trip.
+            var streamData = new StreamData<object?>
+            {
+                Topic = SystemViewProvider.Topic,
+                Payload = payload,
+                Meta = new Meta { Source = "system", ValidAt = 0, Vantage = "host", Quality = Quality.Loaded, Active = true, Staleness = Staleness.Fresh },
+            };
+            var json = EnvelopeCodec.WriteStreamData(streamData);
+            var parsed = EnvelopeCodec.ParseStreamData(json);
+            var parsedRoot = Assert.IsType<Dictionary<string, object?>>(parsed.Payload);
+            var parsedBodies = Assert.IsType<List<object?>>(parsedRoot["bodies"]);
+            var homeFlags = parsedBodies
+                .Select(b => Assert.IsType<Dictionary<string, object?>>(b))
+                .Select(b => b.TryGetValue("isHome", out var v) ? v : null)
+                .ToList();
+            Assert.Single(homeFlags, v => v is true);
+        }
+
         // ----------------------------------------------------------------
         // system.vessels -- M3 R3 roster capture-add
         // ----------------------------------------------------------------

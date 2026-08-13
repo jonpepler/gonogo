@@ -83,10 +83,9 @@ describe("FleetComms: actions + badge augment on SystemView, post-overlay-reconc
       </fixture.Provider>,
     );
     act(() => {
-      // `vesselOrbitsContribution.ts`'s `HOME_BODY_INDEX` convention: index 0
-      // is always the root star, index 1 is always the home body a `"home"`
-      // comms.network node resolves against. Framing on Kerbin at index 1
-      // (not 0, unlike the old Phase-1 overlay's own fixture) is required
+      // `vesselOrbitsContribution.ts` resolves the home node against
+      // whichever body carries `isHome: true`. Framing on Kerbin (not the
+      // root star, unlike the old Phase-1 overlay's own fixture) is required
       // for the graph's `home` node to resolve to this frame at all.
       fixture.emit("system.bodies", {
         bodies: [
@@ -104,6 +103,7 @@ describe("FleetComms: actions + badge augment on SystemView, post-overlay-reconc
             parentIndex: 0,
             radius: 600_000,
             gravParameter: KERBIN_MU,
+            isHome: true,
             orbit: {
               sma: 13_599_840_256,
               ecc: 0,

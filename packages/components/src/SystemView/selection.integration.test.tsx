@@ -49,6 +49,7 @@ function kerbolSystem() {
         radius: 600_000,
         gravParameter: KERBIN_MU,
         sphereOfInfluence: 84_159_286,
+        isHome: true,
         orbit: {
           sma: 13_599_840_256,
           ecc: 0,

@@ -175,6 +175,7 @@ namespace Sitrep.Host
                 ["tidallyLocked"] = GetBool(raw, "tidallyLocked"),
                 ["hasOcean"] = GetBool(raw, "hasOcean"),
                 ["description"] = GetString(raw, "description"),
+                ["isHome"] = GetBool(raw, "isHome"),
                 // Nested atmosphere object: null when the body is airless, so a
                 // client tells "airless" apart from "no data" (same null-not-
                 // sentinel discipline the orbit block uses for the root star).

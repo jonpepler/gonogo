@@ -3401,6 +3401,7 @@ namespace Gonogo.KSP
                 ["tidallyLocked"] = body.tidallyLocked,
                 ["hasOcean"] = body.ocean,
                 ["description"] = body.bodyDescription,
+                ["isHome"] = body.isHomeWorld,
                 // Atmosphere as FLAT keys (a nested dict here would need special
                 // handling across the RecordedSessionCodec JSON round-trip); the
                 // provider reassembles them into the nested wire object.

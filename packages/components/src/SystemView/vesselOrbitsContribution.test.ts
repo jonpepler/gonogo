@@ -22,7 +22,13 @@ function bodies(): SystemBodies {
   return {
     bodies: [
       { index: 0, name: "Kerbol", parentIndex: undefined, orbit: undefined },
-      { index: 1, name: "Kerbin", parentIndex: 0, orbit: undefined },
+      {
+        index: 1,
+        name: "Kerbin",
+        parentIndex: 0,
+        orbit: undefined,
+        isHome: true,
+      },
     ],
   };
 }
@@ -279,7 +285,7 @@ describe("computeCommsNetworkEntities", () => {
     });
   });
 
-  it("places the home node at the home body (index 1), independent of vessel data", () => {
+  it("places the home node at the body flagged isHome, independent of vessel data", () => {
     const entities = computeCommsNetworkEntities(
       network(
         [node({ id: "home" }), node({ id: "v-1", kind: CommsHopKind.Vessel })],
@@ -292,6 +298,37 @@ describe("computeCommsNetworkEntities", () => {
     expect(entities[0].position).toEqual({
       kind: "fixed",
       parentName: "Kerbin",
+      xMetres: 0,
+      yMetres: 0,
+    });
+  });
+
+  it("locates the home body by isHome, not by a fixed index, under a hypothetical planet pack ordering", () => {
+    const reorderedBodies: SystemBodies = {
+      bodies: [
+        { index: 0, name: "Kerbol", parentIndex: undefined, orbit: undefined },
+        { index: 1, name: "Moho", parentIndex: 0, orbit: undefined },
+        {
+          index: 2,
+          name: "HomeworldX",
+          parentIndex: 0,
+          orbit: undefined,
+          isHome: true,
+        },
+      ],
+    };
+    const entities = computeCommsNetworkEntities(
+      network(
+        [node({ id: "home" }), node({ id: "v-1", kind: CommsHopKind.Vessel })],
+        [edge("home", "v-1")],
+      ),
+      wire([vessel({ orbit: { sma: value("m", 700_000) }, bodyIndex: 2 })]),
+      reorderedBodies,
+    );
+
+    expect(entities[0].position).toEqual({
+      kind: "fixed",
+      parentName: "HomeworldX",
       xMetres: 0,
       yMetres: 0,
     });
@@ -373,7 +410,7 @@ describe("computeCommsNetworkEntities", () => {
     expect(entities.map((e) => e.id)).toEqual(["comms-edge:home:v-relay"]);
   });
 
-  it("omits an edge to home when the home body (index 1) isn't in system.bodies yet", () => {
+  it("omits an edge to home when no body is flagged isHome yet", () => {
     const relay = vessel({
       vesselId: "v-relay",
       orbit: { sma: value("m", 3_468_750) },
@@ -387,7 +424,12 @@ describe("computeCommsNetworkEntities", () => {
         [edge("home", "v-relay")],
       ),
       wire([relay]),
-      { bodies: [{ index: 0, name: "Kerbol", orbit: undefined }] }, // no index 1 yet
+      {
+        bodies: [
+          { index: 0, name: "Kerbol", orbit: undefined },
+          { index: 1, name: "Kerbin", parentIndex: 0, orbit: undefined }, // present, but not flagged home
+        ],
+      },
     );
 
     expect(entities).toEqual([]);

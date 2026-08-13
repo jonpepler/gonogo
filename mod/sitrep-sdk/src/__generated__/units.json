@@ -81,6 +81,7 @@
       "gravParameter": "m³/s²",
       "hasOcean": "flag",
       "index": "id",
+      "isHome": "flag",
       "name": "text",
       "parentIndex": "id",
       "radius": "m",

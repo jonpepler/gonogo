@@ -18,12 +18,12 @@ import "./vesselOrbitsContribution";
  * DOM it renders into, not a unit test of `computeCommsNetworkEntities` in
  * isolation.
  *
- * `system.bodies` here uses the real global numbering the join relies on
- * (`0` = the star, `1` = the home body), matching `multi-vessel-orbits.json`
+ * `system.bodies` here flags Kerbin `isHome: true`, the join the graph's
+ * `"home"` node now resolves against, matching `multi-vessel-orbits.json`
  * and `vesselOrbitsContribution.test.ts`'s own `bodies()` fixture, unlike
  * the sibling `vesselOrbitsContribution.integration.test.tsx` file (whose
- * minimal two-body list starts at index 0 for a different, home-index-
- * agnostic purpose).
+ * minimal two-body list carries no home flag at all, for a different,
+ * home-agnostic purpose).
  */
 
 const KERBOL_MU = 1.1723328e18;
@@ -47,6 +47,7 @@ function kerbolSystem() {
         radius: 600_000,
         gravParameter: KERBIN_MU,
         sphereOfInfluence: 84_159_286,
+        isHome: true,
         orbit: {
           sma: 13_599_840_256,
           ecc: 0,

@@ -862,6 +862,7 @@ export interface BodyEntry
 	atmosphere?: AtmosphereEntry;
 	hasOcean?: boolean;
 	description?: string;
+	isHome?: boolean;
 }
 export interface AtmosphereEntry
 {

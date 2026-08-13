@@ -99,6 +99,10 @@ public class BodyEntry
     [SitrepUnit(Units.Text)]
     public string? Description { get; set; }
 
+    /// <summary>Whether KSC and the launch sites sit on this body (<c>CelestialBody.isHomeWorld</c>); true on exactly one body, null when absent. The authoritative home-body marker: a client locates home by this flag, never by index.</summary>
+    [SitrepUnit(Units.Flag)]
+    public bool? IsHome { get; set; }
+
     // Deliberately NO "eccentricAnomaly" field: see the class doc.
     // Deliberately NO raw mass / surfaceGravity / escapeVelocity / period /
     // trueAnomaly / rotates / hillSphere: all derived client-side from

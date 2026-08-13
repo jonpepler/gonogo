@@ -37,6 +37,7 @@
               "radius": 600000,
               "gravParameter": 3.5316e12,
               "sphereOfInfluence": 84159286,
+              "isHome": true,
               "hasOcean": true,
               "atmosphere": {
                 "depth": 70000,

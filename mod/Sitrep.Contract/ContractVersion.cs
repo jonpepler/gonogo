@@ -804,7 +804,18 @@ namespace Sitrep.Contract
         /// retyped, so an Uplink built against Major 12.0-12.8 is unaffected and
         /// the frozen Major-12 floor is NOT re-frozen. See
         /// <c>.superpowers/sdd/2026-08-12-systemview-shape-contributions/</c>.</para>
+        ///
+        /// <para><b>Bumped 9 -&gt; 10: the home-body flag.</b> A new nullable
+        /// <see cref="BodyEntry.IsHome"/> (<c>CelestialBody.isHomeWorld</c>): the
+        /// authoritative home-body marker a SystemView graph join now resolves by,
+        /// replacing the fragile "body index 1 is home" convention the shape-
+        /// contribution foundation above relied on (works for RSS + stock, both
+        /// index 1, but not under an arbitrary planet pack). A new nullable field
+        /// on an existing wire type, nothing removed or retyped, so an Uplink
+        /// built against Major 12.0-12.9 is unaffected and the frozen Major-12
+        /// floor is NOT re-frozen. See
+        /// <c>.superpowers/sdd/2026-08-12-systemview-shape-contributions/</c>.</para>
         /// </summary>
-        public const int Minor = 9;
+        public const int Minor = 10;
     }
 }

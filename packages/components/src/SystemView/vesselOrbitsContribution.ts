@@ -168,37 +168,40 @@ export function computeVesselOrbitEntities(
 }
 
 /**
- * FlightGlobals convention this join relies on: body index 0 is always the
- * root star, index 1 is always the home body (stock KSP, RSS, and every
- * planet pack surveyed preserve this ordering). `system.bodies` carries no
- * explicit "is home" flag, and `comms.network`'s `"home"` node id names only
- * the KSC ground-station NODE, not which celestial body it sits on (Task 1,
- * `95e394bc`), so this is the one place that convention gets assumed. A
- * `BodyEntry.isHome` flag on the wire would remove the assumption outright if
- * a modded system ever proves it wrong; flagged as a concern until then.
+ * The home body's name, resolved off `BodyEntry.isHome` (whichever body KSC
+ * and the launch sites sit on): the authoritative join, replacing the
+ * fragile "body index 1 is home" FlightGlobals convention this contribution
+ * used to assume (true for stock KSP and RSS, both index 1, but not
+ * guaranteed under an arbitrary planet pack). `null` when no body has the
+ * flag set yet (no sample landed, or an older mod build not yet emitting
+ * it), the same "no data" honesty every other join in this file follows.
  */
-const HOME_BODY_INDEX = 1;
+function homeBodyName(bodies: SystemBodies | undefined): string | null {
+  for (const b of bodies?.bodies ?? []) {
+    if (b.isHome === true && b.name != null) return b.name;
+  }
+  return null;
+}
 
 /**
  * A CommNet graph node's projected position, joined the same way `Comms.cs`'s
  * `CommsNetworkNode.Id` doc promises: the home ground station resolves to
- * `HOME_BODY_INDEX`'s own body (a faint dot at its centre, same "at the body"
- * degrade a landed vessel gets); every other node resolves by matching its id
- * against a vessel's `vesselId` and reusing `vesselPosition`. `null` when the
- * join can't be honestly completed (home body not in `system.bodies` yet, or
- * the id matches no known vessel and isn't `"home"`), never a fabricated
- * position.
+ * `homeName` (a faint dot at its centre, same "at the body" degrade a landed
+ * vessel gets); every other node resolves by matching its id against a
+ * vessel's `vesselId` and reusing `vesselPosition`. `null` when the join
+ * can't be honestly completed (no body flagged `isHome` yet, or the id
+ * matches no known vessel and isn't `"home"`), never a fabricated position.
  */
 function resolveNodePosition(
   nodeId: string,
   isHomeNode: boolean,
   vesselsById: ReadonlyMap<string, VesselRosterEntry>,
   nameByIndex: ReadonlyMap<number, string>,
+  homeName: string | null,
 ): SystemEntityPosition | null {
   if (isHomeNode) {
-    const bodyName = nameByIndex.get(HOME_BODY_INDEX);
-    return bodyName
-      ? { kind: "fixed", parentName: bodyName, xMetres: 0, yMetres: 0 }
+    return homeName
+      ? { kind: "fixed", parentName: homeName, xMetres: 0, yMetres: 0 }
       : null;
   }
   const vessel = vesselsById.get(nodeId);
@@ -229,6 +232,7 @@ export function computeCommsNetworkEntities(
 ): readonly SystemEntity[] {
   if (!network) return [];
   const nameByIndex = bodyNameByIndex(bodies);
+  const homeName = homeBodyName(bodies);
   const vesselsById = new Map(
     (vessels?.vessels ?? []).map((v) => [v.vesselId, v] as const),
   );
@@ -247,12 +251,14 @@ export function computeCommsNetworkEntities(
       homeNodeIds.has(edge.a),
       vesselsById,
       nameByIndex,
+      homeName,
     );
     const to = resolveNodePosition(
       edge.b,
       homeNodeIds.has(edge.b),
       vesselsById,
       nameByIndex,
+      homeName,
     );
     if (!from || !to) continue;
 

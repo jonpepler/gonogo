@@ -534,6 +534,12 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // is NOT relisted here: see the 2026-07-29 systemview-overlays branch.
       "packages/components/src/FleetComms/pendingPulse.ts",
       "packages/components/src/FleetComms/slot.test.tsx",
+      // commsTraffic.integration.test.tsx is the SystemView counterpart of
+      // FleetComms/slot.test.tsx above (same `system.uplink.pending` ->
+      // route pulse wiring, now rendered on SystemView): its fixture also
+      // uses "kos.run" as a sample pending-command string, no real kOS
+      // import or coupling.
+      "packages/components/src/SystemView/commsTraffic.integration.test.tsx",
       "mod/GonogoKerbcastUplink/client/src/CameraFeed/CameraFeed.tsx",
       "mod/GonogoKerbcastUplink/client/src/CameraFeed/CameraFeed.test.tsx",
       "mod/Sitrep.Contract/Comms.cs",

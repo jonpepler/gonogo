@@ -569,7 +569,7 @@ async function renderOneWidget(
   console.log(`Rendered ${count} widget shots → ${outDir}`);
 }
 
-interface PreparePageOpts {
+export interface PreparePageOpts {
   /** esbuild entry point (probe-entry.tsx or screen-entry.tsx). */
   entry: string;
   /** HTML template path with the `probe-theme` style + script placeholder. */
@@ -625,7 +625,7 @@ document.head.appendChild(__style);`,
  *  write to tmpdir. Shared by the widget and screen render paths, they
  *  differ only in entry point + HTML template. Returns the generated HTML
  *  path. */
-async function prepareProbePage(opts: PreparePageOpts): Promise<string> {
+export async function prepareProbePage(opts: PreparePageOpts): Promise<string> {
   console.log(`Bundling ${opts.entry} with esbuild…`);
   const bundleResult = await build({
     entryPoints: [opts.entry],

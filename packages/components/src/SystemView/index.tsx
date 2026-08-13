@@ -13,9 +13,11 @@ import {
 import {
   type OrbitElements,
   solveAnomalies,
+  useLatestValue,
+  useUtNow,
   useViewUt,
 } from "@ksp-gonogo/sitrep-client";
-import type { Value } from "@ksp-gonogo/sitrep-sdk";
+import type { PendingUplinkQueue, Value } from "@ksp-gonogo/sitrep-sdk";
 import {
   ConfigForm,
   Field,
@@ -37,6 +39,7 @@ import {
   deriveCommsPath,
   NO_COMMS_PATH,
 } from "./commsPath";
+import { deriveTraffic } from "./commsTraffic";
 import { SystemDiagram } from "./SystemDiagram";
 import { SystemEntitiesLayer } from "./SystemEntitiesLayer";
 import type { SystemEntityStyle } from "./systemEntities";
@@ -262,6 +265,14 @@ function SystemViewComponent({
   // View-UT: the SDK view time the propagation already evaluates at
   // (`t.universalTime` was never a stream; it IS `sdk.view.ut()`).
   const universalTime = useViewUt();
+  // Command traffic (Task 6): TrueNow command-centre bookkeeping, same
+  // `useLatestValue`/`useUtNow` split `FleetComms` already rides for this
+  // exact topic (see that widget's class doc for why: dispatch-time facts,
+  // not delayed craft telemetry).
+  const pendingQueue = useLatestValue<PendingUplinkQueue>(
+    "system.uplink.pending",
+  );
+  const utNow = useUtNow();
 
   // Shape-contribution foundation: every `system-view.entities` contribution
   // (vessel orbits, the CommNet graph, a future CME front, ...), aggregated
@@ -340,21 +351,41 @@ function SystemViewComponent({
     () => COMMS_PATH_COLOUR[commsControlQuality(selectedEntity?.meta?.comms)],
     [selectedEntity],
   );
+  // Command traffic (Task 6): `system.uplink.pending` has no vessel-target
+  // field (a hard contract invariant, see `commsTraffic.ts`'s module doc), so
+  // every pending entry is implicitly addressed to the ACTIVE vessel, routed
+  // over the SAME `comms.network` graph the selection path above walks.
+  // Independent of selection: traffic keeps animating on the active vessel's
+  // route whether or not the operator has anything else selected.
+  const traffic = useMemo(
+    () =>
+      deriveTraffic(
+        pendingQueue?.pending ?? [],
+        commsNetwork,
+        identity?.vesselId,
+        utNow,
+      ),
+    [pendingQueue, commsNetwork, identity?.vesselId, utNow],
+  );
+  const trafficEdgeIds = useMemo(() => new Set(traffic.edgeIds), [traffic]);
   // The id-keyed decoration hook: brightens the selected vessel's own
   // orbit/point entity (faint -> bright, no colour override needed, the
-  // `bright` emphasis token already reads prominent), and colours the
-  // derived CommNet path's edges by the selected vessel's control state on
-  // top of their own faint base style. Never touches the contribution's
-  // data, purely a style override keyed by id.
+  // `bright` emphasis token already reads prominent), colours the derived
+  // CommNet path's edges by the selected vessel's control state, and (lowest
+  // priority, so an explicit selection never gets overridden by ambient
+  // traffic) brightens whichever edges are currently carrying command
+  // traffic. Never touches the contribution's data, purely a style override
+  // keyed by id.
   const decorate = useCallback(
     (id: string): SystemEntityStyle | undefined => {
       if (id === selectedVesselId) return { emphasis: "bright" };
       if (commsPathEdgeIds.has(id)) {
         return { emphasis: "bright", colour: commsPathColour };
       }
+      if (trafficEdgeIds.has(id)) return { emphasis: "bright" };
       return undefined;
     },
-    [selectedVesselId, commsPathEdgeIds, commsPathColour],
+    [selectedVesselId, commsPathEdgeIds, commsPathColour, trafficEdgeIds],
   );
 
   // Stable body-index → NAME map (from `system.bodies`' stable `index`, never
@@ -753,6 +784,7 @@ function SystemViewComponent({
                 decorate={decorate}
                 selectedId={selectedVesselId}
                 onEntityActivate={handleEntityActivate}
+                pulses={traffic.pulses}
               />
             )}
             {/* Overlay slot: layered over the body diagram, passed the diagram's

@@ -101,38 +101,44 @@ export type SystemEntityShape =
   /**
    * A moving segment from this entity's own `position` (the apex, e.g. a
    * star) travelling outward toward `to` (a bearing + distance, e.g. the
-   * body a CME threatens), looping continuously rather than sitting static:
-   * use this instead of `blob`/a fixed wedge for anything that reads as
-   * ONE thing in transit along a bearing (a CME front) rather than an
-   * omnidirectional or static field. `segmentLengthMetres` is the physical
-   * length of the moving segment itself (NOT the full apex->tip distance),
-   * projected by `plotScale` like `blob`'s radius so it scales on zoom, and
-   * clamped to the apex->tip distance if it would overshoot.
+   * body a CME threatens): use this instead of `blob`/a fixed wedge for
+   * anything that reads as ONE thing in transit along a bearing (a CME
+   * front) rather than an omnidirectional or static field.
+   * `segmentLengthMetres` is the physical length of the moving segment
+   * itself (NOT the full apex->tip distance), projected by `plotScale` like
+   * `blob`'s radius so it scales on zoom, and clamped to the apex->tip
+   * distance if it would overshoot.
    *
-   * `SystemEntitiesLayer` renders the loop DEPARTING, not arriving: each
-   * cycle starts with the segment emerging from the apex (this entity's own
-   * `position`, e.g. the star), travels the full apex->`to` bearing at a
-   * constant rate, crosses over `to`, then keeps sliding the same direction
-   * so the segment washes out past it, its trailing edge catching up until
-   * the whole thing has cleared, before the loop restarts. Because the
-   * WHOLE loop runs at one constant rate, the fraction of loop-time spent
-   * crossing `to` versus travelling out to it falls out of the geometry
-   * alone: both distances are real metres under the same `plotScale`, so
-   * their pixel ratio already equals their real-time ratio (a caller sizing
-   * `segmentLengthMetres` as `speed * activeDuration`, e.g. this file's own
-   * CME honesty note, gets an honest crossing-time-equals-`activeDuration`
-   * loop for free, with no separate phase or easing logic anywhere). How
-   * far past `to` it travels before restarting, and the overall loop
-   * PERIOD, are both `SystemEntitiesLayer` rendering choices, not part of
-   * this contract: a contribution has no wall clock to derive a real
-   * transit time or a real "how wide is the target" from
-   * (contribution-slots-spec: `compute()` is a pure function of
-   * Topics/Processors only).
+   * A SINGLE pass, never a loop: `SystemEntitiesLayer` positions the
+   * segment each render from real UT (its own `nowUt` prop) against
+   * `arriveUt`/`clearUt` below, so the wave departs the apex once and
+   * finishes once, matching one real event (e.g. one CME) rather than
+   * decoratively repeating. `arriveUt`/`clearUt` are absolute UT timestamps
+   * a contribution derives from its own Topic data (e.g. Kerbalism's own
+   * storm-arrival UT and post-arrival duration): ordinary arithmetic on
+   * values already on the wire, not a wall-clock read, so this still holds
+   * the contribution-slots-spec rule that `compute()` is a pure function of
+   * Topics/Processors only. `SystemEntitiesLayer` derives the DEPARTURE time
+   * itself (`arriveUt` minus however long the apex->tip crossing takes at
+   * the same constant rate `clearUt - arriveUt` implies for crossing
+   * `segmentLengthMetres`), so the leading edge emerges from the apex,
+   * travels the bearing, reaches `to` exactly at `arriveUt`, and keeps
+   * sliding until its trailing edge clears `to` at `clearUt`; the portion of
+   * the segment that has passed beyond `to` fades out over a short distance
+   * rather than staying full-strength, so the render doesn't overstate a
+   * "how far has it gone past the target" the underlying data doesn't
+   * actually carry.
    */
   | {
       kind: "travelling-pulse";
       to: SystemEntityPosition;
       segmentLengthMetres: number;
+      /** UT the leading edge reaches `to` (the real event this entity
+       *  represents "arriving" or "beginning" at the target). */
+      arriveUt: number;
+      /** UT the trailing edge fully clears `to`: the real event "ending" at
+       *  the target (`arriveUt` plus however long it stays active there). */
+      clearUt: number;
     };
 
 export interface SystemEntity {
@@ -371,11 +377,14 @@ export type ResolvedSystemEntity =
       /** Apex (the entity's own `position`, projected). */
       x1: number;
       y1: number;
-      /** Tip (`shape.to`, projected): where the pulse travels TOWARD, one
-       *  full apex->tip distance per loop. */
+      /** Tip (`shape.to`, projected): where the pulse travels TOWARD. */
       x2: number;
       y2: number;
       segmentLengthPx: number;
+      /** Carried straight through from `shape.arriveUt`/`clearUt`: see
+       *  `SystemEntityShape`'s `travelling-pulse` doc comment. */
+      arriveUt: number;
+      clearUt: number;
     });
 
 const DEFAULT_POINT_RADIUS_PX = 4;
@@ -510,6 +519,8 @@ export function resolveSystemEntities(
           x2: to.x,
           y2: to.y,
           segmentLengthPx,
+          arriveUt: entity.shape.arriveUt,
+          clearUt: entity.shape.clearUt,
           colour,
           opacity,
           meta: entity.meta,

@@ -4,12 +4,8 @@ import { useMemo } from "react";
 // (`&:focus-visible .focus-ring`) is an SVG pseudo-class + descendant rule
 // that inline `style` cannot express, and no ui-kit primitive is an SVG <g>
 // focus wrapper. Same pattern as `ShipMap/ShipDiagramSvg.tsx`'s `PartGroup`.
-// Shared by both interactive shapes (point markers and, since Task 5,
-// vessel orbit-path rings) and the travelling-pulse's own looping CSS
-// animation (`keyframes`, same reduced-motion-guarded pattern as
-// `ui-kit/StatusIndicator.tsx`'s pulsing dot).
-// biome-ignore lint/style/noRestrictedImports: SVG <g> focus ring + keyframes animation, no inline/primitive equivalent (see above)
-import { keyframes, styled } from "styled-components";
+// biome-ignore lint/style/noRestrictedImports: SVG <g> focus ring, no inline/primitive equivalent (see above)
+import { styled } from "styled-components";
 import {
   formatEntityLabel,
   type ResolvedSystemEntity,
@@ -73,6 +69,19 @@ export interface SystemEntitiesLayerProps {
    * nothing extra.
    */
   pulses?: readonly SystemEntityPulse[];
+  /**
+   * Real "now" UT, driving a `travelling-pulse` entity's single, non-looping
+   * pass (see `systemEntities.ts`'s own doc comment on that shape): SystemView
+   * owns reactivity here, a contribution supplies only the static `arriveUt`/
+   * `clearUt` timestamps. Typically `useUtNow()` (real-time bookkeeping, the
+   * same clock `system.uplink.pending`'s traffic pulses already use), not the
+   * delayed `useViewUt()`: a CME's `stormTime` is a real-UT fact stamped by
+   * the mod the instant the storm rolls, not delayed craft telemetry.
+   * Omitted or `undefined`: any `travelling-pulse` entity renders nothing
+   * this frame, the same "no data, no draw" contract every other entity
+   * follows on a missing input.
+   */
+  nowUt?: number;
 }
 
 export function SystemEntitiesLayer({
@@ -82,6 +91,7 @@ export function SystemEntitiesLayer({
   selectedId,
   onEntityActivate,
   pulses,
+  nowUt,
 }: Readonly<SystemEntitiesLayerProps>) {
   const resolved = useMemo(
     () => resolveSystemEntities(entities, ctx, decorate),
@@ -137,6 +147,7 @@ export function SystemEntitiesLayer({
           resolved={r}
           selected={selectedId === r.id}
           onActivate={onEntityActivate}
+          nowUt={nowUt}
         />
       ))}
       {resolvedPulses.length > 0 && (
@@ -192,10 +203,12 @@ function Primitive({
   resolved: r,
   selected,
   onActivate,
+  nowUt,
 }: Readonly<{
   resolved: ResolvedSystemEntity;
   selected: boolean;
   onActivate?: (id: string) => void;
+  nowUt?: number;
 }>) {
   switch (r.kind) {
     case "orbit-path": {
@@ -239,7 +252,7 @@ function Primitive({
                 fill="none"
                 stroke={r.colour}
                 strokeOpacity={r.opacity}
-                strokeWidth={1.2}
+                strokeWidth={VESSEL_ORBIT_STROKE_WIDTH_PX}
               />
             </g>
             {dot}
@@ -286,7 +299,15 @@ function Primitive({
               fill="none"
               stroke={r.colour}
               strokeOpacity={r.opacity}
-              strokeWidth={1.2}
+              // Selected reads brighter (colour/opacity, via `decorate`'s
+              // "bright" emphasis override) AND thicker: two independent
+              // cues so selection is legible even where colour contrast
+              // alone is marginal.
+              strokeWidth={
+                selected
+                  ? VESSEL_ORBIT_STROKE_WIDTH_SELECTED_PX
+                  : VESSEL_ORBIT_STROKE_WIDTH_PX
+              }
             />
             <ellipse
               className="focus-ring"
@@ -334,6 +355,9 @@ function Primitive({
         />
       );
     case "travelling-pulse": {
+      // No live UT: the same "no data, no draw" contract every other entity
+      // follows on a missing input (see this prop's own doc comment).
+      if (nowUt === undefined) return null;
       const dx = r.x2 - r.x1;
       const dy = r.y2 - r.y1;
       // Apex -> `to` (the shape's own tip, e.g. the CME's target body).
@@ -342,66 +366,59 @@ function Primitive({
       const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
       const segmentLengthPx = Math.min(r.segmentLengthPx, bodyPx);
       if (!(segmentLengthPx > 0)) return null;
-      // How far PAST the tip the pulse keeps going before it's fully
-      // exited and the loop restarts: a rendering choice, not contract
-      // data (see the `travelling-pulse` doc comment in systemEntities.ts).
-      // Reusing the segment's own physical length means the ejecta travels
-      // one more length of itself past the target before fully clearing
-      // it, a fair decorative stand-in that fabricates no new number.
+      const crossingS = r.clearUt - r.arriveUt;
+      if (!(crossingS > 0)) return null;
+
+      // ONE constant real rate for the whole journey, derived from the
+      // crossing phase (`segmentLengthPx` over `crossingS`, both exact):
+      // the apex->tip travel phase moves at this SAME rate, so a real-metres
+      // ratio (this shape's long-standing trick, `systemEntities.ts`'s own
+      // doc comment works the algebra) turns directly into the real-UT
+      // window the wave actually occupies, no separate phase/easing logic.
+      const ratePxPerS = segmentLengthPx / crossingS;
+      const travelS = bodyPx / ratePxPerS;
+      // Departure: derived, not carried on the wire (a contribution has no
+      // wall clock to compute "now" against, only `arriveUt`/`clearUt`
+      // themselves, see `systemEntities.ts`'s doc comment on this shape).
+      const departUt = r.arriveUt - travelS;
+      // How far PAST the tip the pulse keeps going before this render treats
+      // it as fully cleared: the segment's own physical length again, the
+      // same "one more length of itself" decorative stand-in this shape has
+      // always used, fabricating no new number.
       const exitPx = bodyPx + segmentLengthPx;
-      // At loop start the pulse's LEADING edge sits at the apex (x=0, the
-      // star), fully formed but clipped out of view by the static exit clip
-      // below (its own left edge sits at -PAD, just past the star): the
-      // pulse emerges from the sun rather than arriving pre-formed. It then
-      // slides forward at a CONSTANT rate for the whole loop, one linear
-      // `translateX` from `startPx` to `exitPx`, until the trailing edge
-      // clears `exitPx` and the loop restarts.
-      //
-      // That single constant rate is what makes the loop's own timing
-      // honest without this component ever computing a real transit time
-      // (still no wall clock, see the `travelling-pulse` doc comment in
-      // systemEntities.ts): the star->tip distance (`bodyPx`) and the
-      // pulse's own length (`segmentLengthPx`) are both real metres,
-      // projected by the SAME `plotScale`, so their PIXEL ratio already
-      // equals their real-metres ratio. At one constant speed, a real-metres
-      // ratio IS a real-TIME ratio (time = distance / speed, and the speed
-      // cancels out of the ratio). Concretely: the leading edge travels
-      // `bodyPx` pixels (the real star->target distance) before it first
-      // reaches the tip, arriving after a REAL time of `dist /
-      // ejectionSpeed`; the trailing edge then needs another
-      // `segmentLengthPx` pixels (the pulse's own physical length) to clear
-      // the tip, which is exactly `stormDuration` of real time by
-      // construction (`contribution.ts` sizes `segmentLengthMetres` as
-      // `ejectionSpeed * stormDuration`). So the loop-time fraction spent
-      // crossing the target vs. travelling out to it already reflects
-      // `stormDuration` relative to the real travel time, with no separate
-      // easing or phase logic needed. The trailing `exitPx` leg (clearing
-      // the far side) reuses that same pixel length again, the same
-      // decorative "one more length of itself" stand-in this shape has
-      // always used.
-      const startPx = -segmentLengthPx;
-      const travelPx = exitPx - startPx;
+      const leadingPx = ratePxPerS * (nowUt - departUt);
+      // Hasn't departed yet, or has already fully cleared (the real event's
+      // own data should have dropped this entity by `clearUt`; this is a
+      // defensive bound, not the primary "when does it end" signal).
+      if (!(leadingPx > 0) || leadingPx > exitPx) return null;
+
+      const startPx = leadingPx - segmentLengthPx;
+      // Fades the portion of the wave that has passed BEYOND the target
+      // (local x > bodyPx) rather than leaving it full-strength: this render
+      // only ever knows real speed/distance, not "how far past the target
+      // has it actually travelled", so a hard cutoff (or no fade at all)
+      // would overstate a precision the underlying data doesn't carry.
+      // Scales with the pulse's own length so a long pulse fades over a
+      // proportionally long tail and a short one over a short one, floored
+      // so a near-zero-length pulse still gets a visible fade band.
+      const fadeDistancePx = Math.max(
+        segmentLengthPx * TRAVELLING_PULSE_FADE_FRACTION,
+        TRAVELLING_PULSE_MIN_FADE_PX,
+      );
       const clipId = `system-entities-pulse-clip-${r.id}`;
+      const gradientId = `system-entities-pulse-fade-${r.id}`;
       return (
-        // Static positioning (SVG `transform` ATTRIBUTE) lives on its own
-        // outer `<g>`, never the same element as the CSS-animated one: SVG2
-        // treats `transform` as CSS-stylable, so a CSS `transform` (the
-        // animation's `translateX`) doesn't compose with the attribute, it
-        // REPLACES it outright. Splitting the two into outer (attribute) /
-        // inner (CSS animation, in the outer's already-rotated local frame)
-        // is what keeps the segment anchored at the apex and pointed along
-        // the bearing once the animation is actually running.
         <g
           transform={`translate(${r.x1} ${r.y1}) rotate(${angleDeg})`}
           pointerEvents="none"
           data-entity-id={r.id}
         >
           <defs>
-            {/* Static (never animated): fixed in the apex-anchored local
-                frame at [0, exitPx], so a segment sliding through it via the
-                CHILD's own CSS transform gets truncated wherever it runs
-                past `exitPx`, without this rect ever needing to track the
-                animation itself. */}
+            {/* Fixed in the apex-anchored local frame, so the segment
+                doesn't render before it has departed the apex (a real UT-
+                driven render has no CSS animation to compose with, so this
+                is just a static bound, not a moving-target sync problem the
+                old looping version had to solve). */}
             <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
               <rect
                 x={-TRAVELLING_PULSE_CLIP_PAD_PX}
@@ -410,28 +427,37 @@ function Primitive({
                 height={TRAVELLING_PULSE_CLIP_HALF_HEIGHT_PX * 2}
               />
             </clipPath>
+            {/* Pinned to the TARGET's own local x (`bodyPx`), not to the
+                wave's current position: the wave's polyline points move
+                frame to frame, this band stays put over the target. */}
+            <linearGradient
+              id={gradientId}
+              gradientUnits="userSpaceOnUse"
+              x1={bodyPx}
+              y1={0}
+              x2={bodyPx + fadeDistancePx}
+              y2={0}
+            >
+              <stop offset={0} stopColor={r.colour} stopOpacity={r.opacity} />
+              <stop offset={1} stopColor={r.colour} stopOpacity={0} />
+            </linearGradient>
           </defs>
           <g clipPath={`url(#${clipId})`}>
-            <TravellingPulseGroup
-              style={
-                {
-                  "--pulse-start-px": `${startPx}px`,
-                  "--pulse-travel-px": `${travelPx}px`,
-                } as CSSProperties
-              }
-            >
-              {/* A sine-wave polyline rather than a plain line: reads as
-                  wavy, energetic ejecta instead of a smooth static dash. */}
-              <polyline
-                points={travellingPulseWavePoints(segmentLengthPx)}
-                fill="none"
-                stroke={r.colour}
-                strokeOpacity={r.opacity}
-                strokeWidth={TRAVELLING_PULSE_STROKE_WIDTH_PX}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </TravellingPulseGroup>
+            {/* A sine-wave polyline rather than a plain line: reads as
+                wavy, energetic ejecta instead of a smooth static dash.
+                Points are computed directly at the wave's CURRENT position
+                (`startPx`) each render: a single real-UT-driven pass has no
+                animation to compose with, so there's no need for the
+                separate static/animated `<g>` split the old looping
+                version needed. */}
+            <polyline
+              points={travellingPulseWavePoints(segmentLengthPx, startPx)}
+              fill="none"
+              stroke={`url(#${gradientId})`}
+              strokeWidth={TRAVELLING_PULSE_STROKE_WIDTH_PX}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </g>
         </g>
       );
@@ -493,6 +519,22 @@ function Primitive({
  *  so a linked vessel reads as "here", not just "somewhere on this ring". */
 const ORBIT_DOT_RADIUS_PX = 2.5;
 
+/**
+ * Every `orbit-path` entity this layer draws is a VESSEL orbit (the
+ * contribution-slot's only source of that shape, `vesselOrbitsContribution.ts`):
+ * deliberately THINNER than a body orbit ring (`SystemDiagram.tsx`'s own
+ * `BODY_ORBIT_STROKE_WIDTH`, drawn in the same diagram), so the two classes
+ * read as visually distinct rather than identical lines. This layer's own SVG
+ * is the diagram's static auto-fit projection (zoom=1, no live pan/zoom, see
+ * `SystemEntitiesContext`'s doc comment), so unlike `SystemDiagram.tsx`'s
+ * `/zoom`-divided strokes, a plain constant here already stays screen-constant.
+ */
+const VESSEL_ORBIT_STROKE_WIDTH_PX = 1;
+/** Selected: brighter (via `decorate`'s "bright" emphasis, unrelated to this
+ *  file) AND thicker than its own unselected width, so selection reads as a
+ *  clear step up rather than a colour change alone. */
+const VESSEL_ORBIT_STROKE_WIDTH_SELECTED_PX = 2;
+
 /** Half-width, in `t` units along the edge, of the pulse's bright band: a
  *  travelling gradient highlight rather than a discrete marker, so command
  *  traffic can't be mistaken for a vessel point riding the line. */
@@ -513,27 +555,6 @@ const PULSE_PEAK_COLOUR = "var(--color-text-primary)";
  *  1.4px, `orbit-path`'s 1.2px). */
 const PULSE_STROKE_WIDTH_PX = 1.2;
 
-/** Where the travelling-pulse segment's local origin (its trailing end)
- *  starts each loop (`--pulse-start-px`, already past the apex: the
- *  segment arrives fully formed rather than growing in from the star) and
- *  how far it slides from there (`--pulse-travel-px`), both set per-
- *  instance (`Primitive`'s "travelling-pulse" case). Opacity ramps in/out
- *  over the first/last 8% so the loop reads as a repeating sweep rather
- *  than a visible jump-cut; the actual "shortens as it exits" effect comes
- *  from the static clip in `Primitive`, not from anything animated here.
- *  The PERIOD is a fixed decorative constant, not derived from any real
- *  transit time: a contribution has no wall clock to compute one from (see
- *  `systemEntities.ts`'s `travelling-pulse` doc comment). */
-const travellingPulseKeyframes = keyframes`
-  0% { transform: translateX(var(--pulse-start-px, 0px)); opacity: 0; }
-  8% { opacity: 1; }
-  92% { opacity: 1; }
-  100% {
-    transform: translateX(calc(var(--pulse-start-px, 0px) + var(--pulse-travel-px, 0px)));
-    opacity: 0;
-  }
-`;
-const TRAVELLING_PULSE_PERIOD_MS = 4000;
 const TRAVELLING_PULSE_STROKE_WIDTH_PX = 2;
 /** Left padding on the static exit clip, so anti-aliasing at the segment's
  *  own trailing edge never gets a hard crop right at its start position. */
@@ -550,31 +571,39 @@ const TRAVELLING_PULSE_CLIP_HALF_HEIGHT_PX = 40;
 const TRAVELLING_PULSE_WAVELENGTH_PX = 12;
 const TRAVELLING_PULSE_AMPLITUDE_PX = 3;
 const TRAVELLING_PULSE_SAMPLE_STEP_PX = 2;
+/** How far past the target (as a fraction of the pulse's own on-screen
+ *  length) the fade band extends before the trailing portion is fully
+ *  invisible: see `Primitive`'s "travelling-pulse" case. */
+const TRAVELLING_PULSE_FADE_FRACTION = 0.6;
+/** Floor on the fade distance, so a very short (near-clamped) pulse still
+ *  gets a visible fade band rather than an effectively-instant cutoff. */
+const TRAVELLING_PULSE_MIN_FADE_PX = 2;
 
-/** `points` for a `<polyline>` sine wave from local x=0 to x=lengthPx,
- *  y oscillating +-`TRAVELLING_PULSE_AMPLITUDE_PX`: exported for testing. */
-export function travellingPulseWavePoints(lengthPx: number): string {
+/** `points` for a `<polyline>` sine wave, `lengthPx` long, shifted by
+ *  `offsetPx` (default 0): the wave's TEXTURE (ripple phase) is always
+ *  computed from the segment's own local x in `[0, lengthPx]`, so it stays
+ *  rigidly painted on the segment rather than sliding independently of it;
+ *  `offsetPx` only moves where that whole textured segment sits, letting a
+ *  caller position the CURRENT wave without regenerating its ripple phase.
+ *  Exported for testing. */
+export function travellingPulseWavePoints(
+  lengthPx: number,
+  offsetPx = 0,
+): string {
   const steps = Math.max(
     1,
     Math.round(lengthPx / TRAVELLING_PULSE_SAMPLE_STEP_PX),
   );
   const points: string[] = [];
   for (let i = 0; i <= steps; i++) {
-    const x = (i / steps) * lengthPx;
+    const localX = (i / steps) * lengthPx;
     const y =
       TRAVELLING_PULSE_AMPLITUDE_PX *
-      Math.sin((x / TRAVELLING_PULSE_WAVELENGTH_PX) * 2 * Math.PI);
-    points.push(`${x},${y}`);
+      Math.sin((localX / TRAVELLING_PULSE_WAVELENGTH_PX) * 2 * Math.PI);
+    points.push(`${localX + offsetPx},${y}`);
   }
   return points.join(" ");
 }
-
-const TravellingPulseGroup = styled.g`
-  @media (prefers-reduced-motion: no-preference) {
-    animation: ${travellingPulseKeyframes} ${TRAVELLING_PULSE_PERIOD_MS}ms
-      var(--ease-linear, linear) infinite;
-  }
-`;
 
 const LAYER_SVG: CSSProperties = {
   position: "absolute",

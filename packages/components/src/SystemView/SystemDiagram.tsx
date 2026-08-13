@@ -100,6 +100,22 @@ const PAD = 20;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 25;
 
+/**
+ * Body orbit rings (child bodies orbiting the framed parent) render
+ * THICKER than the active vessel's own orbit ring
+ * (`ACTIVE_VESSEL_ORBIT_STROKE_WIDTH` below) and than a contributed vessel
+ * orbit ring (`SystemEntitiesLayer.tsx`'s `VESSEL_ORBIT_STROKE_WIDTH_PX`):
+ * the two classes used to sit within a few tenths of a pixel of each other
+ * and read as visually identical. Screen-constant (divided by `zoom`, like
+ * every dot/marker/label in this diagram): `strokeWidth={1.2}` alone would
+ * balloon to 30px at the 25x zoom cap (board #28, `soiZoomStroke.test.tsx`).
+ */
+const BODY_ORBIT_STROKE_WIDTH = 2;
+/** The active vessel's own dedicated ring (`VesselOrbitPath`): thinner than
+ *  a body orbit, so the two classes read as visually distinct. It keeps its
+ *  own dashed pattern + inclination gradient as further differentiators. */
+const ACTIVE_VESSEL_ORBIT_STROKE_WIDTH = 1;
+
 export function SystemDiagram({
   bodies,
   parentName,
@@ -363,9 +379,9 @@ export function SystemDiagram({
                 stroke={`url(#${tiltGradId}-${c.index})`}
                 // Screen-constant, like every dot/marker/label below: the SVG
                 // viewBox magnifies user-units by `zoom`, so a user-unit stroke
-                // balloons to 1.2*zoom px (30 px at the 25x cap), swallowing a
+                // would otherwise balloon at the 25x cap, swallowing a
                 // near-parent orbit into an unreadable blob at SOI zoom.
-                strokeWidth={1.2 / zoom}
+                strokeWidth={BODY_ORBIT_STROKE_WIDTH / zoom}
               />
             </g>
           );
@@ -664,7 +680,7 @@ function VesselOrbitPath({
         stroke={`url(#${gradId})`}
         // Screen-constant stroke + dashes (see the child-orbit ellipse note):
         // user-unit line metrics would balloon with the viewBox at SOI zoom.
-        strokeWidth={1.4 / zoom}
+        strokeWidth={ACTIVE_VESSEL_ORBIT_STROKE_WIDTH / zoom}
         strokeDasharray={`${4 / zoom} ${3 / zoom}`}
       />
     </g>

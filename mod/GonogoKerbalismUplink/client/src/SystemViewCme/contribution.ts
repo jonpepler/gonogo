@@ -25,39 +25,30 @@ import { KERBALISM } from "../uplink";
 // HONESTY NOTE on the travelling pulse's geometry: a CME is a targeted mass
 // ejection from ONE point on the star travelling in ONE direction, not a
 // spherical front (an earlier version drew a `blob`, a concentric circle,
-// purely because that was the only directional-less shape available; the
-// version right before this one drew a static wedge from star to body,
-// which then just switched on and off rather than reading as something in
-// transit). `KerbalismStormEntry.dist` is the LIVE sun-to-body distance
-// (`Storm.Update`'s own geometry), not a tracked position of the CME's
-// leading edge, Kerbalism's contract has no field for "how far has the
-// ejecta travelled so far", and a contribution's `compute()` never receives
-// a wall clock to interpolate one from (contribution-slots-spec: pure
-// function of Topics/Processors only, see `contributions.ts`'s own doc
-// comment). So the ACTUAL travel is rendered, not computed: SystemView's
-// `travelling-pulse` shape is a moving segment that loops EMERGING from the
-// star, travelling out to the target, crossing over it, and shortening as it
-// exits the far side, all at one constant rate over a fixed, purely
-// decorative CSS period (see `SystemEntitiesLayer.tsx`'s own doc comment on
-// the `travelling-pulse` case); this contribution supplies only what IS
-// real: the bearing (below) and the segment's LENGTH. That length is
-// `stormEjectionSpeed * stormDuration` (clamped to `dist`): the physical
-// distance the ejecta covers, at its real ejection speed, over the real span
-// the storm stays active at the target body, `stormDuration`. Because the
-// render's single constant rate turns a real-metres ratio directly into a
-// real-time ratio (`SystemEntitiesLayer`'s own doc comment works the
-// algebra), that same length is what makes the loop's CROSSING phase take
-// exactly `stormDuration` relative to the TRAVEL phase (`dist /
-// stormEjectionSpeed`), with nothing else in this contribution encoding that
-// ratio explicitly. The SAME length also sizes how far the render carries
-// the pulse past the target before the loop restarts (a
-// `SystemEntitiesLayer` rendering choice, not something this contribution
-// encodes separately): the ejecta needs to travel roughly its own length
-// past the body to fully clear it, a fair decorative stand-in that invents
-// no new number. Both a storm entry with no resolvable duration or no
-// ejection speed are skipped outright, the same "no data, no draw"
-// discipline every other field on this entity already follows, rather than
-// a fabricated segment length.
+// purely because that was the only directional-less shape available; a
+// later version drew a decorative, endlessly looping CSS animation, which
+// read as multiple repeating waves rather than one real event). This
+// contribution supplies only what IS real: the bearing (below), the
+// segment's LENGTH, and the real UT window it occupies; SystemView owns
+// turning that into a single, non-looping pass positioned each render
+// against its own live UT (`systemEntities.ts`'s doc comment on
+// `travelling-pulse`, `SystemEntitiesLayer.tsx`'s `Primitive` case), a
+// contribution's `compute()` never receives a wall clock itself
+// (contribution-slots-spec: pure function of Topics/Processors only, see
+// `contributions.ts`'s own doc comment).
+//
+// The segment's length is `stormEjectionSpeed * stormDuration` (clamped to
+// `dist`): the physical distance the ejecta covers, at its real ejection
+// speed, over the real span the storm stays active at the target body,
+// `stormDuration`. The UT window is `arriveUt` (Kerbalism's own
+// `stormTime`, the storm's arrival) through `clearUt` (`arriveUt +
+// stormDuration`, when the trailing edge fully clears the target):
+// SystemView derives the wave's DEPARTURE time itself from these two plus
+// the segment's own length, at the one constant real rate that already
+// makes the crossing phase take exactly `stormDuration`. A storm entry with
+// no resolvable duration, ejection speed, or arrival UT is skipped outright,
+// the same "no data, no draw" discipline every other field on this entity
+// already follows, rather than a fabricated segment or a fabricated time.
 //
 // The bearing: `KerbalismSpaceWeather.stars` carries each star's
 // vessel-to-star unit `direction` (`VesselData.SunInfo.Direction`), captured
@@ -179,14 +170,25 @@ function computeStormEntity(
   if (ejectionSpeedMps == null || !(ejectionSpeedMps > 0)) return null;
   const segmentLengthMetres = Math.min(durationS * ejectionSpeedMps, dist);
 
+  // Arrival UT drives BOTH the meta readout below and the shape's own
+  // `arriveUt`/`clearUt` (SystemView positions the single, non-looping wave
+  // from these against its own live UT, see `systemEntities.ts`'s doc
+  // comment on `travelling-pulse`): missing/non-finite means the wave has
+  // nothing real to anchor its timing to, so the whole entity is skipped,
+  // same "no data, no draw" discipline as dist/duration/speed above. In
+  // practice this never fires once `state !== 0` (the fair-vs-cheating
+  // boundary already guarantees `stormTime` is populated alongside it), but
+  // the check keeps this function honest against a malformed payload rather
+  // than assuming the contract.
   const arrivalUt = magnitudeOf(storm.stormTime);
+  if (arrivalUt == null || !Number.isFinite(arrivalUt)) return null;
   const meta: CmeEntityMeta = {
     star: storm.star,
     state: stormStateLabel(state),
     distM: dist,
     durationS,
     ejectionSpeedMps,
-    ...(arrivalUt != null ? { arrivalUt } : {}),
+    arrivalUt,
   };
 
   return {
@@ -201,6 +203,11 @@ function computeStormEntity(
       kind: "travelling-pulse",
       to: { kind: "fixed", parentName: storm.star, ...bearing },
       segmentLengthMetres,
+      arriveUt: arrivalUt,
+      // Kerbalism's own `storm_duration` is exactly "how long the storm
+      // stays active once it hits" (this contract's own `StormDuration` doc
+      // comment): the real UT the trailing edge clears the target.
+      clearUt: arrivalUt + durationS,
     },
     // Faint while inbound, normal once arrived: an ambient effect that
     // stacks under the CommNet graph and point markers

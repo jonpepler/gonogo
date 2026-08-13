@@ -132,6 +132,8 @@ describe("computeCmeEntities", () => {
         // ejectionSpeedMps (99e6) * durationS (3_600) = 3.564e11, well past
         // `dist` (13.6e9), so the segment clamps to the full apex->tip span.
         segmentLengthMetres: 13_599_840_256,
+        arriveUt: 5_000_000,
+        clearUt: 5_003_600,
       },
       style: { emphasis: "faint", colour: "var(--color-tag-yellow-fg)" },
       meta: {
@@ -153,6 +155,7 @@ describe("computeCmeEntities", () => {
         {
           star: "Kerbol",
           stormState: { magnitude: 1 },
+          stormTime: { magnitude: 1_000 },
           stormDuration: { magnitude: 3_600 },
           dist: { magnitude: 13_599_840_256 },
         },
@@ -161,6 +164,8 @@ describe("computeCmeEntities", () => {
     expect(entity?.shape).toMatchObject({
       kind: "travelling-pulse",
       segmentLengthMetres: 1_000_000 * 3_600,
+      arriveUt: 1_000,
+      clearUt: 4_600,
     });
   });
 
@@ -189,6 +194,24 @@ describe("computeCmeEntities", () => {
             stormState: { magnitude: 1 },
             stormDuration: { magnitude: 3_600 },
             dist: { magnitude: 13_599_840_256 },
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("skips a storm slot missing its arrival UT, never fabricating the wave's timing window", () => {
+    expect(
+      computeCmeEntities({
+        stormEjectionSpeed: { magnitude: 99_000_000 },
+        stars: [starDirection(1, 0, 0)],
+        storms: [
+          {
+            star: "Kerbol",
+            stormState: { magnitude: 1 },
+            stormDuration: { magnitude: 3_600 },
+            dist: { magnitude: 13_599_840_256 },
+            // no stormTime
           },
         ],
       }),
@@ -227,6 +250,7 @@ describe("computeCmeEntities", () => {
         {
           star: "Kerbol",
           stormState: { magnitude: 2 },
+          stormTime: { magnitude: 1_000 },
           stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 13_599_840_256 },
         },
@@ -247,6 +271,7 @@ describe("computeCmeEntities", () => {
         {
           star: "Kerbol",
           stormState: { magnitude: 1 },
+          stormTime: { magnitude: 1_000 },
           stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 1e10 },
         },
@@ -267,12 +292,14 @@ describe("computeCmeEntities", () => {
         {
           star: "Kerbol",
           stormState: { magnitude: 1 },
+          stormTime: { magnitude: 1_000 },
           stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 1e10 },
         },
         {
           star: "Kerbol B",
           stormState: { magnitude: 2 },
+          stormTime: { magnitude: 2_000 },
           stormDuration: { magnitude: 1_800 },
           dist: { magnitude: 2e10 },
         },

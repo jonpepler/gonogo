@@ -815,6 +815,13 @@ function SystemViewComponent({
                 selectedId={selectedVesselId}
                 onEntityActivate={handleEntityActivate}
                 pulses={traffic.pulses}
+                // Real-time bookkeeping clock, same one command traffic
+                // above already rides: a CME's `arriveUt`/`clearUt` are
+                // real-UT facts the mod stamps the instant a storm rolls,
+                // not delayed craft telemetry, so this drives its single,
+                // non-looping travelling-pulse pass (see
+                // `SystemEntitiesLayer.tsx`'s own `nowUt` doc comment).
+                nowUt={utNow}
               />
             )}
             {/* Overlay slot: layered over the body diagram, passed the diagram's

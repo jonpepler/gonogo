@@ -147,6 +147,10 @@ export type SystemEntityShape =
       kind: "travelling-pulse";
       to: SystemEntityPosition;
       segmentLengthMetres: number;
+      /** UT the leading edge reaches `to`. */
+      arriveUt: number;
+      /** UT the trailing edge fully clears `to`. */
+      clearUt: number;
     };
 
 /** Mirrors `SystemEntity`. */

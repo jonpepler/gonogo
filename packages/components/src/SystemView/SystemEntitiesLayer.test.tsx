@@ -75,6 +75,12 @@ const BLOB: SystemEntity = {
   shape: { kind: "blob", radiusMetres: 300_000 },
 };
 
+// bodyPx = 500_000 * CTX.plotScale (1e-5) = 5; segmentLengthPx = 100_000 *
+// 1e-5 = 1 (well under bodyPx, so unclamped); exitPx = 5 + 1 = 6.
+// arriveUt=100/clearUt=101 (crossingS=1) gives ratePxPerS = 1, so the wave
+// departs (leadingPx=0) at UT 95 and fully clears (leadingPx=exitPx=6) at
+// UT 101: a UT window chosen so every millisecond-of-nowUt below maps to a
+// round leadingPx.
 const TRAVELLING_PULSE: SystemEntity = {
   id: "cme-pulse-1",
   position: { kind: "fixed", parentName: "Kerbin", xMetres: 0, yMetres: 0 },
@@ -82,6 +88,8 @@ const TRAVELLING_PULSE: SystemEntity = {
     kind: "travelling-pulse",
     to: { kind: "fixed", parentName: "Kerbin", xMetres: 500_000, yMetres: 0 },
     segmentLengthMetres: 100_000,
+    arriveUt: 100,
+    clearUt: 101,
   },
 };
 
@@ -149,8 +157,13 @@ describe("SystemEntitiesLayer", () => {
   });
 
   it("draws a travelling-pulse as a wavy segment positioned+rotated onto its apex->tip bearing, not a static path shape", () => {
+    // nowUt=96: departUt=95, ratePxPerS=1, so leadingPx=1, startPx=0.
     const { container } = render(
-      <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
+      <SystemEntitiesLayer
+        entities={[TRAVELLING_PULSE]}
+        ctx={CTX}
+        nowUt={96}
+      />,
     );
     const group = container.querySelector('[data-entity-id="cme-pulse-1"]');
     expect(group?.tagName).toBe("g");
@@ -164,14 +177,23 @@ describe("SystemEntitiesLayer", () => {
     ).toBeNull();
     const polyline = group?.querySelector("polyline");
     expect(polyline).not.toBeNull();
-    // Drawn in the group's own LOCAL frame starting at the origin: the
-    // group's transform does the positioning, not the polyline's own points.
+    // startPx=0 at this nowUt: the polyline's own points ARE its current
+    // world position (no wrapping transform slides them any more, see this
+    // shape's `Primitive` case), so they start at the local origin here.
     expect(polyline?.getAttribute("points")).toMatch(/^0,0 /);
+    // Stroked via the fade gradient, not a flat colour: see the next test.
+    expect(polyline?.getAttribute("stroke")).toBe(
+      "url(#system-entities-pulse-fade-cme-pulse-1)",
+    );
   });
 
   it("clips the travelling-pulse's static exit boundary at apex->tip distance + one more segment length", () => {
     const { container } = render(
-      <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
+      <SystemEntitiesLayer
+        entities={[TRAVELLING_PULSE]}
+        ctx={CTX}
+        nowUt={96}
+      />,
     );
     // TRAVELLING_PULSE: bodyPx = 5 (500_000m * 1e-5), segmentLengthPx = 1
     // (100_000m * 1e-5, well under bodyPx so unclamped): exitPx = 5 + 1 = 6.
@@ -180,22 +202,83 @@ describe("SystemEntitiesLayer", () => {
     expect(Number(clipRect?.getAttribute("width"))).toBeCloseTo(6 + 4, 6);
   });
 
-  it("starts the travelling-pulse loop with its leading edge at the apex, emerging from the star rather than arriving pre-formed", () => {
+  it("positions the travelling-pulse's leading edge from real UT against arriveUt/clearUt, not a decorative loop", () => {
+    // At nowUt=arriveUt (100), the leading edge sits exactly at the tip
+    // (bodyPx=5): departUt=95, ratePxPerS=1, leadingPx=1*(100-95)=5.
+    const { container } = render(
+      <SystemEntitiesLayer
+        entities={[TRAVELLING_PULSE]}
+        ctx={CTX}
+        nowUt={100}
+      />,
+    );
+    const polyline = container.querySelector(
+      '[data-entity-id="cme-pulse-1"] polyline',
+    );
+    expect(polyline).not.toBeNull();
+    // startPx = leadingPx - segmentLengthPx = 5 - 1 = 4.
+    expect(polyline?.getAttribute("points")).toMatch(/^4,0 /);
+  });
+
+  it("fades the travelling-pulse's fill starting exactly at the target, not before or long past it", () => {
+    const { container } = render(
+      <SystemEntitiesLayer
+        entities={[TRAVELLING_PULSE]}
+        ctx={CTX}
+        nowUt={100}
+      />,
+    );
+    const gradient = container.querySelector(
+      "linearGradient#system-entities-pulse-fade-cme-pulse-1",
+    );
+    expect(gradient).not.toBeNull();
+    // bodyPx = 5: the fade band starts exactly at the target, never before
+    // it (the approaching/crossing portion stays full-strength).
+    expect(Number(gradient?.getAttribute("x1"))).toBeCloseTo(5, 6);
+    expect(Number(gradient?.getAttribute("x2"))).toBeGreaterThan(5);
+    const stops = gradient ? Array.from(gradient.querySelectorAll("stop")) : [];
+    expect(stops).toHaveLength(2);
+    expect(stops[0]?.getAttribute("offset")).toBe("0");
+    expect(Number(stops[0]?.getAttribute("stop-opacity"))).toBeGreaterThan(0);
+    expect(stops[1]?.getAttribute("offset")).toBe("1");
+    expect(Number(stops[1]?.getAttribute("stop-opacity"))).toBe(0);
+  });
+
+  it("draws nothing before the travelling-pulse has departed its apex (nowUt before departUt)", () => {
+    // departUt=95: one UT before it, the wave hasn't left the star yet.
+    const { container } = render(
+      <SystemEntitiesLayer
+        entities={[TRAVELLING_PULSE]}
+        ctx={CTX}
+        nowUt={94}
+      />,
+    );
+    expect(
+      container.querySelector('[data-entity-id="cme-pulse-1"]'),
+    ).toBeNull();
+  });
+
+  it("draws nothing once the travelling-pulse has fully cleared the target (nowUt past clearUt)", () => {
+    // clearUt=101, exitPx reached exactly there: one UT later it's cleared.
+    const { container } = render(
+      <SystemEntitiesLayer
+        entities={[TRAVELLING_PULSE]}
+        ctx={CTX}
+        nowUt={102}
+      />,
+    );
+    expect(
+      container.querySelector('[data-entity-id="cme-pulse-1"]'),
+    ).toBeNull();
+  });
+
+  it("draws nothing when nowUt is omitted (no live UT to position the wave against)", () => {
     const { container } = render(
       <SystemEntitiesLayer entities={[TRAVELLING_PULSE]} ctx={CTX} />,
     );
-    // startPx = -segmentLengthPx = -1: at 0% the segment's local span
-    // [-1, 0] puts its LEADING edge exactly at the apex (0, the star),
-    // clipped out of view by the static exit clip's own -PAD left edge.
-    const animated = container.querySelector(
-      '[data-entity-id="cme-pulse-1"] g[clip-path] > g',
-    ) as HTMLElement | null;
-    expect(animated).not.toBeNull();
-    expect(animated?.style.getPropertyValue("--pulse-start-px")).toBe("-1px");
-    // travelPx = exitPx - startPx = 6 - (-1) = 7: bodyPx (5) travelling out
-    // to the tip, plus one segmentLengthPx (1) crossing it, plus one more
-    // shrinking out the far side.
-    expect(animated?.style.getPropertyValue("--pulse-travel-px")).toBe("7px");
+    expect(
+      container.querySelector('[data-entity-id="cme-pulse-1"]'),
+    ).toBeNull();
   });
 
   it("never draws the travelling-pulse when its apex and tip coincide (zero-length bearing)", () => {
@@ -208,10 +291,13 @@ describe("SystemEntitiesLayer", () => {
               kind: "travelling-pulse",
               to: TRAVELLING_PULSE.position,
               segmentLengthMetres: 100_000,
+              arriveUt: 100,
+              clearUt: 101,
             },
           },
         ]}
         ctx={CTX}
+        nowUt={96}
       />,
     );
     expect(
@@ -309,6 +395,7 @@ describe("SystemEntitiesLayer", () => {
         ctx={CTX}
         onEntityActivate={() => {}}
         selectedId="vessel-1"
+        nowUt={96}
       />,
     );
     const results = await axe(container);
@@ -381,6 +468,34 @@ describe("SystemEntitiesLayer", () => {
       />,
     );
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("thickens (as well as brightening) a vessel orbit-path ring's own visible stroke when selected", () => {
+    const { container, rerender } = render(
+      <SystemEntitiesLayer
+        entities={[VESSEL_RING]}
+        ctx={CTX}
+        onEntityActivate={() => {}}
+        selectedId={null}
+      />,
+    );
+    const ringBefore = container.querySelector(
+      '[data-entity-id="vessel-orbit:v-relay"] [data-ring="true"]',
+    );
+    const widthBefore = Number(ringBefore?.getAttribute("stroke-width"));
+    rerender(
+      <SystemEntitiesLayer
+        entities={[VESSEL_RING]}
+        ctx={CTX}
+        onEntityActivate={() => {}}
+        selectedId="vessel-orbit:v-relay"
+      />,
+    );
+    const ringAfter = container.querySelector(
+      '[data-entity-id="vessel-orbit:v-relay"] [data-ring="true"]',
+    );
+    const widthAfter = Number(ringAfter?.getAttribute("stroke-width"));
+    expect(widthAfter).toBeGreaterThan(widthBefore);
   });
 
   it("has no axe violations with an interactive vessel orbit-path ring rendered", async () => {
@@ -552,5 +667,22 @@ describe("travellingPulseWavePoints", () => {
     // Never zero points even for a near-zero length: a degenerate polyline
     // (a single coordinate pair) is still a valid, harmless <polyline>.
     expect(travellingPulseWavePoints(0.5).split(" ")).toHaveLength(2);
+  });
+
+  it("shifts every point's x by offsetPx while keeping the ripple phase anchored to LOCAL x", () => {
+    // The ripple TEXTURE is unchanged (same y at the same local position),
+    // only where that textured segment sits moves: this is what lets a
+    // caller position the CURRENT wave without regenerating its shape.
+    const base = travellingPulseWavePoints(50)
+      .split(" ")
+      .map((p) => p.split(",").map(Number));
+    const shifted = travellingPulseWavePoints(50, 10)
+      .split(" ")
+      .map((p) => p.split(",").map(Number));
+    expect(shifted).toHaveLength(base.length);
+    for (const [i, [x, y]] of shifted.entries()) {
+      expect(x).toBeCloseTo(base[i][0] + 10, 6);
+      expect(y).toBeCloseTo(base[i][1], 6);
+    }
   });
 });

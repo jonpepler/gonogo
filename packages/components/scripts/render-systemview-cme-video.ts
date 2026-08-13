@@ -14,23 +14,29 @@
  * pattern) so the travelling pulse is shown stacking alongside a REAL
  * vessel-orbit ring and a REAL CommNet connection-line, the built-in
  * contributions this capture must not cut off. Storm samples over the
- * recording: none (the baseline degrade), an inbound storm targeting Kerbin,
- * Kerbin arrived (stormState 2, warn-tinted), then a fresh storm inbound
- * toward Duna once Kerbin's has passed. Always ONE entry in `storms` at a
- * time: it's scoped to the active vessel's current SOI, one entry per star,
- * so a real feed can never carry two simultaneous entries for the same
- * star; the sequence here is sequential, not simultaneous, to stay
- * representative of that.
+ * recording: none (the baseline degrade), an inbound storm targeting Kerbin
+ * (stormState 1, faint), Kerbin arrived (stormState 2, brighter, same
+ * yellow), then a fresh storm inbound toward Duna once Kerbin's has fully
+ * passed. Always ONE entry in `storms` at a time: it's scoped to the active
+ * vessel's current SOI, one entry per star, so a real feed can never carry
+ * two simultaneous entries for the same star; the sequence here is
+ * sequential, not simultaneous, to stay representative of that.
  *
- * Unlike the previous (static-plume) version of this capture, each storm
- * sample here is emitted ONCE and left alone: the travel is now a REAL,
- * continuously-looping CSS animation (`SystemEntitiesLayer.tsx`'s
- * `travelling-pulse` case), not something this fixture has to fake by
- * stepping `dist` up over repeated emits. Kerbin's and Duna's storms use
- * different `stormDuration` values so the two pulses visibly differ in
- * LENGTH (proportional to `stormEjectionSpeed * stormDuration`, clamped to
- * the star->body distance), demonstrating the length<->duration mapping
- * alongside the travel itself.
+ * Round 5: the wave is now a SINGLE, non-looping pass driven by real UT
+ * (`SystemEntitiesLayer.tsx`'s `Primitive` "travelling-pulse" case), not a
+ * decorative CSS loop, so this capture emits each storm's `stormTime`
+ * (arrival UT) as a REAL point in the future/past relative to the clock's
+ * own `utNow`, and waits out the actual departure->arrival->clear window in
+ * WALL time (`warpRate`-scaled) rather than just dwelling long enough for a
+ * loop to visibly repeat. `warpRate: 40` compresses Kerbin's real transit
+ * (dist/`stormEjectionSpeed`, ~137s of storm-UT) and Duna's (~209s) into a
+ * manageable clip; both storm durations stay short enough relative to their
+ * transit that `segmentLengthMetres` (`stormEjectionSpeed * stormDuration`)
+ * lands well under the star->body distance, unclamped, so the two pulses
+ * still visibly differ in LENGTH the way the previous round's fixture
+ * intended. A screenshot lands mid-transit, another right at arrival, and
+ * the capture keeps rolling past `clearUt` for each storm to show the far
+ * portion of the wave fading out rather than cutting off hard.
  *
  * Output: `local_docs/inbox/systemview-cme/*.mp4` (+ a couple of PNG
  * stills), also copied to `local_docs/inbox/systemview-contributions/`.
@@ -73,6 +79,20 @@ const STORM_EJECTION_SPEED_MPS = 99_000_000; // stock default 0.33c
 // demonstrates the length<->duration mapping, not just the travel.
 const KERBIN_STORM_DURATION_S = 60;
 const DUNA_STORM_DURATION_S = 120;
+// Compresses storm-UT into wall time: the wave's real transit (dist /
+// STORM_EJECTION_SPEED_MPS) is ~137s of storm-UT for Kerbin and ~209s for
+// Duna, both far too long to wait out at 1x. `utNowEstimate` scales linearly
+// with this (`view-clock-formula.ts`'s `computeUtNowEstimate`), the same
+// mechanism `captureOrbits` in `render-systemview-traffic-video.ts` uses.
+const WARP_RATE = 40;
+/** Real transit time (storm-UT seconds) at the fixture's own ejection speed. */
+function transitSeconds(distMetres: number): number {
+  return distMetres / STORM_EJECTION_SPEED_MPS;
+}
+/** Wall-clock ms for a span of storm-UT seconds at `WARP_RATE`. */
+function wallMs(stormUtSeconds: number): number {
+  return (stormUtSeconds / WARP_RATE) * 1000;
+}
 
 function kerbolSystem() {
   return {
@@ -276,16 +296,6 @@ async function evalCaptureEmit(
   );
 }
 
-async function evalUtNow(page: Page): Promise<number> {
-  const ut = await page.evaluate(() =>
-    (
-      window as unknown as { __captureUtNow: () => number | null }
-    ).__captureUtNow(),
-  );
-  if (ut === null) throw new Error("Capture: clock produced no utNow yet");
-  return ut;
-}
-
 async function convertToMp4(webmPath: string, mp4Path: string): Promise<void> {
   await execFileAsync("ffmpeg", [
     "-y",
@@ -343,7 +353,7 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
       pxH: 900,
       carriedChannels: CARRIED_CHANNELS,
       streamEmits: sceneEmits(),
-      warpRate: 1,
+      warpRate: WARP_RATE,
     });
 
     // Baseline: Kerbalism present, no active storm. Confirms the "degrades
@@ -354,13 +364,23 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
       path: join(OUT_DIR, "cme-baseline-no-storm.png"),
     });
 
-    const utNow = await evalUtNow(page);
-
-    // Kerbin storm, inbound: ONE steady sample, no manual ramp. The
-    // travelling pulse animates on its own from here (a real looping CSS
-    // animation, `TRAVELLING_PULSE_PERIOD_MS` in `SystemEntitiesLayer.tsx`),
-    // so this dwell just has to outlast one loop for the video to show it
-    // moving.
+    // -- Kerbin storm: single real UT window, ONE emit for its whole
+    // lifecycle (no mid-flight update). `StubTransport.emit()` stamps
+    // `deliveredAt: 0` by default, and `ViewClock.observeSample` resets its
+    // wall<->UT anchor to (deliveredAt, thisWallMoment) on EVERY delivered
+    // sample regardless of topic (`view-clock.ts`): a second emit partway
+    // through a storm's window would silently rebase `utNowEstimate()` back
+    // toward zero, corrupting the wave's own timing rather than just its
+    // style. So `stormTime` is set as an ABSOLUTE UT offset (`transitS`, not
+    // `utNow + transitS`): the reset THIS emit itself triggers is exactly
+    // what makes wall-time-zero-from-here equal storm-UT-zero, so the wave
+    // departs the star at roughly this call's own wall-clock moment and
+    // reaches Kerbin `transitS` storm-UT-seconds later, scaled to wall time
+    // by `WARP_RATE`. Held at stormState 2 (arrived) for its whole window so
+    // Duna's storm (below) can carry state 1 (inbound) instead, still
+    // showing both style states across the capture without a disruptive
+    // re-emit.
+    const kerbinTransitS = transitSeconds(KERBIN_SMA);
     await evalCaptureEmit(
       page,
       "kerbalism.spaceweather",
@@ -368,40 +388,44 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
         [
           stormEntry(
             "Kerbol",
-            1,
+            2,
             KERBIN_SMA,
-            utNow + 300,
+            kerbinTransitS,
             KERBIN_STORM_DURATION_S,
           ),
         ],
         KERBIN_DIRECTION,
       ),
     );
-    await page.waitForTimeout(1_200);
+    // Mid-transit: the wave is under way, well short of the target.
+    await page.waitForTimeout(wallMs(kerbinTransitS * 0.5));
     await page.screenshot({ path: join(OUT_DIR, "cme-inbound.png") });
-    await page.waitForTimeout(3_800);
+    // Out to arrival: the leading edge should now sit at Kerbin itself.
+    await page.waitForTimeout(wallMs(kerbinTransitS * 0.5));
+    await page.screenshot({ path: join(OUT_DIR, "cme-crossing-kerbin.png") });
+    // Halfway through the crossing window: the wave has slid on past Kerbin
+    // (never a second wave, the SAME segment), its far portion fading
+    // rather than staying full-strength. `clearUt` sits at the FULL
+    // duration past arrival, so this is deliberately short of that, or
+    // there would be nothing left to screenshot.
+    await page.waitForTimeout(wallMs(KERBIN_STORM_DURATION_S * 0.5));
+    await page.screenshot({ path: join(OUT_DIR, "cme-fading-kerbin.png") });
+    // Out past `clearUt`: confirms the wave finishes cleanly rather than
+    // lingering, before the next storm begins.
+    await page.waitForTimeout(wallMs(KERBIN_STORM_DURATION_S * 0.5) + 800);
 
-    // Kerbin's storm arrives (stormState 2, warn-tinted). Still a single
-    // `storms` entry, same as every other sample in this capture.
-    await evalCaptureEmit(
-      page,
-      "kerbalism.spaceweather",
-      spaceWeather(
-        [stormEntry("Kerbol", 2, KERBIN_SMA, utNow, KERBIN_STORM_DURATION_S)],
-        KERBIN_DIRECTION,
-      ),
-    );
-    await page.waitForTimeout(1_200);
-    await page.screenshot({ path: join(OUT_DIR, "cme-two-storms.png") });
-    await page.waitForTimeout(3_000);
-
-    // Kerbin's storm passes, then a fresh one begins inbound toward Duna,
-    // sequential rather than simultaneous. Bearing swings from Kerbin's
-    // direction to Duna's, and a LONGER `stormDuration` gives this pulse a
-    // visibly longer segment than Kerbin's, so the video demonstrates the
-    // length<->duration mapping alongside the travel.
+    // Kerbin's storm has fully passed: clear it, then a fresh one begins
+    // inbound toward Duna, sequential rather than simultaneous (matches the
+    // "one entry per star" contract this fixture's own doc comment notes).
+    // Bearing swings from Kerbin's direction to Duna's, and a LONGER
+    // `stormDuration` gives this pulse a visibly longer segment than
+    // Kerbin's, demonstrating the length<->duration mapping alongside a
+    // SECOND full single-pass (proving the wave isn't a one-shot fluke). The
+    // CLEAR emit itself resets the clock's anchor again, which is exactly
+    // what the next storm's own absolute `stormTime` (below) is anchored to.
     await evalCaptureEmit(page, "kerbalism.spaceweather", spaceWeather([]));
     await page.waitForTimeout(500);
+    const dunaTransitS = transitSeconds(DUNA_SMA);
     await evalCaptureEmit(
       page,
       "kerbalism.spaceweather",
@@ -411,16 +435,20 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
             "Kerbol",
             1,
             DUNA_SMA,
-            utNow + 2_400,
+            dunaTransitS,
             DUNA_STORM_DURATION_S,
           ),
         ],
         DUNA_DIRECTION,
       ),
     );
-    await page.waitForTimeout(1_200);
-    await page.screenshot({ path: join(OUT_DIR, "cme-full-reach.png") });
-    await page.waitForTimeout(3_800);
+    await page.waitForTimeout(wallMs(dunaTransitS * 0.5));
+    await page.screenshot({ path: join(OUT_DIR, "cme-inbound-duna.png") });
+    await page.waitForTimeout(wallMs(dunaTransitS * 0.5));
+    await page.screenshot({ path: join(OUT_DIR, "cme-crossing-duna.png") });
+    await page.waitForTimeout(wallMs(DUNA_STORM_DURATION_S * 0.5));
+    await page.screenshot({ path: join(OUT_DIR, "cme-fading-duna.png") });
+    await page.waitForTimeout(wallMs(DUNA_STORM_DURATION_S * 0.5) + 800);
 
     // Storm passes: confirms the overlay clears again.
     await evalCaptureEmit(page, "kerbalism.spaceweather", spaceWeather([]));

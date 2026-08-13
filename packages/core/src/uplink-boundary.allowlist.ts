@@ -1156,6 +1156,13 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       "packages/components/src/ShipMap/partMetersContribution.ts",
       "packages/components/src/ShipMap/shipTopology.ts",
       "packages/components/src/StaffRoster/index.tsx",
+      // systemEntities.ts: the `travelling-pulse` shape's doc comment names
+      // Kerbalism's own storm-arrival UT/duration as the realistic EXAMPLE of
+      // where a contribution's `arriveUt`/`clearUt` come from, while
+      // documenting a mod-agnostic contract every contribution (not just
+      // Kerbalism's CME entry) implements. No kerbalism Topic, type or import
+      // is referenced.
+      "packages/components/src/SystemView/systemEntities.ts",
       "packages/components/src/ThermalStatus/index.tsx",
       // DivergingBar.tsx: the kit primitive credits the HTML prototype its
       // design was ported from, which happens to be named after the Domain it

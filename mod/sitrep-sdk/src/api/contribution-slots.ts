@@ -142,7 +142,8 @@ export type SystemEntityShape =
   | { kind: "point"; radiusPx?: number }
   | { kind: "orbit-path" }
   | { kind: "connection-line"; to: SystemEntityPosition }
-  | { kind: "blob"; radiusMetres: number };
+  | { kind: "blob"; radiusMetres: number }
+  | { kind: "plume"; to: SystemEntityPosition; halfWidthMetres: number };
 
 /** Mirrors `SystemEntity`. */
 export interface SystemEntity {

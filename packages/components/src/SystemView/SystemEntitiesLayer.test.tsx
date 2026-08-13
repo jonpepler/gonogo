@@ -72,6 +72,16 @@ const BLOB: SystemEntity = {
   shape: { kind: "blob", radiusMetres: 300_000 },
 };
 
+const PLUME: SystemEntity = {
+  id: "cme-plume-1",
+  position: { kind: "fixed", parentName: "Kerbin", xMetres: 0, yMetres: 0 },
+  shape: {
+    kind: "plume",
+    to: { kind: "fixed", parentName: "Kerbin", xMetres: 500_000, yMetres: 0 },
+    halfWidthMetres: 100_000,
+  },
+};
+
 describe("SystemEntitiesLayer", () => {
   it("renders nothing when no entity projects onto the current frame", () => {
     const { container } = render(
@@ -116,6 +126,19 @@ describe("SystemEntitiesLayer", () => {
     );
     const circle = container.querySelector('circle[data-entity-id="cme-1"]');
     expect(Number(circle?.getAttribute("r"))).toBeCloseTo(3, 6);
+  });
+
+  it("draws a plume as a directional path from its apex toward its tip, not a circle", () => {
+    const { container } = render(
+      <SystemEntitiesLayer entities={[PLUME]} ctx={CTX} />,
+    );
+    const path = container.querySelector('path[data-entity-id="cme-plume-1"]');
+    expect(path).not.toBeNull();
+    // Apex (0,0) -> tip (5,0): the path string starts at the apex.
+    expect(path?.getAttribute("d")).toMatch(/^M 0 0 L/);
+    expect(
+      container.querySelector('circle[data-entity-id="cme-plume-1"]'),
+    ).toBeNull();
   });
 
   it("does not make a point interactive without onEntityActivate", () => {
@@ -204,7 +227,7 @@ describe("SystemEntitiesLayer", () => {
   it("has no axe violations with an interactive point marker rendered", async () => {
     const { container } = render(
       <SystemEntitiesLayer
-        entities={[POINT, RING, LINK, BLOB]}
+        entities={[POINT, RING, LINK, BLOB, PLUME]}
         ctx={CTX}
         onEntityActivate={() => {}}
         selectedId="vessel-1"
@@ -293,7 +316,7 @@ describe("SystemEntitiesLayer", () => {
       );
     });
 
-    it("draws a pulse interpolated along its edge's already-projected endpoints", () => {
+    it("draws a pulse as a line along its edge's already-projected endpoints, not a marker at a single point", () => {
       const { container } = render(
         <SystemEntitiesLayer
           entities={[LINK]}
@@ -301,13 +324,56 @@ describe("SystemEntitiesLayer", () => {
           pulses={[{ id: "cmd-1", edgeId: "link-1", t: 0.5, opacity: 0.75 }]}
         />,
       );
-      // LINK projects to x1=0, x2=2 (see the "connection-line" test above);
-      // t=0.5 should sit exactly halfway.
+      // LINK projects to x1=0, x2=2 (see the "connection-line" test above):
+      // the pulse rides the SAME endpoints, it never re-derives a position.
       const pulse = container.querySelector('[data-pulse-edge-id="link-1"]');
-      expect(pulse).not.toBeNull();
-      expect(Number(pulse?.getAttribute("cx"))).toBeCloseTo(1, 6);
-      expect(Number(pulse?.getAttribute("cy"))).toBeCloseTo(0, 6);
-      expect(pulse?.getAttribute("opacity")).toBe("0.75");
+      expect(pulse?.tagName).toBe("line");
+      expect(pulse?.getAttribute("x1")).toBe("0");
+      expect(pulse?.getAttribute("x2")).toBe("2");
+      expect(pulse?.getAttribute("y1")).toBe("0");
+      expect(pulse?.getAttribute("y2")).toBe("0");
+    });
+
+    it("gives the pulse a gradient stroke whose bright stop sits at t and carries the pulse's own opacity", () => {
+      const { container } = render(
+        <SystemEntitiesLayer
+          entities={[LINK]}
+          ctx={CTX}
+          pulses={[{ id: "cmd-1", edgeId: "link-1", t: 0.5, opacity: 0.75 }]}
+        />,
+      );
+      const pulse = container.querySelector('[data-pulse-edge-id="link-1"]');
+      const stroke = pulse?.getAttribute("stroke") ?? "";
+      const gradientId = stroke.match(/url\(#([^)]+)\)/)?.[1];
+      expect(gradientId).toBeDefined();
+      const gradient = container.querySelector(`#${gradientId}`);
+      expect(gradient?.tagName).toBe("linearGradient");
+      // Gradient coordinate space matches the edge's own endpoints, so the
+      // bright band travels ALONG the line rather than across it.
+      expect(gradient?.getAttribute("x1")).toBe("0");
+      expect(gradient?.getAttribute("x2")).toBe("2");
+      const stops = gradient?.querySelectorAll("stop") ?? [];
+      expect(stops).toHaveLength(3);
+      const peak = stops[1];
+      expect(peak.getAttribute("offset")).toBe("0.5");
+      expect(peak.getAttribute("stop-opacity")).toBe("0.75");
+      // The band's two ends fade to transparent: a travelling glow, not a
+      // solid bright line end to end.
+      expect(stops[0].getAttribute("stop-opacity")).toBe("0");
+      expect(stops[2].getAttribute("stop-opacity")).toBe("0");
+    });
+
+    it("never draws a circle marker for a pulse (the old vessel-like language)", () => {
+      const { container } = render(
+        <SystemEntitiesLayer
+          entities={[LINK]}
+          ctx={CTX}
+          pulses={[{ id: "cmd-1", edgeId: "link-1", t: 0.5, opacity: 1 }]}
+        />,
+      );
+      expect(
+        container.querySelector('circle[data-pulse-edge-id="link-1"]'),
+      ).toBeNull();
     });
 
     it("silently skips a pulse whose edgeId matches no resolved connection-line", () => {

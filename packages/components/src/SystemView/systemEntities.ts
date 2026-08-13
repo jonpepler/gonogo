@@ -97,7 +97,17 @@ export type SystemEntityShape =
   /** A line from this entity's own `position` to `to`. */
   | { kind: "connection-line"; to: SystemEntityPosition }
   /** A physically-scaled disc: `radiusMetres` is projected by `plotScale` like any other distance, so it grows/shrinks correctly on zoom (e.g. an expanding CME front). */
-  | { kind: "blob"; radiusMetres: number };
+  | { kind: "blob"; radiusMetres: number }
+  /**
+   * A directional cone/wedge from this entity's own `position` (the apex,
+   * e.g. a star) out toward `to` (a bearing + distance, e.g. the body a CME
+   * is headed for), widening as it travels: `halfWidthMetres` is the
+   * physical half-width AT THE TIP, projected by `plotScale` like `blob`'s
+   * radius so it scales on zoom. Use this instead of `blob` for anything
+   * that comes from ONE direction rather than expanding equally in every
+   * direction, a `blob` reads as an omnidirectional field/front.
+   */
+  | { kind: "plume"; to: SystemEntityPosition; halfWidthMetres: number };
 
 export interface SystemEntity {
   /** Stable, globally-unique id: the decoration hook and the future info panel key off this. */
@@ -236,8 +246,8 @@ export function projectOrbitRing(
 
 /**
  * Default stacking, back to front: orbit rings read as background structure,
- * blobs (physical ambient effects, e.g. a CME front) sit above them but
- * below the network layer, connection lines sit above blobs so a link is
+ * blobs and plumes (physical ambient effects, e.g. a CME) sit above them but
+ * below the network layer, connection lines sit above them so a link is
  * always readable against whatever it crosses, and point markers are always
  * on top so they stay clickable. A contributed entity's `zHint` overrides
  * this outright when a contribution needs a different stacking (e.g. an
@@ -248,6 +258,9 @@ export const SYSTEM_ENTITY_DEFAULT_LAYER: Readonly<
 > = {
   "orbit-path": 0,
   blob: 1,
+  // Same tier as `blob`: another physical ambient effect, just a
+  // directional one rather than an omnidirectional field.
+  plume: 1,
   "connection-line": 2,
   point: 3,
 };
@@ -319,6 +332,16 @@ export type ResolvedSystemEntity =
       x: number;
       y: number;
       radiusPx: number;
+    })
+  | (ResolvedBase & {
+      kind: "plume";
+      /** Apex (the entity's own `position`, projected). */
+      x1: number;
+      y1: number;
+      /** Tip centre (`shape.to`, projected). */
+      x2: number;
+      y2: number;
+      halfWidthPx: number;
     });
 
 const DEFAULT_POINT_RADIUS_PX = 4;
@@ -412,8 +435,7 @@ export function resolveSystemEntities(
           meta: entity.meta,
         },
       });
-    } else {
-      // "blob"
+    } else if (entity.shape.kind === "blob") {
       const p = projectEntityPosition(entity.position, ctx);
       if (!p) continue;
       const radiusPx = entity.shape.radiusMetres * ctx.plotScale;
@@ -426,6 +448,28 @@ export function resolveSystemEntities(
           x: p.x,
           y: p.y,
           radiusPx,
+          colour,
+          opacity,
+          meta: entity.meta,
+        },
+      });
+    } else {
+      // "plume"
+      const from = projectEntityPosition(entity.position, ctx);
+      const to = projectEntityPosition(entity.shape.to, ctx);
+      if (!from || !to) continue;
+      const halfWidthPx = entity.shape.halfWidthMetres * ctx.plotScale;
+      if (!(halfWidthPx > 0)) continue;
+      layered.push({
+        z,
+        resolved: {
+          kind: "plume",
+          id: entity.id,
+          x1: from.x,
+          y1: from.y,
+          x2: to.x,
+          y2: to.y,
+          halfWidthPx,
           colour,
           opacity,
           meta: entity.meta,

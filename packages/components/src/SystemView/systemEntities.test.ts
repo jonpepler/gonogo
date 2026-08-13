@@ -421,6 +421,103 @@ describe("resolveSystemEntities", () => {
     expect(collapsed).toEqual([]);
   });
 
+  it("resolves a plume's apex + tip endpoints and scales halfWidthMetres by plotScale", () => {
+    const [resolved] = resolveSystemEntities(
+      [
+        {
+          id: "cme",
+          position: {
+            kind: "fixed",
+            parentName: "Kerbin",
+            xMetres: 0,
+            yMetres: 0,
+          },
+          shape: {
+            kind: "plume",
+            to: {
+              kind: "fixed",
+              parentName: "Kerbin",
+              xMetres: 1_000_000,
+              yMetres: 0,
+            },
+            halfWidthMetres: 200_000,
+          },
+        },
+      ],
+      CTX,
+    );
+    expect(resolved).toMatchObject({
+      kind: "plume",
+      x1: 0,
+      y1: 0,
+      x2: 10,
+      y2: 0,
+      halfWidthPx: 2,
+    });
+  });
+
+  it("skips a plume whose tip doesn't project, or whose halfWidthMetres resolves to non-positive", () => {
+    expect(
+      resolveSystemEntities(
+        [
+          {
+            id: "off-frame-tip",
+            position: {
+              kind: "fixed",
+              parentName: "Kerbin",
+              xMetres: 0,
+              yMetres: 0,
+            },
+            shape: {
+              kind: "plume",
+              to: {
+                kind: "fixed",
+                parentName: "Mun",
+                xMetres: 1_000_000,
+                yMetres: 0,
+              },
+              halfWidthMetres: 200_000,
+            },
+          },
+        ],
+        CTX,
+      ),
+    ).toEqual([]);
+
+    expect(
+      resolveSystemEntities(
+        [
+          {
+            id: "zero-width",
+            position: {
+              kind: "fixed",
+              parentName: "Kerbin",
+              xMetres: 0,
+              yMetres: 0,
+            },
+            shape: {
+              kind: "plume",
+              to: {
+                kind: "fixed",
+                parentName: "Kerbin",
+                xMetres: 1_000_000,
+                yMetres: 0,
+              },
+              halfWidthMetres: 0,
+            },
+          },
+        ],
+        CTX,
+      ),
+    ).toEqual([]);
+  });
+
+  it("gives plume the same default z-tier as blob (both physical ambient effects)", () => {
+    expect(SYSTEM_ENTITY_DEFAULT_LAYER.plume).toBe(
+      SYSTEM_ENTITY_DEFAULT_LAYER.blob,
+    );
+  });
+
   it("applies the decorate hook's style override on top of the entity's own style, keyed by id", () => {
     const entities = [
       pointEntity("a", { style: { emphasis: "faint" } }),

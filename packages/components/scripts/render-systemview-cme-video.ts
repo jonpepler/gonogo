@@ -194,9 +194,31 @@ function stormEntry(
   };
 }
 
-function spaceWeather(storms: ReturnType<typeof stormEntry>[]) {
+/**
+ * A vessel-to-star unit vector for `weather.stars`, in Kerbalism's own
+ * `VesselData.SunInfo.Direction` convention: the contribution negates it for
+ * the plume's bearing (star-to-body). Chosen so the two storms in this
+ * capture visibly point at the body they're actually scoped to:
+ * `KERBIN_DIRECTION` negates to roughly Kerbin's own angle at this scene's
+ * `meanAnomalyAtEpoch` (~180 deg, ecc=0 so exact), `DUNA_DIRECTION` to
+ * Duna's (~51.6 deg, close enough at ecc=0.051 for a video fixture). Real
+ * Kerbalism telemetry supplies this from the vessel's actual position; nothing
+ * in the contribution itself changes, this is purely fixture geometry so the
+ * capture reads as "the plume points at the threatened body".
+ */
+function starDirection(x: number, y: number, z: number) {
+  return { x, y, z };
+}
+const KERBIN_DIRECTION = starDirection(1, 0, 0);
+const DUNA_DIRECTION = starDirection(-0.6225, 0, -0.7826);
+
+function spaceWeather(
+  storms: ReturnType<typeof stormEntry>[],
+  direction: ReturnType<typeof starDirection> = KERBIN_DIRECTION,
+) {
   return {
     stormEjectionSpeed: STORM_EJECTION_SPEED_MPS,
+    stars: [{ star: "Kerbol", direction }],
     storms,
   };
 }
@@ -262,13 +284,17 @@ async function rampStormDist(
   durationS: number,
   steps: number,
   stepMs: number,
+  direction: ReturnType<typeof starDirection>,
 ): Promise<void> {
   for (let i = 1; i <= steps; i++) {
     const dist = finalDist * (i / steps);
     await evalCaptureEmit(
       page,
       "kerbalism.spaceweather",
-      spaceWeather([stormEntry(star, 1, dist, arrivalUt, durationS)]),
+      spaceWeather(
+        [stormEntry(star, 1, dist, arrivalUt, durationS)],
+        direction,
+      ),
     );
     await page.waitForTimeout(stepMs);
   }
@@ -353,6 +379,7 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
       3_600,
       12,
       160,
+      KERBIN_DIRECTION,
     );
     await page.screenshot({ path: join(OUT_DIR, "cme-inbound.png") });
 
@@ -363,13 +390,17 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
     await evalCaptureEmit(
       page,
       "kerbalism.spaceweather",
-      spaceWeather([stormEntry("Kerbol", 2, KERBIN_SMA, utNow, 1_800)]),
+      spaceWeather(
+        [stormEntry("Kerbol", 2, KERBIN_SMA, utNow, 1_800)],
+        KERBIN_DIRECTION,
+      ),
     );
     await page.waitForTimeout(1_500);
     await page.screenshot({ path: join(OUT_DIR, "cme-two-storms.png") });
 
     // Kerbin's storm passes, then a fresh one begins inbound toward Duna,
-    // sequential rather than simultaneous.
+    // sequential rather than simultaneous. Bearing swings from Kerbin's
+    // direction to Duna's, so the plume visibly re-aims at its new target.
     await evalCaptureEmit(page, "kerbalism.spaceweather", spaceWeather([]));
     await page.waitForTimeout(500);
     await rampStormDist(
@@ -380,6 +411,7 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
       2_400,
       10,
       150,
+      DUNA_DIRECTION,
     );
     await page.waitForTimeout(1_000);
     await page.screenshot({ path: join(OUT_DIR, "cme-full-reach.png") });

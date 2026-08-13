@@ -26,9 +26,13 @@ import {
  * when nothing projects, so an empty contribution set costs nothing.
  */
 
-/** A moving traffic marker riding an ALREADY-drawn `connection-line` entity:
- *  never a second render of the graph geometry, purely a decoration keyed by
- *  that entity's own id (see `commsTraffic.ts`'s module doc comment). */
+/** A moving traffic highlight riding an ALREADY-drawn `connection-line`
+ *  entity: never a second render of the graph geometry, purely a decoration
+ *  keyed by that entity's own id (see `commsTraffic.ts`'s module doc
+ *  comment). Rendered as a travelling gradient glow along the line rather
+ *  than a discrete marker, deliberately: an earlier version drew this as a
+ *  circle riding the line, which read as a second vessel dot sitting on its
+ *  own orbit. A sweeping highlight can't be confused with a point marker. */
 export interface SystemEntityPulse {
   /** Stable identity for this pulse (its `system.uplink.pending` entry's own
    *  id): the React key, since two pulses can share an `edgeId` at once. */
@@ -57,13 +61,14 @@ export interface SystemEntitiesLayerProps {
    */
   onEntityActivate?: (id: string) => void;
   /**
-   * Command-traffic markers (Task 6): one small dot per in-flight
-   * `system.uplink.pending` entry, interpolated along an already-resolved
-   * `connection-line`'s endpoints. A pulse whose `edgeId` doesn't match any
-   * resolved connection-line (off-frame, or the contribution hasn't drawn
-   * it) is silently skipped, the same "just doesn't render this frame"
-   * contract every other entity follows. Omitted or empty: renders nothing
-   * extra.
+   * Command-traffic gradient sweeps (Task 6): one travelling glow per
+   * in-flight `system.uplink.pending` entry, riding an already-resolved
+   * `connection-line`'s endpoints via an SVG `linearGradient` whose bright
+   * band is centred on the pulse's own `t`. A pulse whose `edgeId` doesn't
+   * match any resolved connection-line (off-frame, or the contribution
+   * hasn't drawn it) is silently skipped, the same "just doesn't render this
+   * frame" contract every other entity follows. Omitted or empty: renders
+   * nothing extra.
    */
   pulses?: readonly SystemEntityPulse[];
 }
@@ -91,13 +96,19 @@ export function SystemEntitiesLayer({
     return pulses.flatMap((p) => {
       const edge = edgesById.get(p.edgeId);
       if (!edge || edge.kind !== "connection-line") return [];
+      const t = Math.min(Math.max(p.t, 0), 1);
       return [
         {
           id: p.id,
           edgeId: p.edgeId,
           opacity: p.opacity,
-          x: edge.x1 + (edge.x2 - edge.x1) * p.t,
-          y: edge.y1 + (edge.y2 - edge.y1) * p.t,
+          x1: edge.x1,
+          y1: edge.y1,
+          x2: edge.x2,
+          y2: edge.y2,
+          t,
+          bandStart: Math.max(0, t - PULSE_BAND_T),
+          bandEnd: Math.min(1, t + PULSE_BAND_T),
         },
       ];
     });
@@ -126,15 +137,48 @@ export function SystemEntitiesLayer({
           onActivate={onEntityActivate}
         />
       ))}
+      {resolvedPulses.length > 0 && (
+        <defs>
+          {resolvedPulses.map((p) => (
+            <linearGradient
+              key={p.id}
+              id={`system-entities-pulse-${p.id}`}
+              gradientUnits="userSpaceOnUse"
+              x1={p.x1}
+              y1={p.y1}
+              x2={p.x2}
+              y2={p.y2}
+            >
+              <stop
+                offset={p.bandStart}
+                stopColor={PULSE_BASE_COLOUR}
+                stopOpacity={0}
+              />
+              <stop
+                offset={p.t}
+                stopColor={PULSE_PEAK_COLOUR}
+                stopOpacity={p.opacity}
+              />
+              <stop
+                offset={p.bandEnd}
+                stopColor={PULSE_BASE_COLOUR}
+                stopOpacity={0}
+              />
+            </linearGradient>
+          ))}
+        </defs>
+      )}
       {resolvedPulses.map((p) => (
-        <circle
+        <line
           key={p.id}
           data-pulse-edge-id={p.edgeId}
-          cx={p.x}
-          cy={p.y}
-          r={PULSE_RADIUS_PX}
-          fill="var(--color-accent-fg)"
-          opacity={p.opacity}
+          x1={p.x1}
+          y1={p.y1}
+          x2={p.x2}
+          y2={p.y2}
+          stroke={`url(#system-entities-pulse-${p.id})`}
+          strokeWidth={PULSE_STROKE_WIDTH_PX}
+          strokeLinecap="round"
           pointerEvents="none"
         />
       ))}
@@ -262,6 +306,20 @@ function Primitive({
           data-entity-id={r.id}
         />
       );
+    case "plume":
+      return (
+        <path
+          d={plumePath(r)}
+          fill={r.colour}
+          fillOpacity={r.opacity * 0.3}
+          stroke={r.colour}
+          strokeOpacity={r.opacity}
+          strokeWidth={1}
+          strokeLinejoin="round"
+          pointerEvents="none"
+          data-entity-id={r.id}
+        />
+      );
     case "point": {
       const interactive = onActivate !== undefined;
       const activate = () => onActivate?.(r.id);
@@ -312,9 +370,49 @@ function Primitive({
   }
 }
 
-/** Slightly smaller than a vessel point marker's default radius, so a pulse
- *  reads as traffic riding the line, not a second vessel dot. */
-const PULSE_RADIUS_PX = 3;
+/**
+ * A directional wedge, apex at `x1,y1` narrowing to a point, tip a rounded
+ * cap of width `2*halfWidthPx` centred on `x2,y2`: a teardrop pointing away
+ * from the apex, not a symmetric blob. The tip's outward bulge (the
+ * quadratic curve's control point, offset past `x2,y2` along the same
+ * apex->tip direction) is what reads as "leading edge" rather than a
+ * flat-cut cone.
+ */
+function plumePath(r: {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  halfWidthPx: number;
+}): string {
+  const dx = r.x2 - r.x1;
+  const dy = r.y2 - r.y1;
+  const length = Math.hypot(dx, dy);
+  const [ux, uy] = length > 0 ? [dx / length, dy / length] : [1, 0];
+  const [px, py] = [-uy, ux];
+  const tipAx = r.x2 + px * r.halfWidthPx;
+  const tipAy = r.y2 + py * r.halfWidthPx;
+  const tipBx = r.x2 - px * r.halfWidthPx;
+  const tipBy = r.y2 - py * r.halfWidthPx;
+  const bulge = r.halfWidthPx * 0.6;
+  const ctrlX = r.x2 + ux * bulge;
+  const ctrlY = r.y2 + uy * bulge;
+  return `M ${r.x1} ${r.y1} L ${tipAx} ${tipAy} Q ${ctrlX} ${ctrlY} ${tipBx} ${tipBy} Z`;
+}
+
+/** Half-width, in `t` units along the edge, of the pulse's bright band: a
+ *  travelling gradient highlight rather than a discrete marker, so command
+ *  traffic can't be mistaken for a vessel point riding the line. */
+const PULSE_BAND_T = 0.14;
+/** Gradient band ends: same faint grey the CommNet lines themselves already
+ *  draw in (`EMPHASIS_COLOUR.faint`, `systemEntities.ts`), so the sweep
+ *  reads as a highlight moving along the line rather than a new colour. */
+const PULSE_BASE_COLOUR = "var(--color-text-faint)";
+/** Gradient band peak: the same accent token every other "this is live and
+ *  active" decoration in this layer already uses (focus rings, `bright`
+ *  emphasis). */
+const PULSE_PEAK_COLOUR = "var(--color-accent-fg)";
+const PULSE_STROKE_WIDTH_PX = 3;
 
 const LAYER_SVG: CSSProperties = {
   position: "absolute",

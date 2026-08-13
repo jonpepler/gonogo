@@ -393,25 +393,25 @@ function SystemViewComponent({
         : NO_TRAFFIC,
     [pendingQueue, commsNetwork, identity?.vesselId, utNow, showCommandTraffic],
   );
-  const trafficEdgeIds = useMemo(() => new Set(traffic.edgeIds), [traffic]);
   // The id-keyed decoration hook: brightens the selected vessel's own
   // orbit/point entity (faint -> bright, no colour override needed, the
-  // `bright` emphasis token already reads prominent), colours the derived
-  // CommNet path's edges by the selected vessel's control state, and (lowest
-  // priority, so an explicit selection never gets overridden by ambient
-  // traffic) brightens whichever edges are currently carrying command
-  // traffic. Never touches the contribution's data, purely a style override
-  // keyed by id.
+  // `bright` emphasis token already reads prominent) and colours the derived
+  // CommNet path's edges by the selected vessel's control state. Command
+  // traffic deliberately does NOT decorate the edge itself: the moving
+  // gradient pulse (`SystemEntitiesLayer`'s `pulses` prop, below) is the
+  // sole traffic indicator, riding a plain grey/white CommNet line, so an
+  // ambient "this route carries traffic" wash never sits underneath and
+  // dilutes the travelling glow into an always-bright line. Never touches
+  // the contribution's data, purely a style override keyed by id.
   const decorate = useCallback(
     (id: string): SystemEntityStyle | undefined => {
       if (id === selectedVesselId) return { emphasis: "bright" };
       if (commsPathEdgeIds.has(id)) {
         return { emphasis: "bright", colour: commsPathColour };
       }
-      if (trafficEdgeIds.has(id)) return { emphasis: "bright" };
       return undefined;
     },
-    [selectedVesselId, commsPathEdgeIds, commsPathColour, trafficEdgeIds],
+    [selectedVesselId, commsPathEdgeIds, commsPathColour],
   );
 
   // Stable body-index → NAME map (from `system.bodies`' stable `index`, never

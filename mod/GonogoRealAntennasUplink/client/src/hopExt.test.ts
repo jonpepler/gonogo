@@ -116,11 +116,11 @@ describe("realantennas' namespace of CommsHop's provider extension bag", () => {
     const hop = result.current?.hops[0];
     expect(hop?.from).toBe("vessel");
     expect(hop?.to).toBe("home");
-    // The shared forward rate stays where it is (a nullable field on the shared
-    // shape), hydrated like any other quantity.
-    expect(hop?.bandRateBitsPerSec).toMatchObject({
-      magnitude: 262000,
-      unit: "bit/s",
-    });
+    // The shared hop no longer carries a forward rate: it left for the RA
+    // uplink's own realantennas.hopRates channel (Major 13), so the shared shape
+    // stays RA-agnostic and this key is simply absent.
+    expect(
+      (hop as unknown as { bandRateBitsPerSec?: unknown }).bandRateBitsPerSec,
+    ).toBeUndefined();
   });
 });

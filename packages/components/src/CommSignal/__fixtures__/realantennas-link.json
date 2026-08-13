@@ -112,7 +112,6 @@
               "to": "home",
               "kind": 0,
               "distanceMeters": 1234.5,
-              "bandRateBitsPerSec": 262000,
               "extensions": {
                 "realantennas": {
                   "band": "X",

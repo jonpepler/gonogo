@@ -1,4 +1,9 @@
-import { installDomStubs, PerfBudget, useTelemetry } from "@ksp-gonogo/core";
+import {
+  defineUplinkClient,
+  installDomStubs,
+  PerfBudget,
+  useTelemetry,
+} from "@ksp-gonogo/core";
 import { installTestHost } from "@ksp-gonogo/sitrep-sdk/testing";
 import { setQuantityLocale } from "@ksp-gonogo/ui-kit";
 
@@ -12,14 +17,15 @@ PerfBudget.installTestGate();
 // singletons this suite exercises: mirrors buildGonogoHost() member-for-member,
 // scoped to the subset this client actually calls.
 //
-// That subset is `useTelemetry` alone, and it is smaller than every sibling
-// Uplink's because this client registers no component: there is no
-// registerComponent at module load, because RealAntennas ships no widget (see
-// index.ts). The hook is still needed, since the hydration test proves the
-// relocated unit registrations by DECODING a frame through the real pipeline
-// rather than by reading a registry, and that goes through the facade.
+// The subset is `useTelemetry` (the hydration test decodes a frame through the
+// real pipeline via the facade) plus `defineUplinkClient`: this client now
+// registers the `comm-signal.hop-rates` contribution through a REALANTENNAS
+// handle at module load (uplink.ts), so any test importing that module needs the
+// host to resolve the handle factory. It still registers no component, so there
+// is no registerComponent to bridge.
 installTestHost({
   useTelemetry,
+  defineUplinkClient,
 });
 
 // Pin the locale every quantity is written in. It defaults to the READER's

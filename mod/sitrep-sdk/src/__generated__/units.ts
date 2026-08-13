@@ -237,7 +237,6 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
     source: "enum",
   },
   "CommsHop": {
-    bandRateBitsPerSec: "bit/s",
     distanceMeters: "m",
     from: "id",
     kind: "enum",

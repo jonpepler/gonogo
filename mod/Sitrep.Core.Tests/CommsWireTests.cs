@@ -106,12 +106,12 @@ namespace Sitrep.Core.Tests
                     new CommsHop
                     {
                         From = "vessel", To = "ksc", Kind = CommsHopKind.Home,
-                        DistanceMeters = 1234.5, BandRateBitsPerSec = null,
+                        DistanceMeters = 1234.5,
                     },
                     new CommsHop
                     {
                         From = "relay", To = "ksc", Kind = CommsHopKind.Relay,
-                        DistanceMeters = null, BandRateBitsPerSec = 9600,
+                        DistanceMeters = null,
                     },
                 },
                 Meta = new PayloadMeta(),
@@ -122,9 +122,7 @@ namespace Sitrep.Core.Tests
             Assert.Equal(2, hops.GetArrayLength());
             Assert.Equal("vessel", hops[0].GetProperty("from").GetString());
             Assert.Equal(1234.5, hops[0].GetProperty("distanceMeters").GetDouble());
-            Assert.Equal(JsonValueKind.Null, hops[0].GetProperty("bandRateBitsPerSec").ValueKind);
             Assert.Equal(JsonValueKind.Null, hops[1].GetProperty("distanceMeters").ValueKind);
-            Assert.Equal(9600, hops[1].GetProperty("bandRateBitsPerSec").GetDouble());
         }
 
         [Fact]

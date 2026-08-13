@@ -764,11 +764,25 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       // field on a SHARED type). What it no longer holds is a declaration.
       "mod/Sitrep.Contract/Comms.cs",
 
+      // sitrep-sdk contribution-slots.ts: the SDK-layer mirror of the
+      // `comm-signal.hop-rates` slot names its Topic (`realantennas.hopRates`)
+      // and the built-in RA contributor in prose. Contract/SDK layer, no
+      // coupling: a slot's declared `topics` is a plain string literal.
+      "mod/sitrep-sdk/src/api/contribution-slots.ts",
+      // CommsHopContractShapeTests.cs: the CommsHop ratchet's doc-comment now
+      // cites `realantennas.hopRates` as where the removed per-hop rate went.
+      // Ratchet-inventory doc mention only.
+      "mod/Sitrep.Host.Tests/CommsHopContractShapeTests.cs",
+
       // -- TEST-only --
       "mod/Sitrep.Core.Tests/CommsWireTests.cs",
       "mod/Sitrep.Host.IntegrationTests/FoundationChannelsEndToEndTests.cs",
       "mod/Sitrep.Host.Tests/CommsElectionTests.cs",
       "packages/components/src/CommSignal/slot.test.tsx",
+      // stream.test.tsx: the CommSignal route-rate test names "RealAntennas" in
+      // prose when standing in a local `comm-signal.hop-rates` contribution for
+      // it; no RA import, the widget only knows the slot id. Test doc mention.
+      "packages/components/src/CommSignal/stream.test.tsx",
       "packages/sitrep-client/src/map-topic.rawFieldRoots.coverage.test.ts",
       // AGX's own election/reflection tests cite CommsElectionTests /
       // RaReflection as the pattern they mirror: doc-mention only.

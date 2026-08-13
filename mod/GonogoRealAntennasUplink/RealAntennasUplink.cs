@@ -37,6 +37,16 @@ namespace Gonogo.RealAntennasUplink
         public const string LinkMarginTopic = "comms.linkMargin";
 
         /// <summary>
+        /// The per-hop forward-rate annotation channel: a bare ARRAY of
+        /// <see cref="RealAntennasHopRate"/>, one per hop that has a readable rate,
+        /// keyed by the same node ids <c>comms.path</c> carries. RA's relay graph
+        /// subclasses stock CommNet's, so this only embellishes each existing hop
+        /// with its bitrate: it never republishes the topology. The client joins it
+        /// onto the route the core CommSignal schedule already renders.
+        /// </summary>
+        public const string HopRatesTopic = "realantennas.hopRates";
+
+        /// <summary>
         /// The Domain presence gate: a bare-boolean TrueNow channel emitting
         /// <c>true</c> whenever RealAntennas is loaded. The RA client augments bind
         /// this via <c>requires: "realantennas"</c>, so its detail composes into
@@ -59,6 +69,7 @@ namespace Gonogo.RealAntennasUplink
         private IChannelPublisher? _linkQuality;
         private IChannelPublisher? _dataRate;
         private IChannelPublisher? _linkMargin;
+        private IChannelPublisher? _hopRates;
 
         private static ChannelDeclaration TrueNow(string topic) => new ChannelDeclaration
         {
@@ -78,6 +89,7 @@ namespace Gonogo.RealAntennasUplink
                 TrueNow(LinkQualityTopic),
                 TrueNow(DataRateTopic),
                 TrueNow(LinkMarginTopic),
+                TrueNow(HopRatesTopic),
             },
         };
 
@@ -135,8 +147,9 @@ namespace Gonogo.RealAntennasUplink
             _linkQuality = host.Publisher(LinkQualityTopic);
             _dataRate = host.Publisher(DataRateTopic);
             _linkMargin = host.Publisher(LinkMarginTopic);
+            _hopRates = host.Publisher(HopRatesTopic);
 
-            host.AddSampledSource(CaptureOnMain, HandleOnCourier, LinkQualityTopic, DataRateTopic, LinkMarginTopic);
+            host.AddSampledSource(CaptureOnMain, HandleOnCourier, LinkQualityTopic, DataRateTopic, LinkMarginTopic, HopRatesTopic);
         }
 
         /// <summary>MAIN-THREAD capture: reads the RA link off the live control path.</summary>
@@ -148,6 +161,14 @@ namespace Gonogo.RealAntennasUplink
             }
 
             var capture = new RaCapture { Ut = snapshot?.Ut ?? 0.0, Source = Source() };
+
+            // Per-hop forward rates for realantennas.hopRates: built from the FULL
+            // ControlPath (not just the primary link), keyed by the same node ids
+            // comms.path carries so the client can join a rate onto every hop the
+            // core schedule renders. Independent of the link-budget block below, so
+            // it is computed unconditionally: an empty list on a down link clears
+            // any stale rates rather than leaving the last-good ones on the wire.
+            capture.HopRates = BuildHopRates();
 
             // Authoritative link state comes from CommNet connectivity, NOT from
             // the geometry-only budget below. A geometric margin ignores occlusion
@@ -281,6 +302,42 @@ namespace Gonogo.RealAntennasUplink
             if (capture.DataRate != null) _dataRate?.Publish(RaWire.DataRate(capture.DataRate), capture.Ut);
             if (capture.LinkMargin != null) _linkMargin?.Publish(RaWire.LinkMargin(capture.LinkMargin), capture.Ut);
             if (capture.LinkQuality != null) _linkQuality?.Publish(RaWire.LinkQuality(capture.LinkQuality), capture.Ut);
+            if (capture.HopRates != null) _hopRates?.Publish(RaWire.HopRates(capture.HopRates), capture.Ut);
+        }
+
+        /// <summary>
+        /// MAIN-THREAD: the active vessel's per-hop forward rates, one entry per hop
+        /// whose <c>ForwardDataRate</c> reads (typed absence otherwise, never a 0
+        /// entry), keyed by <see cref="RaCommsBackend.NodeId"/> so the ids match
+        /// <c>comms.path</c> hop for hop. Empty when there is no control path.
+        /// </summary>
+        private List<RealAntennasHopRate> BuildHopRates()
+        {
+            var rates = new List<RealAntennasHopRate>();
+            var path = FlightGlobals.ActiveVessel?.connection?.ControlPath;
+            if (_ra == null || path == null)
+            {
+                return rates;
+            }
+            foreach (var link in path)
+            {
+                if (link?.a == null || link.b == null)
+                {
+                    continue;
+                }
+                var rate = _ra.ForwardDataRate(link);
+                if (rate == null)
+                {
+                    continue;
+                }
+                rates.Add(new RealAntennasHopRate
+                {
+                    FromNodeId = RaCommsBackend.NodeId(link.a),
+                    ToNodeId = RaCommsBackend.NodeId(link.b),
+                    BitsPerSec = rate.Value,
+                });
+            }
+            return rates;
         }
 
         /// <summary>Whether the active vessel currently has a working comms link (CommNet authority).</summary>
@@ -332,6 +389,7 @@ namespace Gonogo.RealAntennasUplink
             public CommsDataRate? DataRate;
             public CommsLinkMargin? LinkMargin;
             public CommsLinkQuality? LinkQuality;
+            public List<RealAntennasHopRate>? HopRates;
         }
     }
 }

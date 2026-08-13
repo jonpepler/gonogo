@@ -153,8 +153,6 @@ namespace Gonogo.KSP
                             To = NodeId(link.b),
                             Kind = link.b.isHome || link.a.isHome ? CommsHopKind.Home : CommsHopKind.Relay,
                             DistanceMeters = (link.a.precisePosition - link.b.precisePosition).magnitude,
-                            // CommNet has no per-hop RF rate, RA annotates this (§1).
-                            BandRateBitsPerSec = null,
                         });
                     }
                 }

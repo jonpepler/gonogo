@@ -97,6 +97,11 @@ export const GENERATED_TYPE_UNITS: Readonly<Record<string, UnitsByField>> = {
     reverseBitsPerSec: "bit/s",
     techLevel: "count",
   },
+  "RealAntennasHopRate": {
+    bitsPerSec: "bit/s",
+    fromNodeId: "id",
+    toNodeId: "id",
+  },
 };
 
 /**
@@ -114,6 +119,11 @@ export const GENERATED_TOPIC_UNITS: Readonly<Record<string, UnitsByField>> = {
   },
   "comms.linkQuality": {
     value: "ratio",
+  },
+  "realantennas.hopRates": {
+    bitsPerSec: "bit/s",
+    fromNodeId: "id",
+    toNodeId: "id",
   },
 };
 

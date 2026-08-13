@@ -78,6 +78,13 @@ public static class RealAntennasRtConfig
             // ApplyUnitValueTypes still retypes its annotated quantities and the
             // TYPE unit/shape maps carry it for the client's hydration walk.
             typeof(RealAntennasHopExt),
+            // The element type of realantennas.hopRates. Like the bag above it
+            // carries no [SitrepTopic] (the channel value is a bare ARRAY of these,
+            // registered client-side as a bare-primitive topic + a declare-module
+            // augmentation to RealAntennasHopRate[]), but it MUST be listed so
+            // AutoI(false) keeps its generated name and ApplyUnitValueTypes retypes
+            // BitsPerSec to Value<"bit/s"> instead of leaving it a bare number.
+            typeof(RealAntennasHopRate),
         };
 
         builder.ExportAsInterfaces(wireTypes, c => c.AutoI(false).WithPublicProperties());

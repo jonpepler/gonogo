@@ -5,6 +5,7 @@ import {
   getWidgetShape,
   registerComponent,
   useAugmentAvailable,
+  useContributions,
   useTelemetry,
 } from "@ksp-gonogo/core";
 import {
@@ -30,11 +31,14 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import {
   buildCommsRouteNodes,
   type CommsRouteNode,
+  commsBottleneckHopId,
+  commsHopId,
   commsLegTimeSeconds,
   commsRouteRelayCount,
 } from "./commsRoute";
@@ -63,6 +67,11 @@ declare module "@ksp-gonogo/core" {
     "comm-signal.badges": Record<string, never>;
   }
 }
+
+// The components-side `comm-signal.hop-rates` ContributionRegistry merge lives in
+// `./commsRoute` (co-located with its entry type and the join logic), not here,
+// so the contribution-slot conformance test-d can import it to load the
+// augmentation the same way it imports each widget's own entry types.
 
 // Telemachus' `comm.controlState` is an enum:
 //   0 = none, 1 = partial (unmanned probe with crew nearby etc.), 2 = full
@@ -156,8 +165,9 @@ function CommSignalComponent({
   //
   // `comms.path` names the ROUTE that centre label is relative to: the
   // ordered hops from the active vessel to the centre (direct, or via one
-  // or more relays), each with a distance and, under RealAntennas, a
-  // per-hop band/rate annotation. It's command-centre dispatch-time
+  // or more relays), each with a distance. Per-hop bitrate is NOT on the hop
+  // (it stays RA-agnostic): it arrives via the `comm-signal.hop-rates`
+  // contribution below and is joined onto these hops. It's command-centre dispatch-time
   // bookkeeping, not delayed craft telemetry (same class as
   // `comms.commandCentre` above), so it rides `useLatestValue` rather than
   // `useTelemetry`'s delay-gated view sample: see `FleetComms/index.tsx`'s
@@ -178,6 +188,20 @@ function CommSignalComponent({
       : "KSC";
   const hops = useLatestValue<CommsPath>("comms.path")?.hops ?? [];
   const relayCount = commsRouteRelayCount(hops);
+  // Per-hop bitrate for the route schedule comes from a `comm-signal.hop-rates`
+  // contribution, NOT from the core hop: `comms.path` stays RA-agnostic. A comms
+  // Uplink (RealAntennas) reads its OWN per-hop-rate Topic and yields an entry
+  // keyed by the same node ids these hops carry; the schedule joins them by
+  // `commsHopId`. Bare CommNet / no RA => no contribution => no bitrate shown,
+  // schedule otherwise unchanged. CommSignal only ever names the slot id.
+  const hopRateEntries = useContributions("comm-signal.hop-rates");
+  const rateByHopId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const entry of hopRateEntries) {
+      map.set(commsHopId(entry.fromNodeId, entry.toNodeId), entry.bitsPerSec);
+    }
+    return map;
+  }, [hopRateEntries]);
   // Gonogo is the experience FROM the command centre: the route's source
   // stop is named for the active vessel, never "you". Falls back to a
   // generic label on the rare tick `vessel.identity` hasn't resolved yet
@@ -403,6 +427,7 @@ function CommSignalComponent({
                 vesselLabel={vesselLabel}
                 centreLabel={centreLabel}
                 delaySeconds={delay?.magnitude}
+                rateByHopId={rateByHopId}
               />
             </div>
           )}
@@ -432,6 +457,7 @@ function CommSignalComponent({
               vesselLabel={vesselLabel}
               centreLabel={centreLabel}
               delaySeconds={delay?.magnitude}
+              rateByHopId={rateByHopId}
             />
           )}
 
@@ -463,47 +489,59 @@ const RAIL_STOP_DIAMETER_PX = 10;
 
 /**
  * The vertical train-schedule: the source vessel at the top, each relay as a
- * circle on the rail, the command centre at the bottom. Each leg's distance
- * AND light-time (and RA band rate, when present) sit in the gap between its
- * two stops, against the rail. Renders nothing for an empty `hops` list (no
- * path home is already covered by the LOS headline).
+ * circle on the rail, the command centre at the bottom. Each leg's distance AND
+ * light-time (and the per-hop bitrate a `comm-signal.hop-rates` contributor
+ * supplies, when present, with the bottleneck hop flagged) sit in the gap
+ * between its two stops, against the rail. Renders nothing for an empty `hops`
+ * list (no path home is already covered by the LOS headline).
  */
 function CommsPathRoute({
   hops,
   vesselLabel,
   centreLabel,
   delaySeconds,
+  rateByHopId,
 }: {
   hops: readonly CommsHop[];
   vesselLabel: string;
   centreLabel: string;
   /** The path's total one-way delay: apportioned across legs by distance, see `commsLegTimeSeconds`. */
   delaySeconds: number | undefined;
+  /** Per-hop forward bitrate (bits/sec) keyed by `commsHopId`, joined from the
+   *  `comm-signal.hop-rates` contribution. Empty under bare CommNet / no RA. */
+  rateByHopId: ReadonlyMap<string, number>;
 }) {
   const nodes = buildCommsRouteNodes(hops, vesselLabel, centreLabel);
   if (nodes.length === 0) return null;
+  const bottleneckId = commsBottleneckHopId(hops, rateByHopId);
   return (
     <Stack gap="xs" style={{ minWidth: 0 }}>
       <Value tone="muted" size="xs" style={ROUTE_LABEL_STYLE}>
         Route
       </Value>
       <div>
-        {nodes.map((node, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: stops have no stable identity beyond their position along the rail
-          <Fragment key={i}>
-            <CommsPathStop
-              node={node}
-              emphasize={i === 0 || i === nodes.length - 1}
-            />
-            {i < hops.length && (
-              <CommsPathLeg
-                hop={hops[i]}
-                hops={hops}
-                delaySeconds={delaySeconds}
+        {nodes.map((node, i) => {
+          const hop = i < hops.length ? hops[i] : undefined;
+          const hopId = hop ? commsHopId(hop.from, hop.to) : undefined;
+          return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: stops have no stable identity beyond their position along the rail
+            <Fragment key={i}>
+              <CommsPathStop
+                node={node}
+                emphasize={i === 0 || i === nodes.length - 1}
               />
-            )}
-          </Fragment>
-        ))}
+              {hop && hopId !== undefined && (
+                <CommsPathLeg
+                  hop={hop}
+                  hops={hops}
+                  delaySeconds={delaySeconds}
+                  rate={rateByHopId.get(hopId)}
+                  isBottleneck={hopId === bottleneckId}
+                />
+              )}
+            </Fragment>
+          );
+        })}
       </div>
     </Stack>
   );
@@ -538,19 +576,30 @@ function CommsPathStop({
   );
 }
 
-/** One leg's distance AND light-time (+ RA band rate, when present), in the gap against the rail. */
+/**
+ * One leg's distance AND light-time, plus, when a `comm-signal.hop-rates`
+ * contribution supplied one, this hop's forward bitrate: the slowest hop in the
+ * path (the bottleneck that caps end-to-end throughput) is flagged with a
+ * LIMITING marker and its rate tinted, since that is the number an operator
+ * reads to know the real ceiling.
+ */
 function CommsPathLeg({
   hop,
   hops,
   delaySeconds,
+  rate,
+  isBottleneck,
 }: {
   hop: CommsHop;
   hops: readonly CommsHop[];
   delaySeconds: number | undefined;
+  /** This hop's forward bitrate (bits/sec), or undefined when none was contributed. */
+  rate: number | undefined;
+  /** Whether this hop is the path's minimum-rate (limiting) hop. */
+  isBottleneck: boolean;
 }) {
   const legSeconds = commsLegTimeSeconds(hop, hops, delaySeconds);
-  const hasDetail =
-    hop.distanceMeters !== undefined || hop.bandRateBitsPerSec !== undefined;
+  const hasDetail = hop.distanceMeters !== undefined || rate !== undefined;
   return (
     <div
       style={{
@@ -581,11 +630,37 @@ function CommsPathLeg({
               <Countdown value={legSeconds} precise />
             </Value>
           )}
-          {/* RealAntennas-only per-hop rate annotation (Comms.cs's own doc):
-              absent under bare CommNet, so this simply never renders there. */}
-          {hop.bandRateBitsPerSec !== undefined && (
-            <Value tone="muted" size="xs">
-              <Unit value={hop.bandRateBitsPerSec} />
+          {/* Per-hop bitrate, joined from the `comm-signal.hop-rates`
+              contribution (never a core hop field): absent under bare CommNet /
+              no RA, so it simply never renders there. */}
+          {rate !== undefined && (
+            <Value
+              tone="muted"
+              size="xs"
+              style={{
+                whiteSpace: "nowrap",
+                color: isBottleneck
+                  ? "var(--color-status-warning-fg-muted)"
+                  : undefined,
+                fontWeight: isBottleneck ? 600 : undefined,
+              }}
+            >
+              <Unit value={value("bit/s", rate)} />
+            </Value>
+          )}
+          {isBottleneck && (
+            <Value
+              tone="default"
+              size="xs"
+              title="Slowest hop: caps end-to-end throughput"
+              style={{
+                color: "var(--color-status-warning-fg-muted)",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Limiting
             </Value>
           )}
         </Cluster>
@@ -785,6 +860,11 @@ registerComponent<CommSignalConfig>({
   // importing backend-aware code (locked map: comm-signal). See the
   // `SlotRegistry` declaration-merge above for the slot props contracts.
   augmentSlots: ["comm-signal.sections", "comm-signal.badges"],
+  // The per-hop bitrate slot the route schedule joins onto its hops: a comms
+  // Uplink (RealAntennas) contributes rates keyed by node id, CommSignal flags
+  // the bottleneck. Declared so ContributionsProvider aggregates it; CommSignal
+  // only ever names this slot id, never a provider.
+  contributionSlots: ["comm-signal.hop-rates"],
   dataRequirements: [
     "comm.connected",
     "comm.signalStrength",

@@ -394,8 +394,8 @@ namespace Sitrep.Core.Serialization
         /// <see cref="Sitrep.Contract.CommsDelay.OneWaySeconds"/>'s own doc
         /// comment): written as JSON <c>null</c> when there is no measurable
         /// path, the same nullable-double wire path as
-        /// <see cref="AppendCommsHop"/>'s <c>distanceMeters</c>/
-        /// <c>bandRateBitsPerSec</c>, never collapsed to a 0 sentinel. Enum
+        /// <see cref="AppendCommsHop"/>'s <c>distanceMeters</c>, never collapsed
+        /// to a 0 sentinel. Enum
         /// values (<c>source</c>, <c>meta.quality</c>) are emitted as their
         /// integer ordinal, the same convention as <c>Meta.quality</c>/
         /// <c>Meta.staleness</c> and <see cref="AppendCommandResult"/>'s
@@ -1048,17 +1048,6 @@ namespace Sitrep.Core.Serialization
             if (h.DistanceMeters.HasValue)
             {
                 AppendNumber(sb, h.DistanceMeters.Value);
-            }
-            else
-            {
-                AppendNull(sb);
-            }
-            sb.Append(',');
-            AppendString(sb, "bandRateBitsPerSec");
-            sb.Append(':');
-            if (h.BandRateBitsPerSec.HasValue)
-            {
-                AppendNumber(sb, h.BandRateBitsPerSec.Value);
             }
             else
             {

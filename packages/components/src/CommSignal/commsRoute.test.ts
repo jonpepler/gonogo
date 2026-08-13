@@ -2,6 +2,8 @@ import { type CommsHop, value } from "@ksp-gonogo/sitrep-sdk";
 import { describe, expect, it } from "vitest";
 import {
   buildCommsRouteNodes,
+  commsBottleneckHopId,
+  commsHopId,
   commsLegTimeSeconds,
   commsRouteRelayCount,
 } from "./commsRoute";
@@ -109,5 +111,59 @@ describe("commsLegTimeSeconds", () => {
     const hops = [hopWithDistance("Active Vessel", "home", 299_792_458)];
     expect(commsLegTimeSeconds(hops[0], hops, 0)).toBeCloseTo(1, 9);
     expect(commsLegTimeSeconds(hops[0], hops, -3)).toBeCloseTo(1, 9);
+  });
+});
+
+describe("commsHopId", () => {
+  it("is the single join key both the schedule and a contributor derive from", () => {
+    expect(commsHopId("Vessel", "Relay 1")).toBe(
+      commsHopId("Vessel", "Relay 1"),
+    );
+  });
+
+  it("is direction-sensitive and collision-resistant across the from/to split", () => {
+    expect(commsHopId("Vessel", "Relay 1")).not.toBe(
+      commsHopId("Relay 1", "Vessel"),
+    );
+    // A delimiter that could be forged by concatenation must not collide: "ab"+"c"
+    // and "a"+"bc" stay distinct.
+    expect(commsHopId("ab", "c")).not.toBe(commsHopId("a", "bc"));
+  });
+});
+
+describe("commsBottleneckHopId", () => {
+  const path = [hop("Vessel", "Relay 1"), hop("Relay 1", "home")];
+  const rate = (a: string, b: string, bits: number): [string, number] => [
+    commsHopId(a, b),
+    bits,
+  ];
+
+  it("flags the minimum-rate hop when at least two hops carry a rate", () => {
+    const rates = new Map([
+      rate("Vessel", "Relay 1", 262_000),
+      rate("Relay 1", "home", 48_000),
+    ]);
+    expect(commsBottleneckHopId(path, rates)).toBe(
+      commsHopId("Relay 1", "home"),
+    );
+  });
+
+  it("does not flag a lone rated hop (nothing to be a bottleneck relative to)", () => {
+    const rates = new Map([rate("Relay 1", "home", 48_000)]);
+    expect(commsBottleneckHopId(path, rates)).toBeUndefined();
+  });
+
+  it("returns undefined under bare CommNet / no contributed rates", () => {
+    expect(commsBottleneckHopId(path, new Map())).toBeUndefined();
+  });
+
+  it("resolves a tie to the first minimum hop in path order", () => {
+    const rates = new Map([
+      rate("Vessel", "Relay 1", 48_000),
+      rate("Relay 1", "home", 48_000),
+    ]);
+    expect(commsBottleneckHopId(path, rates)).toBe(
+      commsHopId("Vessel", "Relay 1"),
+    );
   });
 });

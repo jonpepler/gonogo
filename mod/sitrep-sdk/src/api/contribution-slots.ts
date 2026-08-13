@@ -76,6 +76,23 @@ export interface ShipMapPartMetaEntry {
   text?: string;
 }
 
+/**
+ * One `comm-signal.hop-rates` entry: a single hop's forward band rate, keyed by
+ * the SAME node ids `comms.path` carries (`fromNodeId`/`toNodeId`), so
+ * CommSignal's route schedule can join a rate onto the hop it already renders
+ * WITHOUT importing any backend-aware code or naming a provider. The join key is
+ * derived once, in `CommSignal/commsRoute.ts`; a contributor relays the node ids
+ * verbatim off its own Topic. `bitsPerSec` is a plain magnitude (bits/sec); the
+ * schedule wraps it in `<Unit>` for display and compares magnitudes to flag the
+ * bottleneck (minimum-rate) hop. Owned by `packages/components/src/CommSignal`;
+ * the built-in RealAntennas contribution fills it off `realantennas.hopRates`.
+ */
+export interface CommSignalHopRateEntry {
+  fromNodeId: string;
+  toNodeId: string;
+  bitsPerSec: number;
+}
+
 // --- ResourceOps (packages/components/src/ResourceOps) ---------------------
 //
 // The first FILTER slot (contribution-slots-spec §15). Its entry is the
@@ -106,6 +123,10 @@ declare module "./types" {
     "ship-map.part-meta": {
       entry: ShipMapPartMetaEntry;
       topics: "kerbalism.lifesupport" | "kerbalism.profile";
+    };
+    "comm-signal.hop-rates": {
+      entry: CommSignalHopRateEntry;
+      topics: "realantennas.hopRates";
     };
   }
 }

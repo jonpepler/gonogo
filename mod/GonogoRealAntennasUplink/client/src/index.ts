@@ -40,6 +40,10 @@ export type {
   CommsLinkQuality,
   RealAntennasHopExt,
 } from "./__generated__/contract";
+// The per-hop forward-rate contribution: fills CommSignal's `comm-signal.hop-rates`
+// slot off `realantennas.hopRates`, so the base route schedule can render each
+// leg's bitrate and flag the bottleneck without naming RealAntennas.
+export { computeRealAntennasHopRates } from "./CommSignal/hopRates";
 // The RA CommSignal augments (badges + sections): the readers for the three
 // RA-only channels and the per-hop bag that used to reach the SDK and stop.
 // `export` (not a bare side-effect import) so the `registerAugment` calls run at
@@ -56,3 +60,4 @@ export * from "./topics";
 // augments into CommSignal's slots. Kept un-aliased so the bundler does not
 // tree-shake the registrations away.
 import "./CommSignalRaAugment";
+import "./CommSignal/hopRates";

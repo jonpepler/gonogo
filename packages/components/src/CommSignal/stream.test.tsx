@@ -1,10 +1,31 @@
-import { DashboardItemContext } from "@ksp-gonogo/core";
+import {
+  ContributionsProvider,
+  clearContributions,
+  DashboardItemContext,
+  registerContribution,
+  WidgetMetaContext,
+} from "@ksp-gonogo/core";
 import { act, render, screen, waitFor } from "@ksp-gonogo/test-utils";
 import { NULL_DISPLAY } from "@ksp-gonogo/ui-kit";
 import { visibleText } from "@ksp-gonogo/ui-kit/testing";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { setupStreamFixture } from "../test/setupStreamFixture";
 import { CommSignalComponent } from "./index";
+
+// CommSignal declares the `comm-signal.hop-rates` slot; `ContributionsProvider`
+// only aggregates a widget's declared slots, so the route-rate tests below mount
+// it under this meta (the same shape ShipMap's contribution tests use).
+const HOP_RATE_META = {
+  componentId: "comm-signal",
+  contributionSlots: ["comm-signal.hop-rates"] as const,
+};
+
+// The hop-rate tests register a contribution into the global registry; clear it
+// after every test so it never leaks into the many no-provider CommSignal tests
+// in this file (which expect an empty `comm-signal.hop-rates` slot).
+afterEach(() => {
+  clearContributions();
+});
 
 /**
  * CommSignal genuinely running off the real `TelemetryProvider`/
@@ -497,7 +518,25 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
     );
   });
 
-  it("shows the RA per-hop band rate only when the wire annotates it", async () => {
+  it("joins a `comm-signal.hop-rates` contribution onto the route and flags the bottleneck hop", async () => {
+    // Per-hop bitrate is no longer a core hop field: it arrives via the
+    // `comm-signal.hop-rates` slot. A comms Uplink (RealAntennas) fills it off
+    // its own Topic keyed by node id; here a local contribution stands in for
+    // that, keyed to the two hops emitted below. CommSignal joins the rates onto
+    // the route it already renders and flags the slower hop as LIMITING.
+    registerContribution({
+      id: "test-comm-signal-hop-rates",
+      contributes: "comm-signal.hop-rates",
+      compute: () => [
+        {
+          fromNodeId: "Active Vessel",
+          toNodeId: "Relay 1",
+          bitsPerSec: 96_000,
+        },
+        { fromNodeId: "Relay 1", toNodeId: "home", bitsPerSec: 12_000 },
+      ],
+    });
+
     const fixture = setupStreamFixture({
       carriedChannels: ["vessel.comms", "comms.path", "vessel.identity"],
       pinnedUt: 10,
@@ -505,11 +544,15 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
 
     render(
       <fixture.Provider>
-        <DashboardItemContext.Provider
-          value={{ instanceId: "comm-route-rate" }}
-        >
-          <CommSignalComponent id="comm-route-rate" w={8} h={6} />
-        </DashboardItemContext.Provider>
+        <WidgetMetaContext.Provider value={HOP_RATE_META}>
+          <ContributionsProvider>
+            <DashboardItemContext.Provider
+              value={{ instanceId: "comm-route-rate" }}
+            >
+              <CommSignalComponent id="comm-route-rate" w={8} h={8} />
+            </DashboardItemContext.Provider>
+          </ContributionsProvider>
+        </WidgetMetaContext.Provider>
       </fixture.Provider>,
     );
 
@@ -527,17 +570,20 @@ describe("CommSignal: genuinely runs off the stream (R6 Wave 1)", () => {
         hops: [
           {
             from: "Active Vessel",
-            to: "home",
-            kind: 0,
+            to: "Relay 1",
+            kind: 1,
             distanceMeters: 400_000,
-            bandRateBitsPerSec: 96_000,
           },
+          { from: "Relay 1", to: "home", kind: 0, distanceMeters: 900_000 },
         ],
       });
     });
 
     await waitFor(() => expect(screen.getByText("Active Vessel")).toBeTruthy());
+    // Both legs' rates render through the canonical Unit formatter (bits/sec),
+    // and the slower (12 kbit/s) hop is flagged as the throughput-limiting one.
     expect(visibleText()).toContain("kbit/s");
+    expect(screen.getByText("Limiting")).toBeTruthy();
   });
 
   it("falls back to a generic vessel label before vessel.identity has resolved", async () => {

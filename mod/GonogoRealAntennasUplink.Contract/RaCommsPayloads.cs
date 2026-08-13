@@ -145,10 +145,51 @@ public class RealAntennasHopExt
     public double? PowerDrawEc { get; set; }
 
     /// <summary>
-    /// Reverse-direction throughput (bits/sec): the opposite of the shared
-    /// <c>CommsHop.BandRateBitsPerSec</c> forward rate, off the same live
-    /// RACommLink. The backend only surfaced the forward pair before.
+    /// Reverse-direction throughput (bits/sec): the opposite of the forward rate
+    /// this Uplink publishes on <c>realantennas.hopRates</c>, off the same live
+    /// RACommLink. The backend only surfaced the forward direction before.
     /// </summary>
     [SitrepUnit(Units.BitsPerSecond)]
     public double? ReverseBitsPerSec { get; set; }
+}
+
+/// <summary>
+/// One entry of the <c>realantennas.hopRates</c> channel: the RealAntennas
+/// forward band rate for a single hop, keyed by the SAME node ids
+/// <c>comms.path</c> already carries (<c>RaCommsBackend.NodeId(link.a)</c>/
+/// <c>NodeId(link.b)</c>), so a client can join a rate onto the route the core
+/// schedule already renders WITHOUT this Uplink republishing the topology.
+///
+/// <para>RealAntennas' relay graph subclasses stock CommNet's
+/// (<c>RACommNode : CommNet.CommNode</c>, <c>RACommLink : CommNet.CommLink</c>),
+/// so the hop set and its node ids are identical to <c>comms.path</c>'s: this
+/// channel ONLY embellishes each existing hop with its bitrate, it never
+/// re-derives the path. The channel value is a bare ARRAY of these entries
+/// (one per hop that has a readable rate), self-flattened at the publish
+/// boundary by <c>RaWire.HopRates</c> the same way this Uplink's other channels
+/// flatten, so core's serializer never needs to know the type exists.</para>
+///
+/// <para>TRUE-NOW like the rest of the comms family: it describes the link AS
+/// KSC SEES IT, computed ground-side. Absent entirely without RealAntennas
+/// installed (this Uplink is not even elected), and a hop whose rate cannot be
+/// read this tick simply yields no entry, never a 0 sentinel.</para>
+/// </summary>
+[SitrepContract]
+#if NETSTANDARD2_0
+[TsInterface]
+#endif
+[SitrepTopic("realantennas.hopRates", isArray: true)]
+public class RealAntennasHopRate
+{
+    /// <summary>The hop's source node id, identical to the matching <c>CommsHop.From</c>.</summary>
+    [SitrepUnit(Units.Id)]
+    public string FromNodeId { get; set; } = "";
+
+    /// <summary>The hop's destination node id, identical to the matching <c>CommsHop.To</c>.</summary>
+    [SitrepUnit(Units.Id)]
+    public string ToNodeId { get; set; } = "";
+
+    /// <summary>Forward band rate (bits/sec) for this hop, off the live RACommLink.</summary>
+    [SitrepUnit(Units.BitsPerSecond)]
+    public double BitsPerSec { get; set; }
 }

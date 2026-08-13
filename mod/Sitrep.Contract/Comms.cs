@@ -124,9 +124,12 @@ public enum CommsHopKind
 /// One ordered hop toward KSC in the control path. <see cref="DistanceMeters"/>
 /// is the geometry SignalDelay consumes for light-time; it is nullable,
 /// absent when the backend cannot supply per-hop geometry (typed absence,
-/// never 0). <see cref="BandRateBitsPerSec"/> is the RealAntennas-only
-/// per-hop rate annotation (§1 "path hops gain RA band/rate annotations only
-/// under RA"): absent under bare CommNet.
+/// never 0). Per-hop RealAntennas rate is NOT a field on this shared shape: the
+/// forward band rate rides the RA uplink's own <c>realantennas.hopRates</c>
+/// channel (a thin per-hop annotation keyed by these same node ids, joined onto
+/// the route client-side by a <c>comm-signal.hop-rates</c> contribution), and
+/// the other RA per-hop facts ride <see cref="Extensions"/> under
+/// <c>"realantennas"</c>. The core hop stays RA-agnostic.
 /// </summary>
 [SitrepContract]
 #if NETSTANDARD2_0
@@ -142,8 +145,6 @@ public class CommsHop
     public CommsHopKind Kind { get; set; }
     [SitrepUnit(Units.Metres)]
     public double? DistanceMeters { get; set; }
-    [SitrepUnit(Units.BitsPerSecond)]
-    public double? BandRateBitsPerSec { get; set; }
 
     /// <summary>
     /// The provider-namespaced extension bag: how the elected comms backend
@@ -353,11 +354,16 @@ public class CommsCommandCentre
 // Everything above stays, and the boundary is the PROVIDER axis this file's own
 // header describes rather than a filename: an elected backend fills the shared
 // shapes, so those shapes are core no matter which backend is winning today.
-// CommsHop.BandRateBitsPerSec is the case that shows the difference: this file
-// documents it as a RealAntennas-only annotation, absent under bare CommNet, and
-// it still belongs here, because it is a nullable FIELD on a shared type rather
-// than a type of its own. Splitting it out would fork the one shape both
-// backends fill. RA-only presence is not RA-only ownership.
+// CommsHop once carried a RealAntennas-only BandRateBitsPerSec field on the
+// argument that a nullable field on a shared type was not the same as a private
+// type. That argument lost: an RA-only number sitting on the shared hop was
+// still a core PR a future out-of-tree comms provider (RemoteTech) could not
+// land, and it read as jank. The forward band rate now rides the RA uplink's own
+// realantennas.hopRates channel, a thin per-hop annotation keyed by these same
+// node ids and joined onto the route client-side, so the shared hop is finally
+// RA-agnostic. The other RA per-hop facts already ride CommsHop.Extensions under
+// "realantennas". RA-only presence was never RA-only ownership, and the hop no
+// longer pretends otherwise.
 
 /// <summary>
 /// The pure, KSP-free object the exclusive <c>"comms"</c> capability resolves

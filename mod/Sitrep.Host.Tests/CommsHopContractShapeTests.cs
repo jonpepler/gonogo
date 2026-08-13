@@ -17,9 +17,12 @@ namespace Sitrep.Host.Tests
     /// CommNet and an elected out-of-tree comms provider) fill, so a provider-only
     /// field on it would be the hand-curated-superset anti-pattern: it needs a
     /// core PR an out-of-tree comms provider (RemoteTech, a future mod) cannot
-    /// land. <c>BandRateBitsPerSec</c> is the one pre-bag provider-dependent
-    /// member and is recorded here rather than condemned; everything else new
-    /// goes in <c>Extensions["&lt;providerId&gt;"]</c>.</para>
+    /// land. There is no longer any provider-dependent member on the hop: the one
+    /// that used to be here, <c>BandRateBitsPerSec</c>, was removed (Major 13) and
+    /// its forward rate moved to the RealAntennas uplink's own
+    /// <c>realantennas.hopRates</c> channel, so everything provider-specific now
+    /// goes in <c>Extensions["&lt;providerId&gt;"]</c> or the provider's own
+    /// channel.</para>
     ///
     /// <para>The set is exact rather than a max count, so a RENAME fails too.
     /// Removals are gated by <see cref="ContractShapeGateTests"/>.</para>
@@ -32,7 +35,6 @@ namespace Sitrep.Host.Tests
             nameof(CommsHop.To),
             nameof(CommsHop.Kind),
             nameof(CommsHop.DistanceMeters),
-            nameof(CommsHop.BandRateBitsPerSec),
             nameof(CommsHop.Extensions),
         };
 

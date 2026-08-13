@@ -65,7 +65,6 @@ namespace GonogoRealAntennasUplink.Tests
                     To = "home",
                     Kind = CommsHopKind.Home,
                     DistanceMeters = 1234.5,
-                    BandRateBitsPerSec = 262000,
                     Extensions = new Dictionary<string, object?>
                     {
                         ["realantennas"] = new Dictionary<string, object?>
@@ -133,7 +132,6 @@ namespace GonogoRealAntennasUplink.Tests
                         To = "home",
                         Kind = CommsHopKind.Home,
                         DistanceMeters = 1234.5,
-                        BandRateBitsPerSec = null,
                     },
                 },
                 Meta = new PayloadMeta { Source = "vessel:1", Quality = Quality.Loaded },
@@ -142,7 +140,7 @@ namespace GonogoRealAntennasUplink.Tests
             Assert.DoesNotContain("extensions", json);
             Assert.Contains(
                 "\"hops\":[{\"from\":\"vessel\",\"to\":\"home\",\"kind\":0," +
-                "\"distanceMeters\":1234.5,\"bandRateBitsPerSec\":null}]",
+                "\"distanceMeters\":1234.5}]",
                 json);
         }
     }

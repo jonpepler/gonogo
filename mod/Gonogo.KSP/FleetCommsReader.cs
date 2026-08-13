@@ -54,7 +54,6 @@ namespace Gonogo.KSP
                             To = string.Empty,
                             Kind = link.b.isHome || link.a.isHome ? CommsHopKind.Home : CommsHopKind.Relay,
                             DistanceMeters = (link.a.precisePosition - link.b.precisePosition).magnitude,
-                            BandRateBitsPerSec = null,
                         });
                     }
                 }

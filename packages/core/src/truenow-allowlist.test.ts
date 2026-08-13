@@ -127,12 +127,14 @@ const ALLOWED_TRUENOW: Record<string, number> = {
 
   // RealAntennas link-quality/data-rate/link-margin, plus
   // realantennas.available (whether RA is installed, same install-fact
-  // class as scansat/kerbcast .available): same "facts about the link
-  // (or its presence)" class as CommsCoreUplink above, same helper
-  // shape: 1 explicit `Delay =` line inside the helper body + 4 call
-  // sites + the helper's own declaration line = 5 helper matches. 1
-  // explicit + 5 helper = 6.
-  "mod/GonogoRealAntennasUplink/RealAntennasUplink.cs": 6,
+  // class as scansat/kerbcast .available) and realantennas.hopRates (the
+  // per-hop forward band rate that left CommsHop for this Uplink's own
+  // channel, a ground-side fact about the link the same as the rest): same
+  // "facts about the link (or its presence)" class as CommsCoreUplink above,
+  // same helper shape: 1 explicit `Delay =` line inside the helper body + 5
+  // call sites + the helper's own declaration line = 6 helper matches. 1
+  // explicit + 6 helper = 7.
+  "mod/GonogoRealAntennasUplink/RealAntennasUplink.cs": 7,
 
   // SCANsat scan-coverage availability: ground-side (the map data the
   // centre already has), not a live vessel reading. 1 explicit

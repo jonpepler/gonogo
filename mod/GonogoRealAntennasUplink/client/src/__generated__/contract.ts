@@ -34,3 +34,9 @@ export interface RealAntennasHopExt
 	powerDrawEc?: Value<"units/s">;
 	reverseBitsPerSec?: Value<"bit/s">;
 }
+export interface RealAntennasHopRate
+{
+	fromNodeId: string;
+	toNodeId: string;
+	bitsPerSec: Value<"bit/s">;
+}

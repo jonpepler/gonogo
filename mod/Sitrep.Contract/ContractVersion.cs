@@ -307,8 +307,42 @@ namespace Sitrep.Contract
         /// has been: a re-freeze from HEAD takes in whatever unrelated drift
         /// happens to be standing in the contract at the time, and the whole point
         /// of the ledger is that a Major cannot rewrite what it inherited.</para>
+        ///
+        /// <para><b>Bumped 12 -&gt; 13: the per-hop RA rate leaves the shared
+        /// hop.</b> Removed <see cref="CommsHop"/>'s
+        /// <c>BandRateBitsPerSec</c> (<c>double?</c>). A removed member on a
+        /// wire-visible type is breaking by definition, which is why this is a
+        /// Major and not a quiet edit. It IS on the frozen Major-12 floor (CommsHop
+        /// has carried the field since before the v6.0 freeze), so its removal
+        /// registers as a single genuine <c>member-removed:</c> break, the whole of
+        /// this Major's <c>Breaks</c>.</para>
+        ///
+        /// <para>Why it was worth one: <c>BandRateBitsPerSec</c> was a
+        /// RealAntennas-only per-hop number sitting on the ONE comms shape both the
+        /// vanilla CommNet backend and an elected RA (or future out-of-tree)
+        /// provider fill. That is the hand-curated-superset anti-pattern the
+        /// provider extension bag exists to retire: a provider-specific field on a
+        /// shared type needs a core PR an out-of-tree comms provider cannot land,
+        /// and it read as jank next to the freshly RA-agnostic hop. The forward
+        /// band rate now rides the RA uplink's OWN <c>realantennas.hopRates</c>
+        /// channel, a thin per-hop annotation keyed by the same node ids
+        /// <c>comms.path</c> uses and joined onto the route client-side by a
+        /// <c>comm-signal.hop-rates</c> contribution; the shared hop no longer
+        /// carries an RA-only field at all (the rest of RA's per-hop facts already
+        /// ride <c>CommsHop.Extensions["realantennas"]</c>). Sanctioned on the same
+        /// standing grounds as every Major above: the mod is still pre-release with
+        /// NO external Uplinks, and the app and mod ship together, so no artifact
+        /// exists that was built against the old shape.</para>
+        ///
+        /// <para><b>What the Major-13 floor deliberately does NOT absorb.</b>
+        /// Frozen as the Major-12 floor MINUS exactly that one member, never as the
+        /// live reflected shape, so the Major-12 minors that landed after that floor
+        /// (CommsHop.Extensions, comms.commandCentre, and the rest) are NOT written
+        /// into the Major-13 floor: they stay additive-over-the-floor exactly as
+        /// they were, and any unrelated drift elsewhere is still caught rather than
+        /// silently blessed by a re-freeze from HEAD.</para>
         /// </remarks>
-        public const int Major = 12;
+        public const int Major = 13;
 
         /// <summary>
         /// Reset to 0 alongside the Major 3 -&gt; 4 bump (see <see cref="Major"/>),
@@ -834,7 +868,12 @@ namespace Sitrep.Contract
         /// new topic, additive-only, never touches an existing member, so an Uplink
         /// built against any earlier Major-12 minor is unaffected and the frozen
         /// Major-12 floor is NOT re-frozen.</para>
+        ///
+        /// <para>Reset 11 -&gt; 0 alongside the Major 12 -&gt; 13 bump (the per-hop
+        /// <c>CommsHop.BandRateBitsPerSec</c> removal; see <see cref="Major"/>).
+        /// Every additive change on the Major-12 line above is carried forward into
+        /// Major 13.</para>
         /// </summary>
-        public const int Minor = 11;
+        public const int Minor = 0;
     }
 }

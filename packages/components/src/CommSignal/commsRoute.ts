@@ -1,5 +1,74 @@
 import type { CommsHop } from "@ksp-gonogo/sitrep-sdk";
 
+/**
+ * One `comm-signal.hop-rates` entry (components-side mirror of the sdk leaf's
+ * `CommSignalHopRateEntry`): a hop's forward bitrate keyed by the SAME node ids
+ * `comms.path` carries, so the route schedule joins it by {@link commsHopId}
+ * without importing backend-aware code. `bitsPerSec` is a plain magnitude; the
+ * schedule wraps it in `<Unit>` and compares magnitudes to flag the bottleneck.
+ */
+export interface CommSignalHopRateEntry {
+  fromNodeId: string;
+  toNodeId: string;
+  bitsPerSec: number;
+}
+
+// The components-side `comm-signal.hop-rates` slot, declared on core's registry
+// (the sdk leaf carries its own mirror for Uplink authors,
+// `contribution-slots.ts`, which is where a contributor's source Topic is
+// named). A comms Uplink contributes each hop's forward rate keyed by node id,
+// and the route schedule joins it onto the hop it already renders and flags the
+// bottleneck. No `topics` here, so CommSignal itself never references any
+// provider's channel: it only knows this slot id. Declared here rather than in
+// `index.tsx` so the contribution-slot conformance test-d can load the
+// augmentation by importing this module's entry type.
+declare module "@ksp-gonogo/core" {
+  interface ContributionRegistry {
+    "comm-signal.hop-rates": {
+      entry: CommSignalHopRateEntry;
+    };
+  }
+}
+
+/**
+ * The join key for a hop: the SINGLE derivation both this route schedule and any
+ * `comm-signal.hop-rates` contributor key by, built from the hop's from/to node
+ * ids (identical to `comms.path`'s `CommsHop.from`/`to`). A contribution relays
+ * the raw node ids off its own Topic and the schedule joins them here, so the
+ * widget never imports backend-aware code. A unit-separator control character
+ * delimits the two ids so a node name containing it cannot forge a collision.
+ */
+export function commsHopId(fromNodeId: string, toNodeId: string): string {
+  return `${fromNodeId}${toNodeId}`;
+}
+
+/**
+ * The bottleneck hop's id: the minimum-rate hop in the path, since the slowest
+ * link caps end-to-end throughput. `undefined` unless at least TWO hops carry a
+ * rate: a bottleneck only means something relative to another leg, so a lone
+ * rated leg (or a bare-CommNet path with no rates at all) is never flagged.
+ * Ties resolve to the first hop at the minimum, in path order.
+ */
+export function commsBottleneckHopId(
+  hops: readonly CommsHop[],
+  rateByHopId: ReadonlyMap<string, number>,
+): string | undefined {
+  let minId: string | undefined;
+  let minRate = Number.POSITIVE_INFINITY;
+  let rated = 0;
+  for (const hop of hops) {
+    const id = commsHopId(hop.from, hop.to);
+    const rate = rateByHopId.get(id);
+    if (rate === undefined) continue;
+    rated++;
+    if (rate < minRate) {
+      minRate = rate;
+      minId = id;
+    }
+  }
+  return rated >= 2 ? minId : undefined;
+}
+
 /** One labelled stop along the vessel-to-command-centre chain. */
 export interface CommsRouteNode {
   label: string;

@@ -198,7 +198,6 @@ export interface CommsHop
 	to: string;
 	kind: CommsHopKind;
 	distanceMeters?: Value<"m">;
-	bandRateBitsPerSec?: Value<"bit/s">;
 	extensions?: ProviderExtensions;
 }
 export interface CommsPath

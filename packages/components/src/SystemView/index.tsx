@@ -33,6 +33,10 @@ import { quantiseUt } from "../MapView/predictionThrottle";
 import { AlmanacPanel } from "./AlmanacPanel";
 import { SystemDiagram } from "./SystemDiagram";
 import { SystemEntitiesLayer } from "./SystemEntitiesLayer";
+// Side-effect import: the built-in vessel-orbits contribution self-registers
+// against `system-view.entities` on module load (same pattern as ShipMap's
+// `./partMetersContribution`).
+import "./vesselOrbitsContribution";
 import {
   angleDelta,
   hohmannPhaseAngle,

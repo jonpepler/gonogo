@@ -117,7 +117,10 @@ export interface SystemEntity {
 
 declare module "@ksp-gonogo/core" {
   interface ContributionRegistry {
-    "system-view.entities": { entry: SystemEntity };
+    "system-view.entities": {
+      entry: SystemEntity;
+      topics: "system.vessels" | "system.bodies";
+    };
   }
 }
 

@@ -23,6 +23,14 @@ import type { SystemEntity, SystemEntityMeta } from "./systemEntities";
 // FleetRoster's craft-only filter answers "what do I fly"; this contribution
 // answers "what's actually out there", a different question with a wider
 // answer.
+//
+// Includes the active/framed vessel too: this contribution has no notion of
+// "active", it's static data computed from `system.vessels` alone. Excluding
+// the active vessel's own entity from the render is host-side state (which
+// vessel is framed), and belongs in `index.tsx`, which drops the entity whose
+// `vesselId` matches `vessel.identity` before handing entities to
+// `SystemEntitiesLayer`: `SystemDiagram` already draws that vessel's own
+// bright ring, so a contributed faint one would sit duplicated on top of it.
 // ---------------------------------------------------------------------------
 
 function bodyNameByIndex(
@@ -102,6 +110,7 @@ export function computeVesselOrbitEntities(
 
     entities.push({
       id: `vessel-orbit:${v.vesselId}`,
+      vesselId: v.vesselId,
       position: hasOrbit
         ? {
             kind: "orbit",

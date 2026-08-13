@@ -259,7 +259,20 @@ function SystemViewComponent({
   // keyboard wiring lives now; the brighten-on-select visuals are a later
   // task's job (they'll read `selectedVesselId` here to drive the entities
   // layer's `decorate` hook).
-  const entities = useContributions("system-view.entities");
+  const rawEntities = useContributions("system-view.entities");
+  // Suppress the active/framed vessel's own entry: `SystemDiagram` already
+  // draws its dedicated bright ring below, so a contributed faint one (e.g.
+  // the built-in vessel-orbits contribution, which has no notion of "active"
+  // and draws every roster vessel) would sit duplicated on top of it. Host
+  // state, not contribution data: matched by `vesselId`, not by parsing a
+  // contribution-private `id` string.
+  const entities = useMemo(
+    () =>
+      identity?.vesselId != null
+        ? rawEntities.filter((e) => e.vesselId !== identity.vesselId)
+        : rawEntities,
+    [rawEntities, identity?.vesselId],
+  );
   const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
   const handleEntityActivate = useCallback((id: string) => {
     setSelectedVesselId((prev) => (prev === id ? null : id));

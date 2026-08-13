@@ -82,9 +82,18 @@ export const DEFAULT_SITREP_CARRIED_TOPICS: readonly string[] = [
   // `local_docs/Wednesday Work/2026-07-16-fleetcomms-use-comms-link.md`), so
   // `comms.connectivity` itself is no longer carried here: no client reads
   // it, completing the comms work's "de-publicise the TrueNow comms.*
-  // observation channels" intent. `comms.network` deliberately NOT listed
-  // (Phase 1 doesn't draw the relay graph, Phase 2).
+  // observation channels" intent.
   "comms.path",
+  // CommNet relay graph (Phase 2, systemview-shape-contributions Task 4):
+  // the `system-view-vessel-orbits` contribution reads this to draw the
+  // relay network as faint connection-line entities. The contribution
+  // subscribes directly (`ContributionsProvider`'s `SlotAggregator` bypasses
+  // this gate entirely), so listing it here isn't load-bearing for THAT
+  // path; it's here for the same "every mod-served raw topic is catalogued"
+  // convention the rest of this list follows, and so a future direct
+  // `useTelemetry("comms.network")` read doesn't silently fall back to
+  // legacy.
+  "comms.network",
   "system.uplink.pending",
   // U3 kOS slice: native push channel for the KosProcessors widget. Static
   // raw topic, so `isTopicCarried` promotes it by simple set membership. The

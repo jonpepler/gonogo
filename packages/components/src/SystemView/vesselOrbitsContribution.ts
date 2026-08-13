@@ -1,5 +1,7 @@
 import { CORE_UPLINK_CLIENT } from "@ksp-gonogo/core";
 import {
+  CommsHopKind,
+  type CommsNetwork,
   RosterCommsControlSource,
   Situation,
   type SystemBodies,
@@ -8,21 +10,31 @@ import {
   VesselType,
 } from "@ksp-gonogo/sitrep-sdk";
 import { magnitudeOf, magnitudeOr } from "@ksp-gonogo/ui-kit";
-import type { SystemEntity, SystemEntityMeta } from "./systemEntities";
+import type {
+  SystemEntity,
+  SystemEntityMeta,
+  SystemEntityPosition,
+} from "./systemEntities";
 
 // ---------------------------------------------------------------------------
-// The built-in `system-view.entities` contribution for Task 3: every vessel
-// on `system.vessels` (the same roster FleetRoster reads) drawn as a faint
-// orbit ring around its body, using the SAME projection/colour primitives
-// `systemEntities.ts` already built for the diagram's own bodies (Task 2).
+// The built-in `system-view.entities` contribution, single owner of both the
+// fleet (Task 3) and the CommNet relay graph (Task 4): every vessel on
+// `system.vessels` (the same roster FleetRoster reads) drawn as a faint
+// orbit ring around its body, PLUS `comms.network`'s relay links drawn as
+// faint connection lines between those same vessel positions. One reader for
+// both, per the locked plan constraint: a graph node's `id` IS a vessel's
+// `vesselId` (Task 1's `95e394bc`), so the graph and the vessel positions it
+// joins against have to come off the same roster read to stay in sync frame
+// to frame. Uses the SAME projection/colour primitives `systemEntities.ts`
+// already built for the diagram's own bodies (Task 2).
 //
-// Deliberately UNFILTERED, unlike FleetRoster's `isRosterCraft`: the roster
-// carries debris, asteroids/comets, planted flags, EVA kerbals, and deployed
-// science hardware alongside real craft, and every one of them has a real
-// orbit (or a real landed position) worth showing on the system diagram.
-// FleetRoster's craft-only filter answers "what do I fly"; this contribution
-// answers "what's actually out there", a different question with a wider
-// answer.
+// Vessel entities are deliberately UNFILTERED, unlike FleetRoster's
+// `isRosterCraft`: the roster carries debris, asteroids/comets, planted
+// flags, EVA kerbals, and deployed science hardware alongside real craft, and
+// every one of them has a real orbit (or a real landed position) worth
+// showing on the system diagram. FleetRoster's craft-only filter answers
+// "what do I fly"; this contribution answers "what's actually out there", a
+// different question with a wider answer.
 //
 // Includes the active/framed vessel too: this contribution has no notion of
 // "active", it's static data computed from `system.vessels` alone. Excluding
@@ -78,19 +90,54 @@ function metaFor(v: VesselRosterEntry, bodyName: string): SystemEntityMeta {
 }
 
 /**
- * Pure core of the contribution, exported so a test can call it directly
- * against plain `SystemVessels`/`SystemBodies` fixtures (mirrors
- * `partMetersContribution.ts`'s own `computeBuiltinPartMeters` pattern).
+ * Whether `v.orbit` is usable: `sma` present, finite, positive. Shared by the
+ * vessel-entity builder below and the CommNet graph's node-position join,
+ * both need the identical "does this vessel have a real orbit" test.
+ */
+function hasUsableOrbit(v: VesselRosterEntry): boolean {
+  const sma = magnitudeOf(v.orbit?.sma);
+  return v.orbit != null && sma != null && sma > 0;
+}
+
+/**
+ * A vessel's own position, in `bodyName`'s frame: the full Keplerian element
+ * set when `v.orbit` is usable, else a faint-dot degrade AT the body
+ * (`xMetres: 0, yMetres: 0`), honestly "this vessel is here" without
+ * fabricating orbital elements it doesn't have. Shared by
+ * `computeVesselOrbitEntities` (draws it) and `computeCommsNetworkEntities`
+ * (joins a graph node's id to it, never redoing the projection choice).
+ */
+function vesselPosition(
+  v: VesselRosterEntry,
+  bodyName: string,
+): SystemEntityPosition {
+  if (!hasUsableOrbit(v)) {
+    return { kind: "fixed", parentName: bodyName, xMetres: 0, yMetres: 0 };
+  }
+  return {
+    kind: "orbit",
+    parentName: bodyName,
+    sma: magnitudeOf(v.orbit?.sma) as number,
+    ecc: magnitudeOr(v.orbit?.ecc, 0),
+    lan: magnitudeOr(v.orbit?.lan, 0),
+    argPe: magnitudeOr(v.orbit?.argPe, 0),
+    trueAnomaly: 0, // ignored by "orbit-path", which draws the whole ring
+  };
+}
+
+/**
+ * Pure core of the fleet half of the contribution, exported so a test can
+ * call it directly against plain `SystemVessels`/`SystemBodies` fixtures
+ * (mirrors `partMetersContribution.ts`'s own `computeBuiltinPartMeters`
+ * pattern).
  *
- * A vessel with a usable orbit (`orbit.sma` present, finite, positive) draws
- * the full ring, faint, via `orbitEllipseGeometry`/`projectOrbitRing` (same
- * conic math and colour rules a body's own orbit ring uses). A vessel with no
- * usable orbit (landed/splashed/pre-launch, or a producer that simply hasn't
- * read one yet) but a resolved body degrades to a faint dot AT that body:
- * `xMetres: 0, yMetres: 0` in the body's own frame, honestly "this vessel is
- * here" without fabricating orbital elements it doesn't have. A vessel whose
- * body can't be resolved at all (no `bodyIndex`, or an index `system.bodies`
- * hasn't caught up on) is omitted outright, the same "no data" honesty.
+ * A vessel with a usable orbit draws the full ring, faint, via
+ * `orbitEllipseGeometry`/`projectOrbitRing` (same conic math and colour
+ * rules a body's own orbit ring uses); one with no usable orbit but a
+ * resolved body degrades to a faint dot at that body (`vesselPosition`
+ * above). A vessel whose body can't be resolved at all (no `bodyIndex`, or an
+ * index `system.bodies` hasn't caught up on) is omitted outright, the same
+ * "no data" honesty.
  */
 export function computeVesselOrbitEntities(
   vessels: SystemVessels | undefined,
@@ -105,24 +152,13 @@ export function computeVesselOrbitEntities(
       v.bodyIndex != null ? (nameByIndex.get(v.bodyIndex) ?? null) : null;
     if (bodyName == null) continue;
 
-    const sma = magnitudeOf(v.orbit?.sma);
-    const hasOrbit = v.orbit != null && sma != null && sma > 0;
-
     entities.push({
       id: `vessel-orbit:${v.vesselId}`,
       vesselId: v.vesselId,
-      position: hasOrbit
-        ? {
-            kind: "orbit",
-            parentName: bodyName,
-            sma: sma as number,
-            ecc: magnitudeOr(v.orbit?.ecc, 0),
-            lan: magnitudeOr(v.orbit?.lan, 0),
-            argPe: magnitudeOr(v.orbit?.argPe, 0),
-            trueAnomaly: 0, // ignored by "orbit-path", which draws the whole ring
-          }
-        : { kind: "fixed", parentName: bodyName, xMetres: 0, yMetres: 0 },
-      shape: hasOrbit ? { kind: "orbit-path" } : { kind: "point", radiusPx: 3 },
+      position: vesselPosition(v, bodyName),
+      shape: hasUsableOrbit(v)
+        ? { kind: "orbit-path" }
+        : { kind: "point", radiusPx: 3 },
       style: { emphasis: "faint" },
       meta: metaFor(v, bodyName),
     });
@@ -131,13 +167,118 @@ export function computeVesselOrbitEntities(
   return entities;
 }
 
+/**
+ * FlightGlobals convention this join relies on: body index 0 is always the
+ * root star, index 1 is always the home body (stock KSP, RSS, and every
+ * planet pack surveyed preserve this ordering). `system.bodies` carries no
+ * explicit "is home" flag, and `comms.network`'s `"home"` node id names only
+ * the KSC ground-station NODE, not which celestial body it sits on (Task 1,
+ * `95e394bc`), so this is the one place that convention gets assumed. A
+ * `BodyEntry.isHome` flag on the wire would remove the assumption outright if
+ * a modded system ever proves it wrong; flagged as a concern until then.
+ */
+const HOME_BODY_INDEX = 1;
+
+/**
+ * A CommNet graph node's projected position, joined the same way `Comms.cs`'s
+ * `CommsNetworkNode.Id` doc promises: the home ground station resolves to
+ * `HOME_BODY_INDEX`'s own body (a faint dot at its centre, same "at the body"
+ * degrade a landed vessel gets); every other node resolves by matching its id
+ * against a vessel's `vesselId` and reusing `vesselPosition`. `null` when the
+ * join can't be honestly completed (home body not in `system.bodies` yet, or
+ * the id matches no known vessel and isn't `"home"`), never a fabricated
+ * position.
+ */
+function resolveNodePosition(
+  nodeId: string,
+  isHomeNode: boolean,
+  vesselsById: ReadonlyMap<string, VesselRosterEntry>,
+  nameByIndex: ReadonlyMap<number, string>,
+): SystemEntityPosition | null {
+  if (isHomeNode) {
+    const bodyName = nameByIndex.get(HOME_BODY_INDEX);
+    return bodyName
+      ? { kind: "fixed", parentName: bodyName, xMetres: 0, yMetres: 0 }
+      : null;
+  }
+  const vessel = vesselsById.get(nodeId);
+  if (!vessel) return null;
+  const bodyName =
+    vessel.bodyIndex != null
+      ? (nameByIndex.get(vessel.bodyIndex) ?? null)
+      : null;
+  if (bodyName == null) return null;
+  return vesselPosition(vessel, bodyName);
+}
+
+/**
+ * Pure core of the CommNet-graph half of the contribution: one faint
+ * `connection-line` entity per `comms.network` edge, endpoints joined via
+ * `resolveNodePosition`. An edge referencing a node whose position can't be
+ * honestly resolved (an id matching neither `"home"` nor any known vessel, a
+ * vessel whose own body can't be resolved yet, or a home body missing from
+ * `system.bodies`) is OMITTED outright rather than drawn from a fabricated or
+ * partial position, mirroring `computeVesselOrbitEntities`'s own "no data"
+ * discipline. Traffic direction/animation and the selected-path highlight are
+ * later tasks (5, 8); this draws the static topology only, always faint.
+ */
+export function computeCommsNetworkEntities(
+  network: CommsNetwork | undefined,
+  vessels: SystemVessels | undefined,
+  bodies: SystemBodies | undefined,
+): readonly SystemEntity[] {
+  if (!network) return [];
+  const nameByIndex = bodyNameByIndex(bodies);
+  const vesselsById = new Map(
+    (vessels?.vessels ?? []).map((v) => [v.vesselId, v] as const),
+  );
+  // Task 1's contract: "home" is always the KSC id, whether or not this
+  // frame's node list happens to carry a matching entry; `kind === Home` is
+  // the belt-and-braces check for a differently-id'd home-role node.
+  const homeNodeIds = new Set(
+    network.nodes.filter((n) => n.kind === CommsHopKind.Home).map((n) => n.id),
+  );
+  homeNodeIds.add("home");
+
+  const entities: SystemEntity[] = [];
+  for (const edge of network.edges) {
+    const from = resolveNodePosition(
+      edge.a,
+      homeNodeIds.has(edge.a),
+      vesselsById,
+      nameByIndex,
+    );
+    const to = resolveNodePosition(
+      edge.b,
+      homeNodeIds.has(edge.b),
+      vesselsById,
+      nameByIndex,
+    );
+    if (!from || !to) continue;
+
+    entities.push({
+      id: `comms-edge:${edge.a}:${edge.b}`,
+      position: from,
+      shape: { kind: "connection-line", to },
+      style: { emphasis: "faint" },
+    });
+  }
+  return entities;
+}
+
 CORE_UPLINK_CLIENT.registerContribution({
   id: "system-view-vessel-orbits",
   contributes: "system-view.entities",
-  deps: ["system.vessels", "system.bodies"],
-  compute: (topics) =>
-    computeVesselOrbitEntities(
+  deps: ["system.vessels", "system.bodies", "comms.network"],
+  compute: (topics) => [
+    ...computeVesselOrbitEntities(
       topics["system.vessels"],
       topics["system.bodies"],
     ),
+    ...computeCommsNetworkEntities(
+      topics["comms.network"],
+      topics["system.vessels"],
+      topics["system.bodies"],
+    ),
+  ],
 });

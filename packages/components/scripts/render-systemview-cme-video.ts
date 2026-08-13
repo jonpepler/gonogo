@@ -13,9 +13,13 @@
  * plus two heliocentric relay probes (an ordinary interplanetary comms
  * pattern) so the CME blob is shown stacking alongside a REAL vessel-orbit
  * ring and a REAL CommNet connection-line, the built-in contributions this
- * task must not cut off. Three storm samples over the recording: none (the
- * baseline degrade), an inbound storm targeting Kerbin, then Kerbin arrived
- * (stormState 2) alongside a second inbound storm targeting Duna.
+ * task must not cut off. Storm samples over the recording: none (the
+ * baseline degrade), an inbound storm targeting Kerbin, Kerbin arrived
+ * (stormState 2, warn-tinted), then a fresh storm inbound toward Duna once
+ * Kerbin's has passed. Always ONE entry in `storms` at a time: it's scoped
+ * to the active vessel's current SOI, one entry per star, so a real feed can
+ * never carry two simultaneous entries for the same star; the sequence here
+ * is sequential, not simultaneous, to stay representative of that.
  *
  * The inbound storms' `dist` RAMPS UP over a couple of real seconds before
  * settling at the body's true distance. This is test-fixture dramatization
@@ -354,30 +358,33 @@ async function captureCme(probeHtmlOut: string): Promise<void> {
 
     await page.waitForTimeout(1_000);
 
-    // Kerbin's storm arrives (stormState 2, warn-tinted), while a SECOND
-    // storm starts inbound toward Duna: two independent blobs on screen at
-    // once, demonstrating the contribution draws one per storm slot.
+    // Kerbin's storm arrives (stormState 2, warn-tinted). Still a single
+    // `storms` entry, same as every other sample in this capture.
     await evalCaptureEmit(
       page,
       "kerbalism.spaceweather",
-      spaceWeather([
-        stormEntry("Kerbol", 2, KERBIN_SMA, utNow, 1_800),
-        stormEntry("Kerbol", 1, DUNA_SMA * 0.15, utNow + 600, 2_400),
-      ]),
+      spaceWeather([stormEntry("Kerbol", 2, KERBIN_SMA, utNow, 1_800)]),
     );
     await page.waitForTimeout(1_500);
     await page.screenshot({ path: join(OUT_DIR, "cme-two-storms.png") });
 
-    await rampStormDist(page, "Kerbol", DUNA_SMA, utNow + 600, 2_400, 10, 150);
-    // Re-assert Kerbin's arrived storm alongside each Duna ramp step would
-    // require a combined emit; simplest to just settle here with Duna's
-    // final frame (Kerbin's entity persists from the prior emit, the
-    // contribution is stateless per-frame but the widget keeps the last
-    // rendered entities until a new sample changes them).
+    // Kerbin's storm passes, then a fresh one begins inbound toward Duna,
+    // sequential rather than simultaneous.
+    await evalCaptureEmit(page, "kerbalism.spaceweather", spaceWeather([]));
+    await page.waitForTimeout(500);
+    await rampStormDist(
+      page,
+      "Kerbol",
+      DUNA_SMA,
+      utNow + 2_400,
+      2_400,
+      10,
+      150,
+    );
     await page.waitForTimeout(1_000);
     await page.screenshot({ path: join(OUT_DIR, "cme-full-reach.png") });
 
-    // Storm passes: both slots go quiet, confirms the overlay clears again.
+    // Storm passes: confirms the overlay clears again.
     await evalCaptureEmit(page, "kerbalism.spaceweather", spaceWeather([]));
     await page.waitForTimeout(1_500);
 

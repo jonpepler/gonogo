@@ -84,7 +84,7 @@ describe("computeCmeEntities", () => {
     });
     expect(entity?.style).toEqual({
       emphasis: "faint",
-      colour: "var(--color-status-warn-fg)",
+      colour: "var(--color-status-warning-fg-muted)",
     });
     expect(entity?.meta?.state).toBe("in progress");
   });

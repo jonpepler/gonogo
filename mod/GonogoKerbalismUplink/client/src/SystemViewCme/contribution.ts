@@ -42,7 +42,7 @@ type CmeEntity = ContributionEntry<"system-view.entities">;
  *  type is); derived here so the meta literal below still type-checks. */
 type CmeEntityMeta = NonNullable<CmeEntity["meta"]>;
 
-const CME_WARN_COLOUR = "var(--color-status-warn-fg)";
+const CME_WARN_COLOUR = "var(--color-status-warning-fg-muted)";
 
 const STORM_STATE_INBOUND = 1;
 const STORM_STATE_IN_PROGRESS = 2;

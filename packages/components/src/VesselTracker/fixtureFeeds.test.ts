@@ -44,19 +44,20 @@ describe("VesselTracker probe fixtures", () => {
 
   /**
    * The prefix check above only proves an emit COULD be delivered. This proves
-   * the fixtures actually exercise the per-vessel topics at all: a set that
-   * quietly lost its `silence.` emits would still pass everything else while
+   * the fixtures actually exercise both halves of the widget's read: the
+   * per-vessel contact facts AND the fleet-wide reckoning. A set that quietly
+   * lost its `fleet.silence` emits would still pass everything else while
    * rendering the same "no silence model" screen five times over.
    */
-  it("exercises both per-vessel namespaces across the set", () => {
+  it("exercises both the per-vessel and the fleet-wide read across the set", () => {
     const channels = files.flatMap((file) => {
       const fixture = JSON.parse(readFileSync(join(dir, file), "utf8")) as {
         _stream?: { emits?: { channel: string }[] };
       };
       return (fixture._stream?.emits ?? []).map((e) => e.channel);
     });
-    expect(channels.some((c) => c.startsWith("fleet."))).toBe(true);
-    expect(channels.some((c) => c.startsWith("silence."))).toBe(true);
+    expect(channels.some((c) => /^fleet\..+\.contact$/.test(c))).toBe(true);
+    expect(channels.some((c) => c === "fleet.silence")).toBe(true);
   });
 
   it("tracks a craft that is not the one being flown", () => {
@@ -73,12 +74,39 @@ describe("VesselTracker probe fixtures", () => {
       const active = emits.find((e) => e.channel === "vessel.identity")?.value
         .vesselId;
       const tracked = emits
-        .map((e) =>
-          /^(?:fleet|silence)\.(.+)\.(?:contact|state)$/.exec(e.channel),
-        )
+        .map((e) => /^fleet\.(.+)\.(?:contact|orbit)$/.exec(e.channel))
         .find(Boolean)?.[1];
       expect(tracked, `${file} emits no per-vessel topic`).toBeTruthy();
       expect(tracked, `${file} tracks the active craft`).not.toBe(active);
+    }
+  });
+
+  /**
+   * The roster is keyed by vessel id, so an entry naming a craft the fixture's
+   * per-vessel topics never mention would render nothing while looking, in the
+   * JSON, exactly like a working fixture. The same silent-empty trap this file
+   * exists for, one level down.
+   */
+  it("names the tracked craft in every fleet.silence entry", () => {
+    for (const file of files) {
+      const fixture = JSON.parse(readFileSync(join(dir, file), "utf8")) as {
+        _stream?: {
+          emits?: {
+            channel: string;
+            value: { vessels?: { vesselId?: string }[] };
+          }[];
+        };
+      };
+      const emits = fixture._stream?.emits ?? [];
+      const tracked = emits
+        .map((e) => /^fleet\.(.+)\.(?:contact|orbit)$/.exec(e.channel))
+        .find(Boolean)?.[1];
+      for (const emit of emits.filter((e) => e.channel === "fleet.silence")) {
+        const ids = (emit.value.vessels ?? []).map((v) => v.vesselId);
+        expect(ids, `${file} rosters a craft it never tracks`).toContain(
+          tracked,
+        );
+      }
     }
   });
 });

@@ -13,14 +13,16 @@ import {
   type StreamFixture,
   setupStreamFixture,
 } from "../test/setupStreamFixture";
+import { registerCommsDeadlineContribution } from "./commsDeadlineContribution";
 import { VesselTrackerComponent } from "./index";
 
 /**
  * The tracker rides the same stream everything else does: `system.vessels` for
- * identity, the dynamic `fleet.<guid>.contact` for the observed facts and
- * `silence.<guid>.state` for the reckoning. Both dynamic namespaces are carried
- * by PREFIX; naming the concrete topic would leave nothing subscribed and every
- * assertion below would pass against an empty render.
+ * identity, the dynamic `fleet.<guid>.contact` and `fleet.<guid>.orbit` for the
+ * per-vessel facts, and the fleet-wide `fleet.silence` for the reckoning. The
+ * dynamic namespace is carried by PREFIX; naming a concrete per-guid topic
+ * would leave nothing subscribed and every assertion below would pass against
+ * an empty render.
  */
 
 const NOW_UT = 10_000;
@@ -81,7 +83,11 @@ describe("VesselTracker", () => {
   const mounted: Array<() => void> = [];
 
   beforeEach(() => {
+    // The built-in comms contribution registers at module load, so a bare
+    // clear would drop it for the rest of the file and leave every assertion
+    // about a contributed row passing against an empty slot.
     clearContributions();
+    registerCommsDeadlineContribution();
     fixture = setupStreamFixture({
       carriedChannels: [
         "system.vessels",
@@ -127,19 +133,23 @@ describe("VesselTracker", () => {
   }
 
   /**
-   * The per-vessel topics only exist once the widget knows which craft it is
-   * tracking, so the subscription lands a frame after the roster does. Emitting
-   * before that is silently dropped by the subscription-gated transport, which
-   * would leave every assertion below passing against an empty render.
+   * The reckoning arrives on the FLEET-WIDE `fleet.silence` roster, not on the
+   * per-vessel topic: that is the whole point of the roster, and a test still
+   * driving `silence.<guid>.state` would be exercising a path the widget no
+   * longer reads.
+   *
+   * `fleet.<guid>.contact` stays per-vessel and only exists once the widget
+   * knows which craft it is tracking, so its subscription lands a frame after
+   * the roster does. Emitting before that is silently dropped by the
+   * subscription-gated transport, which would leave every assertion below
+   * passing against an empty render.
    */
   async function emitSilentProbe(
     over: Record<string, unknown> = {},
     contactOver: Record<string, unknown> = {},
   ) {
     await waitFor(() => {
-      expect(fixture.transport.isSubscribed("silence.probe-1.state")).toBe(
-        true,
-      );
+      expect(fixture.transport.isSubscribed("fleet.silence")).toBe(true);
       expect(fixture.transport.isSubscribed("fleet.probe-1.contact")).toBe(
         true,
       );
@@ -150,13 +160,18 @@ describe("VesselTracker", () => {
         lastContactUt: 8_800,
         ...contactOver,
       });
-      fixture.emit("silence.probe-1.state", {
-        state: "Silent",
-        silenceSinceUt: 9_000,
-        deadlineUt: 12_000,
-        deadlineBasis: "predicted-reacquisition",
-        predictedReacquisitionUt: 11_000,
-        ...over,
+      fixture.emit("fleet.silence", {
+        vessels: [
+          {
+            vesselId: "probe-1",
+            state: "Silent",
+            silenceSinceUt: 9_000,
+            deadlineUt: 12_000,
+            deadlineBasis: "predicted-reacquisition",
+            predictedReacquisitionUt: 11_000,
+            ...over,
+          },
+        ],
       });
     });
     // And settled: every section below reads off the reckoning, so a test that
@@ -265,6 +280,7 @@ describe("VesselTracker", () => {
         compute: () => [
           {
             target: "probe-1",
+            kind: "operational",
             label: "Life support",
             atUt: 11_500,
             basis: "oxygen at current draw",
@@ -289,6 +305,7 @@ describe("VesselTracker", () => {
         compute: () => [
           {
             target: "station-1",
+            kind: "operational",
             label: "Life support",
             atUt: 11_500,
             basis: "oxygen at current draw",
@@ -312,6 +329,7 @@ describe("VesselTracker", () => {
         compute: () => [
           {
             target: "probe-1",
+            kind: "operational",
             label: "Life support",
             atUt: 11_500,
             basis: "oxygen at current draw",

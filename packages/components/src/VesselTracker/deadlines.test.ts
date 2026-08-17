@@ -1,6 +1,9 @@
-import type { FleetVesselSilence } from "@ksp-gonogo/sitrep-client";
 import { describe, expect, it } from "vitest";
-import { trackerDeadlines, type VesselTrackerDeadlineEntry } from "./deadlines";
+import {
+  type DeadlineKind,
+  trackerDeadlines,
+  type VesselTrackerDeadlineEntry,
+} from "./deadlines";
 
 /**
  * The widget's central constraint: three deadlines that are all durations and
@@ -11,30 +14,21 @@ import { trackerDeadlines, type VesselTrackerDeadlineEntry } from "./deadlines";
  * like the complete set.
  */
 
-const silent = (
-  over: Partial<FleetVesselSilence> = {},
-): FleetVesselSilence => ({
-  state: "Silent",
-  silenceSinceUt: 1000,
-  deadlineUt: 2000,
-  deadlineBasis: "predicted-reacquisition",
-  predictedReacquisitionUt: 1600,
-  ...over,
-});
-
-const lifeSupport = (
+const entry = (
+  kind: DeadlineKind,
   over: Partial<VesselTrackerDeadlineEntry> = {},
 ): VesselTrackerDeadlineEntry => ({
   target: "v1",
-  label: "Life support",
-  atUt: 5000,
-  basis: "oxygen at current draw",
+  kind,
+  label: kind,
+  atUt: 1000,
+  basis: "test basis",
   ...over,
 });
 
 describe("trackerDeadlines", () => {
   it("always returns exactly the three kinds, in geometric/operational/declaration order", () => {
-    const rows = trackerDeadlines(silent(), [lifeSupport()]);
+    const rows = trackerDeadlines([entry("declaration"), entry("geometric")]);
     expect(rows.map((r) => r.kind)).toEqual([
       "geometric",
       "operational",
@@ -45,17 +39,19 @@ describe("trackerDeadlines", () => {
   it("keeps the three kinds distinct even when they fall at the same UT", () => {
     // The merge failure this widget exists to avoid: identical numbers must
     // still read as three separate statements about three different things.
-    const rows = trackerDeadlines(
-      silent({ deadlineUt: 5000, predictedReacquisitionUt: 5000 }),
-      [lifeSupport({ atUt: 5000 })],
-    );
+    const rows = trackerDeadlines([
+      entry("geometric", { atUt: 5000, label: "Radio path reopens" }),
+      entry("operational", { atUt: 5000, label: "Life support" }),
+      entry("declaration", { atUt: 5000, label: "Counted as lost" }),
+    ]);
     expect(rows.map((r) => r.atUt)).toEqual([5000, 5000, 5000]);
     expect(new Set(rows.map((r) => r.label)).size).toBe(3);
+    expect(new Set(rows.map((r) => r.question)).size).toBe(3);
     expect(new Set(rows.map((r) => r.owner)).size).toBe(3);
   });
 
   it("names an owner for every kind, so no row is anonymous", () => {
-    const rows = trackerDeadlines(silent(), [lifeSupport()]);
+    const rows = trackerDeadlines([]);
     expect(rows.map((r) => r.owner)).toEqual([
       "comms",
       "life support",
@@ -63,150 +59,81 @@ describe("trackerDeadlines", () => {
     ]);
   });
 
-  describe("geometric: when the radio path reopens", () => {
-    it("reads the predicted reacquisition and names it as the basis", () => {
-      const [geometric] = trackerDeadlines(silent(), []);
-      expect(geometric.atUt).toBe(1600);
-      expect(geometric.basis).toBe("predicted reacquisition");
-    });
-
-    it("reports a withheld prediction as absent, never as a reacquisition now", () => {
-      const [geometric] = trackerDeadlines(
-        silent({ predictedReacquisitionUt: null }),
-        [],
-      );
-      expect(geometric.atUt).toBeNull();
-      expect(geometric.basis).toBe("no prediction published");
-    });
-
-    it("carries the deadline basis through when it explains why no prediction exists", () => {
-      const [geometric] = trackerDeadlines(
-        silent({
-          predictedReacquisitionUt: null,
-          deadlineBasis: "no-emergence-in-window",
-        }),
-        [],
-      );
-      expect(geometric.atUt).toBeNull();
-      expect(geometric.basis).toBe("no emergence found in the search window");
-    });
-
-    it("has nothing to say while the vessel is in contact", () => {
-      const [geometric] = trackerDeadlines(
-        { state: "Nominal", predictedReacquisitionUt: null },
-        [],
-      );
-      expect(geometric.atUt).toBeNull();
-      expect(geometric.basis).toBe("in contact");
-    });
+  it("frames every row itself, so a contributor supplies data and never chrome", () => {
+    // The host owns the question and the owner; a contributor that tried to
+    // supply them could make two rows read as the same statement.
+    const rows = trackerDeadlines([
+      entry("geometric", { label: "whatever the contributor called it" }),
+    ]);
+    expect(rows[0].label).toBe("whatever the contributor called it");
+    expect(rows[0].question).toBe("when will we be able to hear it");
+    expect(rows[0].owner).toBe("comms");
   });
 
-  describe("operational: how long it can survive", () => {
-    it("is absent, and says so, when nothing models it", () => {
-      const [, operational] = trackerDeadlines(silent(), []);
-      expect(operational.atUt).toBeNull();
-      expect(operational.basis).toBe("not modelled");
+  describe("when a kind was not contributed at all", () => {
+    it("still renders the row, saying why it is empty", () => {
+      // A comparison with a silently missing member misleads: the reader
+      // assumes the set is complete and never learns a third kind exists.
+      const rows = trackerDeadlines([entry("geometric"), entry("declaration")]);
+      expect(rows[1].atUt).toBeNull();
+      expect(rows[1].basis).toBe("not modelled");
+      expect(rows[1].label).toBe("Operational limit");
     });
 
-    it("takes the earliest contributed limit and names which one it is", () => {
-      const [, operational] = trackerDeadlines(silent(), [
-        lifeSupport({ label: "Power", atUt: 9000, basis: "battery at load" }),
-        lifeSupport({ label: "Life support", atUt: 4000 }),
-      ]);
-      expect(operational.atUt).toBe(4000);
-      expect(operational.label).toBe("Life support");
-      expect(operational.basis).toBe("oxygen at current draw");
-    });
-
-    it("ignores contributed entries with no UT rather than treating them as now", () => {
-      const [, operational] = trackerDeadlines(silent(), [
-        lifeSupport({ atUt: null }),
-      ]);
-      expect(operational.atUt).toBeNull();
-    });
-  });
-
-  describe("declaration: when the game stops counting it as in contact", () => {
-    it("reads the tracker deadline and names its basis in words", () => {
-      const [, , declaration] = trackerDeadlines(
-        silent({ deadlineBasis: "orbital-period" }),
-        [],
-      );
-      expect(declaration.atUt).toBe(2000);
-      expect(declaration.basis).toBe("orbital-period fallback");
-    });
-
-    it("distinguishes a deadline derived from the prediction from one that is a fallback", () => {
-      const derived = trackerDeadlines(silent(), [])[2];
-      const fallback = trackerDeadlines(
-        silent({ deadlineBasis: "orbital-period" }),
-        [],
-      )[2];
-      expect(derived.basis).not.toBe(fallback.basis);
-    });
-
-    it("has already passed once the vessel is declared lost", () => {
-      const [, , declaration] = trackerDeadlines(
-        { state: "Lost", deadlineUt: 2000, deadlineBasis: "policy-ceiling" },
-        [],
-      );
-      expect(declaration.atUt).toBe(2000);
-      expect(declaration.basis).toBe("policy ceiling");
-    });
-
-    it("has nothing to declare while the vessel is in contact", () => {
-      const [, , declaration] = trackerDeadlines({ state: "Nominal" }, []);
-      expect(declaration.atUt).toBeNull();
-      expect(declaration.basis).toBe("in contact");
-    });
-
-    it("renders an unnamed basis as unstated rather than inventing one", () => {
-      const [, , declaration] = trackerDeadlines(
-        silent({ deadlineBasis: null }),
-        [],
-      );
-      expect(declaration.atUt).toBe(2000);
-      expect(declaration.basis).toBe("basis not stated");
-    });
-  });
-
-  describe("with no silence reckoning at all (stock game)", () => {
-    it("still returns three rows, with both comms-owned ones absent", () => {
-      const rows = trackerDeadlines(undefined, []);
-      expect(rows).toHaveLength(3);
-      expect(rows[0].atUt).toBeNull();
-      expect(rows[2].atUt).toBeNull();
+    it("reports both comms-owned rows as unmodelled in a stock game", () => {
+      // No comms domain means the silence roster never delivers, so the
+      // contribution has nothing to fan out over and contributes nothing.
+      const rows = trackerDeadlines([]);
       expect(rows[0].basis).toBe("no silence model");
       expect(rows[2].basis).toBe("no silence model");
+      expect(rows.every((r) => r.atUt === null)).toBe(true);
+    });
+  });
+
+  describe("when several contributors speak to one kind", () => {
+    it("shows the soonest limit and names which one it is", () => {
+      const rows = trackerDeadlines([
+        entry("operational", { label: "Power", atUt: 9000 }),
+        entry("operational", { label: "Life support", atUt: 4000 }),
+      ]);
+      expect(rows[1].atUt).toBe(4000);
+      expect(rows[1].label).toBe("Life support");
     });
 
-    it("still surfaces a contributed operational limit", () => {
-      const [, operational] = trackerDeadlines(undefined, [lifeSupport()]);
-      expect(operational.atUt).toBe(5000);
+    it("never lets an undated entry outrank a dated one", () => {
+      // A contributor with nothing to say must not become the earliest limit.
+      const rows = trackerDeadlines([
+        entry("operational", { label: "Unknown", atUt: null }),
+        entry("operational", { label: "Life support", atUt: 4000 }),
+      ]);
+      expect(rows[1].atUt).toBe(4000);
+      expect(rows[1].label).toBe("Life support");
+    });
+
+    it("keeps an undated entry's words when it is all there is", () => {
+      const rows = trackerDeadlines([
+        entry("operational", {
+          label: "Life support",
+          atUt: null,
+          basis: "sensor offline",
+        }),
+      ]);
+      expect(rows[1].atUt).toBeNull();
+      expect(rows[1].basis).toBe("sensor offline");
     });
   });
 
   it("never advises, in any row: no verdict wording reaches the model", () => {
-    // The widget informs. Every string it can produce is a fact or a named
-    // basis, so a reviewer adding "critical"/"act now"/"in trouble" to a basis
-    // map trips this rather than shipping.
+    // The widget informs. Every string it produces itself is a fact or a named
+    // basis, so a reviewer adding "critical"/"act now"/"in trouble" to the
+    // host's own framing trips this rather than shipping.
     const banned =
       /\b(critical|urgent|danger|trouble|abort|recommend|should|warning|act now|immediately)\b/i;
-    const cases: Array<
-      [FleetVesselSilence | undefined, VesselTrackerDeadlineEntry[]]
-    > = [
-      [undefined, []],
-      [{ state: "Nominal" }, []],
-      [silent(), [lifeSupport()]],
-      [silent({ predictedReacquisitionUt: null }), []],
-      [{ state: "Lost", deadlineUt: 1, deadlineBasis: "destroyed" }, []],
-    ];
-    for (const [silence, entries] of cases) {
-      for (const row of trackerDeadlines(silence, entries)) {
-        expect(row.label).not.toMatch(banned);
-        expect(row.basis).not.toMatch(banned);
-        expect(row.owner).not.toMatch(banned);
-      }
+    for (const row of trackerDeadlines([])) {
+      expect(row.label).not.toMatch(banned);
+      expect(row.basis).not.toMatch(banned);
+      expect(row.question).not.toMatch(banned);
+      expect(row.owner).not.toMatch(banned);
     }
   });
 });

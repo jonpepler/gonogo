@@ -94,13 +94,18 @@
         }
       },
       {
-        "channel": "silence.mun-probe.state",
+        "channel": "fleet.silence",
         "value": {
-          "state": "Lost",
-          "silenceSinceUt": -9600.0,
-          "deadlineUt": -1200.0,
-          "deadlineBasis": "orbital-period",
-          "predictedReacquisitionUt": null
+          "vessels": [
+            {
+              "vesselId": "mun-probe",
+              "state": "Lost",
+              "silenceSinceUt": -9600.0,
+              "deadlineUt": -1200.0,
+              "deadlineBasis": "orbital-period",
+              "predictedReacquisitionUt": null
+            }
+          ]
         }
       },
       {

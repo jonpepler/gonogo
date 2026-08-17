@@ -94,13 +94,18 @@
         }
       },
       {
-        "channel": "silence.mun-probe.state",
+        "channel": "fleet.silence",
         "value": {
-          "state": "Nominal",
-          "silenceSinceUt": null,
-          "deadlineUt": null,
-          "deadlineBasis": null,
-          "predictedReacquisitionUt": null
+          "vessels": [
+            {
+              "vesselId": "mun-probe",
+              "state": "Nominal",
+              "silenceSinceUt": null,
+              "deadlineUt": null,
+              "deadlineBasis": null,
+              "predictedReacquisitionUt": null
+            }
+          ]
         }
       }
     ]

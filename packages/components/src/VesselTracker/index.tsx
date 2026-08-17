@@ -10,7 +10,7 @@ import {
   contactPhase,
   useFleetVesselContact,
   useFleetVesselPosition,
-  useFleetVesselSilence,
+  useProcessor,
   useStream,
   useViewUt,
 } from "@ksp-gonogo/sitrep-client";
@@ -52,6 +52,11 @@ import {
 import { magnitudeOf, type Quantityish } from "../shared/magnitude";
 import { type DeadlineAxis, deadlineAxis } from "./axis";
 import { type BallisticState, ballisticState } from "./ballistic";
+// Side-effect import: registers the fleet-silence Processor and the comms half
+// of this widget's own deadline slot, on equal footing with any third-party
+// Uplink contributing to the same slot.
+import "./commsDeadlineContribution";
+import { FLEET_SILENCE_BY_VESSEL } from "./commsDeadlineContribution";
 import { contactFacts } from "./contactFacts";
 import type { TrackerDeadline, VesselTrackerDeadlineEntry } from "./deadlines";
 import { trackerDeadlines } from "./deadlines";
@@ -115,18 +120,22 @@ declare module "@ksp-gonogo/core" {
   }
 
   /**
-   * `vessel-tracker.deadline`: an OPERATIONAL limit for a craft, contributed by
-   * whatever models one (life support, power). Entries are stamped with the
-   * vessel they are about and the host filters to the craft it is tracking,
-   * the same shape `system-view.vessel-status` uses.
+   * `vessel-tracker.deadline`: one deadline for one craft, of one of the three
+   * kinds. Comms fills the geometric and declaration kinds off the fleet-wide
+   * silence roster (`./commsDeadlineContribution.ts`); a life-support Uplink
+   * fills the operational one. No contributor knows about any other, and the
+   * host composes whatever arrived into its fixed three-row shape, filling the
+   * gaps with an honest absence.
    *
-   * The other two deadlines are NOT contributions. See the note above
-   * `useTrackedVessel` for why.
+   * Entries are stamped with the vessel they are about and the host filters to
+   * the craft it is tracking, the same fan-out `system-view.vessel-status`
+   * uses. That is what lets a contribution serve an operator-chosen subject
+   * when its own dependencies are declared statically at module load.
    */
   interface ContributionRegistry {
     "vessel-tracker.deadline": {
       entry: VesselTrackerDeadlineEntry;
-      topics: "system.vessels";
+      topics: "fleet.silence";
     };
   }
 }
@@ -143,32 +152,7 @@ interface TrackedVessel {
   body: string | null;
 }
 
-/**
- * The craft being tracked, resolved from config against `system.vessels`.
- *
- * NOTE on why the comms deadlines are read straight off `silence.<guid>.state`
- * here rather than arriving as a contribution, which is what the spec's
- * composition section describes.
- *
- * It is NOT that a contribution cannot serve an operator-chosen subject. The
- * working pattern is to fan out over every subject and stamp each entry with
- * its `target`, letting the host filter, which is exactly what
- * `system-view.vessel-status` does.
- *
- * The obstacle is narrower and specific to this data: per-vessel silence lives
- * in a DYNAMIC topic, which no static dep can name, and the module-level bridge
- * that reaches it (`getLatestFleetVesselSilence`) only holds vessels some
- * component is ALREADY subscribed to. A fan-out contribution reading that
- * bridge would see exactly the vessels a widget had already rendered, which
- * makes it useless as the thing that feeds the widget. So this widget keeps the
- * one raw subscription until a fleet-wide aggregate silence topic exists, at
- * which point the deps become static and the contribution can fan out for real.
- *
- * The stock-game gate the spec wanted from `requires` holds meanwhile without
- * any of it: no comms domain means `silence.<guid>.state` never delivers, the
- * reckoning is undefined, and the rows report "no silence model" rather than a
- * fabricated one.
- */
+/** The craft being tracked, resolved from config against `system.vessels`. */
 function useTrackedVessel(configured: string): TrackedVessel | null {
   const system = useTelemetry("system.vessels");
   const bodies = useTelemetry("system.bodies");
@@ -512,21 +496,31 @@ function VesselTrackerComponent({
   const guid = vessel?.id ?? "";
   const nowUt = useViewUt() ?? 0;
 
-  // Both dynamic per-vessel topics, kept subscribed by this widget for as long
-  // as it is tracking the craft.
+  // `fleet.<guid>.contact` is genuinely per-vessel: the core connected /
+  // last-heard facts arrive on that craft's own light-time and are freeze-exempt
+  // so the disconnect edge can escape at all, which no fleet-wide aggregate can
+  // reproduce. So it stays a dynamic subscription, kept alive by this widget
+  // for as long as it is tracking the craft.
   const contact = useFleetVesselContact(guid);
-  const silence = useFleetVesselSilence(guid);
   const ballistic = useBallistic(guid);
 
+  // The RECKONING, in contrast, comes off the fleet-wide roster through a
+  // Processor that derives it once per frame. The per-vessel silence topic is
+  // still authoritative for one craft on that craft's own clock, but this
+  // widget's craft is operator-chosen and the whole point of the roster is that
+  // it can be read without knowing which craft to ask about first.
+  const silenceByVessel = useProcessor(FLEET_SILENCE_BY_VESSEL);
+  const silence = guid ? silenceByVessel?.get(guid) : undefined;
+
   const contributed = useContributions("vessel-tracker.deadline");
-  const operational = useMemo(
+  const forThisCraft = useMemo(
     () => contributed.filter((e) => e.target === guid),
     [contributed, guid],
   );
 
   const facts = contactFacts(contact, silence, nowUt);
   const phase = contactPhase(silence, nowUt);
-  const rows = trackerDeadlines(silence, operational);
+  const rows = trackerDeadlines(forThisCraft);
   const axis = deadlineAxis(rows, nowUt);
 
   // Non-reactive reads: augments register at module load, before first render.

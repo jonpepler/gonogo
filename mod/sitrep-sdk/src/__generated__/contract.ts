@@ -391,6 +391,19 @@ export interface FleetVesselSilence
 	deadlineBasis?: string;
 	predictedReacquisitionUt?: Value<"s">;
 }
+export interface FleetSilenceEntry
+{
+	vesselId: string;
+	state: string;
+	silenceSinceUt?: Value<"s">;
+	deadlineUt?: Value<"s">;
+	deadlineBasis?: string;
+	predictedReacquisitionUt?: Value<"s">;
+}
+export interface FleetSilence
+{
+	vessels: FleetSilenceEntry[];
+}
 export enum FlightEndReason {
 	Recovered = 0,
 	Crashed = 1,

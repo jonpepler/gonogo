@@ -180,6 +180,10 @@
          no KSP types of its own; it sits under the gate only because its
          caller does. -->
     <Compile Include="..\Gonogo.KSP\FleetSilenceRosterBuilder.cs" />
+    <!-- FleetVesselResourcesBuilder.cs is the same shape: pure dictionary
+         shaping with no KSP types, compiled here because FleetChannels.cs (which
+         does walk live parts) calls it. -->
+    <Compile Include="..\Gonogo.KSP\FleetVesselResourcesBuilder.cs" />
     <Compile Include="..\Gonogo.KSP\CommandCentres\KspCommandCentre.cs" />
     <Compile Include="..\Gonogo.KSP\CommandCentres\CommandCentreDelayUplink.cs" />
     <Compile Include="CommandCentres\**\*.cs" />

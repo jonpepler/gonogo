@@ -1716,6 +1716,9 @@ export const GENERATED_TYPE_SHAPES: Readonly<Record<string, ShapesByField>> = {
   "FleetSilence": {
     vessels: "FleetSilenceEntry",
   },
+  "FleetVesselResources": {
+    resources: "*ResourceAmount",
+  },
   "ISitrepUplink": {
     manifest: "UplinkManifest",
   },

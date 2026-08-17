@@ -4,7 +4,7 @@
     "vessel": "Munar Survey 3 (probe)",
     "body": "Mun",
     "situation": "Orbiting the Mun, tracked while the operator flies Kerbin Station",
-    "notes": "The deadline passed with no contact, so the game stopped counting the craft as in contact. There is no prediction to be late against and the deadline was an orbital-period fallback, which is a materially weaker basis and is named as one. No control anywhere gives up on the craft: this is an observation, not a decision. The craft's own `fleet.<guid>.orbit` elements are carried too, so the envelope section renders its ballistic point: where the craft is having done nothing."
+    "notes": "The deadline passed with no contact, so the game stopped counting the craft as in contact. There is no prediction to be late against and the deadline was an orbital-period fallback, which is a materially weaker basis and is named as one. No control anywhere gives up on the craft: this is an observation, not a decision. The craft's own `fleet.<guid>.orbit` elements are carried too, so the envelope section renders its ballistic point: where the craft is having done nothing. Tank levels ride fleet.<guid>.resources: amounts only, with no exhaustion time, because a draw rate for an unloaded craft is a life-support Uplink's model and not core's."
   },
   "_stream": {
     "carriedChannels": [
@@ -120,6 +120,21 @@
           "meanAnomalyAtEpoch": 1.2,
           "epoch": 0,
           "mu": 65138398000
+        }
+      },
+      {
+        "channel": "fleet.mun-probe.resources",
+        "value": {
+          "resources": {
+            "ElectricCharge": {
+              "current": 0.0,
+              "max": 400.0
+            },
+            "MonoPropellant": {
+              "current": 0.0,
+              "max": 40.0
+            }
+          }
         }
       }
     ]

@@ -10,6 +10,7 @@ import {
   contactPhase,
   useFleetVesselContact,
   useFleetVesselPosition,
+  useFleetVesselResources,
   useProcessor,
   useStream,
   useViewUt,
@@ -491,6 +492,7 @@ function VesselTrackerComponent({
   const contactId = useId();
   const deadlinesId = useId();
   const envelopeId = useId();
+  const consumablesId = useId();
 
   const vessel = useTrackedVessel(config?.vesselId ?? "auto");
   const guid = vessel?.id ?? "";
@@ -503,6 +505,10 @@ function VesselTrackerComponent({
   // for as long as it is tracking the craft.
   const contact = useFleetVesselContact(guid);
   const ballistic = useBallistic(guid);
+  // Amounts only, and never an exhaustion time: see FleetVesselResource. The
+  // subscription is what tells the producer to walk this one craft's parts, so
+  // a tracker watching one probe costs one probe's walk.
+  const resources = useFleetVesselResources(guid);
 
   // The RECKONING, in contrast, comes off the fleet-wide roster through a
   // Processor that derives it once per frame. The per-vessel silence topic is
@@ -636,13 +642,40 @@ function VesselTrackerComponent({
               )}
             </Section>
           )}
-          {hasConsumables && (
-            <Section as="section">
-              <SectionTitle as="h3">Consumables</SectionTitle>
-              <AugmentSlot
-                name="vessel-tracker.consumables"
-                props={{ vesselId: vessel.id, vesselName: vessel.name }}
-              />
+          {(resources || hasConsumables) && (
+            <Section as="section" aria-labelledby={consumablesId}>
+              <SectionTitle as="h3" id={consumablesId}>
+                Consumables
+              </SectionTitle>
+              {resources &&
+                (resources.length === 0 ? (
+                  <EmptyState>This craft carries no resources.</EmptyState>
+                ) : (
+                  <ul style={LIST}>
+                    {resources.map((r) => (
+                      <Fact
+                        key={r.name}
+                        label={r.name}
+                        value={
+                          <>
+                            <Unit
+                              value={value("units", r.current)}
+                              decimals={0}
+                            />
+                            {" / "}
+                            <Unit value={value("units", r.max)} decimals={0} />
+                          </>
+                        }
+                      />
+                    ))}
+                  </ul>
+                ))}
+              {hasConsumables && (
+                <AugmentSlot
+                  name="vessel-tracker.consumables"
+                  props={{ vesselId: vessel.id, vesselName: vessel.name }}
+                />
+              )}
             </Section>
           )}
         </Stack>

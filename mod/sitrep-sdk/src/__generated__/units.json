@@ -1659,6 +1659,9 @@
     "FleetSilence": {
       "vessels": "FleetSilenceEntry"
     },
+    "FleetVesselResources": {
+      "resources": "*ResourceAmount"
+    },
     "ISitrepUplink": {
       "manifest": "UplinkManifest"
     },

@@ -434,6 +434,97 @@ describe("VesselTracker", () => {
     });
   });
 
+  describe("consumables", () => {
+    async function emitProbeResources(resources: Record<string, unknown>) {
+      await waitFor(() =>
+        expect(fixture.transport.isSubscribed("fleet.probe-1.resources")).toBe(
+          true,
+        ),
+      );
+      act(() => {
+        fixture.emit("fleet.probe-1.resources", { resources });
+      });
+    }
+
+    it("lists what is in the craft's tanks", async () => {
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await emitProbeResources({
+        ElectricCharge: { current: 40, max: 100 },
+        MonoPropellant: { current: 0, max: 40 },
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("heading", { name: /consumables/i }),
+        ).toBeTruthy(),
+      );
+      const text = visibleText(container);
+      expect(text).toContain("ElectricCharge");
+      expect(text).toContain("MonoPropellant");
+    });
+
+    it("shows an emptied tank rather than hiding it", async () => {
+      // The reading an operator most wants to see. Hiding it would make "ran
+      // out" indistinguishable from "never carried it".
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await emitProbeResources({ MonoPropellant: { current: 0, max: 40 } });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("heading", { name: /consumables/i }),
+        ).toBeTruthy(),
+      );
+      const text = visibleText(container);
+      expect(text).toContain("MonoPropellant");
+      expect(text).toMatch(/0\s*units/);
+      expect(text).toMatch(/40\s*units/);
+    });
+
+    it("makes no claim about when anything runs out", async () => {
+      // Core reports what is in the tanks. A rate for an unloaded craft is
+      // background simulation, which is a life-support Uplink's domain, so a
+      // first-party exhaustion time here would be a model we do not have.
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await emitProbeResources({ ElectricCharge: { current: 40, max: 100 } });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("heading", { name: /consumables/i }),
+        ).toBeTruthy(),
+      );
+      expect(visibleText(container)).not.toMatch(
+        /runs out|exhaust|remaining time|depleted at/i,
+      );
+    });
+
+    it("renders no consumables section before the topic delivers", async () => {
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await waitFor(() => expect(visibleText(container)).toMatch(/geometric/i));
+      expect(
+        screen.queryByRole("heading", { name: /consumables/i }),
+      ).toBeNull();
+    });
+
+    it("still renders the section for a craft confirmed to carry nothing", async () => {
+      // An empty list is a real answer and a different one from silence.
+      mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await emitProbeResources({});
+      await waitFor(() =>
+        expect(
+          screen.getByRole("heading", { name: /consumables/i }),
+        ).toBeTruthy(),
+      );
+      expect(screen.getByText(/carries no resources/i)).toBeTruthy();
+    });
+  });
+
   describe("sections with nothing behind them", () => {
     it("renders no envelope or consumables section when nothing fills them", async () => {
       const { container } = mount({ vesselId: "probe-1" });

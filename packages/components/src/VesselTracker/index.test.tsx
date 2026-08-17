@@ -341,6 +341,81 @@ describe("VesselTracker", () => {
     });
   });
 
+  describe("the ballistic envelope", () => {
+    /** A 100 km circular Kerbin orbit on the dynamic `fleet.<guid>.orbit` topic. */
+    async function emitProbeOrbit(over: Record<string, unknown> = {}) {
+      await waitFor(() =>
+        expect(fixture.transport.isSubscribed("fleet.probe-1.orbit")).toBe(
+          true,
+        ),
+      );
+      act(() => {
+        fixture.emit("fleet.probe-1.orbit", {
+          referenceBodyIndex: 1,
+          sma: 700_000,
+          ecc: 0,
+          inc: 0,
+          lan: 0,
+          argPe: 0,
+          meanAnomalyAtEpoch: 0,
+          epoch: NOW_UT,
+          mu: 3.5316e12,
+          ...over,
+        });
+      });
+    }
+
+    it("reports where the craft is if it did not manoeuvre", async () => {
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await emitProbeOrbit();
+      await waitFor(() =>
+        expect(screen.getByRole("heading", { name: /envelope/i })).toBeTruthy(),
+      );
+      const text = visibleText(container);
+      // 700 km sma over a 600 km body: 100 km apoapsis and periapsis.
+      expect(text).toMatch(/100\.0\s*km/);
+      expect(text).toMatch(/ballistic/i);
+    });
+
+    it("says the position assumes no manoeuvre, rather than stating it as fact", async () => {
+      // Loss of contact does not make a position unknown, it makes it known
+      // with a growing envelope, and this is only the innermost point of one.
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await emitProbeOrbit();
+      await waitFor(() =>
+        expect(screen.getByRole("heading", { name: /envelope/i })).toBeTruthy(),
+      );
+      expect(visibleText(container)).toMatch(/if it did not manoeuvre/i);
+    });
+
+    it("renders no envelope section at all before any elements arrive", async () => {
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await waitFor(() => expect(visibleText(container)).toMatch(/geometric/i));
+      expect(screen.queryByRole("heading", { name: /envelope/i })).toBeNull();
+    });
+
+    it("reports no reachable volume, because no delta-V source exists for a dark craft", async () => {
+      // The spec wants the volume the craft could be in; `dv.summary` and
+      // `dv.stages` are active-vessel topics, so there is nothing to bound it
+      // with. Saying so beats drawing a point and calling it the envelope.
+      const { container } = mount({ vesselId: "probe-1" });
+      emitBase();
+      await emitSilentProbe();
+      await emitProbeOrbit();
+      await waitFor(() =>
+        expect(screen.getByRole("heading", { name: /envelope/i })).toBeTruthy(),
+      );
+      expect(visibleText(container)).toMatch(/reachable volume/i);
+      expect(visibleText(container)).toMatch(/no delta-v/i);
+    });
+  });
+
   describe("sections with nothing behind them", () => {
     it("renders no envelope or consumables section when nothing fills them", async () => {
       const { container } = mount({ vesselId: "probe-1" });

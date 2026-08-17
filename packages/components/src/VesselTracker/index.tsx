@@ -9,10 +9,13 @@ import {
 import {
   contactPhase,
   useFleetVesselContact,
+  useFleetVesselPosition,
   useFleetVesselSilence,
+  useStream,
   useViewUt,
 } from "@ksp-gonogo/sitrep-client";
 import type { Situation, VesselType } from "@ksp-gonogo/sitrep-sdk";
+import { value } from "@ksp-gonogo/sitrep-sdk";
 import {
   ConfigForm,
   Field,
@@ -36,6 +39,7 @@ import {
   SectionTitle,
   Stack,
   Truncate,
+  Unit,
   Value,
 } from "@ksp-gonogo/ui-kit";
 import {
@@ -45,7 +49,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { magnitudeOf, type Quantityish } from "../shared/magnitude";
 import { type DeadlineAxis, deadlineAxis } from "./axis";
+import { type BallisticState, ballisticState } from "./ballistic";
 import { contactFacts } from "./contactFacts";
 import type { TrackerDeadline, VesselTrackerDeadlineEntry } from "./deadlines";
 import { trackerDeadlines } from "./deadlines";
@@ -189,6 +195,40 @@ function useTrackedVessel(configured: string): TrackedVessel | null {
           : null,
     };
   }, [system, wanted, nameByIndex]);
+}
+
+/**
+ * The tracked craft's ballistic state, from `fleet.<guid>.orbit` (the whole
+ * fleet's elements, published per vessel and delayed by that vessel's own
+ * light-time) propagated to the view UT.
+ *
+ * Null until elements arrive, which is what keeps the envelope section absent
+ * rather than empty. The dynamic namespace is not unit-wrapped on decode
+ * (`wrapTopicPayload` keys on the exact topic string and no per-guid topic
+ * matches one), so the elements arrive as bare numbers and `magnitudeOf`
+ * tolerates either form.
+ */
+function useBallistic(guid: string): BallisticState | null {
+  const raw = useStream<Record<string, Quantityish>>(`fleet.${guid}.orbit`);
+  const position = useFleetVesselPosition(guid);
+  const bodies = useTelemetry("system.bodies");
+
+  return useMemo(() => {
+    if (!raw) return null;
+    const bodyIndex = magnitudeOf(raw.referenceBodyIndex);
+    const body =
+      bodyIndex == null
+        ? undefined
+        : bodies?.bodies.find((b) => b.index === bodyIndex);
+    const radiusFromCentre = position ? Math.hypot(...position.position) : null;
+    return ballisticState({
+      sma: magnitudeOf(raw.sma) ?? Number.NaN,
+      ecc: magnitudeOf(raw.ecc) ?? Number.NaN,
+      mu: magnitudeOf(raw.mu) ?? Number.NaN,
+      bodyRadius: magnitudeOf(body?.radius) ?? null,
+      radiusFromCentre,
+    });
+  }, [raw, position, bodies]);
 }
 
 // ---------------------------------------------------------------------------
@@ -411,6 +451,42 @@ function PhaseBadge({
   return <Badge severity={PHASE_SEVERITY[phase]}>{label}</Badge>;
 }
 
+/**
+ * The innermost part of the envelope: where the craft is having done nothing.
+ *
+ * Losing contact does not make a position unknown, it makes it known with a
+ * growing envelope, and this is only the point at the middle of one. The
+ * reachable volume around it needs the delta-V the craft had at last contact,
+ * which is not published for a craft that is not being flown, so the widget
+ * says that outright instead of drawing the point and calling it the envelope.
+ */
+function BallisticFacts({ state }: { state: BallisticState }) {
+  const metres = (m: number | null) =>
+    m == null ? NULL_DISPLAY : <Unit value={value("m", m)} />;
+  return (
+    <>
+      <ReadoutCaption>
+        ballistic point: where it is if it did not manoeuvre, propagated from
+        the last elements received
+      </ReadoutCaption>
+      <ul style={LIST}>
+        <Fact label="Altitude" value={metres(state.altitude)} />
+        <Fact label="Apoapsis" value={metres(state.apoapsis)} />
+        <Fact label="Periapsis" value={metres(state.periapsis)} />
+        <Fact
+          label="Period"
+          value={
+            state.periodSeconds == null
+              ? NULL_DISPLAY
+              : formatDuration(state.periodSeconds)
+          }
+        />
+        <Fact label="Reachable volume" value="no delta-V for a dark craft" />
+      </ul>
+    </>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Widget
 // ---------------------------------------------------------------------------
@@ -421,6 +497,7 @@ function VesselTrackerComponent({
   const identityId = useId();
   const contactId = useId();
   const deadlinesId = useId();
+  const envelopeId = useId();
 
   const vessel = useTrackedVessel(config?.vesselId ?? "auto");
   const guid = vessel?.id ?? "";
@@ -430,6 +507,7 @@ function VesselTrackerComponent({
   // as it is tracking the craft.
   const contact = useFleetVesselContact(guid);
   const silence = useFleetVesselSilence(guid);
+  const ballistic = useBallistic(guid);
 
   const contributed = useContributions("vessel-tracker.deadline");
   const operational = useMemo(
@@ -534,20 +612,25 @@ function VesselTrackerComponent({
             </ul>
           </Section>
 
-          {/* Both sections render nothing at all, heading included, until
+          {/* These sections render nothing at all, heading included, until
               something fills them: an empty section with a title is a promise
               the widget cannot keep. This is the opposite call from the
               deadline rows above, and deliberately so: a COMPARISON with a
               silently missing member misleads, because the reader assumes the
               set is complete, whereas a section that is simply not there makes
               no claim either way. */}
-          {hasEnvelope && (
-            <Section as="section">
-              <SectionTitle as="h3">Reachable envelope</SectionTitle>
-              <AugmentSlot
-                name="vessel-tracker.envelope"
-                props={{ vesselId: vessel.id, vesselName: vessel.name }}
-              />
+          {(ballistic || hasEnvelope) && (
+            <Section as="section" aria-labelledby={envelopeId}>
+              <SectionTitle as="h3" id={envelopeId}>
+                Envelope
+              </SectionTitle>
+              {ballistic && <BallisticFacts state={ballistic} />}
+              {hasEnvelope && (
+                <AugmentSlot
+                  name="vessel-tracker.envelope"
+                  props={{ vesselId: vessel.id, vesselName: vessel.name }}
+                />
+              )}
             </Section>
           )}
           {hasConsumables && (

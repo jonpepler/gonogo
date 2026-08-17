@@ -4,7 +4,7 @@
     "vessel": "Munar Survey 3 (probe)",
     "body": "Mun",
     "situation": "Orbiting the Mun, tracked while the operator flies Kerbin Station",
-    "notes": "The predicted reacquisition has passed and the craft is still dark: 4 minutes late, with 10 minutes left before the tracker declares it lost. The axis shows the geometric mark behind the now-line and the declaration mark ahead of it."
+    "notes": "The predicted reacquisition has passed and the craft is still dark: 4 minutes late, with 10 minutes left before the tracker declares it lost. The axis shows the geometric mark behind the now-line and the declaration mark ahead of it. The craft's own `fleet.<guid>.orbit` elements are carried too, so the envelope section renders its ballistic point: where the craft is having done nothing."
   },
   "_stream": {
     "carriedChannels": [
@@ -101,6 +101,20 @@
           "deadlineUt": 600.0,
           "deadlineBasis": "predicted-reacquisition",
           "predictedReacquisitionUt": -240.0
+        }
+      },
+      {
+        "channel": "fleet.mun-probe.orbit",
+        "value": {
+          "referenceBodyIndex": 2,
+          "sma": 250000,
+          "ecc": 0.08,
+          "inc": 12.4,
+          "lan": 30.0,
+          "argPe": 45.0,
+          "meanAnomalyAtEpoch": 1.2,
+          "epoch": 0,
+          "mu": 65138398000
         }
       }
     ]

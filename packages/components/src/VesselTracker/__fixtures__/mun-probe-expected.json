@@ -4,7 +4,7 @@
     "vessel": "Munar Survey 3 (probe)",
     "body": "Mun",
     "situation": "Orbiting the Mun, tracked while the operator flies Kerbin Station",
-    "notes": "Occulted behind the Mun with a geometric prediction in hand: back in 8 minutes, declared lost at 15 if it does not show. The deadline is graced off the prediction, so the two are related and the basis says so."
+    "notes": "Occulted behind the Mun with a geometric prediction in hand: back in 8 minutes, declared lost at 15 if it does not show. The deadline is graced off the prediction, so the two are related and the basis says so. The craft's own `fleet.<guid>.orbit` elements are carried too, so the envelope section renders its ballistic point: where the craft is having done nothing."
   },
   "_stream": {
     "carriedChannels": [
@@ -101,6 +101,20 @@
           "deadlineUt": 900.0,
           "deadlineBasis": "predicted-reacquisition",
           "predictedReacquisitionUt": 480.0
+        }
+      },
+      {
+        "channel": "fleet.mun-probe.orbit",
+        "value": {
+          "referenceBodyIndex": 2,
+          "sma": 250000,
+          "ecc": 0.08,
+          "inc": 12.4,
+          "lan": 30.0,
+          "argPe": 45.0,
+          "meanAnomalyAtEpoch": 1.2,
+          "epoch": 0,
+          "mu": 65138398000
         }
       }
     ]

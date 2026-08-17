@@ -369,7 +369,9 @@ function DeadlineAxisBar({
   axis: DeadlineAxis;
   rows: readonly TrackerDeadline[];
 }) {
-  const pct = (f: number) => `${(f * 100).toFixed(2)}%`;
+  const at = (f: number): CSSProperties => ({
+    left: `${(f * 100).toFixed(2)}%`,
+  });
   return (
     <div
       role="img"
@@ -397,7 +399,7 @@ function DeadlineAxisBar({
         title="now"
         style={{
           position: "absolute",
-          left: pct(axis.nowFraction),
+          ...at(axis.nowFraction),
           top: 3,
           width: 1,
           height: 11,
@@ -410,7 +412,7 @@ function DeadlineAxisBar({
           aria-hidden="true"
           style={{
             position: "absolute",
-            left: pct(mark.fraction),
+            ...at(mark.fraction),
             top: 5,
             marginLeft: -3,
             width: 7,

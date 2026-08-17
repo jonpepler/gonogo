@@ -1,4 +1,5 @@
 import type { ContactPhase } from "@ksp-gonogo/sitrep-client";
+import { Situation, VesselType } from "@ksp-gonogo/sitrep-sdk";
 import type { Severity } from "@ksp-gonogo/ui-kit";
 import type { DeadlineKind } from "./deadlines";
 
@@ -49,4 +50,40 @@ export const DEADLINE_KIND_COLOUR: Record<DeadlineKind, string> = {
   geometric: "var(--color-data-1)",
   operational: "var(--color-data-3)",
   declaration: "var(--color-data-5)",
+};
+
+/**
+ * Wire enum -> display word, exhaustive over both enums so an unhandled member
+ * cannot render as `undefined`. `Unknown` is a real, honestly-reported value
+ * (the producer could not classify it this tick), not a client-side fallback,
+ * and reads as itself.
+ */
+export const VESSEL_TYPE_LABEL: Record<VesselType, string> = {
+  [VesselType.Ship]: "Ship",
+  [VesselType.Station]: "Station",
+  [VesselType.Lander]: "Lander",
+  [VesselType.Probe]: "Probe",
+  [VesselType.Rover]: "Rover",
+  [VesselType.Base]: "Base",
+  [VesselType.Relay]: "Relay",
+  [VesselType.EVA]: "EVA kerbal",
+  [VesselType.Flag]: "Flag",
+  [VesselType.Debris]: "Debris",
+  [VesselType.SpaceObject]: "Space object",
+  [VesselType.DeployedScienceController]: "Deployed science",
+  [VesselType.DeployedSciencePart]: "Deployed science part",
+  [VesselType.DroppedPart]: "Dropped part",
+  [VesselType.Unknown]: "Unknown",
+};
+
+export const SITUATION_LABEL: Record<Situation, string> = {
+  [Situation.Landed]: "Landed",
+  [Situation.Splashed]: "Splashed down",
+  [Situation.PreLaunch]: "Pre-launch",
+  [Situation.Orbiting]: "Orbiting",
+  [Situation.Escaping]: "Escaping",
+  [Situation.Flying]: "Flying",
+  [Situation.SubOrbital]: "Sub-orbital",
+  [Situation.Docked]: "Docked",
+  [Situation.Unknown]: "Unknown",
 };

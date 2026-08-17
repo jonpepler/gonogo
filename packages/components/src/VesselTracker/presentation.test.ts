@@ -1,12 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ContactPhase } from "@ksp-gonogo/sitrep-client";
+import { Situation, VesselType } from "@ksp-gonogo/sitrep-sdk";
 import { describe, expect, it } from "vitest";
 import {
   DEADLINE_KIND_COLOUR,
   DEADLINE_KIND_LABEL,
   PHASE_LABEL,
   PHASE_SEVERITY,
+  SITUATION_LABEL,
+  VESSEL_TYPE_LABEL,
 } from "./presentation";
 
 const PHASES: ContactPhase[] = [
@@ -82,6 +85,19 @@ describe("VesselTracker presentation", () => {
       expect(PHASE_SEVERITY.lost).toBe("critical");
       expect(PHASE_SEVERITY.expected).toBe("info");
       expect(PHASE_SEVERITY.nominal).toBe("nominal");
+    });
+
+    it("labels every wire enum member, so none can render as undefined", () => {
+      // A missing member is invisible: React renders `undefined` as nothing at
+      // all, so the Type row would just be blank for that craft.
+      for (const value of Object.values(VesselType)) {
+        if (typeof value !== "number") continue;
+        expect(VESSEL_TYPE_LABEL[value as VesselType]).toBeTruthy();
+      }
+      for (const value of Object.values(Situation)) {
+        if (typeof value !== "number") continue;
+        expect(SITUATION_LABEL[value as Situation]).toBeTruthy();
+      }
     });
 
     it("never advises: no phase label recommends an action or renders a verdict", () => {

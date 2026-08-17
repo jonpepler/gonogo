@@ -54,4 +54,5 @@ export * from "./TechTree";
 export * from "./ThermalStatus";
 export * from "./TransferWindow";
 export * from "./Twr";
+export * from "./VesselTracker";
 export * from "./WarpControl";

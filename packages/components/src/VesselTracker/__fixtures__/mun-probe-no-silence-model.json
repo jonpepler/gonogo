@@ -1,0 +1,98 @@
+{
+  "_meta": {
+    "capturedAt": "2026-08-17",
+    "vessel": "Munar Survey 3 (probe)",
+    "body": "Mun",
+    "situation": "Orbiting the Mun, tracked while the operator flies Kerbin Station",
+    "notes": "A stock install: nothing publishes a silence reckoning, so both comms-owned rows report 'no silence model' rather than a fabricated one, and identity and contact carry on reporting normally. No `requires` gate is doing this; the topic simply never delivers."
+  },
+  "_stream": {
+    "carriedChannels": [
+      "system.vessels",
+      "system.bodies",
+      "vessel.identity",
+      "fleet.",
+      "silence."
+    ],
+    "pinnedUt": 0,
+    "emits": [
+      {
+        "channel": "system.bodies",
+        "value": {
+          "bodies": [
+            {
+              "index": 0,
+              "name": "Kerbol",
+              "parentIndex": null,
+              "radius": 261600000,
+              "gravParameter": 1.1723328e18,
+              "sphereOfInfluence": null,
+              "orbit": null
+            },
+            {
+              "index": 1,
+              "name": "Kerbin",
+              "parentIndex": 0,
+              "radius": 600000,
+              "gravParameter": 3531600000000.0,
+              "sphereOfInfluence": 84159286,
+              "orbit": null
+            },
+            {
+              "index": 2,
+              "name": "Mun",
+              "parentIndex": 1,
+              "radius": 200000,
+              "gravParameter": 65138398000,
+              "sphereOfInfluence": 2429559,
+              "orbit": null
+            }
+          ]
+        }
+      },
+      {
+        "channel": "system.vessels",
+        "value": {
+          "vessels": [
+            {
+              "vesselId": "mun-probe",
+              "name": "Munar Survey 3",
+              "vesselType": 3,
+              "situation": 3,
+              "bodyIndex": 2,
+              "commsConnected": false,
+              "commsControlSource": 0
+            },
+            {
+              "vesselId": "kerbin-station",
+              "name": "Kerbin Station",
+              "vesselType": 1,
+              "situation": 3,
+              "bodyIndex": 1,
+              "commsConnected": true,
+              "commsControlSource": 2
+            }
+          ]
+        }
+      },
+      {
+        "channel": "vessel.identity",
+        "value": {
+          "vesselId": "kerbin-station",
+          "name": "Kerbin Station",
+          "vesselType": 1,
+          "situation": 3,
+          "parentBodyIndex": 1,
+          "launchUt": null
+        }
+      },
+      {
+        "channel": "fleet.mun-probe.contact",
+        "value": {
+          "connected": false,
+          "lastContactUt": -300.0
+        }
+      }
+    ]
+  }
+}

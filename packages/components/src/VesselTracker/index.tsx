@@ -104,11 +104,10 @@ export interface VesselTrackerConsumablesContext {
 declare module "@ksp-gonogo/core" {
   interface SlotRegistry {
     /**
-     * Where the craft's reachable set renders: the ballistic point plus, when a
-     * delta-V source exists, the volume it could be in. Nothing fills it today,
-     * because delta-V at last contact is not on the wire (`dv.summary` and
-     * `dv.stages` are active-vessel topics) and neither is a non-active
-     * vessel's ephemeris.
+     * Where a contributed REACHABLE set renders, alongside the first-party
+     * ballistic point. Nothing fills it today: bounding the volume needs the
+     * delta-V the craft had at last contact, and `dv.summary` / `dv.stages` are
+     * active-vessel topics, so there is no per-vessel figure to bound it with.
      */
     "vessel-tracker.envelope": VesselTrackerEnvelopeContext;
     /** Per-resource detail behind the operational deadline, for a life-support Uplink to fill. */
@@ -147,20 +146,28 @@ interface TrackedVessel {
 /**
  * The craft being tracked, resolved from config against `system.vessels`.
  *
- * NOTE on why the comms deadlines below are read straight off
- * `silence.<guid>.state` rather than arriving as a contribution, which is what
- * the spec's composition section describes. A contribution's `deps` are
- * declared once, statically, at module load, and its `compute` sees only those
- * deps. That cannot express "contribute for entity X, where X is picked at
- * runtime". SystemView escapes it only because its subject is pinned to the
- * static `vessel.identity` topic, and even then it needs a module-level bridge
- * (`getLatestFleetVesselSilence`) to reach the per-guid topic at all. This
- * widget's subject is operator-chosen, so there is no static dep that names it.
+ * NOTE on why the comms deadlines are read straight off `silence.<guid>.state`
+ * here rather than arriving as a contribution, which is what the spec's
+ * composition section describes.
  *
- * The stock-game gate the spec wanted from `requires` still holds without the
- * contribution: no comms domain means `silence.<guid>.state` never delivers,
- * the reckoning is undefined, and the rows report "no silence model" rather
- * than a fabricated one.
+ * It is NOT that a contribution cannot serve an operator-chosen subject. The
+ * working pattern is to fan out over every subject and stamp each entry with
+ * its `target`, letting the host filter, which is exactly what
+ * `system-view.vessel-status` does.
+ *
+ * The obstacle is narrower and specific to this data: per-vessel silence lives
+ * in a DYNAMIC topic, which no static dep can name, and the module-level bridge
+ * that reaches it (`getLatestFleetVesselSilence`) only holds vessels some
+ * component is ALREADY subscribed to. A fan-out contribution reading that
+ * bridge would see exactly the vessels a widget had already rendered, which
+ * makes it useless as the thing that feeds the widget. So this widget keeps the
+ * one raw subscription until a fleet-wide aggregate silence topic exists, at
+ * which point the deps become static and the contribution can fan out for real.
+ *
+ * The stock-game gate the spec wanted from `requires` holds meanwhile without
+ * any of it: no comms domain means `silence.<guid>.state` never delivers, the
+ * reckoning is undefined, and the rows report "no silence model" rather than a
+ * fabricated one.
  */
 function useTrackedVessel(configured: string): TrackedVessel | null {
   const system = useTelemetry("system.vessels");

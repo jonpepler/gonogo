@@ -1467,6 +1467,18 @@ const WIDGETS: WidgetRenderConfig[] = [
     widgetId: "vessel-tracker",
     fixturesPath: "VesselTracker/__fixtures__",
     outPath: "renders/vessel-tracker-widget",
+    // The three deadline rows are a COMPARISON, so a row that renders below
+    // the panel edge is not merely cropped, it is missing from the thing the
+    // widget exists to show, and every DOM assertion still passes on it.
+    // `data-deadline-row` marks all three; the check runs at every mode.
+    mustBeVisible: {
+      selector: "[data-deadline-row]",
+      // The tiles too small to hold three rows plus the contact facts. At these
+      // the widget scrolls, which is the stated degradation: a deadline dropped
+      // for want of space would be the invisible lie, a deadline one scroll
+      // down is not.
+      mayScroll: ["min-4x6", "landscape-18x5", "mobile-9x8"],
+    },
     // Every mode pins the SAME craft the fixtures carry per-vessel topics for,
     // and it is deliberately not the one `vessel.identity` says is being flown:
     // "auto" would track the active craft, which is the one you can already see.

@@ -141,6 +141,30 @@ export interface WidgetRenderConfig {
    * widget so nothing is cropped below the fold. For composed instruments whose
    * content scrolls in a real cell (LandingStatus) but must be reviewed whole. */
   fullContent?: boolean;
+  /**
+   * CSS selector for elements that MUST be fully visible at every mode, checked
+   * in the real browser after layout.
+   *
+   * Scrolling is legitimate, so the harness cannot police clipping in general.
+   * But a widget whose whole point is a side-by-side comparison has a property
+   * no other check can see: a DOM assertion passes on a row that rendered off
+   * the bottom edge, because `getByText` does not know where the pixels landed,
+   * and a screenshot diff is green as long as it is CONSISTENTLY clipped.
+   *
+   * A widget that has such a property names it here and the harness measures
+   * it. VesselTracker was the case that motivated this: two of its three
+   * deadline rows rendered below the fold with every test passing, and after
+   * that was fixed the third row's BASIS was still clipped, with "three rows
+   * are visible" passing while "every row is readable" failed. A check adjacent
+   * to the thing you care about reports success while the thing you care about
+   * fails.
+   *
+   * `mayScroll` names the modes where the property is deliberately given up:
+   * at a tile too small to hold the content, scrolling IS the accepted
+   * degradation. Everything not listed is checked, so a mode added later is
+   * covered by default and an exemption has to be written down as one.
+   */
+  mustBeVisible?: { selector: string; mayScroll?: readonly string[] };
 }
 
 /** A viewport size the screen harness renders a screen at. Unlike a widget
@@ -554,6 +578,42 @@ async function renderOneWidget(
               requestAnimationFrame(() => requestAnimationFrame(() => res()));
             }),
         );
+      }
+      if (
+        config.mustBeVisible &&
+        !fullContent &&
+        !(config.mustBeVisible.mayScroll ?? []).includes(mode.name)
+      ) {
+        // Measured in the page, after layout, because that is the only place
+        // this property exists: jsdom computes no boxes, so a unit test cannot
+        // express it at all.
+        const clipped = await page.evaluate((selector) => {
+          const root = document.getElementById("root");
+          if (!root) return [];
+          const limit = root.getBoundingClientRect().bottom;
+          const out: string[] = [];
+          for (const el of Array.from(document.querySelectorAll(selector))) {
+            const box = el.getBoundingClientRect();
+            // A hidden element has no box and is not a clipping failure; a
+            // visible one must END above the panel's own bottom edge.
+            if (box.height === 0) continue;
+            if (box.bottom > limit + 0.5) {
+              out.push((el.textContent ?? "").trim().slice(0, 60));
+            }
+          }
+          return out;
+        }, config.mustBeVisible.selector);
+        if (clipped.length > 0) {
+          throw new Error(
+            `${config.widgetId} @ ${mode.name} (${fixture.name}): ` +
+              `${clipped.length} element(s) matching "${config.mustBeVisible.selector}" are cut off ` +
+              `by the panel edge, so they render but cannot be read:\n  ` +
+              clipped.join("\n  ") +
+              "\n(This widget declares mustBeVisible because a DOM assertion " +
+              "passes on text that landed below the fold. If this mode is too " +
+              "small to hold the content, add it to mustBeVisible.mayScroll.)",
+          );
+        }
       }
       const root = await page.$("#root");
       if (!root) throw new Error("Probe: #root missing after render");

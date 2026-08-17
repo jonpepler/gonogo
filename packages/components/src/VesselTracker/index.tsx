@@ -302,6 +302,7 @@ function DeadlineRow({ row, nowUt }: { row: TrackerDeadline; nowUt: number }) {
   return (
     <Row
       as="li"
+      data-deadline-row=""
       title={row.question}
       style={{ alignItems: "stretch", gap: "var(--space-8)" }}
     >
@@ -333,14 +334,18 @@ function DeadlineRow({ row, nowUt }: { row: TrackerDeadline; nowUt: number }) {
               {row.label}
             </Truncate>
           </Cluster>
-          {/* The basis is short by design and its LONG form lives on the
-              tooltip, so the two-word label on the row is a summary rather than
-              a truncation of something the operator cannot get at. */}
+          {/* The basis alone, without the owner. "silence tracker · prediction
+              + grace" cost seventeen characters saying what the DECLARATION
+              chip beside it already says, and spent them truncating the half
+              that carries new information: it rendered as "predict…", which
+              reads like the geometric row's "predicted" and destroys the exact
+              distinction the two short forms exist to draw. The owner keeps its
+              place on the tooltip, with the basis in full. */}
           <Truncate
             style={CAPTION}
             title={`${row.owner} · ${row.detail ?? row.basis}`}
           >
-            {row.owner} · {row.basis}
+            {row.basis}
           </Truncate>
         </Stack>
       </Cluster>
@@ -617,6 +622,39 @@ function VesselTrackerComponent({
             </Truncate>
           </Section>
 
+          {/* DEADLINES first, CONTACT after. The three-row comparison is what
+              this widget is for, so it must never be the thing the panel edge
+              cuts: ordering by importance means the fold lands on the context
+              rather than on the point. The phase badge in the header already
+              carries the headline, so the observed contact facts read fine one
+              scroll down. */}
+          <Section as="section" aria-labelledby={deadlinesId}>
+            <SectionTitle as="h3" id={deadlinesId}>
+              Deadlines
+            </SectionTitle>
+            {/* The silence run sits with the DEADLINES, not with the contact
+                facts, because it is what the deadline is reckoned against
+                rather than something observed. Stacked next to "since contact"
+                it read as a near-duplicate at a nearly equal value, which
+                invites the reader to assume one of them is a mistake; they are
+                two instants and the gap between them is real, since contact can
+                drop some way before the tracker opens a run. */}
+            {facts.silenceElapsed != null && (
+              <span
+                style={CAPTION}
+                title="Measured from where the silence tracker opened this run, which can be later than last contact."
+              >
+                silence run: {formatDuration(facts.silenceElapsed)}
+              </span>
+            )}
+            {axis && <DeadlineAxisBar axis={axis} rows={rows} />}
+            <ul style={LIST}>
+              {rows.map((row) => (
+                <DeadlineRow key={row.kind} row={row} nowUt={nowUt} />
+              ))}
+            </ul>
+          </Section>
+
           <Section as="section" aria-labelledby={contactId}>
             <SectionTitle as="h3" id={contactId}>
               Contact
@@ -650,33 +688,6 @@ function VesselTrackerComponent({
                 />
               )}
             </dl>
-          </Section>
-
-          <Section as="section" aria-labelledby={deadlinesId}>
-            <SectionTitle as="h3" id={deadlinesId}>
-              Deadlines
-            </SectionTitle>
-            {/* The silence run sits with the DEADLINES, not with the contact
-                facts, because it is what the deadline is reckoned against
-                rather than something observed. Stacked next to "since contact"
-                it read as a near-duplicate at a nearly equal value, which
-                invites the reader to assume one of them is a mistake; they are
-                two instants and the gap between them is real, since contact can
-                drop some way before the tracker opens a run. */}
-            {facts.silenceElapsed != null && (
-              <span
-                style={CAPTION}
-                title="Measured from where the silence tracker opened this run, which can be later than last contact."
-              >
-                silence run: {formatDuration(facts.silenceElapsed)}
-              </span>
-            )}
-            {axis && <DeadlineAxisBar axis={axis} rows={rows} />}
-            <ul style={LIST}>
-              {rows.map((row) => (
-                <DeadlineRow key={row.kind} row={row} nowUt={nowUt} />
-              ))}
-            </ul>
           </Section>
 
           {/* These sections render nothing at all, heading included, until

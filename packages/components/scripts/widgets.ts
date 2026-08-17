@@ -1471,11 +1471,13 @@ const WIDGETS: WidgetRenderConfig[] = [
     // and it is deliberately not the one `vessel.identity` says is being flown:
     // "auto" would track the active craft, which is the one you can already see.
     modes: [
-      // Registered default: all three sections plus the shared deadline axis.
-      { name: "default-6x12", w: 6, h: 12, config: { vesselId: "mun-probe" } },
-      // Wide: room for the deadline rows' basis captions on one line each.
-      { name: "wide-9x12", w: 9, h: 12, config: { vesselId: "mun-probe" } },
-      // Minimum size: the sections scroll rather than shedding rows, because a
+      // Registered default: the three deadline rows and their shared axis all
+      // above the fold, which is the size the widget is actually for.
+      { name: "default-8x12", w: 8, h: 12, config: { vesselId: "mun-probe" } },
+      // Wide: room for each deadline row's basis on one line rather than
+      // truncated.
+      { name: "wide-12x12", w: 12, h: 12, config: { vesselId: "mun-probe" } },
+      // Minimum size: the sections SCROLL rather than shedding rows, because a
       // deadline dropped for want of space is the same invisible lie as a
       // deadline merged with another.
       { name: "min-4x6", w: 4, h: 6, config: { vesselId: "mun-probe" } },

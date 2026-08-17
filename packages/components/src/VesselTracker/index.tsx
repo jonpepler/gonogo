@@ -285,15 +285,24 @@ function KindSwatch({ kind }: { kind: TrackerDeadline["kind"] }) {
 }
 
 /**
- * One deadline. Everything that distinguishes it from the other two is on the
- * row itself: which kind, what runs out, whose model says so, and the basis the
- * number came from. A row that showed only a duration would be
- * indistinguishable from the other two rows showing only a duration, which is
- * the failure the whole widget is arranged around.
+ * One deadline, in two lines.
+ *
+ * Everything that distinguishes it from the other two has to be ON the row,
+ * because three rows each showing only a duration are indistinguishable, which
+ * is the failure the whole widget is arranged around. The kind and the owner do
+ * that work in two short words; the QUESTION each kind answers is the longest
+ * and most explanatory part, and at three rows it cost three wrapped lines and
+ * pushed two of the three deadlines off the panel entirely. A comparison you
+ * have to scroll to complete is barely a comparison, so the question moved to
+ * the row's tooltip and the three rows now fit together.
  */
 function DeadlineRow({ row, nowUt }: { row: TrackerDeadline; nowUt: number }) {
   return (
-    <Row as="li" style={{ alignItems: "stretch", gap: "var(--space-8)" }}>
+    <Row
+      as="li"
+      title={row.question}
+      style={{ alignItems: "stretch", gap: "var(--space-8)" }}
+    >
       <Cluster
         justify="start"
         style={{
@@ -321,10 +330,12 @@ function DeadlineRow({ row, nowUt }: { row: TrackerDeadline; nowUt: number }) {
               {row.label}
             </Truncate>
           </Cluster>
-          <span style={CAPTION}>
-            {row.question} · {row.owner}
-          </span>
-          <span style={CAPTION}>basis: {row.basis}</span>
+          {/* The basis is the longest thing on the row and the first to
+              truncate, so it carries its own tooltip: a half-read basis is
+              exactly the case where the operator wants the rest of it. */}
+          <Truncate style={CAPTION} title={`${row.owner} · ${row.basis}`}>
+            {row.owner} · {row.basis}
+          </Truncate>
         </Stack>
       </Cluster>
       <Stack gap="xs" style={{ alignItems: "flex-end", flex: "0 0 auto" }}>
@@ -463,7 +474,7 @@ function BallisticFacts({ state }: { state: BallisticState }) {
         ballistic point: where it is if it did not manoeuvre, propagated from
         the last elements received
       </ReadoutCaption>
-      <ul style={LIST}>
+      <dl style={FACT_LIST}>
         <Fact label="Altitude" value={metres(state.altitude)} />
         <Fact label="Apoapsis" value={metres(state.apoapsis)} />
         <Fact label="Periapsis" value={metres(state.periapsis)} />
@@ -476,7 +487,7 @@ function BallisticFacts({ state }: { state: BallisticState }) {
           }
         />
         <Fact label="Reachable volume" value="no delta-V for a dark craft" />
-      </ul>
+      </dl>
     </>
   );
 }
@@ -552,23 +563,33 @@ function VesselTrackerComponent({
     >
       <ScrollArea>
         <Stack gap="md" style={{ gap: "var(--space-12)" }}>
+          {/* Identity is four facts that never change and never need reading
+              twice, so it is one line rather than four rows: the four rows cost
+              the deadlines their space, and the deadlines are what the widget is
+              for. */}
           <Section as="section" aria-labelledby={identityId}>
             <SectionTitle as="h3" id={identityId}>
               Identity
             </SectionTitle>
-            <ul style={LIST}>
-              <Fact label="Vessel" value={vessel.name} />
-              <Fact label="Type" value={vessel.type} />
-              <Fact label="Body" value={vessel.body ?? NULL_DISPLAY} />
-              <Fact label="Situation" value={vessel.situation} />
-            </ul>
+            <Truncate
+              style={{
+                fontSize: "var(--font-size-base)",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {vessel.name}
+            </Truncate>
+            <Truncate style={CAPTION}>
+              {vessel.type} · {vessel.situation}
+              {vessel.body != null ? ` ${vessel.body}` : ""}
+            </Truncate>
           </Section>
 
           <Section as="section" aria-labelledby={contactId}>
             <SectionTitle as="h3" id={contactId}>
               Contact
             </SectionTitle>
-            <ul style={LIST}>
+            <dl style={FACT_LIST}>
               <Fact
                 label="Link"
                 value={
@@ -585,34 +606,34 @@ function VesselTrackerComponent({
                   facts.lastContactUt == null ? (
                     "never"
                   ) : (
-                    <>
-                      <MissionDate value={facts.lastContactUt} />
-                      {facts.sinceLastContact != null && (
-                        <span style={CAPTION}>
-                          {" "}
-                          ({formatDuration(facts.sinceLastContact)} ago)
-                        </span>
-                      )}
-                    </>
+                    <MissionDate value={facts.lastContactUt} />
                   )
                 }
               />
+              {/* Two ages, on two rows, because they are two instants and the
+                  gap between them is real: contact can drop some way before the
+                  tracker opens a silence run. Inlining the first as a
+                  parenthetical after the date wrapped the value across three
+                  lines at the default width. */}
+              {facts.sinceLastContact != null && (
+                <Fact
+                  label="Since contact"
+                  value={formatDuration(facts.sinceLastContact)}
+                />
+              )}
               {facts.silenceElapsed != null && (
                 <Fact
                   label="Silent for"
                   value={formatDuration(facts.silenceElapsed)}
                 />
               )}
-            </ul>
+            </dl>
           </Section>
 
           <Section as="section" aria-labelledby={deadlinesId}>
             <SectionTitle as="h3" id={deadlinesId}>
               Deadlines
             </SectionTitle>
-            <ReadoutCaption>
-              three different clocks, not three views of one
-            </ReadoutCaption>
             {axis && <DeadlineAxisBar axis={axis} rows={rows} />}
             <ul style={LIST}>
               {rows.map((row) => (
@@ -651,7 +672,7 @@ function VesselTrackerComponent({
                 (resources.length === 0 ? (
                   <EmptyState>This craft carries no resources.</EmptyState>
                 ) : (
-                  <ul style={LIST}>
+                  <dl style={FACT_LIST}>
                     {resources.map((r) => (
                       <Fact
                         key={r.name}
@@ -668,7 +689,7 @@ function VesselTrackerComponent({
                         }
                       />
                     ))}
-                  </ul>
+                  </dl>
                 ))}
               {hasConsumables && (
                 <AugmentSlot
@@ -693,14 +714,52 @@ const LIST: CSSProperties = {
   gap: "var(--space-2)",
 };
 
-function Fact({ label, value }: { label: string; value: ReactNode }) {
+/**
+ * A label/value list.
+ *
+ * A GRID on the list rather than a spaced-between flex row per item, for two
+ * reasons. A flex row lets a long value squeeze its own label to nothing: at
+ * the default width "Last heard" wrapped its value onto two lines and truncated
+ * the label clean away, leaving a date with nothing saying what it was. And a
+ * shared grid aligns the values down the column instead of each row finding its
+ * own edge.
+ */
+const FACT_LIST: CSSProperties = {
+  margin: 0,
+  padding: 0,
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
+  columnGap: "var(--space-8)",
+  rowGap: "var(--space-2)",
+  alignItems: "baseline",
+};
+
+function Fact({
+  label,
+  value,
+  title,
+}: {
+  label: string;
+  value: ReactNode;
+  title?: string;
+}) {
   return (
-    <Row as="li">
-      <Row.Name style={{ color: "var(--color-text-muted)" }}>{label}</Row.Name>
-      <Value tone="default" size="sm" style={{ textAlign: "right" }}>
-        {value}
-      </Value>
-    </Row>
+    <>
+      <dt
+        style={{
+          color: "var(--color-text-muted)",
+          fontSize: "var(--font-size-sm)",
+        }}
+        title={title}
+      >
+        {label}
+      </dt>
+      <dd style={{ margin: 0 }} title={title}>
+        <Value tone="default" size="sm" style={{ textAlign: "right" }}>
+          {value}
+        </Value>
+      </dd>
+    </>
   );
 }
 
@@ -754,7 +813,10 @@ registerComponent<VesselTrackerConfig>({
   description:
     "One craft's tracking surface: identity and contact state, when it was last heard, how long it has been quiet, and the three separate deadlines running on it (when the radio path reopens, how long it can keep going, and when the game stops counting it as in contact) on a shared axis so their order is visible. Reports state only: it makes no judgement about a craft and offers no control to declare one lost. The reachable-envelope and consumables sections render only when an Uplink fills them; neither has data on the wire today.",
   tags: ["telemetry", "comms"],
-  defaultSize: { w: 6, h: 12 },
+  // 8 wide, not 6: at 6 the three deadline rows no longer fit together above
+  // the fold, and a comparison you have to scroll to complete is barely a
+  // comparison. It still works at the 4-wide minimum, it just scrolls.
+  defaultSize: { w: 8, h: 12 },
   minSize: { w: 4, h: 6 },
   component: VesselTrackerComponent,
   configComponent: VesselTrackerConfigComponent,

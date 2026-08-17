@@ -42,6 +42,7 @@ import {
   Truncate,
   Unit,
   Value,
+  VisuallyHidden,
 } from "@ksp-gonogo/ui-kit";
 import {
   type CSSProperties,
@@ -64,6 +65,7 @@ import { trackerDeadlines } from "./deadlines";
 import {
   DEADLINE_KIND_COLOUR,
   DEADLINE_KIND_LABEL,
+  DEADLINE_KIND_MARK,
   PHASE_LABEL,
   PHASE_SEVERITY,
   SITUATION_LABEL,
@@ -322,6 +324,7 @@ function DeadlineRow({ row, nowUt }: { row: TrackerDeadline; nowUt: number }) {
               {DEADLINE_KIND_LABEL[row.kind]}
             </span>
             <Truncate
+              title={row.label}
               style={{
                 fontSize: "var(--font-size-sm)",
                 color: "var(--color-text-primary)",
@@ -330,10 +333,13 @@ function DeadlineRow({ row, nowUt }: { row: TrackerDeadline; nowUt: number }) {
               {row.label}
             </Truncate>
           </Cluster>
-          {/* The basis is the longest thing on the row and the first to
-              truncate, so it carries its own tooltip: a half-read basis is
-              exactly the case where the operator wants the rest of it. */}
-          <Truncate style={CAPTION} title={`${row.owner} · ${row.basis}`}>
+          {/* The basis is short by design and its LONG form lives on the
+              tooltip, so the two-word label on the row is a summary rather than
+              a truncation of something the operator cannot get at. */}
+          <Truncate
+            style={CAPTION}
+            title={`${row.owner} · ${row.detail ?? row.basis}`}
+          >
             {row.owner} · {row.basis}
           </Truncate>
         </Stack>
@@ -345,6 +351,18 @@ function DeadlineRow({ row, nowUt }: { row: TrackerDeadline; nowUt: number }) {
         {row.atUt != null && (
           <span style={{ ...CAPTION, whiteSpace: "nowrap" }}>
             <MissionDate value={row.atUt} />
+          </span>
+        )}
+        {/* The error budget sits with the moment it is a budget AROUND, not on
+            the basis line: it answers "how sure" about this UT, and the basis
+            answers "how derived". Worded one-sided, because it is slack after
+            the moment and there is no matching term on the early side. */}
+        {row.slackSeconds != null && (
+          <span
+            style={{ ...CAPTION, whiteSpace: "nowrap" }}
+            title="Slack after the predicted moment before the craft counts as late."
+          >
+            {formatDuration(row.slackSeconds)} slack
           </span>
         )}
       </Stack>
@@ -402,22 +420,32 @@ function DeadlineAxisBar({
           background: "var(--color-text-muted)",
         }}
       />
-      {axis.marks.map((mark) => (
-        <span
-          key={mark.kind}
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            ...at(mark.fraction),
-            top: 5,
-            marginLeft: -3,
-            width: 7,
-            height: 7,
-            borderRadius: "var(--radius-circle)",
-            background: DEADLINE_KIND_COLOUR[mark.kind],
-          }}
-        />
-      ))}
+      {axis.marks.map((mark) => {
+        const diamond = DEADLINE_KIND_MARK[mark.kind] === "diamond";
+        return (
+          <span
+            key={mark.kind}
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              ...at(mark.fraction),
+              top: diamond ? 4 : 5,
+              marginLeft: diamond ? -4 : -3,
+              width: diamond ? 8 : 7,
+              height: diamond ? 8 : 7,
+              // A round mark and a rotated square, because the ramp cannot give
+              // the geometric and declaration marks well-separated hues and
+              // they are the pair a reader is most likely to conflate. See
+              // DEADLINE_KIND_MARK.
+              borderRadius: diamond
+                ? "var(--radius-xs)"
+                : "var(--radius-circle)",
+              transform: diamond ? "rotate(45deg)" : undefined,
+              background: DEADLINE_KIND_COLOUR[mark.kind],
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -568,9 +596,13 @@ function VesselTrackerComponent({
               the deadlines their space, and the deadlines are what the widget is
               for. */}
           <Section as="section" aria-labelledby={identityId}>
-            <SectionTitle as="h3" id={identityId}>
+            {/* The heading is for the accessibility tree only. The craft's name
+                in the panel's largest type IS the identity section to a sighted
+                reader, and the visible title cost a line the third deadline row
+                needed. */}
+            <VisuallyHidden as="h3" id={identityId}>
               Identity
-            </SectionTitle>
+            </VisuallyHidden>
             <Truncate
               style={{
                 fontSize: "var(--font-size-base)",
@@ -610,21 +642,11 @@ function VesselTrackerComponent({
                   )
                 }
               />
-              {/* Two ages, on two rows, because they are two instants and the
-                  gap between them is real: contact can drop some way before the
-                  tracker opens a silence run. Inlining the first as a
-                  parenthetical after the date wrapped the value across three
-                  lines at the default width. */}
               {facts.sinceLastContact != null && (
                 <Fact
                   label="Since contact"
+                  title="Measured from the last sample that observed contact."
                   value={formatDuration(facts.sinceLastContact)}
-                />
-              )}
-              {facts.silenceElapsed != null && (
-                <Fact
-                  label="Silent for"
-                  value={formatDuration(facts.silenceElapsed)}
                 />
               )}
             </dl>
@@ -634,6 +656,21 @@ function VesselTrackerComponent({
             <SectionTitle as="h3" id={deadlinesId}>
               Deadlines
             </SectionTitle>
+            {/* The silence run sits with the DEADLINES, not with the contact
+                facts, because it is what the deadline is reckoned against
+                rather than something observed. Stacked next to "since contact"
+                it read as a near-duplicate at a nearly equal value, which
+                invites the reader to assume one of them is a mistake; they are
+                two instants and the gap between them is real, since contact can
+                drop some way before the tracker opens a run. */}
+            {facts.silenceElapsed != null && (
+              <span
+                style={CAPTION}
+                title="Measured from where the silence tracker opened this run, which can be later than last contact."
+              >
+                silence run: {formatDuration(facts.silenceElapsed)}
+              </span>
+            )}
             {axis && <DeadlineAxisBar axis={axis} rows={rows} />}
             <ul style={LIST}>
               {rows.map((row) => (

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEADLINE_KIND_COLOUR,
   DEADLINE_KIND_LABEL,
+  DEADLINE_KIND_MARK,
   PHASE_LABEL,
   PHASE_SEVERITY,
   SITUATION_LABEL,
@@ -52,6 +53,24 @@ describe("VesselTracker presentation", () => {
     it("gives each deadline kind its own colour, so the axis markers are tellable apart", () => {
       const used = Object.values(DEADLINE_KIND_COLOUR);
       expect(new Set(used).size).toBe(used.length);
+    });
+
+    /**
+     * Geometric and declaration are the pair a reader is most likely to
+     * conflate (both about the radio, only one about giving up) and the two
+     * endpoint marks on the axis. The ramp cannot give them well-separated
+     * hues, so they must not be relying on hue to tell them apart.
+     */
+    it("separates the two comms-adjacent kinds by SHAPE, not only by hue", () => {
+      expect(DEADLINE_KIND_MARK.geometric).not.toBe(
+        DEADLINE_KIND_MARK.declaration,
+      );
+    });
+
+    it("gives every kind a mark", () => {
+      for (const kind of ["geometric", "operational", "declaration"] as const) {
+        expect(DEADLINE_KIND_MARK[kind]).toBeTruthy();
+      }
     });
 
     it("colours the kinds off the categorical ramp, never the status palette", () => {

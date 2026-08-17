@@ -32,8 +32,12 @@ export interface TrackerDeadline {
   owner: DeadlineOwner;
   /** UT it falls at, or null when nothing supplies one. Never a substituted "now". */
   atUt: number | null;
-  /** How the UT was arrived at, or why there isn't one. Always stated in words. */
+  /** How the UT was arrived at, or why there isn't one. Always stated in words, and SHORT: see the contributor's own basis map for why. */
   basis: string;
+  /** The long form of {@link basis}, for a tooltip. Absent when the short form is already the whole of it. */
+  detail?: string;
+  /** Slack after {@link atUt} before the deadline stops holding, seconds. One-sided; see the contributor. */
+  slackSeconds?: number;
 }
 
 /**
@@ -52,8 +56,17 @@ export interface VesselTrackerDeadlineEntry {
   label: string;
   /** UT it runs out at. Null is a withheld estimate, never an exhausted one. */
   atUt: number | null;
-  /** How the contributor arrived at it, or why there is no UT. */
+  /** How the contributor arrived at it, or why there is no UT. Keep it to two or three words; it is the first thing to truncate. */
   basis: string;
+  /** The long form of {@link basis}, shown on the row's tooltip. Omit when the short form says everything. */
+  detail?: string;
+  /**
+   * Slack AFTER `atUt` before this deadline stops holding, seconds. Kept as a
+   * number rather than folded into `basis` so the host can put it beside the
+   * value, where it belongs: it is a separate fact from how the UT was derived,
+   * and sharing the basis line pushed both off the end of the row.
+   */
+  slackSeconds?: number;
 }
 
 /** Host-owned per-kind framing, so a contributor supplies data and never chrome. */
@@ -123,6 +136,8 @@ export function trackerDeadlines(
       owner: framing.owner,
       atUt: entry?.atUt ?? null,
       basis: entry?.basis ?? framing.absent,
+      detail: entry?.detail,
+      slackSeconds: entry?.slackSeconds,
     };
   });
   return rows as unknown as [TrackerDeadline, TrackerDeadline, TrackerDeadline];

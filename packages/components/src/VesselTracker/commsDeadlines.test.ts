@@ -35,7 +35,7 @@ describe("commsDeadlineEntries", () => {
     it("reads the predicted reacquisition and names it as the basis", () => {
       const row = of(silent(), "geometric");
       expect(row?.atUt).toBe(1600);
-      expect(row?.basis).toBe("predicted reacquisition");
+      expect(row?.basis).toBe("predicted");
     });
 
     it("says how much slack the prediction was given, when it was given any", () => {
@@ -43,23 +43,31 @@ describe("commsDeadlineEntries", () => {
       // we would not call it late for another six minutes" are different
       // operational statements, and only the second one is checkable.
       const row = of(silent({ predictionGraceSeconds: 322 }), "geometric");
-      expect(row?.basis).toBe(
-        "predicted reacquisition, allowing 5min 22s of slack",
-      );
+      expect(row?.basis).toBe("predicted");
+      expect(row?.slackSeconds).toBe(322);
     });
 
-    it("words the budget as a one-sided allowance, never as a plus-or-minus", () => {
-      // It is slack AFTER the predicted moment; there is no matching term on
-      // the early side, so a symmetric error bar would claim an uncertainty
-      // nothing computed.
+    it("keeps the budget out of the basis, so the two facts do not share a line", () => {
+      // The basis says how the UT was derived; the budget says how sure it is.
+      // Composing them into one string is what pushed both off the row.
       const row = of(silent({ predictionGraceSeconds: 322 }), "geometric");
-      expect(row?.basis).not.toMatch(/[±+]\/?-/);
-      expect(row?.basis).toContain("allowing");
+      expect(row?.basis).not.toMatch(/slack|\d/);
     });
 
-    it("says nothing about slack when the producer published no budget", () => {
+    it("carries no budget when the producer published none", () => {
       const row = of(silent({ predictionGraceSeconds: null }), "geometric");
-      expect(row?.basis).toBe("predicted reacquisition");
+      expect(row?.basis).toBe("predicted");
+      expect(row?.slackSeconds).toBeUndefined();
+    });
+
+    it("carries no budget beside a withheld prediction", () => {
+      // An error bar around nothing reads as more certainty than the
+      // withholding was meant to convey.
+      const row = of(
+        silent({ predictedReacquisitionUt: null, predictionGraceSeconds: 322 }),
+        "geometric",
+      );
+      expect(row?.slackSeconds).toBeUndefined();
     });
 
     it("reports a withheld prediction as absent, never as a reacquisition now", () => {
@@ -76,7 +84,8 @@ describe("commsDeadlineEntries", () => {
         }),
         "geometric",
       );
-      expect(row?.basis).toBe("no emergence found in the search window");
+      expect(row?.basis).toBe("no emergence found");
+      expect(row?.detail).toBe("no emergence found in the search window");
     });
 
     it("still contributes a row while the craft is in contact, saying so", () => {
@@ -95,7 +104,19 @@ describe("commsDeadlineEntries", () => {
         "declaration",
       );
       expect(row?.atUt).toBe(2000);
-      expect(row?.basis).toBe("orbital-period fallback");
+      expect(row?.basis).toBe("orbit period");
+      expect(row?.detail).toBe("orbital-period fallback");
+    });
+
+    it("does not reuse the geometric row's word for the same wire basis", () => {
+      // `predicted-reacquisition` means the prediction itself on one row and
+      // "graced off that prediction" on the other. One word for both loses the
+      // distinction the spec names as the one an operator must never guess at.
+      const entries = commsDeadlineEntries("v1", silent());
+      const geometric = entries.find((e) => e.kind === "geometric");
+      const declaration = entries.find((e) => e.kind === "declaration");
+      expect(geometric?.basis).not.toBe(declaration?.basis);
+      expect(declaration?.basis).toBe("prediction + grace");
     });
 
     it("distinguishes a deadline derived from the prediction from one that is a fallback", () => {
@@ -113,7 +134,7 @@ describe("commsDeadlineEntries", () => {
         "declaration",
       );
       expect(row?.atUt).toBe(2000);
-      expect(row?.basis).toBe("policy ceiling");
+      expect(row?.basis).toBe("ceiling");
     });
 
     it("renders an unnamed basis as unstated rather than inventing one", () => {

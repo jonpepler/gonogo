@@ -224,7 +224,7 @@ describe("VesselTracker", () => {
       const text = visibleText(container);
       // 10000 - 8800 = 20 min since contact; 10000 - 9000 = 16 min 40 s silent.
       expect(text).toMatch(/20m/);
-      expect(text).toMatch(/silent for/i);
+      expect(text).toMatch(/silence run:/i);
     });
 
     it("reports a craft never heard from as unknown, not as heard from now", async () => {
@@ -255,7 +255,7 @@ describe("VesselTracker", () => {
       emitBase();
       await emitSilentProbe({ deadlineBasis: "orbital-period" });
       await waitFor(() =>
-        expect(visibleText(container)).toMatch(/orbital-period fallback/i),
+        expect(visibleText(container)).toMatch(/orbit period/i),
       );
     });
 

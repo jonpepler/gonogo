@@ -53,6 +53,29 @@ export const DEADLINE_KIND_COLOUR: Record<DeadlineKind, string> = {
 };
 
 /**
+ * The axis mark's SHAPE per kind, and it is not decoration.
+ *
+ * Hue alone cannot carry these three. The ramp offers exactly two well-separated
+ * hues that read as neither "good" nor "bad" (a blue and a purple); the third
+ * has to come from the blue family, which puts geometric and declaration in the
+ * same family. Those two are the pair a reader is most likely to conflate,
+ * because both are about the radio and only one is about giving up, and on the
+ * axis they are the two endpoint marks.
+ *
+ * So the pair that must not blur is separated by FORM: geometric is a round
+ * mark, declaration a diamond. Shape survives colour-vision deficiency, a
+ * greyscale screenshot and a glance, none of which a 17-degree hue difference
+ * does.
+ */
+export type DeadlineMark = "round" | "diamond";
+
+export const DEADLINE_KIND_MARK: Record<DeadlineKind, DeadlineMark> = {
+  geometric: "round",
+  operational: "round",
+  declaration: "diamond",
+};
+
+/**
  * Wire enum -> display word, exhaustive over both enums so an unhandled member
  * cannot render as `undefined`. `Unknown` is a real, honestly-reported value
  * (the producer could not classify it this tick), not a client-side fallback,

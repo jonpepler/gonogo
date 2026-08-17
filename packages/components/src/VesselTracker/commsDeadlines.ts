@@ -2,6 +2,7 @@ import type {
   FleetVesselSilence,
   SilenceDeadlineBasis,
 } from "@ksp-gonogo/sitrep-client";
+import { formatDuration } from "@ksp-gonogo/ui-kit";
 import type { VesselTrackerDeadlineEntry } from "./deadlines";
 
 // ---------------------------------------------------------------------------
@@ -43,6 +44,24 @@ const PREDICTION_ABSENCE: Partial<Record<SilenceDeadlineBasis, string>> = {
 const IN_CONTACT = "in contact";
 
 /**
+ * The prediction's basis, with its error budget said out loud when there is
+ * one. This is the spec's "confidence" section: "back at 14:32" and "back at
+ * 14:32, and we would not call it late for another six minutes" are different
+ * operational statements, and only the second one is checkable.
+ *
+ * Worded as a one-sided ALLOWANCE, never as "+/- 6 min". The budget is the
+ * slack after the predicted moment before the silence stops being a late
+ * reappearance; there is no matching term on the early side, and implying a
+ * symmetric error bar would claim an uncertainty nothing computed. A real
+ * two-sided one would have to come out of the visibility sweep itself.
+ */
+function predictionBasis(graceSeconds: number | null | undefined): string {
+  if (graceSeconds == null || graceSeconds <= 0)
+    return "predicted reacquisition";
+  return `predicted reacquisition, allowing ${formatDuration(graceSeconds)} of slack`;
+}
+
+/**
  * The geometric and declaration entries for one craft. Always both, so the host
  * never has to guess whether comms simply had nothing to say about one of them:
  * an in-contact craft contributes two rows that say "in contact" rather than no
@@ -66,7 +85,7 @@ export function commsDeadlineEntries(
     basis: nominal
       ? IN_CONTACT
       : predicted != null
-        ? "predicted reacquisition"
+        ? predictionBasis(silence.predictionGraceSeconds)
         : (predictionAbsence ?? "no prediction published"),
   };
 

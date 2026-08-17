@@ -329,7 +329,7 @@ namespace Sitrep.Host.Comms
                 duration = _fallback.CeilingSec;
             }
 
-            return new SilenceDeadline(duration, SilenceDeadlineBasis.PredictedReacquisition, emergence);
+            return new SilenceDeadline(duration, SilenceDeadlineBasis.PredictedReacquisition, emergence, grace);
         }
 
         /// <summary>

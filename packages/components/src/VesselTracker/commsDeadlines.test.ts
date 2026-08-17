@@ -38,6 +38,30 @@ describe("commsDeadlineEntries", () => {
       expect(row?.basis).toBe("predicted reacquisition");
     });
 
+    it("says how much slack the prediction was given, when it was given any", () => {
+      // The spec's confidence section: "back at 14:32" and "back at 14:32, and
+      // we would not call it late for another six minutes" are different
+      // operational statements, and only the second one is checkable.
+      const row = of(silent({ predictionGraceSeconds: 322 }), "geometric");
+      expect(row?.basis).toBe(
+        "predicted reacquisition, allowing 5min 22s of slack",
+      );
+    });
+
+    it("words the budget as a one-sided allowance, never as a plus-or-minus", () => {
+      // It is slack AFTER the predicted moment; there is no matching term on
+      // the early side, so a symmetric error bar would claim an uncertainty
+      // nothing computed.
+      const row = of(silent({ predictionGraceSeconds: 322 }), "geometric");
+      expect(row?.basis).not.toMatch(/[±+]\/?-/);
+      expect(row?.basis).toContain("allowing");
+    });
+
+    it("says nothing about slack when the producer published no budget", () => {
+      const row = of(silent({ predictionGraceSeconds: null }), "geometric");
+      expect(row?.basis).toBe("predicted reacquisition");
+    });
+
     it("reports a withheld prediction as absent, never as a reacquisition now", () => {
       const row = of(silent({ predictedReacquisitionUt: null }), "geometric");
       expect(row?.atUt).toBeNull();

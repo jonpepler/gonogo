@@ -141,12 +141,6 @@ export const INTERNAL_IMPORT_DEBT: Record<string, readonly ForbiddenPackage[]> =
     "mod/GonogoKerbalismUplink/client/src/resourceProjection.ts": [
       "sitrep-client",
     ],
-    "mod/GonogoKerbalismUplink/client/src/ShipSystems/GreenhouseSection.test.tsx":
-      ["test-utils"],
-    "mod/GonogoKerbalismUplink/client/src/ShipSystems/RadiationSection.test.tsx":
-      ["test-utils"],
-    "mod/GonogoKerbalismUplink/client/src/ShipSystems/resourceColorMap.test.ts":
-      ["test-utils"],
     "mod/GonogoKerbalismUplink/client/src/shipSystemsProvenance.test.ts": [
       "sitrep-client",
     ],

@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "notes": "A hire instruction already standing, which is the state the cancel exists for. RP-1 keeps ONE staffTarget per career, so set and cancel are transitions of one piece of state rather than two features and the form is never drawn beside the target it would overwrite. The timeLeft is RP-1's own forecast and it is a forecast of when the FUNDS will exist rather than of a queue: HireStaffProject.GetTimeLeft asks FundTargetProject.EstimateTimeToFunds for the reserve plus what the remaining heads cost. Nothing was charged when the instruction was given."
+    "notes": "A hire instruction already standing, which is the state the cancel exists for. RP-1 keeps ONE staffTarget per career, so set and cancel are transitions of one piece of state rather than two features and the form is never drawn beside the target it would overwrite. The timeLeft is RP-1's own forecast and it is a forecast of when the FUNDS will exist rather than of a queue: HireStaffProject.GetTimeLeft asks FundTargetProject.EstimateTimeToFunds for the reserve plus what the remaining heads cost. Nothing was charged when the instruction was given. The price line is the interesting half, and it says two things RP-1 gets wrong about its own hiring. APPLICANTS ARE FREE: KCTUtilities.HireStaff charges max(0, count - applicants) * HireCost, so 9 left against a pool of 7 is 2 paid heads and not 9, and RP-1's own hire button says \"Applicants can be hired for free!\" while any are waiting. AND RP-1 QUOTES A PRICE IT DOES NOT CHARGE: HireStaffProject and KCT_GUI both price a head through CurrencyUtils.Funds, so a hiring leader moves what they display, while the charge multiplies the raw settings value and SpendFunds runs no query at all. The 270 here is Wernher von Braun's 0.9 on both roles; the career still pays 300, so the total is built from the charge and the quote is disclosed beside it."
   },
   "_scene": {
     "augment": "rp1-ksc-complexes",
@@ -9,8 +9,17 @@
       "w": 12,
       "h": 18
     },
-    "caption": "A standing researcher hire instruction: the headcount it is reaching, how many are still to hire, RP-1's own forecast of when the funds for them exist, and the one press that withdraws it",
-    "paints": ["PAYROLL", "Hiring to researchers", "left", "away", "Cancel"]
+    "caption": "A standing researcher hire instruction: the headcount it is reaching, how many are still to hire, what the rest of them cost, RP-1's own forecast of when the funds exist, and the one press that withdraws it",
+    "paints": [
+      "PAYROLL",
+      "Hiring to researchers",
+      "left",
+      "away",
+      "each",
+      "free from applicants",
+      "RP-1 quotes",
+      "Cancel"
+    ]
   },
   "_stream": {
     "pinnedUt": 1000000,
@@ -67,6 +76,9 @@
           "engineerSalaryPerYear": 1000,
           "researcherSalaryPerYear": 1000,
           "idleSalaryMult": 0.25,
+          "hireCost": 300,
+          "engineerHireQuote": 270,
+          "researcherHireQuote": 270,
           "hireTarget": {
             "active": true,
             "targetCount": 40,

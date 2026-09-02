@@ -39,6 +39,7 @@ namespace GonogoRp1Uplink.Tests
             "Rp1ProgramsReflection.cs",
             "Rp1EconomyBackend.cs",
             "Rp1EconomyUpkeepQuery.cs",
+            "Rp1HirePriceQuery.cs",
             "Rp1LaunchGate.cs",
             "Rp1CareerProjectGate.cs",
             "Rp1BuildCommands.cs",

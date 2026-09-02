@@ -314,6 +314,13 @@ namespace GonogoRp1Uplink
                 ["engineerSalaryPerYear"] = raw.Personnel.EngineerSalaryPerYear,
                 ["researcherSalaryPerYear"] = raw.Personnel.ResearcherSalaryPerYear,
                 ["idleSalaryMult"] = raw.Personnel.IdleSalaryMult,
+                // Absent, never zero, when the price could not be read: a client
+                // quoting a free hire would tell an operator a spend costs
+                // nothing. The charge and the two quotes go absent independently,
+                // because the charge needs no currency query and the quotes do.
+                ["hireCost"] = raw.HirePrices?.Charge,
+                ["engineerHireQuote"] = raw.HirePrices?.EngineerQuote,
+                ["researcherHireQuote"] = raw.HirePrices?.ResearcherQuote,
                 ["hireTarget"] = BuildHireTarget(raw.HireTarget),
             };
         }

@@ -1080,6 +1080,74 @@ public sealed class Rp1Personnel
     public double? IdleSalaryMult { get; set; }
 
     /// <summary>
+    /// What ONE PAID head costs, the same for either role, and the figure that
+    /// actually leaves the balance. Null when RP-1's settings could not be read.
+    ///
+    /// <para><b>Applicants are hired FREE</b>, so the paid headcount is
+    /// <c>max(0, wanted - </c><see cref="Applicants"/><c>)</c> rather than
+    /// <c>wanted</c>. A total taken as headcount times this overcharges by up to
+    /// the whole applicant pool, and RP-1 says as much in its own words: its hire
+    /// button reads "Applicants can be hired for free!" while any are
+    /// waiting.</para>
+    ///
+    /// <para>Hiring is charged UP FRONT and is genuinely refused on
+    /// affordability, unlike a facility upgrade, so a balance is an honest thing
+    /// to state beside a hire, provided it is stated against the applicant-netted
+    /// total.</para>
+    /// <internal>
+    /// RP0.Database.SettingsSC.HireCost, read raw and on purpose.
+    /// KCTUtilities.HireStaff is the only funds deduction on the hiring path and
+    /// its whole money step multiplies THIS value; KCTUtilities.SpendFunds runs
+    /// no modifier query, and RP-1's Harmony prefix on Funding.AddFunds banks the
+    /// raw amount before firing OnCurrencyModifierQuery and never reads the query
+    /// back. See Rp1HirePriceQuery's header for why publishing a raw settings
+    /// value is right here and wrong in Rp1EconomyUpkeepQuery.
+    /// </internal>
+    /// </summary>
+    [SitrepUnit(Units.Funds)]
+    public double? HireCost { get; set; }
+
+    /// <summary>
+    /// What RP-1 QUOTES for one engineer: the same price after its own currency
+    /// modifiers, which is the number on its Hire button and the one its
+    /// auto-hire scheduler and its <see cref="Rp1HireTarget.TimeLeft"/> forecast
+    /// divide by. Null when the query could not be asked, which leaves
+    /// <see cref="HireCost"/> standing rather than substituting for it.
+    ///
+    /// <para><b>This differs from <see cref="HireCost"/> whenever a hiring leader
+    /// is appointed, and RP-1 charges <see cref="HireCost"/>.</b> Four shipped
+    /// leaders move it: one by 0.9 on both roles, three upward by 1.05 or 1.1,
+    /// and they compound. So an operator reading only this watches a different
+    /// number leave their balance, and one reading only the charge cannot
+    /// reconcile it with RP-1's own screen. Both are published for that
+    /// reason.</para>
+    /// <internal>
+    /// -CurrencyUtils.Funds(TransactionReasonsRP0.HiringEngineers, -HireCost),
+    /// which is verbatim what HireStaffProject.IncrementProgress and
+    /// KCT_GUI.RenderHireFire compute. Filled by Rp1HirePriceQuery on the main
+    /// thread: the query fires GameEvents.Modifiers.OnCurrencyModifierQuery at
+    /// every modifier in the save.
+    /// </internal>
+    /// </summary>
+    [SitrepUnit(Units.Funds)]
+    public double? EngineerHireQuote { get; set; }
+
+    /// <summary>
+    /// What RP-1 quotes for one researcher, on the same terms as
+    /// <see cref="EngineerHireQuote"/>. Carried separately because the modifier
+    /// is keyed on a per-role transaction reason and three of the four shipped
+    /// hiring leaders move only the researcher half.
+    /// <internal>
+    /// The HiringResearchers reason. RP-1 matches a modifier's reasons BITWISE
+    /// against a composite, so a leader naming only the parent `Hiring` reason
+    /// (OKB-52 Chelomey does) moves both roles; asking RP-1 rather than reading
+    /// multipliers out of config is what gets that for free.
+    /// </internal>
+    /// </summary>
+    [SitrepUnit(Units.Funds)]
+    public double? ResearcherHireQuote { get; set; }
+
+    /// <summary>
     /// The standing instruction to hire up to a number, null when RP-1's state
     /// could not be read at all. Lives on the personnel Topic because it is a
     /// fact about staffing rather than about any one complex, even when it names

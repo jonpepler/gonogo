@@ -79,7 +79,12 @@ export function HireTargetControl({
 
   if (target?.active === true) {
     return (
-      <StandingTarget complexes={complexes} handle={cancel} target={target} />
+      <StandingTarget
+        complexes={complexes}
+        handle={cancel}
+        personnel={personnel}
+        target={target}
+      />
     );
   }
 
@@ -108,10 +113,12 @@ export function HireTargetControl({
 function StandingTarget({
   complexes,
   handle,
+  personnel,
   target,
 }: Readonly<{
   complexes: readonly Rp1ComplexEntry[];
   handle: Parameters<typeof CommandButton>[0]["handle"];
+  personnel: Rp1Personnel | undefined;
   target: Rp1HireTarget;
 }>) {
   const at = complexes.find((complex) => complex.lcId === target.lcId);
@@ -136,6 +143,16 @@ function StandingTarget({
           )}
         </Text>
       </Row>
+      {/*
+        What the rest of the instruction still costs. On the standing half as
+        well as on the form, because a target set an hour ago is the one an
+        operator is deciding whether to let run.
+      */}
+      <HireSpend
+        isResearch={target.isResearch !== false}
+        leftToHire={magnitudeOf(target.leftToHire)}
+        personnel={personnel}
+      />
       <Row as="div">
         <CommandButton
           args={{}}
@@ -147,6 +164,86 @@ function StandingTarget({
         />
       </Row>
     </Stack>
+  );
+}
+
+/**
+ * What the hire costs: the paid headcount, the unit price, and the total.
+ *
+ * <para><b>Applicants are hired FREE, so the paid count is not the headcount.</b>
+ * `KCTUtilities.HireStaff` charges `max(0, count - applicants) * hireCost` and
+ * RP-1's own hire button says "Applicants can be hired for free!" while any are
+ * waiting. Multiplying the headcount instead overstates the spend by the whole
+ * pool, which on a fresh career is twenty heads.</para>
+ *
+ * <para><b>The total is built from the CHARGE, never from the quote.</b> RP-1
+ * states two prices for a head and takes the unmodified one: `hireCost` is what
+ * `HireStaff` multiplies, and `engineerHireQuote` / `researcherHireQuote` are
+ * what its own button prints once its leaders have had their say. When they
+ * differ the quote is disclosed rather than used, because an operator who can
+ * see RP-1's screen needs to know which of the two numbers will actually
+ * leave.</para>
+ *
+ * <para>Absent, not zero, when RP-1 has given no price. A hire drawn as free is
+ * worse than a hire drawn with no price on it, and the bound on the spend beside
+ * this needs no price at all, so it goes on standing.</para>
+ */
+function HireSpend({
+  isResearch,
+  leftToHire,
+  personnel,
+}: Readonly<{
+  isResearch: boolean;
+  /** How many more must be hired, or null when there is no figure to price. */
+  leftToHire: number | null;
+  personnel: Rp1Personnel | undefined;
+}>) {
+  const charge = magnitudeOf(personnel?.hireCost);
+  const quote = magnitudeOf(
+    isResearch ? personnel?.researcherHireQuote : personnel?.engineerHireQuote,
+  );
+  const applicants = magnitudeOf(personnel?.applicants) ?? 0;
+
+  if (charge === null || leftToHire === null || leftToHire <= 0) {
+    return null;
+  }
+
+  const free = Math.min(leftToHire, applicants);
+  const paid = leftToHire - free;
+
+  if (paid === 0) {
+    return (
+      <Text size="xs" tone="muted">
+        <Unit value={value("count", free)} /> free from applicants
+      </Text>
+    );
+  }
+
+  return (
+    <Text size="xs" tone="muted">
+      <Unit value={value("count", paid)} /> at{" "}
+      <Unit decimals={0} value={value("funds", charge)} /> each ={" "}
+      <Unit decimals={0} value={value("funds", paid * charge)} />
+      {free > 0 && (
+        <>
+          {" · "}
+          <Unit value={value("count", free)} /> free from applicants
+        </>
+      )}
+      {/*
+        Compared as DISPLAYED rather than as stored. RP-1's multipliers are
+        config doubles, so a stack that lands back on the charge arrives a
+        float's breadth away from it, and a raw comparison would print "RP-1
+        quotes 300f" beside "at 300f each". Disclosing a difference nobody can
+        see is worse than not disclosing it.
+      */}
+      {quote !== null && Math.round(quote) !== Math.round(charge) && (
+        <>
+          {" · RP-1 quotes "}
+          <Unit decimals={0} value={value("funds", quote)} />
+        </>
+      )}
+    </Text>
   );
 }
 
@@ -277,6 +374,19 @@ function HireTargetForm({
           onChange={setReserve}
           unit="funds"
           value={reserve}
+        />
+
+        {/*
+          What it costs, in the widget BODY and above the bound: the two answer
+          different questions. This one is what the instruction will spend, the
+          one below is the most it could ever spend before the reserve stops it.
+        */}
+        <HireSpend
+          isResearch={at === undefined}
+          leftToHire={
+            current === null ? null : Math.max(0, targetCount - current)
+          }
+          personnel={personnel}
         />
 
         <Row as="div">

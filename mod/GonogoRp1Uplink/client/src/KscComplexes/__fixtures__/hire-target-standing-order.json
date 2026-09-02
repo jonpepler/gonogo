@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "notes": "The career's only hiring surface. rp1.personnel.assign moves staff already on the books and deliberately buys none; the standing hire instruction is the command that spends. Nothing is charged at the press: HireStaffProject.IncrementProgress hires min(applicants + (funds - reserve) / perHire, left) every tick, so a career that cannot pay for the whole target hires what it can and comes back for the rest. A short balance SLOWS it and never refuses it, which is why the line beside the press is a BOUND on the spend and not an affordability verdict, and the bound is the operator's own reserve. RP-1 keeps one staffTarget per career and stores no field for the kind, only whether a complex is named, so this is one control and the picker sends lcId or omits it."
+    "notes": "The career's only hiring surface. rp1.personnel.assign moves staff already on the books and deliberately buys none; the standing hire instruction is the command that spends. Nothing is charged at the press: HireStaffProject.IncrementProgress hires min(applicants + (funds - reserve) / perHire, left) every tick, so a career that cannot pay for the whole target hires what it can and comes back for the rest. A short balance SLOWS it and never refuses it, which is why the line beside the press is a BOUND on the spend and not an affordability verdict, and the bound is the operator's own reserve. RP-1 keeps one staffTarget per career and stores no field for the kind, only whether a complex is named, so this is one control and the picker sends lcId or omits it. The price is on the wire and is deliberately NOT drawn here: the form opens with no headcount entered, so there are no heads to price yet, and a scene cannot type one (SceneAct is press, hover and rest). The rendered price line is on hire-target-standing, where a target already stands and there is a real remainder to cost."
   },
   "_scene": {
     "augment": "rp1-ksc-complexes",
@@ -79,6 +79,9 @@
           "engineerSalaryPerYear": 1000,
           "researcherSalaryPerYear": 1000,
           "idleSalaryMult": 0.25,
+          "hireCost": 300,
+          "engineerHireQuote": 300,
+          "researcherHireQuote": 300,
           "hireTarget": {
             "active": false
           }

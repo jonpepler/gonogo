@@ -285,7 +285,7 @@ Every craft RP-1 is integrating, holding or could start, across every launch com
 
 ![The hire-target form open on the researcher half: the count it is measured against, the target, the reserve hiring will not spend below, and what that bounds the spend to](docs/assets/hire-target-standing-order--default.png)
 
-![A standing researcher hire instruction: the headcount it is reaching, how many are still to hire, RP-1's own forecast of when the funds for them exist, and the one press that withdraws it](docs/assets/hire-target-standing--default.png)
+![A standing researcher hire instruction: the headcount it is reaching, how many are still to hire, what the rest of them cost, RP-1's own forecast of when the funds exist, and the one press that withdraws it](docs/assets/hire-target-standing--default.png)
 
 ![A payroll mid-career with six engineers assigned to nothing, the daily charge that pool carries, and the stepped controls that would move them onto either complex](docs/assets/personnel-staffed--default.png)
 

@@ -1553,6 +1553,43 @@ export interface Rp1Personnel
 	*/
 	idleSalaryMult?: Value<"ratio">;
 	/**
+	* What ONE PAID head costs, the same for either role, and the figure that
+	* actually leaves the balance. Null when RP-1's settings could not be read.
+	*
+	* **Applicants are hired FREE**, so the paid headcount is `max(0, wanted - `
+	* `Rp1Personnel.applicants` `)` rather than `wanted`. A total taken as
+	* headcount times this overcharges by up to the whole applicant pool, and RP-1
+	* says as much in its own words: its hire button reads "Applicants can be
+	* hired for free!" while any are waiting.
+	*
+	* Hiring is charged UP FRONT and is genuinely refused on affordability, unlike
+	* a facility upgrade, so a balance is an honest thing to state beside a hire,
+	* provided it is stated against the applicant-netted total.
+	*/
+	hireCost?: Value<"funds">;
+	/**
+	* What RP-1 QUOTES for one engineer: the same price after its own currency
+	* modifiers, which is the number on its Hire button and the one its auto-hire
+	* scheduler and its `Rp1HireTarget.timeLeft` forecast divide by. Null when the
+	* query could not be asked, which leaves `Rp1Personnel.hireCost` standing
+	* rather than substituting for it.
+	*
+	* **This differs from `Rp1Personnel.hireCost` whenever a hiring leader is
+	* appointed, and RP-1 charges `Rp1Personnel.hireCost`.** Four shipped leaders
+	* move it: one by 0.9 on both roles, three upward by 1.05 or 1.1, and they
+	* compound. So an operator reading only this watches a different number leave
+	* their balance, and one reading only the charge cannot reconcile it with
+	* RP-1's own screen. Both are published for that reason.
+	*/
+	engineerHireQuote?: Value<"funds">;
+	/**
+	* What RP-1 quotes for one researcher, on the same terms as
+	* `Rp1Personnel.engineerHireQuote`. Carried separately because the modifier is
+	* keyed on a per-role transaction reason and three of the four shipped hiring
+	* leaders move only the researcher half.
+	*/
+	researcherHireQuote?: Value<"funds">;
+	/**
 	* The standing instruction to hire up to a number, null when RP-1's state
 	* could not be read at all. Lives on the personnel Topic because it is a fact
 	* about staffing rather than about any one complex, even when it names one.

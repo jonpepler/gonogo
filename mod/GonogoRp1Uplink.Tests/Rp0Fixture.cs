@@ -62,6 +62,15 @@ namespace RP0
         public double EngineerIdleSalaryMult = 0.25;
 
         /// <summary>
+        /// An int on the real type, and ONE value for both roles: RP-1 charges a
+        /// head the same whether it is an engineer or a researcher, and the roles
+        /// diverge only in the transaction reason the QUOTE is asked under. 200 is
+        /// RP-1's own compiled default; the shipped SpaceCenterSettings.cfg raises
+        /// it to 300.
+        /// </summary>
+        public int HireCost = 200;
+
+        /// <summary>
         /// What a second and subsequent launch pad costs, relative to the first.
         /// RP-1 ships 0.5, and it is the ONE settings value the cost model falls
         /// back to a default for rather than refusing on: it scales a price rather
@@ -639,6 +648,23 @@ namespace RP0
 
         /// <summary>Researching a tech node, the reason RP-1's own R&D tooltip prices against.</summary>
         RnDTechResearch = 0x4000L,
+
+        /// <summary>
+        /// Buying a head, and the two bits RP-1 gives them: not adjacent, and not
+        /// in role order. Copied off the shipped enum rather than renumbered,
+        /// because <see cref="Hiring"/> below is a real composite and a tidier
+        /// numbering would make a wrong bitwise match look right.
+        /// </summary>
+        HiringResearchers = 8L,
+        HiringEngineers = 0x40000000L,
+
+        /// <summary>
+        /// RP-1's own composite, and the reason a hire modifier cannot be found by
+        /// looking for the two role tokens. One shipped leader (OKB-52 Chelomey)
+        /// names ONLY this, so a match that was not bitwise would miss it
+        /// entirely.
+        /// </summary>
+        Hiring = HiringEngineers | HiringResearchers,
     }
 
     /// <summary>
@@ -683,8 +709,29 @@ namespace RP0
                 throw new InvalidOperationException("no currency model");
             }
             Queries++;
-            var multiplier = Multipliers.TryGetValue(reason, out var m) ? m : 1.0;
-            var post = PostDeltas.TryGetValue(reason, out var p) ? p : 0.0;
+
+            // BITWISE, and compounding, because that is what RP-1 does:
+            // CurrencyModifier folds every reason it was configured with into one
+            // listeningReasons mask, tests `(mask & queried) != None`, and calls
+            // Multiply, which does `*=`. Keyed lookup would have agreed with this
+            // for every single-bit key and then silently missed the one shipped
+            // leader whose only reason is the COMPOSITE `Hiring`.
+            var multiplier = 1.0;
+            var post = 0.0;
+            foreach (var entry in Multipliers)
+            {
+                if ((entry.Key & reason) != TransactionReasonsRP0.None)
+                {
+                    multiplier *= entry.Value;
+                }
+            }
+            foreach (var entry in PostDeltas)
+            {
+                if ((entry.Key & reason) != TransactionReasonsRP0.None)
+                {
+                    post += entry.Value;
+                }
+            }
             return funds * multiplier + post;
         }
     }

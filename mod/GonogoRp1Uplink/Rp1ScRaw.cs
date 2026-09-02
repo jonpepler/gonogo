@@ -46,6 +46,14 @@ namespace GonogoRp1Uplink
         public Rp1PersonnelRaw? Personnel;
 
         /// <summary>
+        /// What a head costs, filled by <see cref="Rp1HirePriceQuery"/> rather
+        /// than by the reflection walk. Separate because pricing a head asks
+        /// RP-1's currency query, which is a broadcast and has to be throttled on
+        /// its own terms; the walk is unconditional.
+        /// </summary>
+        public Rp1HirePrices? HirePrices;
+
+        /// <summary>
         /// Null when RP-1's Confidence scenario module is not live. Deliberately
         /// not a zero: <c>Confidence.CurrentConfidence</c> answers 0 for an absent
         /// instance, and zero confidence is a real reading a new career starts

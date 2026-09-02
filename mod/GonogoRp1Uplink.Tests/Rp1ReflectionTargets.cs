@@ -218,7 +218,7 @@ namespace GonogoRp1Uplink.Tests
             // which is the only state this Uplink writes that is not career state.
             new Rp1TypeTarget(Rp0, "RP0.ContractGUI", "Rp1ContractCommands"),
             new Rp1TypeTarget(Rp0, "RP0.RP0Settings", "Rp1ContractCommands"),
-            new Rp1TypeTarget(Rp0, "RP0.CurrencyUtils", "Rp1EconomyUpkeepQuery"),
+            new Rp1TypeTarget(Rp0, "RP0.CurrencyUtils", "Rp1EconomyUpkeepQuery, Rp1HirePriceQuery"),
             new Rp1TypeTarget(Rp0, "RP0.TransactionReasonsRP0", "Rp1EconomyUpkeepQuery"),
             new Rp1TypeTarget(Rp0, "RP0.MaintenanceHandler", "Rp1EconomyUpkeepQuery"),
             // RP-1's queued tech node, and the only RP-1 type this Uplink
@@ -293,6 +293,13 @@ namespace GonogoRp1Uplink.Tests
             new Rp1EnumMemberTarget(Rp0, "RP0.TransactionReasonsRP0", "SalaryResearchers", "Rp1EconomyUpkeepQuery"),
             new Rp1EnumMemberTarget(Rp0, "RP0.TransactionReasonsRP0", "SalaryCrew", "Rp1EconomyUpkeepQuery"),
             new Rp1EnumMemberTarget(Rp0, "RP0.TransactionReasonsRP0", "CrewTraining", "Rp1EconomyUpkeepQuery"),
+            // The two reasons a head is quoted under. Not a matched pair in RP-1's
+            // numbering: HiringResearchers is bit 3 and HiringEngineers is bit 30,
+            // which is why they are named rather than derived from each other.
+            // Losing either takes that role's quote off the wire and leaves the
+            // charge standing, which is the right failure and a quiet one.
+            new Rp1EnumMemberTarget(Rp0, "RP0.TransactionReasonsRP0", "HiringEngineers", "Rp1HirePriceQuery"),
+            new Rp1EnumMemberTarget(Rp0, "RP0.TransactionReasonsRP0", "HiringResearchers", "Rp1HirePriceQuery"),
             new Rp1EnumMemberTarget(Rp0, "RP0.TransactionReasonsRP0", "ToolingPurchase", "Rp1ToolingCommands"),
             // The reason a tech node is priced and charged under, named to
             // Enum.Parse on both RP-1's flags enum and KSP's own of the same
@@ -371,7 +378,7 @@ namespace GonogoRp1Uplink.Tests
             // THREE parameters with the last defaulted, because a reflected
             // invoke applies no defaults. UpdateUpkeep calls the two-argument
             // form, which is this one with includeHidden left false.
-            new Rp1MethodTarget(Rp0, "RP0.CurrencyUtils", "Funds", 3, true, "Rp1EconomyUpkeepQuery"),
+            new Rp1MethodTarget(Rp0, "RP0.CurrencyUtils", "Funds", 3, true, "Rp1EconomyUpkeepQuery, Rp1HirePriceQuery"),
             /*
              * Called with an amount of ONE to get a per-unit price, which is exact
              * because the expression is linear in the amount. Four parameters:
@@ -757,6 +764,7 @@ namespace GonogoRp1Uplink.Tests
             const string Withhold = "Rp1DerivedCurrencyWithholder";
             const string Economy = "Rp1EconomyBackend";
             const string Upkeep = "Rp1EconomyUpkeepQuery";
+            const string HirePrice = "Rp1HirePriceQuery";
             const string Crew = "Rp1CrewReflection";
             const string Programs = "Rp1ProgramsReflection";
             const string Staffing = "Rp1PersonnelCommands";
@@ -1000,7 +1008,7 @@ namespace GonogoRp1Uplink.Tests
             // can name a complex that is on no other channel.
             Add("RP0.LCEfficiency", "_lcs", Rp1Reader.Presence, Sc);
 
-            Add("RP0.Database", "SettingsSC", Rp1Reader.Presence, Sc + ", " + Economy, @static: true);
+            Add("RP0.Database", "SettingsSC", Rp1Reader.Presence, Sc + ", " + Economy + ", " + HirePrice, @static: true);
             Add("RP0.Database", "SettingsCrew", Rp1Reader.Presence, Crew, @static: true);
             Add("RP0.SpaceCenterSettings", "RushRateMult", Rp1Reader.Numeric, Sc);
             Add("RP0.SpaceCenterSettings", "RushSalaryMult", Rp1Reader.Numeric, Sc);
@@ -1008,6 +1016,9 @@ namespace GonogoRp1Uplink.Tests
             Add("RP0.SpaceCenterSettings", "salaryEngineers", Rp1Reader.Numeric, Sc);
             Add("RP0.SpaceCenterSettings", "salaryResearchers", Rp1Reader.Numeric, Sc);
             Add("RP0.SpaceCenterSettings", "EngineerIdleSalaryMult", Rp1Reader.Numeric, Sc);
+            // What a PAID head costs, and the figure KCTUtilities.HireStaff actually
+            // multiplies. An int on RP-1's side, so Numeric rather than a width claim.
+            Add("RP0.SpaceCenterSettings", "HireCost", Rp1Reader.Numeric, HirePrice);
             Add("RP0.SpaceCenterSettings", "repPortionLostPerDay", Rp1Reader.Numeric, Economy);
 
             // ── Vehicles ────────────────────────────────────────────────────

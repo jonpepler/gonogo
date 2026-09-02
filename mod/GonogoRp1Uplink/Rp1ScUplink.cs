@@ -148,6 +148,17 @@ namespace GonogoRp1Uplink
         /// </summary>
         private readonly Rp1EconomyUpkeepQuery _upkeepQuery = new Rp1EconomyUpkeepQuery();
 
+        /// <summary>
+        /// What a head costs. Rides the space-centre capture below rather than
+        /// taking a sampled source of its own, which is the one thing it does
+        /// differently from <see cref="_upkeepQuery"/> beside it: that query feeds
+        /// a DIFFERENT topic's mapper and so needs its own registration and a
+        /// volatile handoff to the Courier thread. This one's only consumer is the
+        /// personnel payload the same capture builds, so it can be stashed on the
+        /// walk's own return value and cross the seam with everything else.
+        /// </summary>
+        private readonly Rp1HirePriceQuery _hirePrices = new Rp1HirePriceQuery();
+
         private readonly Rp1EconomyBackend _economy;
 
         /// <summary>Set when the provider registration threw, so Health can say so rather than nothing.</summary>
@@ -1247,6 +1258,13 @@ namespace GonogoRp1Uplink
             // says it must be asked: it walks the save's craft folders and reads
             // part prefabs.
             raw.Buildable = Rp1Buildable.Rows(CraftListing(), raw.Complexes);
+            // Joins the walk HERE for the thread rather than for the data: pricing
+            // a head runs RP-1's currency query, which fires a Unity game event at
+            // every modifier in the save, and this is the main thread. It gates
+            // itself on RP-1's own inputs, so a tick where no leader, settings
+            // value or in-game hour moved costs one settings read and a fold over
+            // the active strategies.
+            raw.HirePrices = _hirePrices.CaptureOnMain(raw.Ut);
             return raw;
         }
 

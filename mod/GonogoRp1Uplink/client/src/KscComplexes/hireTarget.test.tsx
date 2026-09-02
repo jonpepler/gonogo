@@ -250,3 +250,122 @@ describe("the standing hire instruction", () => {
     expect(view.container.textContent).not.toContain("Reserve");
   });
 });
+
+/*
+ * The price, and the two things RP-1 gets wrong about its own that the readout
+ * has to get right.
+ *
+ * Read on the shipped RP-1 v4.6.0.0 RP0.dll: applicants are hired FREE
+ * (KCTUtilities.HireStaff charges max(0, count - Applicants) * HireCost, and
+ * RP-1's own tooltip says "Applicants can be hired for free!"), and the figure
+ * RP-1 QUOTES on its Hire button is leader-modified while the figure it CHARGES
+ * is not.
+ */
+describe("what the hire will cost", () => {
+  const PRICED = {
+    ...IDLE,
+    hireCost: 300,
+    engineerHireQuote: 300,
+    researcherHireQuote: 300,
+  };
+
+  it("quotes the paid headcount and the unit price, not the headcount", async () => {
+    const user = userEvent.setup();
+    const { view } = mount(PRICED);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Set a hire target" }),
+    );
+    const headcount = await screen.findByLabelText("Target headcount");
+    await user.clear(headcount);
+    await user.type(headcount, "40");
+
+    /*
+     * 31 researchers on the books, 7 applicants waiting, target 40. So 9 to
+     * hire, 7 of them free, 2 paid at 300 = 600. A readout that multiplied the
+     * 9 would say 2,700 and overcharge by the whole applicant pool.
+     */
+    await waitFor(() => {
+      expect(view.container.textContent).toContain("600");
+    });
+    expect(view.container.textContent).not.toContain("2,700");
+    await expectNoA11yViolations(view.container);
+  });
+
+  it("says when the applicant pool covers the whole target", async () => {
+    const user = userEvent.setup();
+    const { view } = mount(PRICED);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Set a hire target" }),
+    );
+    const headcount = await screen.findByLabelText("Target headcount");
+    await user.clear(headcount);
+    await user.type(headcount, "35");
+
+    // 4 to hire against 7 applicants, so the whole instruction is free.
+    await waitFor(() => {
+      expect(view.container.textContent).toMatch(/free/i);
+    });
+  });
+
+  it("discloses the gap when RP-1 quotes a price it will not charge", async () => {
+    const user = userEvent.setup();
+    const { view } = mount({
+      ...PRICED,
+      // Von Braun appointed: 0.9 on both roles. RP-1's own button offers a head
+      // at 270 and KCTUtilities.HireStaff takes 300.
+      engineerHireQuote: 270,
+      researcherHireQuote: 270,
+    });
+
+    await user.click(
+      await screen.findByRole("button", { name: "Set a hire target" }),
+    );
+    const headcount = await screen.findByLabelText("Target headcount");
+    await user.clear(headcount);
+    await user.type(headcount, "40");
+
+    await waitFor(() => {
+      expect(view.container.textContent).toContain("270");
+    });
+    // The charge is the one the total is built from, never the quote.
+    expect(view.container.textContent).toContain("600");
+  });
+
+  it("says nothing about price when RP-1 has not given one", async () => {
+    const user = userEvent.setup();
+    const { view } = mount(IDLE);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Set a hire target" }),
+    );
+    const headcount = await screen.findByLabelText("Target headcount");
+    await user.clear(headcount);
+    await user.type(headcount, "40");
+
+    // The bound on the spend still stands: it needs no price at all.
+    await waitFor(() => {
+      expect(view.container.textContent).toContain("120,000");
+    });
+    expect(view.container.textContent).not.toMatch(/each/i);
+  });
+
+  it("prices what is left to hire on a standing instruction", async () => {
+    mount({
+      ...PRICED,
+      hireTarget: {
+        active: true,
+        currentCount: 31,
+        isResearch: true,
+        leftToHire: 9,
+        targetCount: 40,
+      },
+    });
+
+    // 9 left, 7 free from the pool, 2 paid at 300.
+    await waitFor(() => {
+      expect(screen.getByText(/600/)).toBeInTheDocument();
+    });
+  });
+});

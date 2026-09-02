@@ -12,7 +12,6 @@ import {
 import { act } from "react";
 import { describe, expect, it } from "vitest";
 import { CrewSchedule } from "./index";
-import { CrewProgramme } from "./programme";
 
 const TOPICS = ["rp1.available", "rp1.crew", "rp1.crewProgram"];
 
@@ -78,16 +77,6 @@ function mountSchedule(kerbalName = "Wernher Kerman") {
      channel the control reads, not just the one that was noticed first. */
   fixture.emit("spaceCenter.crewRoster", []);
   fixture.emit("rp1.training", []);
-  return { fixture, view };
-}
-
-function mountProgramme() {
-  const fixture = setupStreamFixture({ carriedChannels: TOPICS });
-  const view = render(
-    <fixture.Provider>
-      <CrewProgramme />
-    </fixture.Provider>,
-  );
   return { fixture, view };
 }
 
@@ -185,11 +174,11 @@ describe("CrewSchedule", () => {
   });
 
   /**
-   * A date nothing will act on is worse than no date: an operator planning
-   * around a retirement that the save has switched off is planning around
-   * nothing.
+   * The setting is HONOURED, not reported. Retirement switched off means the
+   * concept is absent from the save, so it is absent from the surface: not an
+   * empty cell, not a line saying retirement is off, and not the word anywhere.
    */
-  it("hides the retirement date on a save where retirement is switched off", async () => {
+  it("says nothing whatever about retirement on a save that has it off", async () => {
     const { fixture, view } = mountSchedule();
     fixture.emit("rp1.available", true);
     fixture.emit("rp1.crewProgram", { ...PROGRAM, retirementEnabled: false });
@@ -204,6 +193,40 @@ describe("CrewSchedule", () => {
        the render had not happened yet rather than because it must not. */
     await act(async () => {});
     expect(view.container).toBeEmptyDOMElement();
+    // The stem, so "Retires", "retirement" and "retiree" all fail it.
+    expect(view.container.textContent ?? "").not.toMatch(/retir/i);
+  });
+
+  /**
+   * A kerbal with a course AND a lapse, on a save with mission training off:
+   * the course still reads, because a proficiency runs regardless, and the
+   * lapse does not, because RP-1 stops checking mission training entirely
+   * (`CheckCrewForPart` returns true without asking). A deadline nothing will
+   * enforce is worse than no deadline.
+   */
+  it("drops a mission-training lapse the save will never check", async () => {
+    const { fixture } = mountSchedule();
+    fixture.emit("rp1.available", true);
+    fixture.emit("rp1.crewProgram", {
+      ...PROGRAM,
+      missionTrainingEnabled: false,
+    });
+    fixture.emit("rp1.crew", [
+      crewRow({
+        nextTrainingExpiryTarget: "Atlas-D",
+        nextTrainingExpiryUt: LAPSES_AT,
+        trainingStarted: true,
+        trainingTarget: "Mercury-Redstone",
+        trainingType: "Proficiency",
+      }),
+    ]);
+
+    // The course line is the positive signal that the row rendered at all, so
+    // the lapse assertion is about a fact that was read and dropped.
+    await waitFor(() => {
+      expect(visibleText()).toContain("Proficiency: Mercury-Redstone");
+    });
+    expect(visibleText()).not.toContain("lapses");
   });
 
   /**
@@ -303,128 +326,5 @@ describe("CrewSchedule", () => {
   it("registers itself into the Astronaut Complex's per-crew slot", () => {
     const augments = getAugmentsForSlot("astronaut-complex.crew");
     expect(augments.map((a) => a.id)).toContain("rp1-crew-schedule");
-  });
-});
-
-describe("CrewProgramme", () => {
-  it("renders nothing at all until RP-1 says it is there", async () => {
-    const { fixture, view } = mountProgramme();
-    fixture.emit("rp1.available", false);
-
-    await waitFor(() => {
-      expect(fixture.transport.isSubscribed("rp1.available")).toBe(true);
-    });
-    /* Settle before asserting ABSENCE. There is no positive signal to wait
-       for when the expectation is that nothing renders, so without this the
-       assertion can run before the emit has been processed and pass because
-       the render had not happened yet rather than because it must not. */
-    await act(async () => {});
-    expect(view.container).toBeEmptyDOMElement();
-  });
-
-  /**
-   * These are difficulty SETTINGS, not career state: `CrewHandler.LoadSettings`
-   * copies them off `RP0Settings` on `OnGameSettingsApplied` and nothing in
-   * RP-1's gameplay writes them back. A save that took RP-1's own defaults has
-   * nothing here an operator has to hold, so the section is not drawn at all.
-   */
-  it("renders nothing on a save running RP-1's own crew rules", async () => {
-    const { fixture, view } = mountProgramme();
-    fixture.emit("rp1.available", true);
-    fixture.emit("rp1.crewProgram", PROGRAM);
-
-    await waitFor(() => {
-      expect(fixture.transport.isSubscribed("rp1.crewProgram")).toBe(true);
-    });
-    // Settle before asserting ABSENCE: with nothing to wait for, the assertion
-    // would otherwise pass on a render that had not happened yet.
-    await act(async () => {});
-    expect(view.container).toBeEmptyDOMElement();
-  });
-
-  it("names each mechanic the save has switched off", async () => {
-    const { fixture, view } = mountProgramme();
-    fixture.emit("rp1.available", true);
-    fixture.emit("rp1.crewProgram", {
-      ...PROGRAM,
-      crewRnREnabled: false,
-      missionTrainingEnabled: false,
-      retirementEnabled: false,
-    });
-
-    await waitFor(() => {
-      expect(visibleText()).toContain("Retirement off");
-    });
-    const text = visibleText();
-    expect(text).toContain("Post-flight R&R off");
-    expect(text).toContain("Mission training off");
-    await expectNoA11yViolations(view.container);
-  });
-
-  /** The rate is why a course's ETA is not the length the catalogue quotes. */
-  it("names a training rate the save has moved off RP-1's own", async () => {
-    const { fixture } = mountProgramme();
-    fixture.emit("rp1.available", true);
-    fixture.emit("rp1.crewProgram", {
-      ...PROGRAM,
-      missionTrainingRate: 1.25,
-      proficiencyTrainingRate: 0.8,
-    });
-
-    await waitFor(() => {
-      expect(visibleText()).toContain("Proficiency training at");
-    });
-    const text = visibleText();
-    expect(text).toContain("Mission training at");
-    expect(text).toContain("0.80");
-    expect(text).toContain("1.25");
-  });
-
-  /**
-   * A rate on trainings that do not exist is not a rule anybody is running:
-   * RP-1 generates no mission template at all with the mechanic switched off.
-   */
-  it("says nothing about the mission rate while mission training is off", async () => {
-    const { fixture } = mountProgramme();
-    fixture.emit("rp1.available", true);
-    fixture.emit("rp1.crewProgram", {
-      ...PROGRAM,
-      missionTrainingEnabled: false,
-      missionTrainingRate: 1.25,
-    });
-
-    await waitFor(() => {
-      expect(visibleText()).toContain("Mission training off");
-    });
-    expect(visibleText()).not.toContain("Mission training at");
-  });
-
-  /**
-   * A switch nobody could read is not a switch that is off. Reading an absent
-   * flag as "Off" would say retirement is disabled on a career that retires
-   * people, which is the same class of mistake as reading an absent date as a
-   * date.
-   */
-  it("says nothing about an unread switch, rather than calling it off", async () => {
-    const { fixture } = mountProgramme();
-    fixture.emit("rp1.available", true);
-    fixture.emit("rp1.crewProgram", {
-      ...PROGRAM,
-      crewRnREnabled: false,
-      retirementEnabled: null,
-    });
-
-    /* The R&R line is the positive signal that the section rendered at all, so
-       the retirement assertion is about a rule that was read and dropped rather
-       than about a section that had not painted yet. */
-    await waitFor(() => {
-      expect(visibleText()).toContain("Post-flight R&R off");
-    });
-    expect(visibleText()).not.toContain("Retirement off");
-  });
-
-  it("registers itself into the Astronaut Complex's sections slot", () => {
-    const augments = getAugmentsForSlot("astronaut-complex.sections");
-    expect(augments.map((a) => a.id)).toContain("rp1-crew-programme");
   });
 });

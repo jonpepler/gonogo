@@ -213,67 +213,67 @@
       "text": "b6c63acd"
     },
     "catalogue-picker--default.png": {
-      "hash": "4ec0c893f76490b8",
+      "hash": "cebc2b4d3e04bf16",
       "elements": 263,
       "text": "176067ac"
     },
     "completed-program--default.png": {
-      "hash": "ba48a340cf471b31",
+      "hash": "f9e457c22bb83d62",
       "elements": 262,
       "text": "2284a518"
     },
     "complexes-add-pad--default.png": {
-      "hash": "1e3edc20a623988d",
+      "hash": "abae3442906e3aa2",
       "elements": 265,
       "text": "68b21e31"
     },
     "complexes-dismantle-warnings--default.png": {
-      "hash": "39cc7f170d030fc2",
+      "hash": "ff62cccad4da4a1e",
       "elements": 209,
       "text": "ed5bbd17"
     },
     "complexes-last-pad--default.png": {
-      "hash": "a66c26427e311e6a",
+      "hash": "bc4bb0296c981746",
       "elements": 248,
       "text": "ae4af76b"
     },
     "complexes-new--default.png": {
-      "hash": "868f5a51fbb30374",
+      "hash": "c6283ddb553a3b70",
       "elements": 250,
       "text": "9e846fc8"
     },
     "complexes-rename--default.png": {
-      "hash": "5885937130bc6a77",
+      "hash": "2567a2d0d84e115a",
       "elements": 266,
       "text": "332e1a79"
     },
     "complexes-rushing--default.png": {
-      "hash": "0eae700190df1dd9",
+      "hash": "76f2efea8e68766b",
       "elements": 275,
       "text": "efa56cfd"
     },
     "construction-complex-modify--default.png": {
-      "hash": "add54b8812e35e77",
+      "hash": "e4e19f57083f14fd",
       "elements": 138,
       "text": "e23bd788"
     },
     "construction-empty--default.png": {
-      "hash": "e88fa89be7803f9a",
+      "hash": "b595a46d0cb02c67",
       "elements": 120,
       "text": "ee5877ee"
     },
     "construction-full-queue--default.png": {
-      "hash": "8c10a06ce04a4168",
+      "hash": "710d3a811a304d71",
       "elements": 189,
       "text": "d164f52c"
     },
     "construction-not-costed--default.png": {
-      "hash": "4ef75f8b27edbe84",
+      "hash": "ebf531e9a73d6330",
       "elements": 138,
       "text": "ed6dfa6f"
     },
     "construction-rushing-and-stalled--default.png": {
-      "hash": "57eb5850e00fe1b4",
+      "hash": "926891dabf9bf81b",
       "elements": 156,
       "text": "645b25c4"
     },
@@ -282,53 +282,58 @@
       "elements": 29,
       "text": "3b941eca"
     },
+    "crew-core-stats--default.png": {
+      "hash": "f390a1015c8fa652",
+      "elements": 72,
+      "text": "8348fe0e"
+    },
     "crew-enrolment-blocked--default.png": {
-      "hash": "59ff4c0195442eec",
-      "elements": 47,
-      "text": "bcd95d2e"
+      "hash": "12c0709ff9069063",
+      "elements": 26,
+      "text": "53034626"
     },
     "crew-enrolment-ready--default.png": {
-      "hash": "985dedfad0009d25",
-      "elements": 47,
-      "text": "6f278b89"
-    },
-    "crew-programme-rules--default.png": {
-      "hash": "54e870f3ae3fd35a",
-      "elements": 32,
-      "text": "ea8af5ed"
+      "hash": "762c79270e2992f3",
+      "elements": 26,
+      "text": "1dcd2ff9"
     },
     "crew-schedule-three-states--default.png": {
-      "hash": "9055603ee35817fb",
-      "elements": 170,
-      "text": "f66723c5"
+      "hash": "4077e8d1467de2b2",
+      "elements": 167,
+      "text": "60e2af6e"
+    },
+    "crew-settings-honoured--default.png": {
+      "hash": "5dec13ad1a57aeb4",
+      "elements": 150,
+      "text": "ffdf28de"
     },
     "crew-training-both-ways-out--default.png": {
-      "hash": "fdac95497dde66c1",
-      "elements": 200,
-      "text": "0ef08cf4"
+      "hash": "136e636b199799b6",
+      "elements": 27,
+      "text": "301011be"
     },
     "crew-training-refused--default.png": {
-      "hash": "f53c7f73ecbb0435",
-      "elements": 198,
-      "text": "978947a1"
+      "hash": "3437379420ca660b",
+      "elements": 27,
+      "text": "52e2067d"
     },
     "facility-upgrades-at-centre--default.png": {
-      "hash": "076ab9b7dcf8fcdb",
+      "hash": "a4f58a9f9cfb9e59",
       "elements": 178,
       "text": "2d239e6a"
     },
     "facility-upgrades-away--default.png": {
-      "hash": "c3df7a1b584d3e39",
+      "hash": "9743e2dd646700de",
       "elements": 82,
       "text": "0abd0b33"
     },
     "no-curve-table--default.png": {
-      "hash": "b6b7dc6ddcd03cfe",
+      "hash": "396c0d74ab4ee06c",
       "elements": 250,
       "text": "dd037571"
     },
     "offer-frontloaded--default.png": {
-      "hash": "bb7ec8a8613e5f24",
+      "hash": "6e221ea86a025cc4",
       "elements": 253,
       "text": "ef9f36da"
     },
@@ -343,12 +348,12 @@
       "text": "141b257d"
     },
     "personnel-staffed--default.png": {
-      "hash": "e186d4e507593fd4",
+      "hash": "b4074298da11baad",
       "elements": 192,
       "text": "0c4b9d13"
     },
     "personnel-unanswered--default.png": {
-      "hash": "90b57562b30a2c69",
+      "hash": "a062094e9c7a8308",
       "elements": 86,
       "text": "61e44047"
     },
@@ -358,7 +363,7 @@
       "text": "d7a45714"
     },
     "programs-screen--default.png": {
-      "hash": "681498703e43e50a",
+      "hash": "52ebab326279ce02",
       "elements": 130,
       "text": "abb9d1ce"
     },
@@ -368,7 +373,7 @@
       "text": "a8b3e662"
     },
     "running-backloaded--default.png": {
-      "hash": "2a50172aad52852d",
+      "hash": "db0cbbf0b5d5c5ae",
       "elements": 264,
       "text": "a1714f1e"
     },
@@ -408,7 +413,7 @@
       "text": "a779cc0f"
     },
     "two-centres-unstaffed--default.png": {
-      "hash": "4b8295ffcd4604af",
+      "hash": "34893e4a78bf7273",
       "elements": 216,
       "text": "08cd13f2"
     },

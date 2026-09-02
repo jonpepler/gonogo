@@ -30,12 +30,24 @@
  *     mistaken for use.
  *
  * THE SHAPE OF THE DEBT is worth reading before clearing it. Seventeen of the
- * twenty are commands and three are Topics, which says the gap is overwhelmingly
- * on the CONTROL side: the mod will accept instructions the dashboard has no
- * button for. `principia.plan.*` is a whole five-command planning surface with
- * no caller, and `rp1.tech.research`, `rp1.facility.upgrade` and
+ * twenty seeded entries were commands and three were Topics, which says the gap
+ * is overwhelmingly on the CONTROL side: the mod will accept instructions the
+ * dashboard has no button for. `rp1.tech.research`, `rp1.facility.upgrade` and
  * `rp1.strategy.activate` are three of the four career spends CLAUDE.md's funds
  * rule names by hand.
+ *
+ * CLEARED SO FAR, 5 of the 20: `principia.plan.create`, `.delete`,
+ * `.duplicate`, `.horizon` and `.send`, the whole Principia planning write path,
+ * on 2026-09-02. What the exercise taught, for whoever takes the next entry:
+ * five unreached commands were not five missing buttons. Create, duplicate,
+ * delete and send are the transitions of ONE state machine over `planExists` and
+ * `planCount`, and the mod already refuses the illegal one by name, so the
+ * surface that reaches them is a single section that renders the slot state and
+ * offers whichever transition that state permits. `horizon` went somewhere else
+ * entirely, next to the shortfall it is the remedy for, because its own contract
+ * doc pairs it with the step budget that was already wired there. A debt entry
+ * names a command; it does not tell you the surface, and grouping by wire prefix
+ * would have got this one wrong.
  */
 
 /**
@@ -60,17 +72,6 @@ export const UNREACHED_DECLARATION_DEBT: Record<string, readonly string[]> = {
     "command kos.dispatchNow",
     "command kos.exec",
     "command kos.reEnable",
-  ],
-  GonogoPrincipiaUplink: [
-    /*
-     * A complete manoeuvre-planning control surface with no caller of any kind.
-     * The read side is wired; every write is unreachable from the dashboard.
-     */
-    "command principia.plan.create",
-    "command principia.plan.delete",
-    "command principia.plan.duplicate",
-    "command principia.plan.horizon",
-    "command principia.plan.send",
   ],
   GonogoRealAntennasUplink: [
     /*

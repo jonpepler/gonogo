@@ -94,6 +94,21 @@ export function useCommcastFeed(
    * later and un-deliver something already on screen.
    */
   const pinned = useRef<Map<string, number>>(new Map());
+  /**
+   * The buffer the pins above were taken against.
+   *
+   * A pin is only meaningful beside the buffer it was pushed into, so the two
+   * are made together below rather than in the effect that builds the buffer.
+   * Clearing the map there instead put them one commit apart: the rebuild
+   * disposes the old buffer, clears the map and schedules the new one, and the
+   * push effect then runs in that SAME commit still holding the disposed
+   * buffer, so every message was re-pinned into a `push` that returns early.
+   * The next commit had the live buffer and nothing left to pin, and the thread
+   * sat under "In transit" with its bodies withheld for the rest of the
+   * session. The path is the ordinary one: a restored thread is full before
+   * anything renders and the vantage arrives with the first frame.
+   */
+  const pinnedFor = useRef<DelayedPlayoutBuffer<CommsMessage> | null>(null);
   const [buffer, setBuffer] =
     useState<DelayedPlayoutBuffer<CommsMessage> | null>(null);
 
@@ -103,7 +118,6 @@ export function useCommcastFeed(
       setBuffer(null);
       return;
     }
-    pinned.current = new Map();
     setRevealed([]);
     const next = new DelayedPlayoutBuffer<CommsMessage>({
       view: {
@@ -131,6 +145,10 @@ export function useCommcastFeed(
 
   useEffect(() => {
     if (!buffer) return;
+    if (pinnedFor.current !== buffer) {
+      pinned.current = new Map();
+      pinnedFor.current = buffer;
+    }
     for (const msg of snapshot) {
       if (pinned.current.has(msg.id)) continue;
       const ut = revealUtFor(msg, me, pairs);

@@ -353,13 +353,13 @@ namespace Sitrep.Core.Tests
             Func<UplinkWiring, IReadOnlyList<WiringUse>> reported,
             string what)
         {
-            var directory = UplinkProjects.Discover()[uplink];
-            var wiring = UplinkWiringScan.Scan(uplink, directory);
+            var directories = UplinkProjects.SourceDirectories(UplinkProjects.Discover()[uplink]);
+            var wiring = UplinkWiringScan.Scan(uplink, directories);
 
             Assert.Empty(reported(wiring));
 
             var (name, sites) = Pairing(blank(wiring), against(wiring));
-            var sabotaged = UplinkWiringScan.Scan(uplink, directory, Rewriting(sites));
+            var sabotaged = UplinkWiringScan.Scan(uplink, directories, Rewriting(sites));
 
             Assert.True(
                 reported(sabotaged).Any(u => u.Value == name),
@@ -441,7 +441,7 @@ namespace Sitrep.Core.Tests
         private static List<UplinkWiring> Scan() =>
             UplinkProjects.Discover()
                 .OrderBy(u => u.Key, StringComparer.Ordinal)
-                .Select(u => UplinkWiringScan.Scan(u.Key, u.Value))
+                .Select(u => UplinkWiringScan.Scan(u.Key, UplinkProjects.SourceDirectories(u.Value)))
                 .ToList();
     }
 }

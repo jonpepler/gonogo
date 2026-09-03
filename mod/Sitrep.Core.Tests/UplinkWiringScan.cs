@@ -199,16 +199,22 @@ namespace Sitrep.Core.Tests
         };
 
         /// <summary>
-        /// Scan one Uplink. <paramref name="mutate"/> rewrites a named file's text
-        /// after comments are blanked and before names are read, which is how the
-        /// gate is made to see a violation that is known to be there. It runs on
-        /// the same text the reader sees, so a caller can target one line by the
-        /// number the walk reported.
+        /// Scan one Uplink, over every directory holding its C#: its own project
+        /// and, usually, the contract slice its command-name and topic constants
+        /// live in. The caller supplies them because the two repos that run this
+        /// walk lay an Uplink out differently, and a walk that guesses a layout
+        /// finds nothing in the other one and reports it clean.
+        ///
+        /// <para><paramref name="mutate"/> rewrites a named file's text after
+        /// comments are blanked and before names are read, which is how the gate
+        /// is made to see a violation that is known to be there. It runs on the
+        /// same text the reader sees, so a caller can target one line by the
+        /// number the walk reported.</para>
         /// </summary>
         public static UplinkWiring Scan(
-            string name, string directory, Func<string, string, string>? mutate = null)
+            string name, IReadOnlyList<string> directories, Func<string, string, string>? mutate = null)
         {
-            var files = Sources(directory, mutate);
+            var files = Sources(directories, mutate);
             var constants = Constants(files);
             var forwarded = HelperParameters(files, "CommandDeclaration")
                 .Concat(HelperParameters(files, "ChannelDeclaration"))
@@ -261,24 +267,17 @@ namespace Sitrep.Core.Tests
         }
 
         /// <summary>
-        /// The Uplink's own sources plus its contract slice, which is where its
-        /// command-name and topic constants usually live. Comments are blanked
-        /// first: prose quotes these names constantly, and a doc comment reading
-        /// "Delayed (uplink to the craft)" is otherwise indistinguishable from a
-        /// call to a <c>Delayed(topic)</c> declaration helper.
+        /// Every hand-written <c>.cs</c> under the given directories, with comments
+        /// blanked first: prose quotes these names constantly, and a doc comment
+        /// reading "Delayed (uplink to the craft)" is otherwise indistinguishable
+        /// from a call to a <c>Delayed(topic)</c> declaration helper.
         /// </summary>
         private static List<(string File, string Text)> Sources(
-            string directory, Func<string, string, string>? mutate)
+            IReadOnlyList<string> directories, Func<string, string, string>? mutate)
         {
-            var directories = new List<string> { directory };
-            var contract = directory + ".Contract";
-            if (Directory.Exists(contract))
-            {
-                directories.Add(contract);
-            }
-
             return directories
-                .SelectMany(UplinkProjects.SourceFiles)
+                .Where(Directory.Exists)
+                .SelectMany(SourceFiles)
                 .OrderBy(f => f, StringComparer.Ordinal)
                 .Select(f =>
                 {
@@ -287,6 +286,25 @@ namespace Sitrep.Core.Tests
                     return (name, mutate is null ? text : mutate(name, text));
                 })
                 .ToList();
+        }
+
+        /// <summary>
+        /// Every hand-written <c>.cs</c> under a directory, skipping the build
+        /// outputs and the TypeScript client's own folder.
+        /// </summary>
+        internal static IEnumerable<string> SourceFiles(string directory)
+        {
+            foreach (var file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) ||
+                    file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal) ||
+                    file.Contains($"{Path.DirectorySeparatorChar}client{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                yield return file;
+            }
         }
 
         /// <summary>

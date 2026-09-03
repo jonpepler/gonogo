@@ -346,9 +346,24 @@
     "reason": "Dimensional degeneracy, the same case as CareerStrategy.dateActivated: `divide({s:1},{s:1})` is `{}`, so EVERY dimensionless field is the dimensional rate of EVERY time field in its own type. A fraction complete is not the rate of an ETA, and neither is a research throttle. The real rate on each of these payloads is `rate`, which carries RP-1's own `bp/s` token and is therefore invisible to this scan (see the opaque-token list). Integrating it would be wrong anyway: the ETA is already derived from the rate server-side, efficiency-ramped and, for a blocking operation, sequenced against its peers, so a client re-integrating it would be second-guessing arithmetic that mirrors RP-1's own.",
     "verdict": "coincidence"
   },
+  "Rp1Personnel.engineerHireQuote": {
+    "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
+    "reason": "A one-off purchase price beside a standing payroll bill, so the shared dimension is an artefact of `funds / s` matching `f/day` and nothing more. This is what RP-1 QUOTES for buying one engineer, a settings value passed through its currency modifiers; the daily figures are the whole workforce's recurring charge at the effective headcount. Integrating a payroll over any interval cannot produce the price of a head, and this figure does not accumulate at all: it is the same number before and after a hire. It moves only when a leader is appointed or dismissed, which is a change of modifier rather than the passage of time, so there is no interval over which a rate could integrate to it. What does accumulate is the balance the hire is paid out of, graded separately at CareerEconomy.funds.",
+    "verdict": "coincidence"
+  },
   "Rp1Personnel.engineerSalaryPerYear": {
     "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
     "reason": "Two different quantities that happen to share a dimension. The yearly figure is ONE engineer's full salary before any multiplier, a quoted price RP-1 reads from its settings and holds still; the daily figures are the WHOLE workforce's bill at the effective headcount, with the idle fraction and any rush already in them. So the per-day is not the derivative of the per-year, it is a different population over a different period, and integrating one into the other would have a single engineer's contract rate climb as the payroll runs. Neither side accumulates: both are standing prices, and the balance they are paid out of is graded separately at CareerEconomy.funds.",
+    "verdict": "coincidence"
+  },
+  "Rp1Personnel.hireCost": {
+    "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
+    "reason": "The engineer quote's case for the figure RP-1 actually CHARGES: a per-head purchase price, read raw from RP-1's settings, sitting beside a recurring whole-workforce bill that happens to share its dimension. Neither role's payroll integrates into it, and it is not even role-specific, which is the giveaway: one settings value prices both an engineer and a researcher, so a rule pairing it with the engineers' day-rate is pairing it with a population it has nothing to do with. It changes only if the save's settings change, never with elapsed time.",
+    "verdict": "coincidence"
+  },
+  "Rp1Personnel.researcherHireQuote": {
+    "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
+    "reason": "The engineer quote's case with the population mismatch one step wider, exactly as researcherSalaryPerYear widens the salary one: a researcher's per-head purchase price sits beside the engineers' daily bill as readily as the researchers' own, because both carry `f/day` and the rule cannot tell whose payroll is whose. A hire is a purchase and a salary is a subscription; no interval of the second sums to the first.",
     "verdict": "coincidence"
   },
   "Rp1Personnel.researcherSalaryPerYear": {
@@ -597,9 +612,24 @@
     "reason": "Dimensional degeneracy, the same case as CareerStrategy.dateActivated: `divide({s:1},{s:1})` is `{}`, so EVERY dimensionless field is the dimensional rate of EVERY time field in its own type. A fraction complete is not the rate of an ETA, and neither is a research throttle. The real rate on each of these payloads is `rate`, which carries RP-1's own `bp/s` token and is therefore invisible to this scan (see the opaque-token list). Integrating it would be wrong anyway: the ETA is already derived from the rate server-side, efficiency-ramped and, for a blocking operation, sequenced against its peers, so a client re-integrating it would be second-guessing arithmetic that mirrors RP-1's own.",
     "verdict": "coincidence"
   },
+  "rp1.personnel.engineerHireQuote": {
+    "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
+    "reason": "The topic side of Rp1Personnel.engineerHireQuote, same payload and same answer: a per-head purchase price beside a whole-workforce daily bill.",
+    "verdict": "coincidence"
+  },
   "rp1.personnel.engineerSalaryPerYear": {
     "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
     "reason": "The topic side of Rp1Personnel.engineerSalaryPerYear, same payload and same answer: a per-head yearly contract rate beside a whole-workforce daily bill.",
+    "verdict": "coincidence"
+  },
+  "rp1.personnel.hireCost": {
+    "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
+    "reason": "The topic side of Rp1Personnel.hireCost, same payload and same answer: the charged per-head price, role-independent, beside a recurring payroll.",
+    "verdict": "coincidence"
+  },
+  "rp1.personnel.researcherHireQuote": {
+    "rates": ["engineerSalaryPerDay", "researcherSalaryPerDay"],
+    "reason": "The topic side of Rp1Personnel.researcherHireQuote, same payload and same answer.",
     "verdict": "coincidence"
   },
   "rp1.personnel.researcherSalaryPerYear": {

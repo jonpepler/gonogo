@@ -10,6 +10,7 @@ import {
   NULL_DISPLAY,
   Panel,
   ScrollArea,
+  Section,
   Text,
   VisuallyHidden,
 } from "@ksp-gonogo/ui-kit";
@@ -154,7 +155,17 @@ function CommcastComponent(_props: Readonly<ComponentProps>) {
     </Commcast__Frame>
   );
 
-  return <Panel panelTitle="Commcast" sections={body} />;
+  /*
+   * `Section fill`, not a bare `sections={body}`. Panel's fill rule targets
+   * `& > [data-section-fill]`, which only `<Section fill>` stamps, so a plain
+   * element handed to `sections` keeps its content height. The frame's own
+   * `flex: 1 1 auto` applied while it was a body child, and hoisting it into
+   * the prop took the composer off the bottom of the panel and left a band of
+   * dead space under it.
+   */
+  return (
+    <Panel panelTitle="Commcast" sections={<Section fill>{body}</Section>} />
+  );
 }
 
 /** One message that has arrived here. */

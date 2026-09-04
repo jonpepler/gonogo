@@ -233,6 +233,7 @@ Every craft RP-1 is integrating, holding or could start, across every launch com
 | Augment | Into | Reads | Presence | Scenes | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `rp1-crew-schedule` | `astronaut-complex.crew` | – |  | 2 |  |
+| `rp1-crew-training-badge` | `astronaut-complex.crew-badge` | `rp1.available`, `rp1.crew` |  | 1 |  |
 | `rp1-training-courses` | `astronaut-complex.training` | `rp1.available`, `rp1.training`, `rp1.crew` |  | 2 |  |
 | `rp1-training-enrolment` | `astronaut-complex.training` | `rp1.available`, `rp1.trainingCatalogue`, `rp1.crew`, `rp1.crewProgram`, `rp1.training`, `spaceCenter.crewRoster`, `career.status` |  | 3 |  |
 | `rp1-contract-payload` | `contract-manager.sections` | – |  | 1 |  |
@@ -255,6 +256,8 @@ Every craft RP-1 is integrating, holding or could start, across every launch com
 
 ![Retirement and mission training both switched off: no retirement date, no extension line, no lapse date and no mention that any of them are disabled, because on this save they are not concepts an operator has to hold](docs/assets/crew-settings-honoured--default.png)
 
+![Four kerbals KSP calls Available, two of them on RP-1 courses: the corner of each card says which, and tells a course being worked from one nobody has started, with nothing else on any card to tell them apart](docs/assets/crew-training-corner--default.png)
+
 ![One course two kerbals share, carrying its own progress, the date the course ends, the later date its crew comes free, and RP-1's two ways off it: one cancel that ends it for both and one removal per student, with the roster rows above stating only where each kerbal stands](docs/assets/crew-training-both-ways-out--default.png)
 
 ![Mission training for Gemini seats exactly two, so RP-1 withholds both removals rather than stranding whoever is left, and cancelling the whole course is the only way off it](docs/assets/crew-training-refused--default.png)
@@ -269,7 +272,7 @@ Every craft RP-1 is integrating, holding or could start, across every launch com
 
 ![A career with two tiers it could commit to and one building already in the queue, priced against a balance that cannot meet either: RP-1 bills a construction as it builds, so this is a slower upgrade rather than a refused one](docs/assets/facility-upgrades-at-centre--default.png)
 
-![The same career read from the flight scene: KSP has not built the facilities, so every tier and every price is absent and the command's own gate refuses. Said out loud, because a career with nothing left to upgrade renders the same silence](docs/assets/facility-upgrades-away--default.png)
+![The same career read from the flight scene: KSP has not put the buildings in the scene, so every tier and every price is absent and the command's own gate refuses. Said out loud, because a career with nothing left to upgrade renders the same silence, and said with the half an operator would otherwise fear, that an upgrade already under way is still building](docs/assets/facility-upgrades-away--default.png)
 
 ![LC-1's detail open on a career with 400f against a 14,118f pad: the quote, the reading that it is more than the balance, and a press that is still live because RP-1 slows the build rather than refusing it](docs/assets/complexes-add-pad--default.png)
 

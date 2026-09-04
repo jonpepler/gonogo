@@ -39,6 +39,11 @@ import type {
 import { PrincipiaBurnProfile } from "../__generated__/contract";
 import { commandWindow } from "../commandWindow";
 import { planView } from "../planReading";
+import {
+  nothingWasWritten,
+  planWriteReceipt,
+  planWriteRefusalLine,
+} from "../planWrite";
 import { plottingFrameLabel } from "../plottingFrame";
 import { PRINCIPIA } from "../uplink";
 import "../topics";
@@ -171,19 +176,6 @@ function ProfileRow({
   );
 }
 
-/**
- * The receipt a confirmed dispatch resolved with, or null when it carried none.
- *
- * <para>Narrowed by hand because the resolved value crosses the wire as
- * `unknown`, and a cast would make a widget that renders a receipt out of
- * whatever came back. Only the two fields this widget reads are checked; the rest
- * of the receipt is the producer's business.</para>
- */
-function writeReceipt(result: unknown): PrincipiaPlanWriteReceipt | null {
-  if (typeof result !== "object" || result === null) return null;
-  return result as PrincipiaPlanWriteReceipt;
-}
-
 /** The magnitude of a triple, so the row of three has a headline. */
 export function deltaVMagnitude(draft: Draft): number {
   return Math.sqrt(
@@ -232,6 +224,15 @@ export function BurnEditor() {
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [lastWrite, setLastWrite] = useState<PrincipiaPlanWriteReceipt | null>(
+    null,
+  );
+  /*
+   * The arm's receipt is kept apart from the burn edits' because the two are
+   * read in different places: the burn banner lives inside the form, which is
+   * only on screen once a burn is selected, and an arm is the press an operator
+   * makes BEFORE there is one.
+   */
+  const [lastArm, setLastArm] = useState<PrincipiaPlanWriteReceipt | null>(
     null,
   );
 
@@ -334,27 +335,57 @@ export function BurnEditor() {
 
         {/* Arming is a real write of Principia's own burn back into the plan, so
             it confirms rather than firing on the first press. */}
-        <Cluster gap="sm" wrap justify="start">
-          <CommandButton
-            size="sm"
-            tone="go"
-            handle={armCmd}
-            args={{ vesselId, requestId: `arm-${vesselId ?? "none"}` }}
-            commandLabel="Arm the flight-plan write surface"
-            label="ARM WRITES"
-            confirmLabel="CONFIRM ARM"
-            confirmTone="nogo"
-            pendingLabel="Arming..."
-            disabled={!available}
-            aria-label="Arm the flight-plan write surface"
-            confirmAriaLabel="Confirm arming the flight-plan write surface"
-          />
-          {surface?.reason && (
-            <Text tone="faint" size="sm">
-              {surface.reason}
-            </Text>
+        <Stack gap="xs">
+          <Cluster gap="sm" wrap justify="start">
+            <CommandButton
+              size="sm"
+              tone="go"
+              handle={armCmd}
+              args={{ vesselId, requestId: `arm-${vesselId ?? "none"}` }}
+              commandLabel="Arm the flight-plan write surface"
+              label="ARM WRITES"
+              confirmLabel="CONFIRM ARM"
+              confirmTone="nogo"
+              pendingLabel="Arming..."
+              disabled={!available}
+              aria-label="Arm the flight-plan write surface"
+              confirmAriaLabel="Confirm arming the flight-plan write surface"
+              onConfirmed={(result) => setLastArm(planWriteReceipt(result))}
+            />
+            {surface?.reason && (
+              <Text tone="faint" size="sm">
+                {surface.reason}
+              </Text>
+            )}
+          </Cluster>
+
+          {/* An arm that was answered from the mod's own store granted nothing,
+              and this is the only thing on screen that says so. The request id
+              is composed from the vessel alone, so it never varies: every press
+              after the first sends the id the first went under, and the mod
+              answers it out of its receipt cache without touching the write
+              surface. Both resolve, so the control shows the same confirmation
+              either way. Live-regioned because it is the outcome of something
+              the operator just pressed and it contradicts the badge above. */}
+          {nothingWasWritten(lastArm) && (
+            <Stack gap="xs" role="status" aria-live="polite">
+              <Cluster justify="start">
+                <Badge severity="warning">NOTHING WAS WRITTEN</Badge>
+              </Cluster>
+              {lastArm.replayed === true ? (
+                <Text tone="faint" size="sm">
+                  This arm matched one already sent, so the mod answered with
+                  the earlier receipt instead of arming again. The badge above
+                  is what the surface actually holds.
+                </Text>
+              ) : (
+                <Text tone="faint" size="sm">
+                  {planWriteRefusalLine(lastArm)}
+                </Text>
+              )}
+            </Stack>
           )}
-        </Cluster>
+        </Stack>
 
         <Stack gap="xs">
           <Text tone="faint" size="sm">
@@ -631,7 +662,7 @@ export function BurnEditor() {
                 confirmLabel="CONFIRM APPLY"
                 confirmTone="nogo"
                 pendingLabel="Applying..."
-                onConfirmed={(result) => setLastWrite(writeReceipt(result))}
+                onConfirmed={(result) => setLastWrite(planWriteReceipt(result))}
                 disabled={frozen || tooLate}
                 aria-label="Apply the edited burn"
                 confirmAriaLabel="Confirm applying the edited burn"
@@ -653,7 +684,7 @@ export function BurnEditor() {
                 confirmLabel="CONFIRM ADD"
                 confirmTone="nogo"
                 pendingLabel="Adding..."
-                onConfirmed={(result) => setLastWrite(writeReceipt(result))}
+                onConfirmed={(result) => setLastWrite(planWriteReceipt(result))}
                 /*
                  * The same deadline: an inserted burn is written at the draft's
                  * ignition too, so one composed for an instant the write cannot
@@ -676,7 +707,7 @@ export function BurnEditor() {
                 confirmLabel="CONFIRM REMOVE"
                 confirmTone="nogo"
                 pendingLabel="Removing..."
-                onConfirmed={(result) => setLastWrite(writeReceipt(result))}
+                onConfirmed={(result) => setLastWrite(planWriteReceipt(result))}
                 // Out of contact freezes this too: the index is the whole of the
                 // request, and an index off an hour-old burn list can name a
                 // different burn by the time it arrives. NOT frozen by the edit
@@ -689,23 +720,31 @@ export function BurnEditor() {
               />
             </Cluster>
 
-            {/* A confirmed dispatch is not always a write. The mod answers a
-                repeated request id with the receipt it stored the first time, and
-                the plugin is never called; the control's own success state cannot
-                tell the two apart, because both resolve. Live-regioned because it
-                is the outcome of something the operator just pressed, and it
+            {/* A confirmed dispatch is not always a write, and the RECEIPT is
+                what says so: the mod answers a repeated request id with the one
+                it stored the first time without calling the plugin, and a
+                receipt can report an outcome that is not `Written` whatever the
+                envelope around it said. The control's own success state sees
+                neither, because both resolve. Live-regioned because it is the
+                outcome of something the operator just pressed, and it
                 contradicts what the button beside it is showing. */}
-            {lastWrite?.replayed === true && (
+            {nothingWasWritten(lastWrite) && (
               <Stack gap="xs" role="status" aria-live="polite">
                 <Cluster justify="start">
                   <Badge severity="warning">NOTHING WAS WRITTEN</Badge>
                 </Cluster>
-                <Text tone="faint" size="sm">
-                  This edit matched one already sent, so the mod answered with
-                  the earlier receipt instead of writing again. The plan still
-                  holds whatever the last write that DID land put there. Change
-                  a value and send again.
-                </Text>
+                {lastWrite.replayed === true ? (
+                  <Text tone="faint" size="sm">
+                    This edit matched one already sent, so the mod answered with
+                    the earlier receipt instead of writing again. The plan still
+                    holds whatever the last write that DID land put there.
+                    Change a value and send again.
+                  </Text>
+                ) : (
+                  <Text tone="faint" size="sm">
+                    {planWriteRefusalLine(lastWrite)}
+                  </Text>
+                )}
               </Stack>
             )}
 

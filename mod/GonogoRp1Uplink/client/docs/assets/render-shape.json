@@ -223,64 +223,64 @@
       "text": "955f5ed5"
     },
     "complexes-add-pad--default.png": {
-      "hash": "27fcfd63d7508a1b",
-      "elements": 267,
-      "text": "c93ccae3"
+      "hash": "6bfbe9f7765ab132",
+      "elements": 239,
+      "text": "dc04a1a9"
     },
     "complexes-dismantle-warnings--default.png": {
-      "hash": "3dd6da181588011e",
-      "elements": 211,
-      "text": "39f677a1"
+      "hash": "2b1a1d06a4bf6ec7",
+      "elements": 183,
+      "text": "0b38bb7c"
     },
     "complexes-last-pad--default.png": {
-      "hash": "0cb5c1ef8dbc28a7",
-      "elements": 250,
-      "text": "7d733bf3"
+      "hash": "63e87a24849b9095",
+      "elements": 222,
+      "text": "b7e685fc"
     },
     "complexes-new--default.png": {
-      "hash": "ca18d925a1cdcb57",
-      "elements": 252,
-      "text": "2712e6f9"
+      "hash": "faaa81e96c7e2fa1",
+      "elements": 224,
+      "text": "3c674954"
     },
     "complexes-rename--default.png": {
-      "hash": "164b84850934cea1",
-      "elements": 268,
-      "text": "5d1794ae"
+      "hash": "3ab35ae3e2073702",
+      "elements": 240,
+      "text": "189a073e"
     },
     "complexes-renovate--default.png": {
-      "hash": "9e12f03b8f54234c",
-      "elements": 246,
-      "text": "ccd4cb29"
+      "hash": "693d802c71c9f15a",
+      "elements": 218,
+      "text": "20147de4"
     },
     "complexes-rushing--default.png": {
-      "hash": "b391a2f26f485edb",
-      "elements": 277,
-      "text": "ef5535c7"
+      "hash": "36f876b1cd4f4cdc",
+      "elements": 249,
+      "text": "9f98c038"
     },
     "construction-complex-modify--default.png": {
-      "hash": "7d43ac0b5e39cfad",
+      "hash": "fb01a2e79b405e77",
       "elements": 140,
-      "text": "bc3b898f"
+      "text": "7162d3bc"
     },
     "construction-empty--default.png": {
-      "hash": "9d4af5df04c10090",
+      "hash": "87a733bad4dcd7dc",
       "elements": 122,
-      "text": "b8fbd9b2"
+      "text": "16c350e5"
     },
     "construction-full-queue--default.png": {
-      "hash": "5bc4c4803d8719c6",
-      "elements": 191,
-      "text": "4c588aae"
+      "hash": "a325cf95dc8a9a32",
+      "elements": 189,
+      "text": "c093f776"
     },
     "construction-not-costed--default.png": {
-      "hash": "6e3bd76d544895ba",
-      "elements": 140,
-      "text": "5a060bd8"
+      "hash": "cb89975b59e0624b",
+      "elements": 138,
+      "text": "1d1ea4a6"
     },
     "construction-rushing-and-stalled--default.png": {
-      "hash": "0bfdf87d03df4cf2",
-      "elements": 158,
-      "text": "d6cc6bd4"
+      "hash": "400bb6fc4dc4ec49",
+      "elements": 156,
+      "text": "0d32dd7b"
     },
     "contract-payload--default.png": {
       "hash": "fcb446edec4c4798",
@@ -293,12 +293,12 @@
       "text": "8348fe0e"
     },
     "crew-enrolment-blocked--default.png": {
-      "hash": "b3a3ed3371201e0a",
+      "hash": "6691e319cd43806e",
       "elements": 32,
       "text": "206699b0"
     },
     "crew-enrolment-ready--default.png": {
-      "hash": "9c367fe9c2aa0aea",
+      "hash": "037dcc75d67df453",
       "elements": 31,
       "text": "a8239cff"
     },
@@ -333,24 +333,24 @@
       "text": "01130a85"
     },
     "facility-upgrades-at-centre--default.png": {
-      "hash": "5e4783e1029b7cb7",
-      "elements": 180,
-      "text": "18f0895b"
+      "hash": "65456dbb76912ab9",
+      "elements": 156,
+      "text": "1ea97fe6"
     },
     "facility-upgrades-away--default.png": {
-      "hash": "5368c52db1bab8d7",
-      "elements": 84,
-      "text": "80b8e2d8"
+      "hash": "0ebc5fcb4afc8502",
+      "elements": 47,
+      "text": "89a856d9"
     },
     "hire-target-standing--default.png": {
-      "hash": "a50cb03704a27ce8",
-      "elements": 163,
-      "text": "aa670f4e"
+      "hash": "87baa12229009dbf",
+      "elements": 135,
+      "text": "adb56578"
     },
     "hire-target-standing-order--default.png": {
-      "hash": "ac5c1454d0a3af96",
-      "elements": 192,
-      "text": "919b2d0b"
+      "hash": "a1cc01338c02f1cd",
+      "elements": 164,
+      "text": "3d9212dc"
     },
     "no-curve-table--default.png": {
       "hash": "896d5d1b5fa512b3",
@@ -373,14 +373,14 @@
       "text": "141b257d"
     },
     "personnel-staffed--default.png": {
-      "hash": "182a8fcfef211ab2",
-      "elements": 194,
-      "text": "c78835c0"
+      "hash": "ba15d9e2eb1dfbaa",
+      "elements": 166,
+      "text": "eba2e14b"
     },
     "personnel-unanswered--default.png": {
-      "hash": "907f620dfe31247b",
-      "elements": 88,
-      "text": "76d3ea2e"
+      "hash": "980ebb8f3a21226c",
+      "elements": 60,
+      "text": "bc54bbcb"
     },
     "programs-overrun-and-unaffordable--default.png": {
       "hash": "3c6188fa0488a454",
@@ -388,7 +388,7 @@
       "text": "d7a45714"
     },
     "programs-screen--default.png": {
-      "hash": "f0bd2a672778389e",
+      "hash": "38388e490fbc865a",
       "elements": 130,
       "text": "db87d0f8"
     },
@@ -443,29 +443,29 @@
       "text": "e91f2657"
     },
     "tooling-refit-instead--landscape-18x5.png": {
-      "hash": "9b9d7dd029dcf62e",
+      "hash": "3498e69710494bab",
       "elements": 88,
       "text": "e91f2657"
     },
     "tooling-refit-instead--min.png": {
-      "hash": "7c217c6bbf473a5f",
+      "hash": "61078bd8ba9a96c0",
       "elements": 88,
       "text": "17f84f3f"
     },
     "tooling-refit-instead--mobile-9x8.png": {
-      "hash": "4f51e2864aa3997b",
+      "hash": "052fb573df035cda",
       "elements": 88,
       "text": "e91f2657"
     },
     "tooling-refit-instead--portrait-5x18.png": {
-      "hash": "2b70766bf7640ce4",
+      "hash": "fef3bb752e4f539d",
       "elements": 88,
       "text": "e91f2657"
     },
     "two-centres-unstaffed--default.png": {
-      "hash": "49b4879c56c8f586",
-      "elements": 218,
-      "text": "861fa5b8"
+      "hash": "28b0aec9edb83509",
+      "elements": 190,
+      "text": "6a0bcdeb"
     },
     "warehouse-three-places--default.png": {
       "hash": "eda981c364c2349d",

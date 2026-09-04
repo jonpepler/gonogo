@@ -1403,6 +1403,20 @@ export const ALLOWLIST: Record<ModToken, ModAllowlist> = {
       "mod/Sitrep.Core.Tests/UplinkContractOwnershipTests.cs",
 
       /*
+       * -- ACTIVE-VESSEL scan inventory (2026-09-04): core reports the craft an
+       * EVA kerbal stepped out of, and this scan holds every Uplink to resolving
+       * that through the activeVessel capability rather than off FlightGlobals.
+       * Its shrink-only debt has one entry and a debt list has to name its
+       * subject. Everything else in the file is discovery-driven: the walk is
+       * checked against the Uplinks UplinkProjects finds rather than against
+       * filenames, precisely so this stays the only mention. The entry goes when
+       * those three writes are routed, which needs a live flight rather than a
+       * code change, and the reasoning for the hold lives in that Uplink's own
+       * doc comment rather than here.
+       */
+      "mod/Sitrep.Core.Tests/UplinkActiveVesselScopeTests.cs",
+
+      /*
        * -- Widget-name mentions in doc comments, zero code coupling --
        * "ManeuverPlanner, TargetPicker, RoboticsConsole, MechJeb, Navball,"
        * lists sibling command widgets this shared list-item helper serves.
@@ -2494,6 +2508,11 @@ export const SURVIVES_COMMENT_STRIP: Partial<Record<ModToken, string[]>> = {
     "packages/sitrep-client/src/use-route-commands.test.tsx",
   ],
   mechjeb: [
+    // The active-vessel scan's one debt key, which is a PATH in a dictionary
+    // literal, so it survives the strip by construction. Nothing in the file
+    // imports or reads anything of this Uplink's; the walk it judges is
+    // discovery-driven.
+    "mod/Sitrep.Core.Tests/UplinkActiveVesselScopeTests.cs",
     "mod/Sitrep.Core.Tests/UplinkContractOwnershipTests.cs",
     "mod/Sitrep.Core.Tests/UplinkIsolationTests.cs",
     "packages/app/src/__tests__/uplink-widget-declarations.test.ts",
